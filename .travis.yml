@@ -1,0 +1,20 @@
+language: node_js
+install: npm install
+
+jobs:
+    include:
+    - stage: tests
+      script: npm run test
+      name: "Unit + Integration Node 8"
+      node_js: "8"
+    - script: npm run test
+      name: "Unit + Integration Node 10"
+      node_js: "10"
+
+    - script: npm run lint
+      name: "Linting"
+      node_js: "10"
+    - script: npm run coverage
+      name: "Coverage"
+      node_js: "10"
+

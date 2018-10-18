@@ -1,0 +1,38 @@
+{
+  "extends": [
+    "tslint:recommended"
+  ],
+  "rules": {
+    "ordered-imports": false,
+    "no-trailing-whitespace": {
+     "severity": "error" 
+    },
+    "max-classes-per-file": {
+      "severity": "warning"
+    },
+    "object-literal-sort-keys": false,
+    "no-any": {
+      "severity": "warning"
+    },
+    "arrow-return-shorthand": true,
+    /* We allow 2 because splitting usually uses it. */
+    "no-magic-numbers": [true, -1, 0, 1 , 2],
+    "prefer-for-of": true,
+    "typedef": {
+      "severity": "warning"
+    },
+    "await-promise": true,
+    "curly": true,
+    "no-empty": {
+      "severity": "warning"
+    },
+    "no-invalid-this": true,
+    "no-string-throw": {
+      "severity": "warning"
+    },
+    "no-unused-expression": false,
+    "prefer-const": true,
+    "indent": [true, "spaces", 4],
+    "radix": false
+  }
+}

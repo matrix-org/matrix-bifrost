@@ -1,0 +1,70 @@
+{
+  "name": "matrix-appservice-purple",
+  "version": "0.0.1",
+  "description": "General purpose bridging using libpurple.",
+  "main": "index.js",
+  "scripts": {
+    "build": "tsc",
+    "lint": "tslint --project tsconfig.json --format stylish",
+    "start": "node build/src/Program.js",
+    "test": "npm run build && mocha --recursive build/test",
+    "coverage": "nyc mocha --require ts-node/register --require source-map-support/register --full-trace --bail test/**/*.ts test/*.ts"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/matrix-org/matrix-appservice-purple.git"
+  },
+  "keywords": [],
+  "author": "Will Hunt <will@half-shot.uk>",
+  "license": "Apache-2.0",
+  "bugs": {
+    "url": "https://github.com/matrix-org/matrix-appservice-purple/issues"
+  },
+  "homepage": "https://github.com/matrix-org/matrix-appservice-purple",
+  "devDependencies": {
+    "@types/chai": "^4.1.4",
+    "@types/mocha": "^5.2.5",
+    "chai": "^4.1.2",
+    "mock-require": "^3.0.2",
+    "source-map-support": "^0.5.9",
+    "ts-node": "^7.0.1",
+    "mocha": "^5.2.0",
+    "nyc": "^12.0.2"
+  },
+  "dependencies": {
+    "tslint": "^5.11.0",
+    "typescript": "^3.0.1",
+    "winston": "^3.0.0",
+    "winston-daily-rotate-file": "^3.3.2",
+    "matrix-appservice-bridge": "^1.7.0"
+  },
+  "nyc": {
+    "check-coverage": true,
+    "per-file": false,
+    "lines": 85,
+    "statements": 85,
+    "functions": 75,
+    "branches": 75,
+    "include": [
+      "src"
+    ],
+    "exclude": [
+      "src/Program.ts"
+    ],
+    "reporter": [
+      "lcov",
+      "text-summary"
+    ],
+    "extension": [
+      ".ts"
+    ],
+    "require": [
+      "ts-node/register"
+    ],
+    "cache": true,
+    "all": true,
+    "instrument": true,
+    "sourceMap": true,
+    "report-dir": "./.nyc"
+  }
+}
