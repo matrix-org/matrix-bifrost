@@ -1,0 +1,12 @@
+"$schema": "http://json-schema.org/draft-04/schema#"
+type: "object"
+required: ["bridge"]
+properties:
+    bridge:
+        type: "object"
+        required: ["domain", "homeserverUrl"]
+        properties:
+          domain:
+            type: "string"
+          homeserverUrl:
+            type: "string"

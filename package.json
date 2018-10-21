@@ -6,7 +6,8 @@
   "scripts": {
     "build": "tsc",
     "lint": "tslint --project tsconfig.json --format stylish",
-    "start": "node build/src/Program.js",
+    "start": "node build/src/Program.js -c config.yaml",
+    "genreg": "node build/src/Program.js -r -c config.yaml",
     "test": "npm run build && mocha --recursive build/test",
     "coverage": "nyc mocha --require ts-node/register --require source-map-support/register --full-trace --bail test/**/*.ts test/*.ts"
   },
@@ -37,7 +38,8 @@
     "tslint": "^5.11.0",
     "typescript": "^3.0.1",
     "winston": "^3.0.0",
-    "winston-daily-rotate-file": "^3.3.2"
+    "winston-daily-rotate-file": "^3.3.2",
+    "node-purple": "/home/will/GitRepos/node-purple"
   },
   "nyc": {
     "check-coverage": true,

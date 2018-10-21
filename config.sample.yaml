@@ -1,0 +1,3 @@
+bridge:
+  domain: "localhost"
+  homeserverUrl: "http://localhost:8008"
