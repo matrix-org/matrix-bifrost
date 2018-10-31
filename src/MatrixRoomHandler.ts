@@ -1,6 +1,7 @@
 import { Bridge, MatrixRoom, RemoteRoom } from "matrix-appservice-bridge";
 import { PurpleInstance, PurpleProtocol } from "./purple/PurpleInstance";
 import { MROOM_TYPE_IM } from "./StoreTypes";
+import { IReceivedImMsg } from "./purple/PurpleEvents";
 
 const log = require("matrix-appservice-bridge").Logging.get("MatrixRoomHandler");
 
@@ -34,7 +35,7 @@ export class MatrixRoomHandler {
         return `${this.config.userPrefix}${protocol.id}_${senderId}`;
     }
 
-    private async handleIncomingIM(data: any) {
+    private async handleIncomingIM(data: IReceivedImMsg) {
         // First, find out who the message was intended for.
         const matrixUsers = await this.bridge.getUserStore().getMatrixUsersFromRemoteId(data.account.username);
         if (matrixUsers == null || matrixUsers.length == 0) {
