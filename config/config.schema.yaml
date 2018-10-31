@@ -10,3 +10,5 @@ properties:
             type: "string"
           homeserverUrl:
             type: "string"
+          userPrefix:
+            type: "string"
