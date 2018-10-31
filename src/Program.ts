@@ -1,6 +1,7 @@
 import { Cli, Bridge, AppServiceRegistration, ClientFactory, Logging } from "matrix-appservice-bridge";
 import { MatrixEventHandler } from "./MatrixEventHandler";
 import { MatrixRoomHandler } from "./MatrixRoomHandler";
+import { PurpleInstance } from "./purple/PurpleInstance";
 const log = Logging.get("Program");
 
 /**
@@ -11,6 +12,7 @@ class Program {
     private bridge: Bridge;
     private eventHandler: MatrixEventHandler|undefined;
     private roomHandler: MatrixRoomHandler|undefined;
+    private purple: PurpleInstance;
     constructor() {
         this.cli = new Cli({
           bridgeConfig: {
@@ -21,10 +23,12 @@ class Program {
           generateRegistration: this.generateRegistration,
           run: this.runBridge.bind(this),
         });
+        this.purple = new PurpleInstance();
     }
 
     public start(): any {
         Logging.configure({console: "debug"});
+
         try {
             this.cli.run();
         } catch (ex) {
@@ -43,8 +47,8 @@ class Program {
     }
 
     private async runBridge(port: number, config: any) {
-        log.info("Starting purple bridge");
-        this.eventHandler = new MatrixEventHandler();
+        log.info("Starting purple bridge on port ", port);
+        this.eventHandler = new MatrixEventHandler(this.purple);
         this.roomHandler = new MatrixRoomHandler();
         this.bridge = new Bridge({
           //clientFactory,
@@ -61,7 +65,10 @@ class Program {
           registration: "purple-registration.yaml",
         });
         await this.bridge.run(port, config);
+        this.eventHandler.setBridge(this.bridge);
+        this.roomHandler.setBridge(this.bridge);
         log.info("Bridge has started.");
+        await this.purple.start();
     }
 
 }
