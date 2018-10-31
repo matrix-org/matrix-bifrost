@@ -1,4 +1,4 @@
-import { Bridge, MatrixRoom } from "matrix-appservice-bridge";
+import { Bridge, MatrixRoom, RemoteUser, MatrixUser } from "matrix-appservice-bridge";
 import { IEventRequest, IBridgeContext, IEventRequestData } from "./MatrixTypes";
 import { IMatrixRoomData, MROOM_TYPE_UADMIN } from "./StoreTypes";
 import { PurpleInstance, PurpleProtocol } from "./purple/PurpleInstance";
@@ -77,9 +77,22 @@ export class MatrixEventHandler {
                 body: "\/\/Placeholder"
             });
         } else if (args[0] === "accounts" && args.length === 1) {
+            const users = await this.bridge.getUserStore().getRemoteUsersFromMatrixId(event.sender);
+            let body = "Linked accounts:\n";
+            body += users.map((remoteUser: RemoteUser) => {
+                const pid = remoteUser.get("protocolId");
+                const account = this.purple.getAccount(remoteUser.getId(), pid);
+                if (account) {
+                    return `- ${account.protocol.name} (${remoteUser.getId()}) [Enabled=${account.isEnabled}]`
+                } else {
+                    return `- ${pid} [Unknown protocol] (${remoteUser.getId()})`
+                }
+            }).join("\n");
             await intent.sendMessage(event.room_id, {
                 msgtype: "m.notice",
-                body: "\/\/Placeholder"
+                body,
+                format: "org.matrix.custom.html",
+                formatted_body: marked(body),
             });
         } else if (args[0] === "accounts" && args[1] === "add") {
             try {
@@ -88,7 +101,16 @@ export class MatrixEventHandler {
                 await intent.sendMessage(event.room_id, {
                     msgtype: "m.notice",
                     body: "Failed to add account:" + err.message
-                });    
+                });
+            }
+        } else if (args[0] === "accounts" && args[1] === "enable") {
+            try {
+                await this.handleEnableAccount(args[2], args[3], event);
+            } catch (err) {
+                await intent.sendMessage(event.room_id, {
+                    msgtype: "m.notice",
+                    body: "Failed to enable account:" + err.message
+                });
             }
         } else if (args[0] === "help") {
             const body = `
@@ -96,6 +118,7 @@ export class MatrixEventHandler {
 - \`protocol $PROTOCOL\` List details about a protocol, including account options.
 - \`accounts\` List accounts mapped to your matrix account.
 - \`accounts add $PROTOCOL ...$OPTS\` Add a new account, this will take some options given.
+- \`accounts enable $PROTOCOL $USERNAME\` Enables an account.
 - \`help\` This help prompt
 `;
             await intent.sendMessage(event.room_id, {
@@ -154,8 +177,9 @@ Say \`help\` for more commands.
 
     private async handleNewAccount(nameOrId: string, args: string[], event: IEventRequestData) {
         // TODO: Check to see if the user has an account matching this already.
+        nameOrId = nameOrId.toLowerCase();
         const protocol = this.purple.getProtocols().find(
-            (protocol) => protocol.name === nameOrId || protocol.id === nameOrId
+            (protocol) => protocol.name.toLowerCase() === nameOrId || protocol.id.toLowerCase() === nameOrId
         );
         if (protocol === undefined) {
             throw new Error("Protocol was not found");
@@ -165,5 +189,19 @@ Say \`help\` for more commands.
         }
         const account = new PurpleAccount(args[0], protocol);
         account.createNew();
+        const userStore = this.bridge.getUserStore();
+        const mxUser = new MatrixUser(event.sender);
+        const remoteUser = new RemoteUser(args[0]);
+        remoteUser.set("protocolId", protocol.id);
+        await userStore.linkUsers(mxUser, remoteUser);
+        await this.bridge.getIntent().sendMessage(event.room_id, {
+            msgtype: "m.notice",
+            body: "Created new account"
+        });
+    }
+
+    private async handleEnableAccount(protocol: string, username: string, event: IEventRequestData) {
+        const acct = this.purple.getAccount(username, protocol);
+        acct.setEnabled(true);
     }
 }
