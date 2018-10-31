@@ -49,7 +49,7 @@ class Program {
     private async runBridge(port: number, config: any) {
         log.info("Starting purple bridge on port ", port);
         this.eventHandler = new MatrixEventHandler(this.purple);
-        this.roomHandler = new MatrixRoomHandler();
+        this.roomHandler = new MatrixRoomHandler(this.purple, config);
         this.bridge = new Bridge({
           //clientFactory,
           controller: {
@@ -69,6 +69,27 @@ class Program {
         this.roomHandler.setBridge(this.bridge);
         log.info("Bridge has started.");
         await this.purple.start();
+        await this.startPurpleAccounts();
+    }
+
+    private async startPurpleAccounts() {
+        const store = this.bridge.getUserStore();
+        log.info("Starting enabled purple accounts..");
+        const matrixUsers = await store.getByMatrixData({});
+        await Promise.all(matrixUsers.map(async matrixUser => {
+            log.info(`Getting remote accounts for ${matrixUser.getId()}`);
+            const remotes = await store.getRemoteUsersFromMatrixId(matrixUser.getId());
+            await Promise.all(remotes.map(async remoteUser => {
+                log.info(`Starting ${remoteUser.getId()} (${remoteUser.get("protocolId")})`);
+                try {
+                    const acct = this.purple.getAccount(remoteUser.getId(), remoteUser.get("protocolId"));
+                    // TODO: At the moment, accounts start automatically.
+                } catch (ex) {
+                    log.error("Failed to start account, ", ex);
+                }
+            }));
+        }));
+        log.info("Fnished enabling purple accounts..");
     }
 
 }
