@@ -1,7 +1,8 @@
 import { Bridge, MatrixRoom, RemoteUser, MatrixUser } from "matrix-appservice-bridge";
 import { IEventRequest, IBridgeContext, IEventRequestData } from "./MatrixTypes";
-import { IMatrixRoomData, MROOM_TYPE_UADMIN } from "./StoreTypes";
+import { IMatrixRoomData, MROOM_TYPE_UADMIN, MROOM_TYPE_IM } from "./StoreTypes";
 import { PurpleInstance, PurpleProtocol } from "./purple/PurpleInstance";
+import { IPurpleInstance } from "./purple/IPurpleInstance";
 import * as marked from "marked";
 import { PurpleAccount } from "./purple/PurpleAccount";
 const log = require("matrix-appservice-bridge").Logging.get("MatrixEventHandler");
@@ -14,7 +15,7 @@ const RETRY_JOIN_MS = 5000;
 export class MatrixEventHandler {
     private bridge: Bridge;
     
-    constructor(private purple: PurpleInstance) {
+    constructor(private purple: IPurpleInstance) {
 
     }
 
@@ -28,10 +29,9 @@ export class MatrixEventHandler {
     }
 
     public async onEvent(request: IEventRequest, context: IBridgeContext) {
-        console.log(context);
         const roomType: string|null = context.rooms.matrix ? context.rooms.matrix.get("type") : null;
         const event = request.getData();
-        log.debug("Got event: ", event);
+        log.debug("Got event (id, type, sender, roomtype):", event.event_id, event.type, event.sender, roomType);
         const botUserId = this.bridge.getBot().client.getUserId();
         if (!roomType && event.content.membership === "invite" && event.state_key === botUserId) {
             try {
@@ -49,9 +49,20 @@ export class MatrixEventHandler {
             return;
         }
 
-        if (roomType === MROOM_TYPE_UADMIN && event.type === "m.room.message") {
+        if (event.type !== "m.room.message") {
+            // We are only handling bridged room messages now.
+            return;
+        }
+
+        if (roomType === MROOM_TYPE_UADMIN) {
             const args = event.content.body.split(" ");
             await this.handleCommand(args, event);
+            return;
+        }
+
+        if (roomType === MROOM_TYPE_IM) {
+            await this.handleImMessage(context, event);
+            return;
         }
     }
 
@@ -203,5 +214,30 @@ Say \`help\` for more commands.
     private async handleEnableAccount(protocol: string, username: string, event: IEventRequestData) {
         const acct = this.purple.getAccount(username, protocol);
         acct.setEnabled(true);
+    }
+
+    private async handleImMessage(context: IBridgeContext, event: IEventRequestData) {
+        log.info("Handling IM message");
+        const roomProtocol = context.rooms.remote.get("protocol_id");
+        if (roomProtocol == null) {
+            log.error("Room protocol was null, we cannot handle this im!");
+            return;
+        }
+        const remoteUser = context.senders.remotes.find((remote) => remote.get("protocolId") === roomProtocol);
+        if (remoteUser == null) {
+            log.error("Could not find a purple account for this matrix user, we cannot handle this im!");
+            return;
+        }
+        // XXX: We assume the first remote, this needs to be fixed for multiple accounts
+        const acct = this.purple.getAccount(remoteUser.getId(), roomProtocol);
+        if (!acct) {
+            log.error("Account wasn't found in libpurple, we cannot handle this im!");
+            return;
+        }
+        if (acct.isEnabled == false) {
+            log.error("Account isn't enabled, we cannot handle this im!");
+            return;
+        }
+        acct.sendIM(context.rooms.remote.get("recipient"), event.content.body);
     }
 }
