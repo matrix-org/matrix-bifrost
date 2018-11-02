@@ -2,3 +2,6 @@ bridge:
   domain: "localhost"
   homeserverUrl: "http://localhost:8008"
   userPrefix: "_purple_"
+
+purple:
+  enableDebug: false

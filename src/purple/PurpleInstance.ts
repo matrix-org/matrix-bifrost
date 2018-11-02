@@ -25,11 +25,10 @@ export class PurpleInstance extends EventEmitter {
         this.accounts = new Map();
     }
 
-    public async start() {
+    public async start(config: any) {
         log.info("Starting purple instance");
         helper.setupPurple({
-            debugEnabled: 1,
-            eventFunc: this.eventFunc.bind(this),
+            debugEnabled: config.enableDebug ? 1 : 0,
         });
         log.info("Started purple instance");
         this.protocols = plugins.get_protocols().map(
