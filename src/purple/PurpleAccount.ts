@@ -2,7 +2,7 @@
  * An interface for storing account data inside the userstore.
  */
 
-import { helper, plugins, accounts } from "node-purple";
+import { helper, plugins, accounts, messaging } from "node-purple";
 import { PurpleProtocol } from "./PurpleInstance";
 
 export class PurpleAccount {
@@ -34,6 +34,10 @@ export class PurpleAccount {
 
     setEnabled(enable: boolean) {
         accounts.set_enabled(this.handle, enable);
+    }
+
+    sendIM(recipient: string, body: string) {
+        messaging.sendIM(this.handle, recipient, body);
     }
 
     // connect() {
