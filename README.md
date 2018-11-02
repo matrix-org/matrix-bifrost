@@ -1,6 +1,8 @@
 # matrix-appservice-purple
 General purpose bridging using libpurple 
 
+**Note: This will not work for you yet. The `node-purple` supporting bit's are not all set up and ready yet**
+
 ## Installing
 
 ```
