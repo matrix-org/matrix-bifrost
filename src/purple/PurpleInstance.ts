@@ -20,6 +20,7 @@ export class PurpleProtocol {
 export class PurpleInstance extends EventEmitter implements IPurpleInstance {
     private protocols: PurpleProtocol[];
     private accounts: Map<string, PurpleAccount>;
+    private interval?: NodeJS.Timeout;
     constructor() {
         super();
         this.protocols = [];
@@ -35,6 +36,8 @@ export class PurpleInstance extends EventEmitter implements IPurpleInstance {
         this.protocols = plugins.get_protocols().map(
             (data) => new PurpleProtocol(data)
         );
+        log.info("Got supported protocols:", this.protocols.map((p) => p.id).join(" "));
+        this.interval = setInterval(this.eventHandler.bind(this), 300);
     }
 
     public getAccount(username: string, protocolId: string): PurpleAccount {
@@ -60,8 +63,10 @@ export class PurpleInstance extends EventEmitter implements IPurpleInstance {
         return this.protocols;
     }
 
-    public eventFunc(eventName: string, data: any) {
-        log.verbose(`Got ${eventName} from purple`);
-        this.emit(eventName, data);
+    public eventHandler() {
+        helper.pollEvents().forEach((evt) => {
+            log.debug(`Got ${evt.eventName} from purple`);
+            this.emit(evt.eventName, evt);
+        });
     }
 }
