@@ -1,6 +1,7 @@
 import { EventEmitter } from "events";
 import { helper, plugins } from "node-purple";
 import { PurpleAccount } from "./PurpleAccount";
+import { IPurpleInstance } from "./IPurpleInstance";
 const log = require("matrix-appservice-bridge").Logging.get("PurpleInstance");
 
 export class PurpleProtocol {
@@ -16,7 +17,7 @@ export class PurpleProtocol {
     }
 }
 
-export class PurpleInstance extends EventEmitter {
+export class PurpleInstance extends EventEmitter implements IPurpleInstance {
     private protocols: PurpleProtocol[];
     private accounts: Map<string, PurpleAccount>;
     constructor() {

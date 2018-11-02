@@ -1,8 +1,37 @@
 import { Cli, Bridge, AppServiceRegistration, ClientFactory, Logging } from "matrix-appservice-bridge";
 import { MatrixEventHandler } from "./MatrixEventHandler";
 import { MatrixRoomHandler } from "./MatrixRoomHandler";
-import { PurpleInstance } from "./purple/PurpleInstance";
+import { PurpleInstance, PurpleProtocol } from "./purple/PurpleInstance";
+import { IPurpleInstance } from "./purple/IPurpleInstance";
+import { PurpleAccount } from "./purple/PurpleAccount";
+import { EventEmitter } from "events";
+import { IReceivedImMsg } from "./purple/PurpleEvents";
+import * as request from "request-promise-native";
+
 const log = Logging.get("Program");
+
+
+class MockPurpleInstance extends EventEmitter {
+    constructor() {
+        super();
+    }
+
+    public start () {
+        return Promise.resolve();
+    }
+    
+    public getAccount () {
+        return new PurpleAccount("SomeName", new PurpleProtocol({}));
+    }
+
+    public getProtocol (id: string) {
+        return new PurpleProtocol({id});
+    }
+
+    public getProtocols () {
+        return [];
+    }
+};
 
 /**
  * This is the entry point for the bridge. It contains
@@ -12,7 +41,7 @@ class Program {
     private bridge: Bridge;
     private eventHandler: MatrixEventHandler|undefined;
     private roomHandler: MatrixRoomHandler|undefined;
-    private purple: PurpleInstance;
+    private purple: IPurpleInstance;
     constructor() {
         this.cli = new Cli({
           bridgeConfig: {
@@ -24,6 +53,16 @@ class Program {
           run: this.runBridge.bind(this),
         });
         this.purple = new PurpleInstance();
+
+        // For testing w/o libpurple.
+        // this.purple = new MockPurpleInstance();
+        // setTimeout(() => {
+        //     (this.purple as MockPurpleInstance).emit("received-im-msg", {
+        //         sender: "testacc@localhost/",
+        //         message: "test",
+        //         account: null,
+        //     } as IReceivedImMsg);
+        // }, 5000);
     }
 
     public start(): any {
@@ -55,7 +94,12 @@ class Program {
           controller: {
             // onUserQuery: userQuery,
             onAliasQuery: this.roomHandler.onAliasQuery.bind(this.roomHandler),
-            onEvent: this.eventHandler.onEvent.bind(this.eventHandler),
+            onEvent: (request, context) => {
+                if (this.eventHandler === undefined) {return;}
+                this.eventHandler.onEvent(request, context).catch((err) => {
+                    log.error("onEvent err", err);
+                });
+            },
             onAliasQueried: this.roomHandler.onAliasQueried.bind(this.roomHandler),
             // We don't handle these just yet.
             //thirdPartyLookup: this.thirdpa.ThirdPartyLookup,
@@ -68,8 +112,8 @@ class Program {
         this.eventHandler.setBridge(this.bridge);
         this.roomHandler.setBridge(this.bridge);
         log.info("Bridge has started.");
-        await this.purple.start();
-        await this.startPurpleAccounts();
+        await this.purple.start(config.purple || {});
+        //await this.startPurpleAccounts();
     }
 
     private async startPurpleAccounts() {
