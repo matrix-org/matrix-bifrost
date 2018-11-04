@@ -2,8 +2,9 @@
  * An interface for storing account data inside the userstore.
  */
 
-import { helper, plugins, accounts, messaging } from "node-purple";
+import { helper, plugins, buddy, accounts, messaging } from "node-purple";
 import { PurpleProtocol } from "./PurpleInstance";
+import { IPurpleBuddy } from "./IPurpleBuddy";
 
 export class PurpleAccount {
     private acctData: any;
@@ -38,6 +39,10 @@ export class PurpleAccount {
 
     sendIM(recipient: string, body: string) {
         messaging.sendIM(this.handle, recipient, body);
+    }
+
+    getBuddy(user: string): IPurpleBuddy|undefined {
+        return buddy.find(this.handle, user);
     }
 
     // connect() {
