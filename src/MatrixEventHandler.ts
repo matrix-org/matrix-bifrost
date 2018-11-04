@@ -202,7 +202,7 @@ Say \`help\` for more commands.
         account.createNew();
         const userStore = this.bridge.getUserStore();
         const mxUser = new MatrixUser(event.sender);
-        const remoteUser = new RemoteUser(args[0]);
+        const remoteUser = new RemoteUser(protocol.name + "://" + args[0]);
         remoteUser.set("protocolId", protocol.id);
         await userStore.linkUsers(mxUser, remoteUser);
         await this.bridge.getIntent().sendMessage(event.room_id, {
