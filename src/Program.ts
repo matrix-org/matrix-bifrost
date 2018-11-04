@@ -7,6 +7,7 @@ import { PurpleAccount } from "./purple/PurpleAccount";
 import { EventEmitter } from "events";
 import { IReceivedImMsg } from "./purple/PurpleEvents";
 import * as request from "request-promise-native";
+import { ProfileSync } from "./ProfileSync";
 
 const log = Logging.get("Program");
 
@@ -41,6 +42,7 @@ class Program {
     private bridge: Bridge;
     private eventHandler: MatrixEventHandler|undefined;
     private roomHandler: MatrixRoomHandler|undefined;
+    private profileSync: ProfileSync|undefined;
     private purple: IPurpleInstance;
     constructor() {
         this.cli = new Cli({
@@ -53,7 +55,6 @@ class Program {
           run: this.runBridge.bind(this),
         });
         this.purple = new PurpleInstance();
-
         // For testing w/o libpurple.
         // this.purple = new MockPurpleInstance();
         // setTimeout(() => {
@@ -87,20 +88,18 @@ class Program {
 
     private async runBridge(port: number, config: any) {
         log.info("Starting purple bridge on port ", port);
-        this.eventHandler = new MatrixEventHandler(this.purple);
-        this.roomHandler = new MatrixRoomHandler(this.purple, config);
         this.bridge = new Bridge({
           //clientFactory,
           controller: {
             // onUserQuery: userQuery,
-            onAliasQuery: this.roomHandler.onAliasQuery.bind(this.roomHandler),
+            onAliasQuery: () => { (this.roomHandler as MatrixRoomHandler).onAliasQuery.bind(this.roomHandler) },
             onEvent: (request, context) => {
                 if (this.eventHandler === undefined) {return;}
                 this.eventHandler.onEvent(request, context).catch((err) => {
                     log.error("onEvent err", err);
                 });
             },
-            onAliasQueried: this.roomHandler.onAliasQueried.bind(this.roomHandler),
+            onAliasQueried: () => { (this.roomHandler as MatrixRoomHandler).onAliasQueried.bind(this.roomHandler) },
             // We don't handle these just yet.
             //thirdPartyLookup: this.thirdpa.ThirdPartyLookup,
           },
@@ -109,6 +108,10 @@ class Program {
           registration: "purple-registration.yaml",
         });
         await this.bridge.run(port, config);
+        this.profileSync = new ProfileSync(this.bridge);
+        this.eventHandler = new MatrixEventHandler(this.purple);
+        this.roomHandler = new MatrixRoomHandler(this.purple, this.profileSync, config);
+        // TODO: Remove these eventually
         this.eventHandler.setBridge(this.bridge);
         this.roomHandler.setBridge(this.bridge);
         log.info("Bridge has started.");
