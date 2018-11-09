@@ -2,6 +2,8 @@ import { MatrixUser, RemoteUser, Bridge, Intent} from "matrix-appservice-bridge"
 import { PurpleAccount } from "./purple/PurpleAccount";
 import * as _fs from "fs";
 import * as path from "path";
+import { PurpleProtocol } from "./purple/PurpleInstance";
+import { Util } from "./Util";
 
 
 const log = require("matrix-appservice-bridge").Logging.get("ProfileSync");
@@ -26,22 +28,51 @@ export class ProfileSync {
 
     }
 
+    public getMxIdForProtocol(protocol: PurpleProtocol, senderId: string): MatrixUser {
+        // XXX: XMPP senders have a /host appended to their sender.
+        // We're stripping them because they look ugly AF.
+        if (protocol.id === "prpl-jabber") {
+            senderId = senderId.split("/")[0];
+        }
+        const prefix = this.bridge.config.bridge.userPrefix || "";
+        // This is a little bad, but we drop the prpl- because it's a bit ugly.
+        const protocolName = protocol.id.startsWith("prpl-") ? protocol.id.substr("prpl-".length) : protocol.id;
+        return new MatrixUser(`@${prefix}${protocolName}_${senderId}:${this.bridge.config.bridge.domain}`);
+    }
+
     private handlePurpleProfileChange() {
 
     }
 
-    public async getOrCreateStoreUsers() : Promise<[MatrixUser, RemoteUser]> {
+    private async getOrCreateStoreUsers(protocol: PurpleProtocol, senderId: string) : Promise<[MatrixUser, RemoteUser]> {
         const store = this.bridge.getUserStore();
-        cons 
+        const tempMxUser = this.getMxIdForProtocol(protocol, senderId);
+        let mxUser = await store.getMatrixUser(tempMxUser.getId());
+        if (!mxUser) {
+            mxUser = tempMxUser;
+            store.setMatrixUser(mxUser);
+        }
+        const remoteUsers = await store.getRemoteUsersFromMatrixId(tempMxUser.getId());
+        let rmUser;
+        if (remoteUsers.length === 0) {
+            rmUser = new RemoteUser(Util.createRemoteId(protocol.id, senderId));
+            rmUser.set("protocolId", protocol.id);
+            rmUser.set("id", senderId);
+            return store.linkUsers(mxUser, rmUser);
+        } else {
+            rmUser = remoteUsers[0];
+        }
+        return [mxUser, rmUser];
     }
 
-    public async updateProfile(localpart: string, account: PurpleAccount, force: boolean = false) {
+    public async updateProfile(protocol: PurpleProtocol, senderId: string, account: PurpleAccount, force: boolean = false) {
         const store = this.bridge.getUserStore();
-        const [matrixUser, remoteUser] = await this.getOrCreateStoreUsers();
+        const [matrixUser, remoteUser] = await this.getOrCreateStoreUsers(protocol, senderId);
 
-        const lastUpdate = matrixUser.get("last_update");
-        if (!force && 
-            lastUpdate != null && (Date.now() - lastUpdate) < CHECK_PROFILE_INTERVAL_MS)
+        const lastCheck = matrixUser.get("last_check");
+        matrixUser.set("last_check", Date.now());
+        if (!force &&
+            lastCheck != null && (Date.now() - lastCheck) < CHECK_PROFILE_INTERVAL_MS)
             {
                 return; // Don't need to check.
         }
@@ -52,7 +83,7 @@ export class ProfileSync {
         }
 
         const intent = this.bridge.getIntent(matrixUser.getId());
-        
+
         if (buddy.nick && matrixUser.get("displayname") !== buddy.nick)
         {
             await intent.setDisplayName(buddy.nick);
@@ -80,8 +111,7 @@ export class ProfileSync {
                 log.error("Failed to update avatar_url for user:",e);
             }
         }
-    
-        matrixUser.set("last_update", Date.now());
+
         await store.setMatrixUser(matrixUser);
     }
 }
