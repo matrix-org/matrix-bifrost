@@ -31,6 +31,7 @@ export class PurpleInstance extends EventEmitter implements IPurpleInstance {
         log.info("Starting purple instance");
         helper.setupPurple({
             debugEnabled: config.enableDebug ? 1 : 0,
+            userDir: undefined,
         });
         log.info("Started purple instance");
         this.protocols = plugins.get_protocols().map(

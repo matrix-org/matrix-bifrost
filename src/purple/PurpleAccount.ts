@@ -2,9 +2,8 @@
  * An interface for storing account data inside the userstore.
  */
 
-import { helper, plugins, buddy, accounts, messaging } from "node-purple";
+import { helper, plugins, buddy, accounts, messaging, Buddy } from "node-purple";
 import { PurpleProtocol } from "./PurpleInstance";
-import { IPurpleBuddy } from "./IPurpleBuddy";
 
 export class PurpleAccount {
     private acctData: any;
@@ -34,14 +33,23 @@ export class PurpleAccount {
     }
 
     setEnabled(enable: boolean) {
+        if (!this.handle) {
+            throw Error("No account is binded to this instance. Call findAccount()");
+        }
         accounts.set_enabled(this.handle, enable);
     }
 
     sendIM(recipient: string, body: string) {
+        if (!this.handle) {
+            throw Error("No account is binded to this instance. Call findAccount()");
+        }
         messaging.sendIM(this.handle, recipient, body);
     }
 
-    getBuddy(user: string): IPurpleBuddy|undefined {
+    getBuddy(user: string): Buddy {
+        if (!this.handle) {
+            throw Error("No account is binded to this instance. Call findAccount()");
+        }
         return buddy.find(this.handle, user);
     }
 
