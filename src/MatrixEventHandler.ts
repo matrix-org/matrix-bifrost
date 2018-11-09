@@ -98,11 +98,12 @@ export class MatrixEventHandler {
             let body = "Linked accounts:\n";
             body += users.map((remoteUser: RemoteUser) => {
                 const pid = remoteUser.get("protocolId");
-                const account = this.purple.getAccount(remoteUser.getId(), pid);
+                const username = remoteUser.get("username");
+                const account = this.purple.getAccount(username, pid);
                 if (account) {
-                    return `- ${account.protocol.name} (${remoteUser.getId()}) [Enabled=${account.isEnabled}]`
+                    return `- ${account.protocol.name} (${username}) [Enabled=${account.isEnabled}]`
                 } else {
-                    return `- ${pid} [Unknown protocol] (${remoteUser.getId()})`
+                    return `- ${pid} [Unknown protocol] (${username})`
                 }
             }).join("\n");
             await intent.sendMessage(event.room_id, {
@@ -129,12 +130,22 @@ export class MatrixEventHandler {
                     body: "Failed to enable account:" + err.message
                 });
             }
+        } else if (args[0] === "accounts" && args[1] === "add-existing") {
+            try {
+                await this.handleAddExistingAccount(args[2], args[3], event);
+            } catch (err) {
+                await intent.sendMessage(event.room_id, {
+                    msgtype: "m.notice",
+                    body: "Failed to enable account:" + err.message
+                });
+            }
         } else if (args[0] === "help") {
             const body = `
 - \`protocols\` List available protocols.
 - \`protocol $PROTOCOL\` List details about a protocol, including account options.
 - \`accounts\` List accounts mapped to your matrix account.
 - \`accounts add $PROTOCOL ...$OPTS\` Add a new account, this will take some options given.
+- \`accounts add-existing $PROTOCOL $NAME\` Add an existing account from accounts.xml.
 - \`accounts enable $PROTOCOL $USERNAME\` Enables an account.
 - \`help\` This help prompt
 `;
@@ -210,6 +221,7 @@ Say \`help\` for more commands.
         const mxUser = new MatrixUser(event.sender);
         const remoteUser = new RemoteUser(Util.createRemoteId(protocol.name, args[0]));
         remoteUser.set("protocolId", protocol.id);
+        remoteUser.set("username", args[0]);
         await userStore.linkUsers(mxUser, remoteUser);
         await this.bridge.getIntent().sendMessage(event.room_id, {
             msgtype: "m.notice",
@@ -217,8 +229,46 @@ Say \`help\` for more commands.
         });
     }
 
-    private async handleEnableAccount(protocol: string, username: string, event: IEventRequestData) {
-        const acct = this.purple.getAccount(username, protocol);
+    private async handleAddExistingAccount(protocolId: string, name: string, event: IEventRequestData) {
+        // TODO: Check to see if the user has an account matching this already.
+        if (protocolId === undefined) {
+            throw new Error("You need to specify a protocol");
+        }
+        if (name === undefined) {
+            throw new Error("You need to specify a name");
+        }
+        protocolId = protocolId.toLowerCase();
+        const protocol = this.purple.getProtocols().find(
+            (protocol) => protocol.name.toLowerCase() === protocolId || protocol.id.toLowerCase() === protocolId
+        );
+        if (protocol === undefined) {
+            throw new Error("Protocol was not found");
+        }
+        const account = new PurpleAccount(name, protocol);
+        const userStore = this.bridge.getUserStore();
+        const mxUser = new MatrixUser(event.sender);
+        const remoteUser = new RemoteUser(Util.createRemoteId(protocol.id, name));
+        remoteUser.set("protocolId", protocol.id);
+        remoteUser.set("username", name);
+        await userStore.linkUsers(mxUser, remoteUser);
+        await this.bridge.getIntent().sendMessage(event.room_id, {
+            msgtype: "m.notice",
+            body: "Linked existing account"
+        });
+    }
+
+    private async handleEnableAccount(protocolId: string, username: string, event: IEventRequestData) {
+        protocolId = protocolId.toLowerCase();
+        const protocol = this.purple.getProtocols().find(
+            (protocol) => protocol.name.toLowerCase() === protocolId || protocol.id.toLowerCase() === protocolId
+        );
+        if (!protocol) {
+            throw Error("Protocol not found");
+        }
+        const acct = this.purple.getAccount(username, protocol.id);
+        if (acct === null) {
+            throw Error("Account not found");
+        }
         acct.setEnabled(true);
     }
 
@@ -235,7 +285,7 @@ Say \`help\` for more commands.
             return;
         }
         // XXX: We assume the first remote, this needs to be fixed for multiple accounts
-        const acct = this.purple.getAccount(remoteUser.getId(), roomProtocol);
+        const acct = this.purple.getAccount(remoteUser.get("username"), roomProtocol);
         if (!acct) {
             log.error("Account wasn't found in libpurple, we cannot handle this im!");
             return;
