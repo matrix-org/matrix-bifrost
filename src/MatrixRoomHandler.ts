@@ -33,15 +33,6 @@ export class MatrixRoomHandler {
         log.debug(`onAliasQueried:`, request);
     }
 
-    public getLocalpartForProtocol(protocol: PurpleProtocol, senderId: string): string {
-        // XXX: XMPP senders have a /host appended to their sender.
-        // We're stripping them because they look ugly AF.
-        senderId = senderId.split("/")[0];
-        // This is a little bad, but we drop the prpl- because it's a bit ugly.
-        const protocolName = protocol.id.startsWith("prpl-") ? protocol.id.substr("prpl-".length) : protocol.id;
-        return new MatrixUser(`@${this.config.bridge.userPrefix}${protocolName}_${senderId}`).localpart;
-    }
-
     private async createOrGetIMRoom(data: IReceivedImMsg, matrixUser: MatrixUser, intent: Intent) {
         // Check to see if we have a room for this IM.
         const roomStore = this.bridge.getRoomStore();
@@ -97,7 +88,7 @@ export class MatrixRoomHandler {
             log.error("Could not find an account for the incoming IM. Either the account is not assigned to a matrix user, or we have hit a bug.");
             return;
         }
-        if (matrixUsers.length > 1){ 
+        if (matrixUsers.length > 1){
             log.error(`Have multiple matrix users assigned to ${data.account.username}. Bailing`);
         }
         const protocol = this.purple.getProtocol(data.account.protocol_id);
@@ -107,9 +98,9 @@ export class MatrixRoomHandler {
         }
         const matrixUser = matrixUsers[0];
         log.debug(`Message intended for ${matrixUser.getId()}`);
-        const senderLocalpart = this.getLocalpartForProtocol(protocol, data.sender);
-        const intent = this.bridge.getIntentFromLocalpart(senderLocalpart);
-        log.debug("Identified ghost user as", senderLocalpart);
+        const senderMatrixUser = this.profileSync.getMxIdForProtocol(protocol, data.sender);
+        const intent = this.bridge.getIntent(senderMatrixUser.getId());
+        log.debug("Identified ghost user as", senderMatrixUser.getId());
         let roomId;
         try {
             roomId = await this.createOrGetIMRoom(data, matrixUser, intent);
@@ -122,7 +113,7 @@ export class MatrixRoomHandler {
             await this.purple.getAccount(data.account.username, data.account.protocol_id)
         );
 
-        log.debug(`Sending message to ${roomId} as ${senderLocalpart}`);
+        log.debug(`Sending message to ${roomId} as ${senderMatrixUser.getId()}`);
         await intent.sendMessage(roomId, {
             msgtype: "m.text",
             body: data.message,
