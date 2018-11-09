@@ -1,10 +1,11 @@
 import { Bridge, MatrixRoom, RemoteUser, MatrixUser } from "matrix-appservice-bridge";
 import { IEventRequest, IBridgeContext, IEventRequestData } from "./MatrixTypes";
-import { IMatrixRoomData, MROOM_TYPE_UADMIN, MROOM_TYPE_IM } from "./StoreTypes";
+import { IMatrixRoomData, MROOM_TYPE_UADMIN, MROOM_TYPE_IM, MROOM_TYPE_GROUP } from "./StoreTypes";
 import { PurpleInstance, PurpleProtocol } from "./purple/PurpleInstance";
 import { IPurpleInstance } from "./purple/IPurpleInstance";
 import * as marked from "marked";
 import { PurpleAccount } from "./purple/PurpleAccount";
+import { Util } from "./Util";
 const log = require("matrix-appservice-bridge").Logging.get("MatrixEventHandler");
 
 const RETRY_JOIN_MS = 5000;
@@ -14,7 +15,7 @@ const RETRY_JOIN_MS = 5000;
  */
 export class MatrixEventHandler {
     private bridge: Bridge;
-    
+
     constructor(private purple: IPurpleInstance) {
 
     }
@@ -64,6 +65,11 @@ export class MatrixEventHandler {
             await this.handleImMessage(context, event);
             return;
         }
+
+        if (roomType === MROOM_TYPE_GROUP) {
+            await this.handleGroupMessage(context, event);
+            return;
+        }
     }
 
     /* NOTE: Command handling should really be it's own class, but I am cutting corners.*/
@@ -73,7 +79,7 @@ export class MatrixEventHandler {
         if (args[0] === "protocols" && args.length === 1) {
             const protocols = await this.purple.getProtocols();
             let body = "Available protocols:\n";
-            body += protocols.map((plugin: PurpleProtocol) => 
+            body += protocols.map((plugin: PurpleProtocol) =>
                 ` \`${plugin.name}\` - ${plugin.summary}`
             ).join("\n");
             await intent.sendMessage(event.room_id, {
@@ -202,7 +208,7 @@ Say \`help\` for more commands.
         account.createNew();
         const userStore = this.bridge.getUserStore();
         const mxUser = new MatrixUser(event.sender);
-        const remoteUser = new RemoteUser(protocol.name + "://" + args[0]);
+        const remoteUser = new RemoteUser(Util.createRemoteId(protocol.name, args[0]));
         remoteUser.set("protocolId", protocol.id);
         await userStore.linkUsers(mxUser, remoteUser);
         await this.bridge.getIntent().sendMessage(event.room_id, {
@@ -239,5 +245,18 @@ Say \`help\` for more commands.
             return;
         }
         acct.sendIM(context.rooms.remote.get("recipient"), event.content.body);
+    }
+    private async handleGroupMessage(context: IBridgeContext, event: IEventRequestData) {
+        log.info("Handling group message");
+        const roomProtocol = context.rooms.remote.get("protocol_id");
+        if (roomProtocol == null) {
+            log.error("Room protocol was null, we cannot handle this im!");
+            return;
+        }
+        const remoteUser = context.senders.remotes.find((remote) => remote.get("protocolId") === roomProtocol);
+        if (remoteUser == null) {
+            log.debug(`Using bot user because ${event.sender} is not puppeted`);
+            return;
+        }
     }
 }
