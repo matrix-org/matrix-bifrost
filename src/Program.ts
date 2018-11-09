@@ -20,7 +20,7 @@ class MockPurpleInstance extends EventEmitter {
     public start () {
         return Promise.resolve();
     }
-    
+
     public getAccount () {
         return new PurpleAccount("SomeName", new PurpleProtocol({}));
     }
@@ -44,6 +44,7 @@ class Program {
     private roomHandler: MatrixRoomHandler|undefined;
     private profileSync: ProfileSync|undefined;
     private purple: IPurpleInstance;
+
     constructor() {
         this.cli = new Cli({
           bridgeConfig: {
@@ -64,6 +65,10 @@ class Program {
         //         account: null,
         //     } as IReceivedImMsg);
         // }, 5000);
+    }
+
+    public get config(): any {
+        return this.bridge.config;
     }
 
     public start(): any {
@@ -116,7 +121,35 @@ class Program {
         this.roomHandler.setBridge(this.bridge);
         log.info("Bridge has started.");
         await this.purple.start(config.purple || {});
+        await this.runBotAccounts(config.bridgeBots.accounts);
         //await this.startPurpleAccounts();
+    }
+
+    private async runBotAccounts(accounts: any[]) {
+        // Fetch accounts from config
+        accounts.forEach((account: {name: string, protocol: string}) => {
+            const acct = this.purple.getAccount(account.name, account.protocol);
+            if (!acct) {
+                log.error(
+`${account.protocol}:${account.name} is not configured in libpurple. Ensure that accounts.xml is correct.`
+                );
+                throw Error("Fatal error while setting up bot accounts");
+            }
+            if (acct.isEnabled === false) {
+                log.error(
+`${account.protocol}:${account.name} is not enabled, enabling.`
+                );
+                acct.setEnabled(true);
+                // Here we should really wait for the account to come online signal.
+            }
+        });
+
+        // Check they all exist and start.
+        // If one is missing from the purple config, fail.
+    }
+
+    private async getBotForProtocol(protocol: string) {
+
     }
 
     private async startPurpleAccounts() {
