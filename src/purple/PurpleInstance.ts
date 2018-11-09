@@ -41,7 +41,7 @@ export class PurpleInstance extends EventEmitter implements IPurpleInstance {
         this.interval = setInterval(this.eventHandler.bind(this), 300);
     }
 
-    public getAccount(username: string, protocolId: string): PurpleAccount {
+    public getAccount(username: string, protocolId: string): PurpleAccount|null {
         const key = `${protocolId}://${username}`;
         let acct = this.accounts.get(key);
         if (!acct) {
@@ -50,7 +50,11 @@ export class PurpleInstance extends EventEmitter implements IPurpleInstance {
                 throw new Error("Protocol not found");
             }
             acct = new PurpleAccount(username, protocol);
-            acct.findAccount();
+            try {
+                acct.findAccount();
+            } catch {
+                return null;
+            }
             this.accounts.set(key, acct);
         }
         return acct;
