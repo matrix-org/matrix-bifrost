@@ -5,6 +5,7 @@ import { MROOM_TYPE_IM } from "./StoreTypes";
 import { IReceivedImMsg } from "./purple/PurpleEvents";
 import * as request from "request-promise-native";
 import { ProfileSync } from "./ProfileSync";
+import { Util } from "./Util";
 const log = require("matrix-appservice-bridge").Logging.get("MatrixRoomHandler");
 
 /**
@@ -51,11 +52,12 @@ export class MatrixRoomHandler {
                 recipient: data.sender,
             };
             log.info(`Couldn't find room for IM ${matrixUser.getId()} <-> ${data.sender}. Creating a new one`);
-            roomId = await intent.createRoom(true, {
+            const res = await intent.createRoom(true, {
                 is_direct: true,
                 name: data.sender,
                 visibility: "private",
-            }).room_id;
+            });
+            roomId = res.room_id;
             // XXX: Inviting in the createRoom options wasn't working (did it actually get removed in the end?)
             //      I lost patience with it so we do the invite here.
             await intent.invite(roomId, matrixUser.getId());
@@ -78,12 +80,16 @@ export class MatrixRoomHandler {
             }
             roomId = remoteEntries[0].matrix.getId();
         }
+        return roomId;
     }
 
     private async handleIncomingIM(data: IReceivedImMsg) {
         log.debug(`Handling incoming IM from ${data.sender}`);
         // First, find out who the message was intended for.
-        const matrixUsers = await this.bridge.getUserStore().getMatrixUsersFromRemoteId(data.account.username);
+        const recipientId = Util.createRemoteId(data.account.protocol_id, data.account.username);
+        const matrixUsers = await this.bridge.getUserStore().getMatrixUsersFromRemoteId(
+            recipientId
+        );
         if (matrixUsers == null || matrixUsers.length == 0) {
             log.error("Could not find an account for the incoming IM. Either the account is not assigned to a matrix user, or we have hit a bug.");
             return;
@@ -109,8 +115,9 @@ export class MatrixRoomHandler {
             return;
         }
         // Update the user if needed.
+        const account = await this.purple.getAccount(data.account.username, data.account.protocol_id)!;
         await this.profileSync.updateProfile(protocol, data.sender,
-            await this.purple.getAccount(data.account.username, data.account.protocol_id)
+            account
         );
 
         log.debug(`Sending message to ${roomId} as ${senderMatrixUser.getId()}`);
