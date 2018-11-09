@@ -24,8 +24,7 @@ We don't yet support non-fs-promise versions of node.`
 const CHECK_PROFILE_INTERVAL_MS = 60 * 1000 * 15;
 
 export class ProfileSync {
-    constructor(private bridge: Bridge) {
-
+    constructor(private bridge: Bridge, private config: any) {
     }
 
     public getMxIdForProtocol(protocol: PurpleProtocol, senderId: string): MatrixUser {
@@ -34,10 +33,10 @@ export class ProfileSync {
         if (protocol.id === "prpl-jabber") {
             senderId = senderId.split("/")[0];
         }
-        const prefix = this.bridge.config.bridge.userPrefix || "";
+        const prefix = this.config.bridge.userPrefix || "";
         // This is a little bad, but we drop the prpl- because it's a bit ugly.
         const protocolName = protocol.id.startsWith("prpl-") ? protocol.id.substr("prpl-".length) : protocol.id;
-        return new MatrixUser(`@${prefix}${protocolName}_${senderId}:${this.bridge.config.bridge.domain}`);
+        return new MatrixUser(`@${prefix}${protocolName}_${senderId}:${this.config.bridge.domain}`);
     }
 
     private handlePurpleProfileChange() {
@@ -57,7 +56,7 @@ export class ProfileSync {
         if (remoteUsers.length === 0) {
             rmUser = new RemoteUser(Util.createRemoteId(protocol.id, senderId));
             rmUser.set("protocolId", protocol.id);
-            rmUser.set("id", senderId);
+            rmUser.set("username", senderId);
             return store.linkUsers(mxUser, rmUser);
         } else {
             rmUser = remoteUsers[0];

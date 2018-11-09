@@ -44,6 +44,7 @@ class Program {
     private roomHandler: MatrixRoomHandler|undefined;
     private profileSync: ProfileSync|undefined;
     private purple: IPurpleInstance;
+    private _config: any;
 
     constructor() {
         this.cli = new Cli({
@@ -68,7 +69,7 @@ class Program {
     }
 
     public get config(): any {
-        return this.bridge.config;
+        return this._config;
     }
 
     public start(): any {
@@ -93,6 +94,7 @@ class Program {
 
     private async runBridge(port: number, config: any) {
         log.info("Starting purple bridge on port ", port);
+        this._config = config;
         this.bridge = new Bridge({
           //clientFactory,
           controller: {
@@ -113,7 +115,7 @@ class Program {
           registration: "purple-registration.yaml",
         });
         await this.bridge.run(port, config);
-        this.profileSync = new ProfileSync(this.bridge);
+        this.profileSync = new ProfileSync(this.bridge, config);
         this.eventHandler = new MatrixEventHandler(this.purple);
         this.roomHandler = new MatrixRoomHandler(this.purple, this.profileSync, config);
         // TODO: Remove these eventually
@@ -121,7 +123,12 @@ class Program {
         this.roomHandler.setBridge(this.bridge);
         log.info("Bridge has started.");
         await this.purple.start(config.purple || {});
-        await this.runBotAccounts(config.bridgeBots.accounts);
+        this.purple.on("account-signed-on", (ev) => {
+            log.info(`${ev.account.protocol_id}://${ev.account.username} signed on`);
+        });
+        if (config.bridgeBots) {
+            await this.runBotAccounts(config.bridgeBots.accounts);
+        }
         //await this.startPurpleAccounts();
     }
 
