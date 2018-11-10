@@ -52,15 +52,16 @@ export class MatrixRoomHandler {
                 recipient: data.sender,
             };
             log.info(`Couldn't find room for IM ${matrixUser.getId()} <-> ${data.sender}. Creating a new one`);
-            const res = await intent.createRoom(true, {
-                is_direct: true,
-                name: data.sender,
-                visibility: "private",
+            const res = await intent.createRoom({
+                createAsClient: true,
+                options: {
+                    is_direct: true,
+                    name: data.sender,
+                    visibility: "private",
+                    invite: [matrixUser.getId()]
+                }
             });
             roomId = res.room_id;
-            // XXX: Inviting in the createRoom options wasn't working (did it actually get removed in the end?)
-            //      I lost patience with it so we do the invite here.
-            await intent.invite(roomId, matrixUser.getId());
             log.debug("Created room with id ", roomId);
             const remoteId = Buffer.from(
                 `${matrixUser.getId()}:${data.account.protocol_id}:${data.sender}`
