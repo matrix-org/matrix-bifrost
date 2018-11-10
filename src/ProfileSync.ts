@@ -57,7 +57,7 @@ export class ProfileSync {
             rmUser = new RemoteUser(Util.createRemoteId(protocol.id, senderId));
             rmUser.set("protocolId", protocol.id);
             rmUser.set("username", senderId);
-            return store.linkUsers(mxUser, rmUser);
+            await store.linkUsers(mxUser, rmUser);
         } else {
             rmUser = remoteUsers[0];
         }
@@ -87,7 +87,7 @@ export class ProfileSync {
         {
             await intent.setDisplayName(buddy.nick);
             matrixUser.set("displayname", buddy.nick);
-        } else if (matrixUser.get("displayname") === null) {
+        } else if (!matrixUser.get("displayname") && buddy.name) {
             // Don't ever set the name (ugly) over the nick unless we have never set it.
             // Nicks come and go depending on the libpurple cache and whether the user
             // is online (in XMPPs case at least).
