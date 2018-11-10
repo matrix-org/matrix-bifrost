@@ -101,7 +101,7 @@ export class MatrixEventHandler {
                 const username = remoteUser.get("username");
                 const account = this.purple.getAccount(username, pid);
                 if (account) {
-                    return `- ${account.protocol.name} (${username}) [Enabled=${account.isEnabled}]`
+                    return `- ${account.protocol.name} (${username}) [Enabled=${account.isEnabled}] [Connected=${account.connected}]`
                 } else {
                     return `- ${pid} [Unknown protocol] (${username})`
                 }
