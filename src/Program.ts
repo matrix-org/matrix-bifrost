@@ -126,6 +126,9 @@ class Program {
         this.purple.on("account-signed-on", (ev) => {
             log.info(`${ev.account.protocol_id}://${ev.account.username} signed on`);
         });
+        this.purple.on("account-connection-error", (ev) => {
+            log.warn(`${ev.account.protocol_id}://${ev.account.username} had a connection error`, ev);
+        });
         if (config.bridgeBots) {
             await this.runBotAccounts(config.bridgeBots.accounts);
         }
