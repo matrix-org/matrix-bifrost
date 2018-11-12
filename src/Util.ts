@@ -2,11 +2,18 @@ import { PurpleProtocol } from "./purple/PurpleInstance";
 import { MatrixUser } from "matrix-appservice-bridge";
 
 export class Util {
+
+    public static MINUTE_MS = 60000;
+
     public static createRemoteId(protocol: string, id: string) {
         return `${protocol}://${id}`;
     }
 
-    public static getMxIdForProtocol(protocol: PurpleProtocol, senderId: string, domain: string, prefix: string = ""): MatrixUser {
+    public static getMxIdForProtocol(
+        protocol: PurpleProtocol,
+        senderId: string,
+        domain: string,
+        prefix: string = ""): MatrixUser {
         // XXX: XMPP senders have a /host appended to their sender.
         // We're stripping them because they look ugly AF.
         if (protocol.id === "prpl-jabber") {

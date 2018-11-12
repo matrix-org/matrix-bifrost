@@ -6,7 +6,8 @@ import { IPurpleInstance } from "./purple/IPurpleInstance";
 import * as marked from "marked";
 import { PurpleAccount } from "./purple/PurpleAccount";
 import { Util } from "./Util";
-const log = require("matrix-appservice-bridge").Logging.get("MatrixEventHandler");
+import { Logging } from "matrix-appservice-bridge";
+const log = Logging.get("MatrixEventHandler");
 
 const RETRY_JOIN_MS = 5000;
 
@@ -76,7 +77,6 @@ export class MatrixEventHandler {
             return;
         }
 
-
         if (roomType === MROOM_TYPE_IM) {
             await this.handleImMessage(context, event);
             return;
@@ -93,10 +93,10 @@ export class MatrixEventHandler {
         log.debug(`Handling command from ${event.sender} ${args.join(" ")}`);
         const intent = this.bridge.getIntent();
         if (args[0] === "protocols" && args.length === 1) {
-            const protocols = await this.purple.getProtocols();
+            const protocols = this.purple.getProtocols();
             let body = "Available protocols:\n";
             body += protocols.map((plugin: PurpleProtocol) =>
-                ` \`${plugin.name}\` - ${plugin.summary}`
+                ` \`${plugin.name}\` - ${plugin.summary}`,
             ).join("\n");
             await intent.sendMessage(event.room_id, {
                 msgtype: "m.notice",
@@ -107,7 +107,7 @@ export class MatrixEventHandler {
         } else if (args[0] === "protocols" && args.length === 2) {
             await intent.sendMessage(event.room_id, {
                 msgtype: "m.notice",
-                body: "\/\/Placeholder"
+                body: "\/\/Placeholder",
             });
         } else if (args[0] === "accounts" && args.length === 1) {
             const users = await this.bridge.getUserStore().getRemoteUsersFromMatrixId(event.sender);
@@ -117,9 +117,9 @@ export class MatrixEventHandler {
                 const username = remoteUser.get("username");
                 const account = this.purple.getAccount(username, pid);
                 if (account) {
-                    return `- ${account.protocol.name} (${username}) [Enabled=${account.isEnabled}] [Connected=${account.connected}]`
+return `- ${account.protocol.name} (${username}) [Enabled=${account.isEnabled}] [Connected=${account.connected}]`;
                 } else {
-                    return `- ${pid} [Unknown protocol] (${username})`
+                    return `- ${pid} [Unknown protocol] (${username})`;
                 }
             }).join("\n");
             await intent.sendMessage(event.room_id, {
@@ -134,7 +134,7 @@ export class MatrixEventHandler {
             } catch (err) {
                 await intent.sendMessage(event.room_id, {
                     msgtype: "m.notice",
-                    body: "Failed to add account:" + err.message
+                    body: "Failed to add account:" + err.message,
                 });
             }
         } else if (args[0] === "accounts" && args[1] === "enable") {
@@ -143,7 +143,7 @@ export class MatrixEventHandler {
             } catch (err) {
                 await intent.sendMessage(event.room_id, {
                     msgtype: "m.notice",
-                    body: "Failed to enable account:" + err.message
+                    body: "Failed to enable account:" + err.message,
                 });
             }
         } else if (args[0] === "accounts" && args[1] === "add-existing") {
@@ -152,7 +152,7 @@ export class MatrixEventHandler {
             } catch (err) {
                 await intent.sendMessage(event.room_id, {
                     msgtype: "m.notice",
-                    body: "Failed to enable account:" + err.message
+                    body: "Failed to enable account:" + err.message,
                 });
             }
         } else if (args[0] === "help") {
@@ -174,7 +174,7 @@ export class MatrixEventHandler {
         } else {
             await intent.sendMessage(event.room_id, {
                 msgtype: "m.notice",
-                body: "Command not understood"
+                body: "Command not understood",
             });
         }
     }
@@ -221,10 +221,7 @@ Say \`help\` for more commands.
 
     private async handleNewAccount(nameOrId: string, args: string[], event: IEventRequestData) {
         // TODO: Check to see if the user has an account matching this already.
-        nameOrId = nameOrId.toLowerCase();
-        const protocol = this.purple.getProtocols().find(
-            (protocol) => protocol.name.toLowerCase() === nameOrId || protocol.id.toLowerCase() === nameOrId
-        );
+        const protocol = this.purple.findProtocol(protocolId);
         if (protocol === undefined) {
             throw new Error("Protocol was not found");
         }
@@ -241,7 +238,7 @@ Say \`help\` for more commands.
         await userStore.linkUsers(mxUser, remoteUser);
         await this.bridge.getIntent().sendMessage(event.room_id, {
             msgtype: "m.notice",
-            body: "Created new account"
+            body: "Created new account",
         });
     }
 
@@ -253,10 +250,7 @@ Say \`help\` for more commands.
         if (name === undefined) {
             throw new Error("You need to specify a name");
         }
-        protocolId = protocolId.toLowerCase();
-        const protocol = this.purple.getProtocols().find(
-            (protocol) => protocol.name.toLowerCase() === protocolId || protocol.id.toLowerCase() === protocolId
-        );
+        const protocol = this.purple.findProtocol(protocolId);
         if (protocol === undefined) {
             throw new Error("Protocol was not found");
         }
@@ -269,15 +263,12 @@ Say \`help\` for more commands.
         await userStore.linkUsers(mxUser, remoteUser);
         await this.bridge.getIntent().sendMessage(event.room_id, {
             msgtype: "m.notice",
-            body: "Linked existing account"
+            body: "Linked existing account",
         });
     }
 
     private async handleEnableAccount(protocolId: string, username: string, event: IEventRequestData) {
-        protocolId = protocolId.toLowerCase();
-        const protocol = this.purple.getProtocols().find(
-            (protocol) => protocol.name.toLowerCase() === protocolId || protocol.id.toLowerCase() === protocolId
-        );
+        const protocol = this.purple.findProtocol(protocolId);
         if (!protocol) {
             throw Error("Protocol not found");
         }
@@ -302,7 +293,7 @@ Say \`help\` for more commands.
             log.error("Account wasn't found in libpurple, we cannot handle this im!");
             return;
         }
-        if (acct.isEnabled == false) {
+        if (!acct.isEnabled) {
             log.error("Account isn't enabled, we cannot handle this im!");
             return;
         }
@@ -336,7 +327,7 @@ Say \`help\` for more commands.
             log.error("Account wasn't found in libpurple, we cannot handle this join/leave!");
             return;
         }
-        if (acct.isEnabled == false) {
+        if (!acct.isEnabled) {
             log.error("Account isn't enabled, we cannot handle this join/leave!");
             return;
         }

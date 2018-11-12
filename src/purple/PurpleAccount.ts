@@ -9,17 +9,15 @@ import { ChatJoinProperties } from "./PurpleEvents";
 export class PurpleAccount {
     private acctData: Account | undefined;
     private enabled: boolean;
-    constructor(private username: string, private _protocol: PurpleProtocol) {
+    constructor(private username: string, public readonly protocol: PurpleProtocol) {
         this.enabled = false;
     }
 
-    get name(): string { return this.acctData!.username }
+    get name(): string { return this.acctData!.username; }
 
-    get handle(): External { return this.acctData!.handle }
+    get handle(): External { return this.acctData!.handle; }
 
-    get protocol() : PurpleProtocol { return this._protocol }
-
-    get isEnabled(): boolean { return this.enabled }
+    get isEnabled(): boolean { return this.enabled; }
 
     get connected(): boolean {
         if (!this.acctData) {
@@ -28,7 +26,7 @@ export class PurpleAccount {
         return accounts.is_connected(this.acctData.handle);
     }
 
-    findAccount() {
+    public findAccount() {
         const data = accounts.find(this.username, this._protocol.id);
         if (!data) {
             throw new Error("Account not found");
@@ -37,39 +35,38 @@ export class PurpleAccount {
         this.enabled = accounts.get_enabled(this.acctData.handle);
     }
 
-    createNew() {
+    public createNew() {
         accounts.new(this.username, this._protocol.id);
     }
 
-    setEnabled(enable: boolean) {
+    public setEnabled(enable: boolean) {
         if (!this.handle) {
             throw Error("No account is binded to this instance. Call findAccount()");
         }
         accounts.set_enabled(this.acctData!.handle, enable);
     }
 
-    sendIM(recipient: string, body: string) {
+    public sendIM(recipient: string, body: string) {
         if (!this.handle) {
             throw Error("No account is binded to this instance. Call findAccount()");
         }
         messaging.sendIM(this.acctData!.handle, recipient, body);
     }
 
-    getBuddy(user: string): Buddy {
+    public getBuddy(user: string): Buddy {
         if (!this.handle) {
             throw Error("No account is binded to this instance. Call findAccount()");
         }
         return buddy.find(this.acctData!.handle, user);
     }
 
-    joinChat(components: ChatJoinProperties) {
+    public joinChat(components: ChatJoinProperties) {
         messaging.joinChat(this.handle, components);
     }
 
-    rejectChat(components: ChatJoinProperties) {
+    public rejectChat(components: ChatJoinProperties) {
         messaging.rejectChat(this.handle, components);
     }
-
 
     // connect() {
     //     accounts.connect(this.username, this.protocol.id);

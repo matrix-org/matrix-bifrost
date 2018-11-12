@@ -7,7 +7,7 @@ export interface IMatrixRoomData {
 }
 
 export interface IMatrixUserData {
-    accounts: {[key: string]: IMatrixUserAccount}
+    accounts: {[key: string]: IMatrixUserAccount};
 }
 
 export interface IMatrixUserAccount {

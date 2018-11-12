@@ -12,6 +12,16 @@ export interface IEventRequest {
     getPromise(): Promise<void>;
 }
 
+export interface IAliasQueried {
+    alias: string;
+    roomId: string;
+}
+
+export interface IAliasQuery {
+    alias: string;
+    aliasLocalpart: string;
+}
+
  /**
   * This is actually just a matrix event, as far as we care.
   */
@@ -20,7 +30,9 @@ export interface IEventRequestData {
     origin_server_ts: number;
     sender: string;
     type: string;
+    // tslint:disable-next-line:no-any
     content: any;
+    // tslint:disable-next-line:no-any
     unsigned: any;
     room_id: string;
     state_key: string;
@@ -31,16 +43,15 @@ export interface IBridgeContext {
         matrix: MatrixUser|null,
         remote: RemoteUser|null,
         remotes: RemoteUser[],
-    },
+    };
     targets: {
         matrix: MatrixUser|null,
         remote: RemoteUser|null,
         remotes: RemoteUser[],
-    },
+    };
     rooms: {
         matrix: MatrixRoom|null,
         remote: RemoteRoom|null,
         remotes: RemoteRoom[],
-    }
+    };
 }
-

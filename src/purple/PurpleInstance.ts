@@ -1,15 +1,16 @@
 import { EventEmitter } from "events";
-import { helper, plugins } from "node-purple";
+import { helper, plugins, Protocol } from "node-purple";
 import { PurpleAccount } from "./PurpleAccount";
-import { IPurpleInstance } from "./IPurpleInstance";
-const log = require("matrix-appservice-bridge").Logging.get("PurpleInstance");
+import { IPurpleInstance, ConfigArgs } from "./IPurpleInstance";
+import { Logging } from "matrix-appservice-bridge";
+const log = Logging.get("PurpleInstance");
 
 export class PurpleProtocol {
     public readonly name: string;
     public readonly summary: string;
     public readonly homepage: string;
     public readonly id: string;
-    constructor(data: any) {
+    constructor(data: Protocol) {
         this.name = data.name;
         this.summary = data.summary;
         this.homepage = data.homepage;
@@ -27,7 +28,7 @@ export class PurpleInstance extends EventEmitter implements IPurpleInstance {
         this.accounts = new Map();
     }
 
-    public async start(config: any) {
+    public async start(config: IConfigArgs) {
         log.info("Starting purple instance");
         helper.setupPurple({
             debugEnabled: config.enableDebug ? 1 : 0,
@@ -35,7 +36,7 @@ export class PurpleInstance extends EventEmitter implements IPurpleInstance {
         });
         log.info("Started purple instance");
         this.protocols = plugins.get_protocols().map(
-            (data) => new PurpleProtocol(data)
+            (data) => new PurpleProtocol(data),
         );
         log.info("Got supported protocols:", this.protocols.map((p) => p.id).join(" "));
         this.interval = setInterval(this.eventHandler.bind(this), 300);
@@ -60,12 +61,19 @@ export class PurpleInstance extends EventEmitter implements IPurpleInstance {
         return acct;
     }
 
-    public getProtocol(id: string){
+    public getProtocol(id: string) {
         return this.protocols.find((proto) => proto.id === id);
     }
 
     public getProtocols(): PurpleProtocol[] {
         return this.protocols;
+    }
+
+    public findProtocol(nameOrId: string): PurpleProtocol|null {
+        nameOrId = nameOrId.toLowerCase();
+        return this.purple.getProtocols().find(
+            (protocol) => protocol.name.toLowerCase() === nameOrId || protocol.id.toLowerCase() === nameOrId,
+        );
     }
 
     public eventHandler() {

@@ -6,33 +6,32 @@ import { IPurpleInstance } from "./purple/IPurpleInstance";
 import { PurpleAccount } from "./purple/PurpleAccount";
 import { EventEmitter } from "events";
 import { IReceivedImMsg } from "./purple/PurpleEvents";
-import * as request from "request-promise-native";
 import { ProfileSync } from "./ProfileSync";
+import { IEventRequest } from "./MatrixTypes";
 
 const log = Logging.get("Program");
-
 
 class MockPurpleInstance extends EventEmitter {
     constructor() {
         super();
     }
 
-    public start () {
+    public start() {
         return Promise.resolve();
     }
 
-    public getAccount () {
+    public getAccount() {
         return new PurpleAccount("SomeName", new PurpleProtocol({}));
     }
 
-    public getProtocol (id: string) {
+    public getProtocol(id: string) {
         return new PurpleProtocol({id});
     }
 
-    public getProtocols () {
+    public getProtocols() {
         return [];
     }
-};
+}
 
 /**
  * This is the entry point for the bridge. It contains
@@ -44,7 +43,7 @@ class Program {
     private roomHandler: MatrixRoomHandler|undefined;
     private profileSync: ProfileSync|undefined;
     private purple: IPurpleInstance;
-    private _config: any;
+    private cfg: any;
 
     constructor() {
         this.cli = new Cli({
@@ -69,7 +68,7 @@ class Program {
     }
 
     public get config(): any {
-        return this._config;
+        return this.cfg;
     }
 
     public start(): any {
@@ -78,7 +77,7 @@ class Program {
         try {
             this.cli.run();
         } catch (ex) {
-            console.log(ex);
+            log.error(ex);
         }
     }
 
@@ -94,21 +93,21 @@ class Program {
 
     private async runBridge(port: number, config: any) {
         log.info("Starting purple bridge on port ", port);
-        this._config = config;
+        this.cfg = config;
         this.bridge = new Bridge({
-          //clientFactory,
+          // clientFactory,
           controller: {
             // onUserQuery: userQuery,
-            onAliasQuery: () => { (this.roomHandler as MatrixRoomHandler).onAliasQuery.bind(this.roomHandler) },
-            onEvent: (request, context) => {
-                if (this.eventHandler === undefined) {return;}
+            onAliasQuery: () => { (this.roomHandler as MatrixRoomHandler).onAliasQuery.bind(this.roomHandler); },
+            onEvent: (request: IEventRequest, context) => {
+                if (this.eventHandler === undefined) {return; }
                 this.eventHandler.onEvent(request, context).catch((err) => {
                     log.error("onEvent err", err);
                 });
             },
-            onAliasQueried: () => { (this.roomHandler as MatrixRoomHandler).onAliasQueried.bind(this.roomHandler) },
+            onAliasQueried: () => { (this.roomHandler as MatrixRoomHandler).onAliasQueried.bind(this.roomHandler); },
             // We don't handle these just yet.
-            //thirdPartyLookup: this.thirdpa.ThirdPartyLookup,
+            // thirdPartyLookup: this.thirdpa.ThirdPartyLookup,
           },
           domain: config.bridge.domain,
           homeserverUrl: config.bridge.homeserverUrl,
@@ -132,7 +131,7 @@ class Program {
         if (config.bridgeBots) {
             await this.runBotAccounts(config.bridgeBots.accounts);
         }
-        //await this.startPurpleAccounts();
+        // await this.startPurpleAccounts();
     }
 
     private async runBotAccounts(accounts: any[]) {
@@ -141,13 +140,13 @@ class Program {
             const acct = this.purple.getAccount(account.name, account.protocol);
             if (!acct) {
                 log.error(
-`${account.protocol}:${account.name} is not configured in libpurple. Ensure that accounts.xml is correct.`
+`${account.protocol}:${account.name} is not configured in libpurple. Ensure that accounts.xml is correct.`,
                 );
                 throw Error("Fatal error while setting up bot accounts");
             }
             if (acct.isEnabled === false) {
                 log.error(
-`${account.protocol}:${account.name} is not enabled, enabling.`
+`${account.protocol}:${account.name} is not enabled, enabling.`,
                 );
                 acct.setEnabled(true);
                 // Here we should really wait for the account to come online signal.
@@ -166,10 +165,10 @@ class Program {
         const store = this.bridge.getUserStore();
         log.info("Starting enabled purple accounts..");
         const matrixUsers = await store.getByMatrixData({});
-        await Promise.all(matrixUsers.map(async matrixUser => {
+        await Promise.all(matrixUsers.map(async (matrixUser) => {
             log.info(`Getting remote accounts for ${matrixUser.getId()}`);
             const remotes = await store.getRemoteUsersFromMatrixId(matrixUser.getId());
-            await Promise.all(remotes.map(async remoteUser => {
+            await Promise.all(remotes.map(async (remoteUser) => {
                 log.info(`Starting ${remoteUser.getId()} (${remoteUser.get("protocolId")})`);
                 try {
                     const acct = this.purple.getAccount(remoteUser.getId(), remoteUser.get("protocolId"));
