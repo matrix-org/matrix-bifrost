@@ -58,6 +58,15 @@ export class PurpleAccount {
         return buddy.find(this.acctData!.handle, user);
     }
 
+    joinChat(components: ChatJoinProperties) {
+        messaging.joinChat(this.handle, components);
+    }
+
+    rejectChat(components: ChatJoinProperties) {
+        messaging.rejectChat(this.handle, components);
+    }
+
+
     // connect() {
     //     accounts.connect(this.username, this.protocol.id);
     // }
