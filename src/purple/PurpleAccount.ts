@@ -4,6 +4,7 @@
 
 import { helper, plugins, buddy, accounts, messaging, Buddy, Account } from "node-purple";
 import { PurpleProtocol } from "./PurpleInstance";
+import { ChatJoinProperties } from "./PurpleEvents";
 
 export class PurpleAccount {
     private acctData: Account | undefined;
@@ -11,11 +12,14 @@ export class PurpleAccount {
     constructor(private username: string, private _protocol: PurpleProtocol) {
         this.enabled = false;
     }
-    get name(): string { return this.acctData!.username };
 
-    get protocol() : PurpleProtocol { return this._protocol };
+    get name(): string { return this.acctData!.username }
 
-    get isEnabled(): boolean { return this.enabled };
+    get handle(): External { return this.acctData!.handle }
+
+    get protocol() : PurpleProtocol { return this._protocol }
+
+    get isEnabled(): boolean { return this.enabled }
 
     get connected(): boolean {
         if (!this.acctData) {
@@ -38,21 +42,21 @@ export class PurpleAccount {
     }
 
     setEnabled(enable: boolean) {
-        if (!this.acctData!.handle) {
+        if (!this.handle) {
             throw Error("No account is binded to this instance. Call findAccount()");
         }
         accounts.set_enabled(this.acctData!.handle, enable);
     }
 
     sendIM(recipient: string, body: string) {
-        if (!this.acctData!.handle) {
+        if (!this.handle) {
             throw Error("No account is binded to this instance. Call findAccount()");
         }
         messaging.sendIM(this.acctData!.handle, recipient, body);
     }
 
     getBuddy(user: string): Buddy {
-        if (!this.acctData!.handle) {
+        if (!this.handle) {
             throw Error("No account is binded to this instance. Call findAccount()");
         }
         return buddy.find(this.acctData!.handle, user);
