@@ -25,18 +25,7 @@ const CHECK_PROFILE_INTERVAL_MS = 60 * 1000 * 15;
 
 export class ProfileSync {
     constructor(private bridge: Bridge, private config: any) {
-    }
 
-    public getMxIdForProtocol(protocol: PurpleProtocol, senderId: string): MatrixUser {
-        // XXX: XMPP senders have a /host appended to their sender.
-        // We're stripping them because they look ugly AF.
-        if (protocol.id === "prpl-jabber") {
-            senderId = senderId.split("/")[0];
-        }
-        const prefix = this.config.bridge.userPrefix || "";
-        // This is a little bad, but we drop the prpl- because it's a bit ugly.
-        const protocolName = protocol.id.startsWith("prpl-") ? protocol.id.substr("prpl-".length) : protocol.id;
-        return new MatrixUser(`@${prefix}${protocolName}_${senderId}:${this.config.bridge.domain}`);
     }
 
     private handlePurpleProfileChange() {
@@ -45,7 +34,7 @@ export class ProfileSync {
 
     private async getOrCreateStoreUsers(protocol: PurpleProtocol, senderId: string) : Promise<[MatrixUser, RemoteUser]> {
         const store = this.bridge.getUserStore();
-        const tempMxUser = this.getMxIdForProtocol(protocol, senderId);
+        const tempMxUser = Util.getMxIdForProtocol(protocol, senderId, this.config.bridge.domain, this.config.bridge.userPrefix);
         let mxUser = await store.getMatrixUser(tempMxUser.getId());
         if (!mxUser) {
             mxUser = tempMxUser;
@@ -75,7 +64,7 @@ export class ProfileSync {
             {
                 return; // Don't need to check.
         }
-        const buddy = account.getBuddy(remoteUser.getId());
+        const buddy = account.getBuddy(remoteUser.get("username"));
         if (buddy === undefined) {
             log.warn(`${remoteUser.getId()} was not found in ${account.name}'s buddy list`);
             return;
