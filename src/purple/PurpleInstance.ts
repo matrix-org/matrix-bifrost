@@ -52,7 +52,7 @@ export class PurpleInstance extends EventEmitter implements IPurpleInstance {
             acct = new PurpleAccount(username, protocol);
             try {
                 acct.findAccount();
-            } catch {
+            } catch (ex) {
                 return null;
             }
             this.accounts.set(key, acct);
