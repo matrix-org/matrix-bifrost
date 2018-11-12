@@ -6,7 +6,11 @@ import { Account, Conversation} from "node-purple";
 
 export interface IChatJoinProperties {[key: string]: string; }
 
-export interface IAccountEvent {
+export interface IEventBody {
+    eventName: string;
+}
+
+export interface IAccountEvent extends IEventBody {
     account: Account;
 }
 

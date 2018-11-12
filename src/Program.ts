@@ -5,15 +5,22 @@ import { PurpleInstance, PurpleProtocol } from "./purple/PurpleInstance";
 import { IPurpleInstance } from "./purple/IPurpleInstance";
 import { PurpleAccount } from "./purple/PurpleAccount";
 import { EventEmitter } from "events";
-import { IReceivedImMsg } from "./purple/PurpleEvents";
+import { IReceivedImMsg, IAccountEvent } from "./purple/PurpleEvents";
 import { ProfileSync } from "./ProfileSync";
 import { IEventRequest } from "./MatrixTypes";
 
 const log = Logging.get("Program");
 
 class MockPurpleInstance extends EventEmitter {
+    private protocol: PurpleProtocol;
     constructor() {
         super();
+        this.protocol = new PurpleProtocol({
+            name: "fakeProtocol",
+            id: "fake-protocol",
+            homepage: undefined,
+            summary: undefined,
+        });
     }
 
     public start() {
@@ -21,11 +28,11 @@ class MockPurpleInstance extends EventEmitter {
     }
 
     public getAccount() {
-        return new PurpleAccount("SomeName", new PurpleProtocol({}));
+        return new PurpleAccount("SomeName", this.protocol);
     }
 
     public getProtocol(id: string) {
-        return new PurpleProtocol({id});
+        return this.protocol;
     }
 
     public getProtocols() {
@@ -122,10 +129,10 @@ class Program {
         this.roomHandler.setBridge(this.bridge);
         log.info("Bridge has started.");
         await this.purple.start(config.purple || {});
-        this.purple.on("account-signed-on", (ev) => {
+        this.purple.on("account-signed-on", (ev: IAccountEvent) => {
             log.info(`${ev.account.protocol_id}://${ev.account.username} signed on`);
         });
-        this.purple.on("account-connection-error", (ev) => {
+        this.purple.on("account-connection-error", (ev: IAccountEvent) => {
             log.warn(`${ev.account.protocol_id}://${ev.account.username} had a connection error`, ev);
         });
         if (config.bridgeBots) {
