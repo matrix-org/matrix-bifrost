@@ -12,6 +12,9 @@ describe("Util", () => {
     describe("getMxIdForProtocol", () => {
         const protocol = new PurpleProtocol({
             id: "prpl-protocol",
+            name: "Fake Protocol",
+            homepage: undefined,
+            summary: undefined,
         });
         it("should create a simple userId", () => {
             const mxUser = Util.getMxIdForProtocol(protocol, "simple", "example.com", "_purple_");

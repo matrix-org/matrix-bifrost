@@ -1,7 +1,7 @@
 import { EventEmitter } from "events";
 import { helper, plugins, Protocol } from "node-purple";
 import { PurpleAccount } from "./PurpleAccount";
-import { IPurpleInstance, ConfigArgs } from "./IPurpleInstance";
+import { IPurpleInstance, IConfigArgs } from "./IPurpleInstance";
 import { Logging } from "matrix-appservice-bridge";
 const log = Logging.get("PurpleInstance");
 
@@ -12,8 +12,8 @@ export class PurpleProtocol {
     public readonly id: string;
     constructor(data: Protocol) {
         this.name = data.name;
-        this.summary = data.summary;
-        this.homepage = data.homepage;
+        this.summary = data.summary!;
+        this.homepage = data.homepage!;
         this.id = data.id;
     }
 }
@@ -69,9 +69,9 @@ export class PurpleInstance extends EventEmitter implements IPurpleInstance {
         return this.protocols;
     }
 
-    public findProtocol(nameOrId: string): PurpleProtocol|null {
+    public findProtocol(nameOrId: string): PurpleProtocol|undefined {
         nameOrId = nameOrId.toLowerCase();
-        return this.purple.getProtocols().find(
+        return this.getProtocols().find(
             (protocol) => protocol.name.toLowerCase() === nameOrId || protocol.id.toLowerCase() === nameOrId,
         );
     }

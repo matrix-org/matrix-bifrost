@@ -221,7 +221,7 @@ Say \`help\` for more commands.
 
     private async handleNewAccount(nameOrId: string, args: string[], event: IEventRequestData) {
         // TODO: Check to see if the user has an account matching this already.
-        const protocol = this.purple.findProtocol(protocolId);
+        const protocol = this.purple.findProtocol(nameOrId);
         if (protocol === undefined) {
             throw new Error("Protocol was not found");
         }

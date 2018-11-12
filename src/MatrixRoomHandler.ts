@@ -3,7 +3,7 @@ import { PurpleInstance, PurpleProtocol } from "./purple/PurpleInstance";
 import { IPurpleInstance } from "./purple/IPurpleInstance";
 import { MROOM_TYPE_IM, MROOM_TYPE_GROUP } from "./StoreTypes";
 import { IBridgeContext, IAliasQuery, IAliasQueried } from "./MatrixTypes";
-import { IReceivedImMsg, IChatInvite, IRecievedChatMsg } from "./purple/PurpleEvents";
+import { IReceivedImMsg, IChatInvite } from "./purple/PurpleEvents";
 import { ProfileSync } from "./ProfileSync";
 import { Util } from "./Util";
 import { Account } from "node-purple";
@@ -110,21 +110,22 @@ export class MatrixRoomHandler {
     }
 
     private async createOrGetGroupChatRoom(
-        data: IRecievedChatMsg|IChatInvite,
+        data: IReceivedImMsg|IChatInvite,
         intent: Intent,
         matrixUser?: MatrixUser,
     ) {
         // Check to see if we have a room for this IM.
         const roomStore = this.bridge.getRoomStore();
         let roomName;
-        if (("roomName" in data)) {
+        let props;
+        if ("join_properties" in data) {
             roomName = ProtoHacks.getRoomNameForInvite(data);
+            props = Object.assign({}, data.join_properties);
         } else {
             roomName = data.conv.name;
         }
         // XXX: This is potentially fragile as we are basically doing a lookup via
         // a set of properties we hope will be unique.
-        const props = ("roomName" in data) ? Object.assign({}, data.join_properties) : undefined;
         if (props) {
             delete props.password;
         }
@@ -132,6 +133,7 @@ export class MatrixRoomHandler {
         let remoteData = {
             protocol_id: data.account.protocol_id,
             room_name: roomName,
+            properties: undefined,
         };
         // For some reason the following function wites to remoteData, so recreate it later
         const remoteEntries = await roomStore.getEntriesByRemoteRoomData(remoteData);
@@ -219,7 +221,7 @@ export class MatrixRoomHandler {
         });
     }
 
-    private async handleIncomingChatMsg(data: IRecievedChatMsg) {
+    private async handleIncomingChatMsg(data: IReceivedImMsg) {
         log.debug(`Handling incoming chat from ${data.sender} (${data.conv.name})`);
         // If multiple of our users are in this room, it may dupe up here.
         const protocol = this.purple.getProtocol(data.account.protocol_id);
@@ -249,7 +251,7 @@ export class MatrixRoomHandler {
     }
 
     private async handleChatInvite(data: IChatInvite) {
-        log.debug(`Handling invite to chat for ${data.roomName}`, data);
+        log.debug(`Handling invite to chat for ${data.room_name}`, data);
         // First, find out who the message was intended for.
         const matrixUser = await this.getMatrixUserForAccount(data.account);
         if (matrixUser === null) {

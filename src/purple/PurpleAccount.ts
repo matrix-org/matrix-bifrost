@@ -4,7 +4,7 @@
 
 import { helper, plugins, buddy, accounts, messaging, Buddy, Account } from "node-purple";
 import { PurpleProtocol } from "./PurpleInstance";
-import { ChatJoinProperties } from "./PurpleEvents";
+import { IChatJoinProperties } from "./PurpleEvents";
 
 export class PurpleAccount {
     private acctData: Account | undefined;
@@ -27,7 +27,7 @@ export class PurpleAccount {
     }
 
     public findAccount() {
-        const data = accounts.find(this.username, this._protocol.id);
+        const data = accounts.find(this.username, this.protocol.id);
         if (!data) {
             throw new Error("Account not found");
         }
@@ -36,7 +36,7 @@ export class PurpleAccount {
     }
 
     public createNew() {
-        accounts.new(this.username, this._protocol.id);
+        accounts.new(this.username, this.protocol.id);
     }
 
     public setEnabled(enable: boolean) {
@@ -60,11 +60,11 @@ export class PurpleAccount {
         return buddy.find(this.acctData!.handle, user);
     }
 
-    public joinChat(components: ChatJoinProperties) {
+    public joinChat(components: IChatJoinProperties) {
         messaging.joinChat(this.handle, components);
     }
 
-    public rejectChat(components: ChatJoinProperties) {
+    public rejectChat(components: IChatJoinProperties) {
         messaging.rejectChat(this.handle, components);
     }
 

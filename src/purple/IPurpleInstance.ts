@@ -1,6 +1,6 @@
 import { PurpleProtocol } from "./PurpleInstance";
 import { PurpleAccount } from "./PurpleAccount";
-import { SetupArgs, Event } from "node-purple";
+import { Event } from "node-purple";
 
 export interface IConfigArgs {
     enableDebug: boolean;
@@ -11,5 +11,6 @@ export interface IPurpleInstance {
     getAccount(username: string, protocolId: string): PurpleAccount|null;
     getProtocol(id: string);
     getProtocols(): PurpleProtocol[];
+    findProtocol(nameOrId: string): PurpleProtocol|undefined;
     on(name: string, cb: (ev: Event) => void);
 }
