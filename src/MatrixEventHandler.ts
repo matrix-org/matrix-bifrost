@@ -42,12 +42,33 @@ export class MatrixEventHandler {
             }
             return;
         }
-        if (roomType === MROOM_TYPE_UADMIN && event.content.membership === "leave") {
-            // If it's a 1 to 1 room, we should leave.
-            await this.bridge.getRoomStore().removeEntriesByMatrixRoomId(event.room_id);
-            await this.bridge.getIntent().leave(event.room_id);
-            log.info(`Left and removed entry for ${event.room_id} because the user left`);
+
+        if (roomType === MROOM_TYPE_UADMIN) {
+            if (event.type === "m.room.message") {
+                const args = event.content.body.split(" ");
+                await this.handleCommand(args, event);
+            } else if (event.content.membership === "leave") {
+                await this.bridge.getRoomStore().removeEntriesByMatrixRoomId(event.room_id);
+                await this.bridge.getIntent().leave(event.room_id);
+                log.info(`Left and removed entry for ${event.room_id} because the user left`);
+            }
             return;
+        }
+
+        // Validate room entries
+        const roomProtocol = context.rooms.remote.get("protocol_id");
+        if (roomProtocol == null) {
+            log.error("Room protocol was null, we cannot handle this im!");
+            return;
+        }
+
+        if (event.type === "m.room.member" && roomType === MROOM_TYPE_GROUP) {
+            if (this.bridge.getBot().isRemoteUser(event.sender)) {
+                return; // Don't really care about remote users
+            }
+            if (["join", "leave"].includes(event.content.membership)) {
+                this.handleJoinLeaveGroup(context, event);
+            }
         }
 
         if (event.type !== "m.room.message") {
@@ -55,11 +76,6 @@ export class MatrixEventHandler {
             return;
         }
 
-        if (roomType === MROOM_TYPE_UADMIN) {
-            const args = event.content.body.split(" ");
-            await this.handleCommand(args, event);
-            return;
-        }
 
         if (roomType === MROOM_TYPE_IM) {
             await this.handleImMessage(context, event);
@@ -275,10 +291,6 @@ Say \`help\` for more commands.
     private async handleImMessage(context: IBridgeContext, event: IEventRequestData) {
         log.info("Handling IM message");
         const roomProtocol = context.rooms.remote.get("protocol_id");
-        if (roomProtocol == null) {
-            log.error("Room protocol was null, we cannot handle this im!");
-            return;
-        }
         const remoteUser = context.senders.remotes.find((remote) => remote.get("protocolId") === roomProtocol);
         if (remoteUser == null) {
             log.error("Could not find a purple account for this matrix user, we cannot handle this im!");
@@ -294,19 +306,45 @@ Say \`help\` for more commands.
             log.error("Account isn't enabled, we cannot handle this im!");
             return;
         }
+        log.info(`Sending IM to ${context.rooms.remote.get("recipient")}`);
         acct.sendIM(context.rooms.remote.get("recipient"), event.content.body);
     }
+
     private async handleGroupMessage(context: IBridgeContext, event: IEventRequestData) {
         log.info("Handling group message");
         const roomProtocol = context.rooms.remote.get("protocol_id");
-        if (roomProtocol == null) {
-            log.error("Room protocol was null, we cannot handle this im!");
-            return;
-        }
         const remoteUser = context.senders.remotes.find((remote) => remote.get("protocolId") === roomProtocol);
         if (remoteUser == null) {
             log.debug(`Using bot user because ${event.sender} is not puppeted`);
             return;
+        }
+    }
+
+    private handleJoinLeaveGroup(context: IBridgeContext, event: IEventRequestData) {
+        // XXX: We are assuming here that the previous state was invite.
+        const membership = event.content.membership;
+        log.info(`Handling group ${event.sender} ${membership}`);
+        const roomProtocol = context.rooms.remote.get("protocol_id");
+        const remoteUser = context.senders.remotes.find((remote) => remote.get("protocolId") === roomProtocol);
+        if (remoteUser == null) {
+            log.error("Could not find a purple account for this matrix user, we cannot handle this im!");
+            return;
+        }
+        // XXX: We assume the first remote, this needs to be fixed for multiple accounts
+        const acct = this.purple.getAccount(remoteUser.get("username"), roomProtocol);
+        if (!acct) {
+            log.error("Account wasn't found in libpurple, we cannot handle this join/leave!");
+            return;
+        }
+        if (acct.isEnabled == false) {
+            log.error("Account isn't enabled, we cannot handle this join/leave!");
+            return;
+        }
+        log.info(`Sending ${membership} to`, context.rooms.remote.get("properties"));
+        if (membership === "join") {
+            acct.joinChat(context.rooms.remote.get("properties"));
+        } else if (membership === "leave") {
+            acct.rejectChat(context.rooms.remote.get("properties"));
         }
     }
 }
