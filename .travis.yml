@@ -16,7 +16,7 @@ jobs:
     - script: npm run lint
       name: "Linting"
       node_js: "10"
-    - script: npm run coverage
-      name: "Coverage"
-      node_js: "10"
+#    - script: npm run coverage
+#      name: "Coverage"
+#      node_js: "10"
 
