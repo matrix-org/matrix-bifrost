@@ -1,9 +1,12 @@
 import { EventEmitter } from "events";
-import { helper, plugins, Protocol } from "node-purple";
+import { helper, plugins, messaging, Protocol, Conversation } from "node-purple";
 import { PurpleAccount } from "./PurpleAccount";
 import { IPurpleInstance, IConfigArgs } from "./IPurpleInstance";
 import { Logging } from "matrix-appservice-bridge";
+import * as path from "path";
 const log = Logging.get("PurpleInstance");
+
+const EXPECTED_PURPLE_PLUGINS_DIR =  "./node_modules/node-purple/deps/libpurple/";
 
 export class PurpleProtocol {
     public readonly name: string;
@@ -30,8 +33,11 @@ export class PurpleInstance extends EventEmitter implements IPurpleInstance {
 
     public async start(config: IConfigArgs) {
         log.info("Starting purple instance");
+        const pluginDir = path.resolve(config.pluginDir || EXPECTED_PURPLE_PLUGINS_DIR);
+        log.info("Plugin search path is set to ", pluginDir);
         helper.setupPurple({
             debugEnabled: config.enableDebug ? 1 : 0,
+            pluginDir,
             userDir: undefined,
         });
         log.info("Started purple instance");
