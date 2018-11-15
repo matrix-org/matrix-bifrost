@@ -335,7 +335,7 @@ Say \`help\` for more commands.
             this.deduplicator.insertMessage(
                 roomName,
                 Util.createRemoteId(roomProtocol, this.purple.getNickForChat(conv)),
-                body
+                body,
             );
             acct.sendChat(context.rooms.remote.get("room_name"), body);
         } catch (ex) {

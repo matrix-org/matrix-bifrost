@@ -3,7 +3,7 @@ import { PurpleInstance, PurpleProtocol } from "./purple/PurpleInstance";
 import { IPurpleInstance } from "./purple/IPurpleInstance";
 import { MROOM_TYPE_IM, MROOM_TYPE_GROUP } from "./StoreTypes";
 import { IBridgeContext, IAliasQuery, IAliasQueried } from "./MatrixTypes";
-import { IReceivedImMsg, IChatInvite } from "./purple/PurpleEvents";
+import { IReceivedImMsg, IChatInvite, IAccountEvent } from "./purple/PurpleEvents";
 import { ProfileSync } from "./ProfileSync";
 import { Util } from "./Util";
 import { Account } from "node-purple";
@@ -13,11 +13,14 @@ import { Store } from "./Store";
 import { Deduplicator } from "./Deduplicator";
 const log = Logging.get("MatrixRoomHandler");
 
+const ACCOUNT_LOCK_MS = 4000;
+
 /**
  * Handles creation and handling of rooms.
  */
 export class MatrixRoomHandler {
     private bridge: Bridge;
+    private accountLock: Set<string>;
     constructor(
         private purple: IPurpleInstance,
         private profileSync: ProfileSync,
@@ -25,6 +28,15 @@ export class MatrixRoomHandler {
         private config: any,
         private deduplicator: Deduplicator,
     ) {
+        this.accountLock = new Set();
+        purple.on("account-signed-on", (ev: IAccountEvent) => {
+            const id = Util.createRemoteId(ev.account.protocol_id, ev.account.username);
+            this.accountLock.add(id);
+            setTimeout(() => {
+                log.debug(`AccountLock unlocking ${id}`);
+                this.accountLock.delete(id);
+            }, ACCOUNT_LOCK_MS);
+        });
         purple.on("received-im-msg", this.handleIncomingIM.bind(this));
         purple.on("received-chat-msg", this.handleIncomingChatMsg.bind(this));
         purple.on("chat-invite", this.handleChatInvite.bind(this));
@@ -207,6 +219,13 @@ export class MatrixRoomHandler {
 
     private async handleIncomingChatMsg(data: IReceivedImMsg) {
         log.debug(`Handling incoming chat from ${data.sender} (${data.conv.name})`);
+        if (this.accountLock.has(
+            Util.createRemoteId(data.account.protocol_id, data.account.username))
+        ) {
+            // This account has recently connected and about to flood the room with
+            // messages. We're going to ignore them.
+            return;
+        }
         if (this.deduplicator.checkAndRemove(
             data.conv.name,
             Util.createRemoteId(data.account.protocol_id, data.sender),
