@@ -9,6 +9,8 @@ import { Util } from "./Util";
 import { Account } from "node-purple";
 import { ProtoHacks } from "./ProtoHacks";
 import { Logging } from "matrix-appservice-bridge";
+import { Store } from "./Store";
+import { Deduplicator } from "./Deduplicator";
 const log = Logging.get("MatrixRoomHandler");
 
 /**
@@ -16,7 +18,13 @@ const log = Logging.get("MatrixRoomHandler");
  */
 export class MatrixRoomHandler {
     private bridge: Bridge;
-    constructor(private purple: IPurpleInstance, private profileSync: ProfileSync, private config: any) {
+    constructor(
+        private purple: IPurpleInstance,
+        private profileSync: ProfileSync,
+        private store: Store,
+        private config: any,
+        private deduplicator: Deduplicator,
+    ) {
         purple.on("received-im-msg", this.handleIncomingIM.bind(this));
         purple.on("received-chat-msg", this.handleIncomingChatMsg.bind(this));
         purple.on("chat-invite", this.handleChatInvite.bind(this));
@@ -37,24 +45,6 @@ export class MatrixRoomHandler {
 
     public onAliasQueried(request: IAliasQueried, context: IBridgeContext) {
         log.debug(`onAliasQueried:`, request);
-    }
-
-    private async getMatrixUserForAccount(account: Account): Promise<MatrixUser|null> {
-        const matrixUsers = await this.bridge.getUserStore().getMatrixUsersFromRemoteId(
-            Util.createRemoteId(account.protocol_id, account.username),
-        );
-        if (matrixUsers === null || matrixUsers.length === 0) {
-            log.error(
-                "Could not find an account for the incoming IM. Either the account" +
-                "is not assigned to a matrix user, or we have hit a bug.",
-            );
-            return null;
-        }
-        if (matrixUsers.length > 1) {
-            log.error(`Have multiple matrix users assigned to ${account.username}. Bailing`);
-            return null;
-        }
-        return matrixUsers[0];
     }
 
     private async createOrGetIMRoom(data: IReceivedImMsg, matrixUser: MatrixUser, intent: Intent) {
@@ -112,7 +102,6 @@ export class MatrixRoomHandler {
     private async createOrGetGroupChatRoom(
         data: IReceivedImMsg|IChatInvite,
         intent: Intent,
-        matrixUser?: MatrixUser,
     ) {
         // Check to see if we have a room for this IM.
         const roomStore = this.bridge.getRoomStore();
@@ -133,7 +122,6 @@ export class MatrixRoomHandler {
         let remoteData = {
             protocol_id: data.account.protocol_id,
             room_name: roomName,
-            properties: undefined,
         };
         // For some reason the following function wites to remoteData, so recreate it later
         const remoteEntries = await roomStore.getEntriesByRemoteRoomData(remoteData);
@@ -142,19 +130,14 @@ export class MatrixRoomHandler {
             remoteData = {
                 protocol_id: data.account.protocol_id,
                 room_name: roomName,
-                properties: props,
-            };
+                properties: props, // for joining
+            } as any;
             log.info(`Couldn't find room for ${roomName}. Creating a new one`);
-            const invite: string[] = [];
-            if (matrixUser) {
-                invite.push(matrixUser.getId());
-            }
             const res = await intent.createRoom({
                 createAsClient: false,
                 options: {
                     name: roomName,
                     visibility: "private",
-                    invite,
                 },
             });
             roomId = res.room_id;
@@ -183,7 +166,7 @@ export class MatrixRoomHandler {
     private async handleIncomingIM(data: IReceivedImMsg) {
         log.debug(`Handling incoming IM from ${data.sender}`);
         // First, find out who the message was intended for.
-        const matrixUser = await this.getMatrixUserForAccount(data.account);
+        const matrixUser = await this.store.getMatrixUserForAccount(data.account);
         if (matrixUser === null) {
             return;
         }
@@ -198,6 +181,7 @@ export class MatrixRoomHandler {
             data.sender,
             this.config.bridge.domain,
             this.config.bridge.userPrefix,
+            false,
         );
         const intent = this.bridge.getIntent(senderMatrixUser.getId());
         log.debug("Identified ghost user as", senderMatrixUser.getId());
@@ -223,6 +207,15 @@ export class MatrixRoomHandler {
 
     private async handleIncomingChatMsg(data: IReceivedImMsg) {
         log.debug(`Handling incoming chat from ${data.sender} (${data.conv.name})`);
+        if (this.deduplicator.checkAndRemove(
+            data.conv.name,
+            Util.createRemoteId(data.account.protocol_id, data.sender),
+            data.message,
+        )) {
+                log.debug("Dropping duplicate message");
+                return;
+        }
+        // this.purple.getBuddyFromChat(data.conv, data.sender);
         // If multiple of our users are in this room, it may dupe up here.
         const protocol = this.purple.getProtocol(data.account.protocol_id);
         if (!protocol) {
@@ -234,6 +227,7 @@ export class MatrixRoomHandler {
             data.sender,
             this.config.bridge.domain,
             this.config.bridge.userPrefix,
+            true,
         );
         const intent = this.bridge.getIntent(senderMatrixUser.getId());
         let roomId;
@@ -251,9 +245,9 @@ export class MatrixRoomHandler {
     }
 
     private async handleChatInvite(data: IChatInvite) {
-        log.debug(`Handling invite to chat for ${data.room_name}`, data);
+        log.debug(`Handling invite to chat from ${data.sender} -> ${data.room_name}`);
         // First, find out who the message was intended for.
-        const matrixUser = await this.getMatrixUserForAccount(data.account);
+        const matrixUser = await this.store.getMatrixUserForAccount(data.account);
         if (matrixUser === null) {
             return;
         }
@@ -267,6 +261,7 @@ export class MatrixRoomHandler {
             data.sender,
             this.config.bridge.domain,
             this.config.bridge.userPrefix,
+            true,
         );
         const intent = this.bridge.getIntent(senderMatrixUser.getId());
         let roomId;
@@ -274,16 +269,19 @@ export class MatrixRoomHandler {
         // so remember to invite newbloods.
         try {
             // This will create the room and invite the user.
-            roomId = await this.createOrGetGroupChatRoom(data, intent, matrixUser);
+            roomId = await this.createOrGetGroupChatRoom(data, intent);
+            log.debug(`Found room ${roomId} for ${data.room_name}`);
+            intent.invite(roomId, matrixUser.getId());
         } catch (e) {
             log.error(`Failed to get/create room for this IM: ${e}`);
             return;
         }
-        if (data.message) {
-            await intent.sendMessage(roomId, {
-                msgtype: "m.text",
-                body: data.message,
-            });
-        }
+        // XXX: Matrix doesn't support invite messages
+        // if (data.message) {
+        //     await intent.sendMessage(roomId, {
+        //         msgtype: "m.text",
+        //         body: data.message,
+        //     });
+        // }
     }
 }

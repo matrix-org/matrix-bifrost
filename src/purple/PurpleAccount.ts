@@ -2,7 +2,7 @@
  * An interface for storing account data inside the userstore.
  */
 
-import { helper, plugins, buddy, accounts, messaging, Buddy, Account } from "node-purple";
+import { helper, plugins, buddy, accounts, messaging, Buddy, Account, Conversation } from "node-purple";
 import { PurpleProtocol } from "./PurpleInstance";
 import { IChatJoinProperties } from "./PurpleEvents";
 
@@ -53,6 +53,13 @@ export class PurpleAccount {
         messaging.sendIM(this.acctData!.handle, recipient, body);
     }
 
+    public sendChat(chatName: string, body: string) {
+        if (!this.handle) {
+            throw Error("No account is binded to this instance. Call findAccount()");
+        }
+        messaging.sendChat(this.acctData!.handle, chatName, body);
+    }
+
     public getBuddy(user: string): Buddy {
         if (!this.handle) {
             throw Error("No account is binded to this instance. Call findAccount()");
@@ -66,6 +73,10 @@ export class PurpleAccount {
 
     public rejectChat(components: IChatJoinProperties) {
         messaging.rejectChat(this.handle, components);
+    }
+
+    public getConversation(name: string): Conversation {
+        return messaging.findConversation(this.handle, name);
     }
 
     // connect() {

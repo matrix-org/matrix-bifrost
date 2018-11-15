@@ -8,6 +8,9 @@ import { EventEmitter } from "events";
 import { IReceivedImMsg, IAccountEvent } from "./purple/PurpleEvents";
 import { ProfileSync } from "./ProfileSync";
 import { IEventRequest } from "./MatrixTypes";
+import { RoomSync } from "./RoomSync";
+import { Store } from "./Store";
+import { Deduplicator } from "./Deduplicator";
 
 const log = Logging.get("Program");
 
@@ -49,8 +52,11 @@ class Program {
     private eventHandler: MatrixEventHandler|undefined;
     private roomHandler: MatrixRoomHandler|undefined;
     private profileSync: ProfileSync|undefined;
+    private roomSync: RoomSync|undefined;
     private purple: IPurpleInstance;
+    private store: Store|undefined;
     private cfg: any;
+    private deduplicator: Deduplicator;
 
     constructor() {
         this.cli = new Cli({
@@ -63,6 +69,7 @@ class Program {
           run: this.runBridge.bind(this),
         });
         this.purple = new PurpleInstance();
+        this.deduplicator = new Deduplicator();
         // For testing w/o libpurple.
         // this.purple = new MockPurpleInstance();
         // setTimeout(() => {
@@ -121,13 +128,16 @@ class Program {
           registration: "purple-registration.yaml",
         });
         await this.bridge.run(port, config);
+        this.store = new Store(this.bridge);
         this.profileSync = new ProfileSync(this.bridge, config);
-        this.eventHandler = new MatrixEventHandler(this.purple);
-        this.roomHandler = new MatrixRoomHandler(this.purple, this.profileSync, config);
+        this.eventHandler = new MatrixEventHandler(this.purple, this.deduplicator);
+        this.roomHandler = new MatrixRoomHandler(this.purple, this.profileSync, this.store, config, this.deduplicator);
+        this.roomSync = new RoomSync(this.purple, this.bridge, this.store);
         // TODO: Remove these eventually
         this.eventHandler.setBridge(this.bridge);
         this.roomHandler.setBridge(this.bridge);
         log.info("Bridge has started.");
+        await this.roomSync.sync();
         await this.purple.start(config.purple || {});
         this.purple.on("account-signed-on", (ev: IAccountEvent) => {
             log.info(`${ev.account.protocol_id}://${ev.account.username} signed on`);

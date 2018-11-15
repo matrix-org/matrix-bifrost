@@ -7,6 +7,7 @@ import * as marked from "marked";
 import { PurpleAccount } from "./purple/PurpleAccount";
 import { Util } from "./Util";
 import { Logging } from "matrix-appservice-bridge";
+import { Deduplicator } from "./Deduplicator";
 const log = Logging.get("MatrixEventHandler");
 
 const RETRY_JOIN_MS = 5000;
@@ -17,8 +18,10 @@ const RETRY_JOIN_MS = 5000;
 export class MatrixEventHandler {
     private bridge: Bridge;
 
-    constructor(private purple: IPurpleInstance) {
-
+    constructor(
+        private purple: IPurpleInstance,
+        private deduplicator: Deduplicator,
+    ) {
     }
 
     /**
@@ -115,11 +118,16 @@ export class MatrixEventHandler {
             body += users.map((remoteUser: RemoteUser) => {
                 const pid = remoteUser.get("protocolId");
                 const username = remoteUser.get("username");
-                const account = this.purple.getAccount(username, pid);
+                let account: PurpleAccount|null = null;
+                try {
+                    account = this.purple.getAccount(username, pid);
+                } catch (ex) {
+                    log.error("Account not found:", ex);
+                }
                 if (account) {
 return `- ${account.protocol.name} (${username}) [Enabled=${account.isEnabled}] [Connected=${account.connected}]`;
                 } else {
-                    return `- ${pid} [Unknown protocol] (${username})`;
+                    return `- ${pid} [Protocol not enabled] (${username})`;
                 }
             }).join("\n");
             await intent.sendMessage(event.room_id, {
@@ -137,9 +145,11 @@ return `- ${account.protocol.name} (${username}) [Enabled=${account.isEnabled}] 
                     body: "Failed to add account:" + err.message,
                 });
             }
-        } else if (args[0] === "accounts" && args[1] === "enable") {
+        } else if (args[0] === "accounts" && ["enable", "disable"].includes(args[1])) {
             try {
-                await this.handleEnableAccount(args[2], args[3], event);
+                await this.handleEnableAccount(args[2], args[3], args[1] === "enable");
+                // Refresh our cache
+                this.purple.getAccount(args[3], args[2]);
             } catch (err) {
                 await intent.sendMessage(event.room_id, {
                     msgtype: "m.notice",
@@ -162,7 +172,7 @@ return `- ${account.protocol.name} (${username}) [Enabled=${account.isEnabled}] 
 - \`accounts\` List accounts mapped to your matrix account.
 - \`accounts add $PROTOCOL ...$OPTS\` Add a new account, this will take some options given.
 - \`accounts add-existing $PROTOCOL $NAME\` Add an existing account from accounts.xml.
-- \`accounts enable $PROTOCOL $USERNAME\` Enables an account.
+- \`accounts enable|disable $PROTOCOL $USERNAME\` Enables or disables an account.
 - \`help\` This help prompt
 `;
             await intent.sendMessage(event.room_id, {
@@ -267,7 +277,7 @@ Say \`help\` for more commands.
         });
     }
 
-    private async handleEnableAccount(protocolId: string, username: string, event: IEventRequestData) {
+    private async handleEnableAccount(protocolId: string, username: string, enable: boolean) {
         const protocol = this.purple.findProtocol(protocolId);
         if (!protocol) {
             throw Error("Protocol not found");
@@ -276,7 +286,7 @@ Say \`help\` for more commands.
         if (acct === null) {
             throw Error("Account not found");
         }
-        acct.setEnabled(true);
+        acct.setEnabled(enable);
     }
 
     private async handleImMessage(context: IBridgeContext, event: IEventRequestData) {
@@ -302,12 +312,34 @@ Say \`help\` for more commands.
     }
 
     private async handleGroupMessage(context: IBridgeContext, event: IEventRequestData) {
-        log.info("Handling group message");
+        log.info(`Handling group message for ${context.rooms.remote}`);
         const roomProtocol = context.rooms.remote.get("protocol_id");
         const remoteUser = context.senders.remotes.find((remote) => remote.get("protocolId") === roomProtocol);
         if (remoteUser == null) {
             log.debug(`Using bot user because ${event.sender} is not puppeted`);
             return;
+        }
+        const acct = this.purple.getAccount(remoteUser.get("username"), roomProtocol);
+        if (!acct) {
+            log.error("Account wasn't found in libpurple, we cannot handle this join/leave!");
+            return;
+        }
+        if (!acct.isEnabled) {
+            log.error("Account isn't enabled, we cannot handle this join/leave!");
+            return;
+        }
+        try {
+            const roomName = context.rooms.remote.get("room_name");
+            const body = event.content.body;
+            const conv = acct.getConversation(roomName);
+            this.deduplicator.insertMessage(
+                roomName,
+                Util.createRemoteId(roomProtocol, this.purple.getNickForChat(conv)),
+                body
+            );
+            acct.sendChat(context.rooms.remote.get("room_name"), body);
+        } catch (ex) {
+            log.error("Couldn't send message to chat:", ex);
         }
     }
 

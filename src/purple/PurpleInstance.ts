@@ -48,10 +48,10 @@ export class PurpleInstance extends EventEmitter implements IPurpleInstance {
         this.interval = setInterval(this.eventHandler.bind(this), 300);
     }
 
-    public getAccount(username: string, protocolId: string): PurpleAccount|null {
+    public getAccount(username: string, protocolId: string, force: boolean = false): PurpleAccount|null {
         const key = `${protocolId}://${username}`;
         let acct = this.accounts.get(key);
-        if (!acct) {
+        if (!acct || force) {
             const protocol = this.getProtocol(protocolId);
             if (protocol === undefined) {
                 throw new Error("Protocol not found");
@@ -80,6 +80,14 @@ export class PurpleInstance extends EventEmitter implements IPurpleInstance {
         return this.getProtocols().find(
             (protocol) => protocol.name.toLowerCase() === nameOrId || protocol.id.toLowerCase() === nameOrId,
         );
+    }
+
+    public getBuddyFromChat(conv: Conversation, buddyName: string) {
+        messaging.getBuddyFromConv(conv.handle, buddyName);
+    }
+
+    public getNickForChat(conv: Conversation): string {
+        return messaging.getNickForChat(conv.handle);
     }
 
     public eventHandler() {

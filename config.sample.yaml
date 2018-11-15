@@ -5,3 +5,8 @@ bridge:
 
 purple:
   enableDebug: false
+  pluginDir: "./node_modules/node-purple/deps/libpurple/"
+
+autoRegistration:
+  enabled: true
+  xmpp-url: http://localhost:5280/
