@@ -10,6 +10,14 @@ const PRPL_XMPP = "prpl-jabber";
  * carefully so that future folks can understand what is going on.
  */
 export class ProtoHacks {
+    public static removeSensitiveJoinProps(protocol: PurpleProtocol, props: any) {
+        // XXX: We *don't* currently drop passwords to groups which leaves them
+        // exposed in the room-store. Please be careful.
+        if (protocol.id === PRPL_XMPP) {
+            // Handles are like room nicks, so obviously don't store it.
+            delete props.handle;
+        }
+    }
     public static getRoomNameForInvite(invite: IChatInvite): string {
         // prpl-matrix sends us an invite with the room name set to the
         // matrix user's displayname, but the real room name is the room_id.

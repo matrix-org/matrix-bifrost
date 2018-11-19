@@ -4,6 +4,7 @@ import { IAccountEvent, IChatJoinProperties } from "./purple/PurpleEvents";
 import { Store } from "./Store";
 import { MROOM_TYPE_GROUP, IRoomEntry } from "./StoreTypes";
 import { Util } from "./Util";
+import { Deduplicator } from "./Deduplicator";
 const log = Logging.get("RoomSync");
 
 interface IRoomMembership {
@@ -18,6 +19,7 @@ export class RoomSync {
         private purple: IPurpleInstance,
         private bridge: Bridge,
         private store: Store,
+        private deduplicator: Deduplicator,
     ) {
         this.accountRoomMemberships = new Map();
         this.purple.on("account-signed-on", this.onAccountSignedin.bind(this));
@@ -106,9 +108,11 @@ export class RoomSync {
             if (membership.membership === "join") {
                 log.debug(`${remoteId} is joining ${membership.room_name}`);
                 acct!.joinChat(membership.params);
+                this.deduplicator.incrementRoomUsers(membership.room_name);
             } else {
                 log.debug(`${remoteId} is leaving ${membership.room_name}`);
                 acct!.rejectChat(membership.params);
+                this.deduplicator.decrementRoomUsers(membership.room_name);
             }
             membership = reconnectStack.pop();
         }

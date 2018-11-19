@@ -132,11 +132,11 @@ class Program {
         await this.bridge.run(port, this.cfg);
         this.store = new Store(this.bridge);
         this.profileSync = new ProfileSync(this.bridge, this.cfg);
-        this.eventHandler = new MatrixEventHandler(this.purple, this.deduplicator);
+        this.eventHandler = new MatrixEventHandler(this.purple, this.store, this.deduplicator, this.config);
         this.roomHandler = new MatrixRoomHandler(
             this.purple, this.profileSync, this.store, this.cfg, this.deduplicator,
         );
-        this.roomSync = new RoomSync(this.purple, this.bridge, this.store);
+        this.roomSync = new RoomSync(this.purple, this.bridge, this.store, this.deduplicator);
         // TODO: Remove these eventually
         this.eventHandler.setBridge(this.bridge);
         this.roomHandler.setBridge(this.bridge);

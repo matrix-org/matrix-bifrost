@@ -22,15 +22,27 @@ export class Deduplicator {
     }
 
     private expectedMessages: string[];
+    private usersInRoom: {[roomName: string]: number};
 
     constructor() {
         this.expectedMessages = [];
+        this.usersInRoom = {};
+    }
+
+    public incrementRoomUsers(roomName: string) {
+        this.usersInRoom[roomName] = (this.usersInRoom[roomName] || 0) + 1;
+    }
+
+    public decrementRoomUsers(roomName: string) {
+        this.usersInRoom[roomName] = Math.max(0, (this.usersInRoom[roomName] || 0) - 1);
     }
 
     public insertMessage(roomName: string, sender: string, body: string) {
         const h = Deduplicator.hashMessage(roomName, sender, body);
         log.debug(`Inserted new hash for (${sender}/${roomName}/${body}):`, h);
-        this.expectedMessages.push(h);
+        for (let i = 0; i < this.usersInRoom[roomName]; i++) {
+            this.expectedMessages.push(h);
+        }
     }
 
     public checkAndRemove(roomName: string, sender: string, body: string) {
