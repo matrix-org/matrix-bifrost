@@ -1,7 +1,11 @@
 -- Expose a simple token based servlet to handle user registrations from web pages
 -- through Base64 encoded JSON.
 
+-- Updated for use with matrix-appservice-purple by removing some restrictions
+-- from the plugin like verifying an email address.
+
 -- Copyright (C) 2010 - 2013, Marco Cirillo (LW.Org)
+-- Copyright (C) 2018, New Vector Ltd
 
 local datamanager = require "util.datamanager";
 local usermanager = require "core.usermanager";
@@ -98,7 +102,7 @@ local function handle_req(event)
 
 	local req_body
 	-- We check that what we have is valid JSON wise else we throw an error...
-	if not pcall(function() req_body = json_decode(request.body) end) then
+	if not pcall(function() req_body = json_decode(request.body) end) or req_body == nil then
 		module:log("debug", "Data submitted for user registration by %s failed to Decode.", user)
 		return http_response(event, 400, "Decoding failed.")
 	else
@@ -110,7 +114,7 @@ local function handle_req(event)
 		end
 		-- Set up variables
 		local username, password, ip, mail, token = req_body.username, req_body.password, req_body.ip, req_body.mail, req_body.auth_token
-
+		local nick = req_body.nick
 		-- Check if user is an admin of said host
 		if token ~= auth_token then
 			module:log("warn", "%s tried to retrieve a registration token for %s@%s", request.ip, username, module.host)
@@ -172,12 +176,18 @@ local function handle_req(event)
 					module:log("info", "%s submitted a registration request", username)
 					local ok, error = usermanager.create_user(username, password, module.host)
 					if ok then
+						jid = username.."@"..module.host
+						if nick ~= nil then
+							local extra_data = {}
+							extra_data["nick"] = nick
+							datamanager.store(prepped_username, module.host, "account_details", extra_data)
+						end
 						module:fire_event(
 							"user-registered",
 							{ username = username, host = module.host, source = "mod_register_json", session = { ip = ip } }
 						)
 						module:log("info", "Account %s@%s is successfully verified and activated", username, module.host)
-						return http_response(event, 200, "Created!")
+						return jid
 					else
 						module:log("error", "User creation failed: "..error)
 						return http_response(event, 500, "Encountered server error while creating the user: "..error)
@@ -207,58 +217,6 @@ local function r_template(event, type)
 	else return http_response(event, 500, "Failed to obtain template.") end
 end
 
-local function handle_verify(event, path)
-	local request = event.request
-	local body = request.body
-	if secure and not request.secure then return nil end
-
-	local valid_files = {
-		["css/style.css"] = files_base.."css/style.css",
-		["images/tile.png"] = files_base.."images/tile.png",
-		["images/header.png"] = files_base.."images/header.png"
-	}
-
-	if request.method == "GET" then
-		if path == "" then
-			return r_template(event, "form")
-		end
-
-		if valid_files[path] then
-			local data = open_file(valid_files[path])
-			if data then return data
-			else return http_response(event, 404, "Not found.") end
-		end
-	elseif request.method == "POST" then
-		if path == "" then
-			if not body then return http_response(event, 400, "Bad Request.") end
-			local uuid = urldecode(body):match("^uuid=(.*)$")
-
-			if not pending[uuid] then
-				return r_template(event, "fail")
-			else
-				local username, password, ip =
-				      pending[uuid].node, pending[uuid].password, pending[uuid].ip
-
-				local ok, error = usermanager.create_user(username, password, module.host)
-				if ok then
-					module:fire_event(
-						"user-registered",
-						{ username = username, host = module.host, source = "mod_register_json", session = { ip = ip } }
-					)
-					module:log("info", "Account %s@%s is successfully verified and activated", username, module.host)
-					-- we shall not clean the user from the pending lists as long as registration doesn't succeed.
-					pending[uuid] = nil ; pending_node[username] = nil
-					return r_template(event, "success")
-				else
-					module:log("error", "User creation failed: "..error)
-					return http_response(event, 500, "Encountered server error while creating the user: "..error)
-				end
-			end
-		end
-	else
-		return http_response(event, 405, "Invalid method.")
-	end
-end
 
 local function handle_user_deletion(event)
 	local user, hostname = event.username, event.host
@@ -275,9 +233,7 @@ module:provides("http", {
 				GET = handle_req,
                 ["GET /"] = handle_req,
 				POST = handle_req,
-				["POST /"] = handle_req,
-				["GET /verify/*"] = handle_verify,
-				["POST /verify/*"] = handle_verify
+				["POST /"] = handle_req
         }
 })
 
