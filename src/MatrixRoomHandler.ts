@@ -3,7 +3,7 @@ import { PurpleInstance, PurpleProtocol } from "./purple/PurpleInstance";
 import { IPurpleInstance } from "./purple/IPurpleInstance";
 import { MROOM_TYPE_IM, MROOM_TYPE_GROUP } from "./StoreTypes";
 import { IBridgeContext, IAliasQuery, IAliasQueried } from "./MatrixTypes";
-import { IReceivedImMsg, IChatInvite, IAccountEvent } from "./purple/PurpleEvents";
+import { IReceivedImMsg, IChatInvite, IChatJoined } from "./purple/PurpleEvents";
 import { ProfileSync } from "./ProfileSync";
 import { Util } from "./Util";
 import { Account } from "node-purple";
@@ -14,14 +14,14 @@ import { Deduplicator } from "./Deduplicator";
 import { Config } from "./Config";
 const log = Logging.get("MatrixRoomHandler");
 
-const ACCOUNT_LOCK_MS = 4000;
+const ACCOUNT_LOCK_MS = 2000;
 
 /**
  * Handles creation and handling of rooms.
  */
 export class MatrixRoomHandler {
     private bridge: Bridge;
-    private accountLock: Set<string>;
+    private accountRoomLock: Set<string>;
     constructor(
         private purple: IPurpleInstance,
         private profileSync: ProfileSync,
@@ -29,13 +29,14 @@ export class MatrixRoomHandler {
         private config: Config,
         private deduplicator: Deduplicator,
     ) {
-        this.accountLock = new Set();
-        purple.on("account-signed-on", (ev: IAccountEvent) => {
-            const id = Util.createRemoteId(ev.account.protocol_id, ev.account.username);
-            this.accountLock.add(id);
+        this.accountRoomLock = new Set();
+        purple.on("chat-joined", (ev: IChatJoined) => {
+            let id = Util.createRemoteId(ev.account.protocol_id, ev.account.username);
+            id = `${id}/${ev.conv.name}`;
+            this.accountRoomLock.add(id);
             setTimeout(() => {
                 log.debug(`AccountLock unlocking ${id}`);
-                this.accountLock.delete(id);
+                this.accountRoomLock.delete(id);
             }, ACCOUNT_LOCK_MS);
         });
         purple.on("received-im-msg", this.handleIncomingIM.bind(this));
@@ -219,8 +220,9 @@ export class MatrixRoomHandler {
     }
 
     private async handleIncomingChatMsg(data: IReceivedImMsg) {
-        if (this.accountLock.has(
-            Util.createRemoteId(data.account.protocol_id, data.account.username))
+        const acctId = Util.createRemoteId(data.account.protocol_id, data.account.username);
+        if (this.accountRoomLock.has(
+            acctId + "/" + data.conv.name)
         ) {
             // This account has recently connected and about to flood the room with
             // messages. We're going to ignore them.

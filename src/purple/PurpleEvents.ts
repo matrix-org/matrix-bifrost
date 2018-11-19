@@ -27,3 +27,8 @@ export interface IChatInvite extends IAccountEvent {
     room_name: string;
     join_properties: IChatJoinProperties;
 }
+
+export interface IChatJoined extends IAccountEvent {
+    account: Account;
+    conv: Conversation;
+}
