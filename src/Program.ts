@@ -12,6 +12,7 @@ import { RoomSync } from "./RoomSync";
 import { Store } from "./Store";
 import { Deduplicator } from "./Deduplicator";
 import { Config, IBridgeBotAccount } from "./Config";
+import { Util } from "./Util";
 
 const log = Logging.get("Program");
 
@@ -148,6 +149,12 @@ class Program {
         });
         this.purple.on("account-connection-error", (ev: IAccountEvent) => {
             log.warn(`${ev.account.protocol_id}://${ev.account.username} had a connection error`, ev);
+        });
+        this.purple.on("account-signed-off", (ev: IAccountEvent) => {
+            log.info(`${ev.account.protocol_id}://${ev.account.username} signed off.`);
+            this.deduplicator.removeChosenOneFromAllRooms(
+                Util.createRemoteId(ev.account.protocol_id, ev.account.username),
+            );
         });
         await this.runBotAccounts(this.cfg.bridgeBot.accounts);
         // await this.startPurpleAccounts();

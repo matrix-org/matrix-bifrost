@@ -339,14 +339,16 @@ Say \`help\` for more commands.
             }
             return;
         }
+        const name = context.rooms.remote.get("room_name");
         log.info(`Sending ${membership} to`, context.rooms.remote.get("properties"));
         if (membership === "join") {
             acct.joinChat(context.rooms.remote.get("properties"));
-            this.deduplicator.incrementRoomUsers(context.rooms.remote.get("room_name"));
+            this.deduplicator.incrementRoomUsers(name);
         } else if (membership === "leave") {
             acct.rejectChat(context.rooms.remote.get("properties"));
+            this.deduplicator.removeChosenOne(name, acct.remoteId);
             // Only do this if it's NOT an invite.
-            this.deduplicator.decrementRoomUsers(context.rooms.remote.get("room_name"));
+            this.deduplicator.decrementRoomUsers(name);
         }
     }
 

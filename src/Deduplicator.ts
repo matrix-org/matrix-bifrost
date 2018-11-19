@@ -12,7 +12,8 @@
 
 import * as crypto from "crypto";
 import { Logging } from "matrix-appservice-bridge";
-const log = Logging.get("MatrixEventHandler");
+import { PurpleAccount } from "./purple/PurpleAccount";
+const log = Logging.get("Deduplicator");
 
 export class Deduplicator {
     public static hashMessage(roomName: string, sender: string, body: string): string {
@@ -23,10 +24,36 @@ export class Deduplicator {
 
     private expectedMessages: string[];
     private usersInRoom: {[roomName: string]: number};
+    private chosenOnes: Map<string, string>;
 
     constructor() {
         this.expectedMessages = [];
         this.usersInRoom = {};
+        this.chosenOnes = new Map();
+    }
+
+    public isTheChosenOneForRoom(roomName: string, remoteId: string) {
+        const one = this.chosenOnes.get(roomName);
+        if (one === undefined) {
+            log.info("Assigning a new chosen one for", roomName);
+            this.chosenOnes.set(roomName, remoteId);
+            return true;
+        }
+        return one === remoteId;
+    }
+
+    public removeChosenOne(roomName: string, remoteId: string) {
+        if (this.chosenOnes.get(roomName) === remoteId) {
+            this.chosenOnes.delete(roomName);
+        }
+    }
+
+    public removeChosenOneFromAllRooms(theone: string) {
+        this.chosenOnes.forEach((acct, key) => {
+            if (acct === theone) {
+                this.chosenOnes.delete(key);
+            }
+        });
     }
 
     public incrementRoomUsers(roomName: string) {

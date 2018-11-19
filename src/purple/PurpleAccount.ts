@@ -5,6 +5,7 @@
 import { helper, plugins, buddy, accounts, messaging, Buddy, Account, Conversation } from "node-purple";
 import { PurpleProtocol } from "./PurpleInstance";
 import { IChatJoinProperties } from "./PurpleEvents";
+import { Util } from "../Util";
 
 export class PurpleAccount {
     private acctData: Account | undefined;
@@ -12,6 +13,8 @@ export class PurpleAccount {
     constructor(private username: string, public readonly protocol: PurpleProtocol) {
         this.enabled = false;
     }
+
+    get remoteId(): string { return Util.createRemoteId(this.protocol.id, this.username); }
 
     get name(): string { return this.acctData!.username; }
 

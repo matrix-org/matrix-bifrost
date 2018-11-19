@@ -10,10 +10,10 @@ const PRPL_XMPP = "prpl-jabber";
  * carefully so that future folks can understand what is going on.
  */
 export class ProtoHacks {
-    public static removeSensitiveJoinProps(protocol: PurpleProtocol, props: any) {
+    public static removeSensitiveJoinProps(protocolId: string, props: any) {
         // XXX: We *don't* currently drop passwords to groups which leaves them
         // exposed in the room-store. Please be careful.
-        if (protocol.id === PRPL_XMPP) {
+        if (protocolId === PRPL_XMPP) {
             // Handles are like room nicks, so obviously don't store it.
             delete props.handle;
         }

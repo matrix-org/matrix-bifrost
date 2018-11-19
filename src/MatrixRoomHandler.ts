@@ -129,7 +129,7 @@ export class MatrixRoomHandler {
         // XXX: This is potentially fragile as we are basically doing a lookup via
         // a set of properties we hope will be unique.
         if (props) {
-            ProtoHacks.removeSensitiveJoinProps(new PurpleProtocol({id: data.account.protocol_id}), props);
+            ProtoHacks.removeSensitiveJoinProps(data.account.protocol_id, props);
         }
         // Delete a password, if given because we don't need to lookup/store it·
         let remoteData = {
@@ -235,7 +235,11 @@ export class MatrixRoomHandler {
                 log.debug("Dropping duplicate message");
                 return;
         }
-        this.deduplicator.insertMessage(data.conv.name, remoteId, data.message);
+
+        if (!this.deduplicator.isTheChosenOneForRoom(data.conv.name, acctId)) {
+            log.debug("Not the chosen one for this room. Not handling");
+            return;
+        }
         log.debug(`Handling incoming chat from ${data.sender} (${data.conv.name})`);
         // this.purple.getBuddyFromChat(data.conv, data.sender);
         // If multiple of our users are in this room, it may dupe up here.
