@@ -11,6 +11,7 @@ import { ProtoHacks } from "./ProtoHacks";
 import { Logging } from "matrix-appservice-bridge";
 import { Store } from "./Store";
 import { Deduplicator } from "./Deduplicator";
+import { Config } from "./Config";
 const log = Logging.get("MatrixRoomHandler");
 
 const ACCOUNT_LOCK_MS = 4000;
@@ -25,7 +26,7 @@ export class MatrixRoomHandler {
         private purple: IPurpleInstance,
         private profileSync: ProfileSync,
         private store: Store,
-        private config: any,
+        private config: Config,
         private deduplicator: Deduplicator,
     ) {
         this.accountLock = new Set();

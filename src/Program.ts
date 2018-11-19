@@ -11,6 +11,7 @@ import { IEventRequest } from "./MatrixTypes";
 import { RoomSync } from "./RoomSync";
 import { Store } from "./Store";
 import { Deduplicator } from "./Deduplicator";
+import { Config, IBridgeBotAccount } from "./Config";
 
 const log = Logging.get("Program");
 
@@ -55,7 +56,7 @@ class Program {
     private roomSync: RoomSync|undefined;
     private purple: IPurpleInstance;
     private store: Store|undefined;
-    private cfg: any;
+    private cfg: Config;
     private deduplicator: Deduplicator;
 
     constructor() {
@@ -68,6 +69,7 @@ class Program {
           generateRegistration: this.generateRegistration,
           run: this.runBridge.bind(this),
         });
+        this.cfg = new Config();
         this.purple = new PurpleInstance();
         this.deduplicator = new Deduplicator();
         // For testing w/o libpurple.
@@ -81,7 +83,7 @@ class Program {
         // }, 5000);
     }
 
-    public get config(): any {
+    public get config(): Config {
         return this.cfg;
     }
 
@@ -107,7 +109,7 @@ class Program {
 
     private async runBridge(port: number, config: any) {
         log.info("Starting purple bridge on port ", port);
-        this.cfg = config;
+        this.cfg.ApplyConfig(config);
         this.bridge = new Bridge({
           // clientFactory,
           controller: {
@@ -123,37 +125,37 @@ class Program {
             // We don't handle these just yet.
             // thirdPartyLookup: this.thirdpa.ThirdPartyLookup,
           },
-          domain: config.bridge.domain,
-          homeserverUrl: config.bridge.homeserverUrl,
+          domain: this.cfg.bridge.domain,
+          homeserverUrl: this.cfg.bridge.homeserverUrl,
           registration: "purple-registration.yaml",
         });
-        await this.bridge.run(port, config);
+        await this.bridge.run(port, this.cfg);
         this.store = new Store(this.bridge);
-        this.profileSync = new ProfileSync(this.bridge, config);
+        this.profileSync = new ProfileSync(this.bridge, this.cfg);
         this.eventHandler = new MatrixEventHandler(this.purple, this.deduplicator);
-        this.roomHandler = new MatrixRoomHandler(this.purple, this.profileSync, this.store, config, this.deduplicator);
+        this.roomHandler = new MatrixRoomHandler(
+            this.purple, this.profileSync, this.store, this.cfg, this.deduplicator,
+        );
         this.roomSync = new RoomSync(this.purple, this.bridge, this.store);
         // TODO: Remove these eventually
         this.eventHandler.setBridge(this.bridge);
         this.roomHandler.setBridge(this.bridge);
         log.info("Bridge has started.");
         await this.roomSync.sync();
-        await this.purple.start(config.purple || {});
+        await this.purple.start(this.cfg.purple);
         this.purple.on("account-signed-on", (ev: IAccountEvent) => {
             log.info(`${ev.account.protocol_id}://${ev.account.username} signed on`);
         });
         this.purple.on("account-connection-error", (ev: IAccountEvent) => {
             log.warn(`${ev.account.protocol_id}://${ev.account.username} had a connection error`, ev);
         });
-        if (config.bridgeBots) {
-            await this.runBotAccounts(config.bridgeBots.accounts);
-        }
+        await this.runBotAccounts(this.cfg.bridgeBot.accounts);
         // await this.startPurpleAccounts();
     }
 
-    private async runBotAccounts(accounts: any[]) {
+    private async runBotAccounts(accounts: IBridgeBotAccount[]) {
         // Fetch accounts from config
-        accounts.forEach((account: {name: string, protocol: string}) => {
+        accounts.forEach((account) => {
             const acct = this.purple.getAccount(account.name, account.protocol);
             if (!acct) {
                 log.error(

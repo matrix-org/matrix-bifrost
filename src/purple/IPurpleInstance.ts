@@ -2,15 +2,13 @@ import { PurpleProtocol } from "./PurpleInstance";
 import { PurpleAccount } from "./PurpleAccount";
 import { Event, Conversation } from "node-purple";
 import { IEventBody, IAccountEvent } from "./PurpleEvents";
+import { IConfigPurple } from "../Config";
 
-export interface IConfigArgs {
-    pluginDir: string;
-    enableDebug: boolean;
 }
 
 export interface IPurpleInstance {
     getBuddyFromChat(conv: Conversation, buddy: string): any;
-    start(config: IConfigArgs): Promise<void>;
+    start(config: IConfigPurple): Promise<void>;
     getAccount(username: string, protocolId: string): PurpleAccount|null;
     getProtocol(id: string);
     getProtocols(): PurpleProtocol[];
