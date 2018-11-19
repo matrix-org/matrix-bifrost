@@ -1,3 +1,5 @@
+import { IAutoRegStep } from "./AutoRegistration";
+
 export class Config {
 
     public readonly bridge: IConfigBridge = {
@@ -13,7 +15,7 @@ export class Config {
 
     public readonly autoRegistration: IConfigAutoReg = {
         enabled: false,
-        protocolSteps: {},
+        protocolSteps: undefined,
     };
 
     public readonly bridgeBot: IConfigBridgeBot = {
@@ -49,14 +51,7 @@ export interface IConfigPurple {
 
 export interface IConfigAutoReg {
     enabled: boolean;
-    protocolSteps: {[protocol: string]: IAutoRegStep};
-}
-
-export interface IAutoRegStep {
-    type: "http"|"executable";
-    path: string;
-    method: string|undefined;
-    parameters: {[key: string]: string}; // key -> parameter value
+    protocolSteps: {[protocol: string]: IAutoRegStep} | undefined;
 }
 
 export interface IConfigBridgeBot {

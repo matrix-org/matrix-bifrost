@@ -10,7 +10,7 @@ export interface IPurpleInstance {
     getBuddyFromChat(conv: Conversation, buddy: string): any;
     start(config: IConfigPurple): Promise<void>;
     getAccount(username: string, protocolId: string): PurpleAccount|null;
-    getProtocol(id: string);
+    getProtocol(id: string): PurpleProtocol|undefined;
     getProtocols(): PurpleProtocol[];
     findProtocol(nameOrId: string): PurpleProtocol|undefined;
     getNickForChat(conv: Conversation): string;

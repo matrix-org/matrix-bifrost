@@ -35,8 +35,8 @@ export class PurpleAccount {
         this.enabled = accounts.get_enabled(this.acctData.handle);
     }
 
-    public createNew() {
-        accounts.new(this.username, this.protocol.id);
+    public createNew(password?: string) {
+        accounts.new(this.username, this.protocol.id, password);
     }
 
     public setEnabled(enable: boolean) {
@@ -44,6 +44,7 @@ export class PurpleAccount {
             throw Error("No account is binded to this instance. Call findAccount()");
         }
         accounts.set_enabled(this.acctData!.handle, enable);
+        this.enabled = enable;
     }
 
     public sendIM(recipient: string, body: string) {

@@ -35,4 +35,16 @@ describe("Util", () => {
             ).to.equal("@_purple_protocol_=40fred=3abanana.com:example.com");
         });
     });
+    describe("passwordGen", () => {
+        it("should create a printable password", () => {
+            const passwd = Util.passwordGen(64);
+            expect(passwd.length).to.be.at.least(64);
+            for (const c of passwd) {
+                const i = c.charCodeAt(0);
+                if (i < 32 && i > 126) {
+                    throw Error("Password is not printable");
+                }
+            }
+        });
+    });
 });

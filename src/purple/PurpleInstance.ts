@@ -1,12 +1,11 @@
 import { EventEmitter } from "events";
 import { helper, plugins, messaging, Protocol, Conversation } from "node-purple";
 import { PurpleAccount } from "./PurpleAccount";
-import { IPurpleInstance, IConfigArgs } from "./IPurpleInstance";
+import { IPurpleInstance } from "./IPurpleInstance";
 import { Logging } from "matrix-appservice-bridge";
 import * as path from "path";
+import { IConfigPurple } from "../Config";
 const log = Logging.get("PurpleInstance");
-
-const EXPECTED_PURPLE_PLUGINS_DIR =  "./node_modules/node-purple/deps/libpurple/";
 
 export class PurpleProtocol {
     public readonly name: string;
@@ -31,9 +30,9 @@ export class PurpleInstance extends EventEmitter implements IPurpleInstance {
         this.accounts = new Map();
     }
 
-    public async start(config: IConfigArgs) {
+    public async start(config: IConfigPurple) {
         log.info("Starting purple instance");
-        const pluginDir = path.resolve(config.pluginDir || EXPECTED_PURPLE_PLUGINS_DIR);
+        const pluginDir = path.resolve(config.pluginDir);
         log.info("Plugin search path is set to ", pluginDir);
         helper.setupPurple({
             debugEnabled: config.enableDebug ? 1 : 0,
@@ -67,7 +66,7 @@ export class PurpleInstance extends EventEmitter implements IPurpleInstance {
         return acct;
     }
 
-    public getProtocol(id: string) {
+    public getProtocol(id: string): PurpleProtocol|undefined {
         return this.protocols.find((proto) => proto.id === id);
     }
 
@@ -76,7 +75,6 @@ export class PurpleInstance extends EventEmitter implements IPurpleInstance {
     }
 
     public findProtocol(nameOrId: string): PurpleProtocol|undefined {
-        nameOrId = nameOrId.toLowerCase();
         return this.getProtocols().find(
             (protocol) => protocol.name.toLowerCase() === nameOrId || protocol.id.toLowerCase() === nameOrId,
         );

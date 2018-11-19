@@ -8,6 +8,9 @@ import { PurpleAccount } from "./purple/PurpleAccount";
 import { Util } from "./Util";
 import { Logging } from "matrix-appservice-bridge";
 import { Deduplicator } from "./Deduplicator";
+import { AutoRegistration } from "./AutoRegistration";
+import { Config } from "./Config";
+import { Store } from "./Store";
 const log = Logging.get("MatrixEventHandler");
 
 const RETRY_JOIN_MS = 5000;
@@ -17,10 +20,13 @@ const RETRY_JOIN_MS = 5000;
  */
 export class MatrixEventHandler {
     private bridge: Bridge;
+    private autoReg!: AutoRegistration | null;
 
     constructor(
         private purple: IPurpleInstance,
+        private store: Store,
         private deduplicator: Deduplicator,
+        private config: Config,
     ) {
     }
 
@@ -31,6 +37,11 @@ export class MatrixEventHandler {
      */
     public setBridge(bridge: Bridge) {
         this.bridge = bridge;
+        if (this.config.autoRegistration.enabled && this.config.autoRegistration.protocolSteps !== undefined) {
+            this.autoReg = new AutoRegistration(this.config.autoRegistration, this.bridge, this.store, this.purple);
+        } else {
+            this.autoReg = null;
+        }
     }
 
     public async onEvent(request: IEventRequest, context: IBridgeContext) {
@@ -71,7 +82,7 @@ export class MatrixEventHandler {
                 return; // Don't really care about remote users
             }
             if (["join", "leave"].includes(event.content.membership)) {
-                this.handleJoinLeaveGroup(context, event);
+                await this.handleJoinLeaveGroup(context, event);
             }
         }
 
@@ -148,8 +159,6 @@ return `- ${account.protocol.name} (${username}) [Enabled=${account.isEnabled}] 
         } else if (args[0] === "accounts" && ["enable", "disable"].includes(args[1])) {
             try {
                 await this.handleEnableAccount(args[2], args[3], args[1] === "enable");
-                // Refresh our cache
-                this.purple.getAccount(args[3], args[2]);
             } catch (err) {
                 await intent.sendMessage(event.room_id, {
                     msgtype: "m.notice",
@@ -241,11 +250,7 @@ Say \`help\` for more commands.
         const account = new PurpleAccount(args[0], protocol);
         account.createNew();
         const userStore = this.bridge.getUserStore();
-        const mxUser = new MatrixUser(event.sender);
-        const remoteUser = new RemoteUser(Util.createRemoteId(protocol.name, args[0]));
-        remoteUser.set("protocolId", protocol.id);
-        remoteUser.set("username", args[0]);
-        await userStore.linkUsers(mxUser, remoteUser);
+        await this.store.storeUserAccount(event.sender, protocol, args[0]);
         await this.bridge.getIntent().sendMessage(event.room_id, {
             msgtype: "m.notice",
             body: "Created new account",
@@ -265,12 +270,7 @@ Say \`help\` for more commands.
             throw new Error("Protocol was not found");
         }
         const account = new PurpleAccount(name, protocol);
-        const userStore = this.bridge.getUserStore();
-        const mxUser = new MatrixUser(event.sender);
-        const remoteUser = new RemoteUser(Util.createRemoteId(protocol.id, name));
-        remoteUser.set("protocolId", protocol.id);
-        remoteUser.set("username", name);
-        await userStore.linkUsers(mxUser, remoteUser);
+        await this.store.storeUserAccount(event.sender, protocol, name);
         await this.bridge.getIntent().sendMessage(event.room_id, {
             msgtype: "m.notice",
             body: "Linked existing account",
@@ -291,20 +291,11 @@ Say \`help\` for more commands.
 
     private async handleImMessage(context: IBridgeContext, event: IEventRequestData) {
         log.info("Handling IM message");
-        const roomProtocol = context.rooms.remote.get("protocol_id");
-        const remoteUser = context.senders.remotes.find((remote) => remote.get("protocolId") === roomProtocol);
-        if (remoteUser == null) {
-            log.error("Could not find a purple account for this matrix user, we cannot handle this im!");
-            return;
-        }
-        // XXX: We assume the first remote, this needs to be fixed for multiple accounts
-        const acct = this.purple.getAccount(remoteUser.get("username"), roomProtocol);
-        if (!acct) {
-            log.error("Account wasn't found in libpurple, we cannot handle this im!");
-            return;
-        }
-        if (!acct.isEnabled) {
-            log.error("Account isn't enabled, we cannot handle this im!");
+        let acct: PurpleAccount;
+        try {
+            acct = (await this.getAccountForMxid(context, event)).acct;
+        } catch (ex) {
+            log.error(`Couldn't handle ${event.event_id}, ${ex}`);
             return;
         }
         log.info(`Sending IM to ${context.rooms.remote.get("recipient")}`);
@@ -312,23 +303,11 @@ Say \`help\` for more commands.
     }
 
     private async handleGroupMessage(context: IBridgeContext, event: IEventRequestData) {
-        log.info(`Handling group message for ${context.rooms.remote}`);
+        log.info(`Handling group message for ${event.room_id}`);
         const roomProtocol = context.rooms.remote.get("protocol_id");
-        const remoteUser = context.senders.remotes.find((remote) => remote.get("protocolId") === roomProtocol);
-        if (remoteUser == null) {
-            log.debug(`Using bot user because ${event.sender} is not puppeted`);
-            return;
-        }
-        const acct = this.purple.getAccount(remoteUser.get("username"), roomProtocol);
-        if (!acct) {
-            log.error("Account wasn't found in libpurple, we cannot handle this join/leave!");
-            return;
-        }
-        if (!acct.isEnabled) {
-            log.error("Account isn't enabled, we cannot handle this join/leave!");
-            return;
-        }
         try {
+            const {acct} = await this.getAccountForMxid(context, event);
+            log.info(`Got ${acct.name} for ${event.sender}`);
             const roomName = context.rooms.remote.get("room_name");
             const body = event.content.body;
             const conv = acct.getConversation(roomName);
@@ -343,31 +322,64 @@ Say \`help\` for more commands.
         }
     }
 
-    private handleJoinLeaveGroup(context: IBridgeContext, event: IEventRequestData) {
+    private async handleJoinLeaveGroup(context: IBridgeContext, event: IEventRequestData) {
         // XXX: We are assuming here that the previous state was invite.
         const membership = event.content.membership;
         log.info(`Handling group ${event.sender} ${membership}`);
-        const roomProtocol = context.rooms.remote.get("protocol_id");
-        const remoteUser = context.senders.remotes.find((remote) => remote.get("protocolId") === roomProtocol);
-        if (remoteUser == null) {
-            log.error("Could not find a purple account for this matrix user, we cannot handle this im!");
-            return;
-        }
-        // XXX: We assume the first remote, this needs to be fixed for multiple accounts
-        const acct = this.purple.getAccount(remoteUser.get("username"), roomProtocol);
-        if (!acct) {
-            log.error("Account wasn't found in libpurple, we cannot handle this join/leave!");
-            return;
-        }
-        if (!acct.isEnabled) {
-            log.error("Account isn't enabled, we cannot handle this join/leave!");
+        let acct: PurpleAccount;
+        try {
+            acct = (await this.getAccountForMxid(context, event)).acct;
+        } catch (ex) {
+            log.error("Failed to handle join/leave:", ex);
+            // Kick em if we cannot join em.
+            if (membership === "join") {
+                await this.bridge.getIntent().kick(
+                    event.room_id, event.sender, "Could not find a compatible purple account.",
+                );
+            }
             return;
         }
         log.info(`Sending ${membership} to`, context.rooms.remote.get("properties"));
         if (membership === "join") {
             acct.joinChat(context.rooms.remote.get("properties"));
+            this.deduplicator.incrementRoomUsers(context.rooms.remote.get("room_name"));
         } else if (membership === "leave") {
             acct.rejectChat(context.rooms.remote.get("properties"));
+            // Only do this if it's NOT an invite.
+            this.deduplicator.decrementRoomUsers(context.rooms.remote.get("room_name"));
         }
+    }
+
+    private async getAccountForMxid(
+        context: IBridgeContext, event: IEventRequestData): Promise<{acct: PurpleAccount, newAcct: boolean}> {
+        const roomProtocol = context.rooms.remote.get("protocol_id");
+        let remoteUser = context.senders.remotes.find((remote) => remote.get("protocolId") === roomProtocol);
+        let newAcct = false;
+        if (remoteUser == null) {
+            log.info(`Account not found for ${event.sender}`);
+            if (!this.autoReg) {
+                throw Error("Autoregistration of accounts not supported");
+            }
+            if (!this.autoReg.isSupported(roomProtocol)) {
+                throw Error(`${roomProtocol} cannot be autoregistered`);
+            }
+            await this.autoReg.registerUser(roomProtocol, event.sender);
+            remoteUser = context.senders.remotes.find((remote) => remote.get("protocolId") === roomProtocol);
+            if (remoteUser == null) {
+                throw Error(`Autoregistered user didn't turn up in the store. Cannot continue`);
+            }
+            newAcct = true;
+        }
+        // XXX: We assume the first remote, this needs to be fixed for multiple accounts
+        const acct = this.purple.getAccount(remoteUser.get("username"), roomProtocol);
+        if (!acct) {
+            log.error("Account wasn't found in libpurple, we cannot handle this im!");
+            throw new Error("Account not found");
+        }
+        if (!acct.isEnabled) {
+            log.error("Account isn't enabled, we cannot handle this im!");
+            throw new Error("Account not enabled");
+        }
+        return {acct, newAcct};
     }
 }
