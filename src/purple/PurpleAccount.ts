@@ -2,16 +2,18 @@
  * An interface for storing account data inside the userstore.
  */
 
-import { helper, plugins, buddy, accounts, messaging, Buddy, Account, Conversation } from "node-purple";
+import { helper, plugins, buddy, accounts, messaging, Buddy, Account, Conversation, notify } from "node-purple";
 import { PurpleProtocol } from "./PurpleInstance";
-import { IChatJoinProperties } from "./PurpleEvents";
+import { IChatJoinProperties, IUserInfo } from "./PurpleEvents";
 import { Util } from "../Util";
 
 export class PurpleAccount {
     private acctData: Account | undefined;
     private enabled: boolean;
+    private userAccountInfoPromises: Map<string, () => any>;
     constructor(private username: string, public readonly protocol: PurpleProtocol) {
         this.enabled = false;
+        this.userAccountInfoPromises = new Map();
     }
 
     get remoteId(): string { return Util.createRemoteId(this.protocol.id, this.username); }
@@ -81,6 +83,24 @@ export class PurpleAccount {
 
     public getConversation(name: string): Conversation {
         return messaging.findConversation(this.handle, name);
+    }
+
+    public passUserInfoResponse(uinfo: IUserInfo) {
+        const resolve = this.userAccountInfoPromises.get(uinfo.who);
+        if (resolve) {
+            resolve()(uinfo);
+        }
+    }
+
+    public getUserInfo(who: string): Promise<IUserInfo> {
+        notify.get_user_info(this.handle, who);
+        return new Promise ((resolve, reject) => {
+            const id = setTimeout(reject, 10000);
+            this.userAccountInfoPromises.set(who, () => {
+                clearTimeout(id);
+                return resolve;
+            });
+        });
     }
 
     // connect() {

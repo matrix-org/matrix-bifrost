@@ -32,3 +32,9 @@ export interface IChatJoined extends IAccountEvent {
     account: Account;
     conv: Conversation;
 }
+
+export interface IUserInfo extends IAccountEvent {
+    [key: string]: string|Account;
+    account: Account;
+    who: string;
+}

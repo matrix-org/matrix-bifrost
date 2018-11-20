@@ -14,7 +14,7 @@ import { Deduplicator } from "./Deduplicator";
 import { Config } from "./Config";
 const log = Logging.get("MatrixRoomHandler");
 
-const ACCOUNT_LOCK_MS = 2000;
+const ACCOUNT_LOCK_MS = 1000;
 
 /**
  * Handles creation and handling of rooms.
@@ -211,7 +211,6 @@ export class MatrixRoomHandler {
         await this.profileSync.updateProfile(protocol, data.sender,
             account,
         );
-
         log.debug(`Sending message to ${roomId} as ${senderMatrixUser.getId()}`);
         await intent.sendMessage(roomId, {
             msgtype: "m.text",
@@ -256,6 +255,14 @@ export class MatrixRoomHandler {
             this.config.bridge.domain,
             this.config.bridge.userPrefix,
             true,
+        );
+        const account = this.purple.getAccount(data.account.username, data.account.protocol_id)!;
+        await this.profileSync.updateProfile(
+            protocol,
+            data.sender,
+            account,
+            false,
+            ProtoHacks.getSenderIdToLookup(protocol, data.sender, data.conv.name),
         );
         const intent = this.bridge.getIntent(senderMatrixUser.getId());
         let roomId;

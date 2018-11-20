@@ -5,6 +5,7 @@ import { IPurpleInstance } from "./IPurpleInstance";
 import { Logging } from "matrix-appservice-bridge";
 import * as path from "path";
 import { IConfigPurple } from "../Config";
+import { IUserInfo } from "./PurpleEvents";
 const log = Logging.get("PurpleInstance");
 
 export class PurpleProtocol {
@@ -88,10 +89,19 @@ export class PurpleInstance extends EventEmitter implements IPurpleInstance {
         return messaging.getNickForChat(conv.handle);
     }
 
-    public eventHandler() {
+    private eventHandler() {
         helper.pollEvents().forEach((evt) => {
             log.debug(`Got ${evt.eventName} from purple`);
             this.emit(evt.eventName, evt);
+            if (evt.eventName === "user-info-response") {
+                const uinfo = evt as IUserInfo;
+                const pAccount = this.accounts.get(`${uinfo.account.protocol_id}://${uinfo.account.username}`);
+                if (pAccount) {
+                    pAccount.passUserInfoResponse(uinfo);
+                } else {
+                    log.warn("No account found for response");
+                }
+            }
         });
     }
 }

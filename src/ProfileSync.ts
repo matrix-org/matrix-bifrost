@@ -31,46 +31,67 @@ export class ProfileSync {
         senderId: string,
         account: PurpleAccount,
         force: boolean = false,
+        senderIdToLookup?: string
     ) {
+        senderIdToLookup = senderIdToLookup ? senderIdToLookup : senderId;
         const store = this.bridge.getUserStore();
         const [matrixUser, remoteUser] = await this.getOrCreateStoreUsers(protocol, senderId);
-
         const lastCheck = matrixUser.get("last_check");
         matrixUser.set("last_check", Date.now());
         if (!force &&
             lastCheck != null && (Date.now() - lastCheck) < CHECK_PROFILE_INTERVAL_MS) {
                 return; // Don't need to check.
         }
+        const remoteProfileSet:
+        {
+            nick: string|undefined,
+            name: string|undefined,
+            icon_path: string|undefined
+        } = {
+            nick: undefined,
+            name: undefined,
+            icon_path: undefined,
+        };
         const buddy = account.getBuddy(remoteUser.get("username"));
         if (buddy === undefined) {
-            log.warn(`${remoteUser.getId()} was not found in ${account.name}'s buddy list`);
-            return;
+            try {
+                log.info("Fetching user info for", senderIdToLookup);
+                const uinfo = await account.getUserInfo(senderIdToLookup);
+                remoteProfileSet.nick = uinfo.Nickname as string;
+                remoteProfileSet.name = uinfo["Full Name"] as string;
+            } catch (ex) {
+                log.info("Couldn't fetch user info for ", remoteUser.get("username"));
+            }
+        } else {
+            remoteProfileSet.name = buddy.name;
+            remoteProfileSet.nick = buddy.nick;
+            remoteProfileSet.icon_path = buddy.icon_path;
         }
 
         const intent = this.bridge.getIntent(matrixUser.getId());
 
-        if (buddy.nick && matrixUser.get("displayname") !== buddy.nick) {
-            await intent.setDisplayName(buddy.nick);
-            matrixUser.set("displayname", buddy.nick);
-        } else if (!matrixUser.get("displayname") && buddy.name) {
+        if (remoteProfileSet.nick && matrixUser.get("displayname") !== remoteProfileSet.nick) {
+            await intent.setDisplayName(remoteProfileSet.nick);
+            matrixUser.set("displayname", remoteProfileSet.nick);
+        } else if (!matrixUser.get("displayname") && remoteProfileSet.name) {
             // Don't ever set the name (ugly) over the nick unless we have never set it.
             // Nicks come and go depending on the libpurple cache and whether the user
             // is online (in XMPPs case at least).
-            await intent.setDisplayName(buddy.name);
-            matrixUser.set("displayname", buddy.name);
+            await intent.setDisplayName(remoteProfileSet.name);
+            matrixUser.set("displayname", remoteProfileSet.name);
         }
 
-        if (buddy.icon_path && matrixUser.get("avatar_url") !== buddy.icon_path) {
+        if (remoteProfileSet.icon_path && matrixUser.get("avatar_url") !== remoteProfileSet.icon_path) {
             try {
-                const file = await fs.readFile(buddy.icon_path);
+                const file = await fs.readFile(remoteProfileSet.icon_path);
                 const mxcUrl = await intent.getClient().uploadContent(file, {
-                    name: path.basename(buddy.icon_path),
+                    name: path.basename(remoteProfileSet.icon_path),
                     type: "image/jpeg", // XXX: This is what pidgin usually outputs
                     rawResponse: false,
                     onlyContentUri: true,
                 });
                 await intent.setAvatarUrl(mxcUrl);
-                matrixUser.set("avatar_url", buddy.icon_path);
+                matrixUser.set("avatar_url", remoteProfileSet.icon_path);
             } catch (e) {
                 log.error("Failed to update avatar_url for user:", e);
             }
