@@ -27,6 +27,14 @@ export class ProtoHacks {
         return invite.room_name;
     }
 
+    public static getSenderIdToLookup(protocol: PurpleProtocol, senderId: string, chatName: string) {
+        // If this is an XMPP MUC, we want to append the chatname to the user.
+        if (protocol.id === PRPL_XMPP && chatName) {
+            return `${chatName}/${senderId}`;
+        }
+        return senderId;
+    }
+
     public static getSenderId(protocol: PurpleProtocol, senderId: string, isGroupChat: boolean): string {
         // if (protocol.id === PRPL_XMPP && !isGroupChat) {
         //     // XXX: XMPP senders have a / host appended to them. if it's a group
