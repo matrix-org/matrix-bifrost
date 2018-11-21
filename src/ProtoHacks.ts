@@ -1,5 +1,8 @@
 import { IChatInvite } from "./purple/PurpleEvents";
 import { PurpleProtocol } from "./purple/PurpleInstance";
+import { Intent } from "matrix-appservice-bridge";
+import { Logging } from "matrix-appservice-bridge";
+const log = Logging.get("ProtoHacks");
 
 const PRPL_MATRIX = "prpl-matrix";
 const PRPL_XMPP = "prpl-jabber";
@@ -10,6 +13,21 @@ const PRPL_XMPP = "prpl-jabber";
  * carefully so that future folks can understand what is going on.
  */
 export class ProtoHacks {
+
+    public static async addJoinProps(protocolId: string, props: any, userId: string, intent: Intent) {
+        // When joining XMPP rooms, we should set a handle so pull off one from the users
+        // profile.
+        if (protocolId === PRPL_XMPP) {
+            try {
+                props.handle = (await intent.getProfileInfo(userId)).displayname;
+                log.debug("HANDLE", props);
+            } catch (ex) {
+                log.warn("Failed to get profile for", userId, ex);
+                props.handle = userId;
+            }
+        }
+    }
+
     public static removeSensitiveJoinProps(protocolId: string, props: any) {
         // XXX: We *don't* currently drop passwords to groups which leaves them
         // exposed in the room-store. Please be careful.

@@ -5,6 +5,7 @@ import { Store } from "./Store";
 import { MROOM_TYPE_GROUP, IRoomEntry } from "./StoreTypes";
 import { Util } from "./Util";
 import { Deduplicator } from "./Deduplicator";
+import { ProtoHacks } from "./ProtoHacks";
 const log = Logging.get("RoomSync");
 
 interface IRoomMembership {
@@ -76,9 +77,11 @@ export class RoomSync {
                 const remoteUser = remotes[0];
                 const acctMemberList = this.accountRoomMemberships.get(remoteUser.getId()) || [];
                 log.info(`${remoteUser.getId()} will join ${room.remote.get("room_name")} on connection`);
+                const props = Object.assign({}, room.remote.get("properties"));
+                await ProtoHacks.addJoinProps(room.remote.get("protocol_id"), props, userId, this.bridge.getIntent());
                 acctMemberList.push({
                     room_name: room.remote.get("room_name"),
-                    params: room.remote.get("properties"),
+                    params: props,
                     membership: "join",
                 });
                 this.accountRoomMemberships.set(remoteUser.getId(), acctMemberList);
