@@ -64,16 +64,23 @@ export class AutoRegistration {
         const mxIdParts = mxId.substr(1).split(":");
         log.debug("HttpReg: Fetching user profile");
         const intent = this.bridge.getIntent();
-        const profile = await intent.getProfileInfo(mxId);
-        if (profile.avatar_url) {
-            profile.avatar_url = intent.getClient().mxcUrlToHttp(profile.avatar_url, 128, 128, "crop");
+        let profile: any = {};
+        try {
+            profile = await intent.getProfileInfo(mxId);
+            if (profile.avatar_url) {
+                profile.avatar_url = intent.getClient().mxcUrlToHttp(profile.avatar_url, 128, 128, "crop");
+            }
+        } catch (ex) {
+            // Appservice bots don't usually have profiles.
+            log.warn("Could not get profile for ", ex);
         }
+
         log.debug("HttpReg: Got profile", profile);
         for (const key of Object.keys(step.parameters)) {
             let val = step.parameters[key];
             val = val.replace("<T_MXID>", mxId);
             val = val.replace("<T_LOCALPART>", mxIdParts[0]);
-            val = val.replace("<T_DISPLAYNAME>", profile.displayname || "");
+            val = val.replace("<T_DISPLAYNAME>", profile.displayname || mxIdParts[0]);
             val = val.replace("<T_GENERATEPWD>", Util.passwordGen(32));
             val = val.replace("<T_AVATAR>", profile.avatar_url || "");
             body[key] = val;
