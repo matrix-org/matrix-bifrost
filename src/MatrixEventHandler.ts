@@ -12,6 +12,7 @@ import { AutoRegistration } from "./AutoRegistration";
 import { Config } from "./Config";
 import { Store } from "./Store";
 import { IAccountEvent, IChatJoinProperties } from "./purple/PurpleEvents";
+import { ProtoHacks } from "./ProtoHacks";
 const log = Logging.get("MatrixEventHandler");
 
 const RETRY_JOIN_MS = 5000;
@@ -343,7 +344,9 @@ Say \`help\` for more commands.
         const name = context.rooms.remote.get("room_name");
         log.info(`Sending ${membership} to`, context.rooms.remote.get("properties"));
         if (membership === "join") {
-            this.joinOrDefer(acct, name, context.rooms.remote.get("properties"));
+            const props = Object.assign({}, context.rooms.remote.get("properties"));
+            await ProtoHacks.addJoinProps(acct.protocol.id, props, event.sender, this.bridge.getIntent());
+            this.joinOrDefer(acct, name, props);
         } else if (membership === "leave") {
             acct.rejectChat(context.rooms.remote.get("properties"));
             this.deduplicator.removeChosenOne(name, acct.remoteId);
