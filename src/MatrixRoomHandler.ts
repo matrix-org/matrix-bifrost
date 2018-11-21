@@ -3,7 +3,7 @@ import { PurpleInstance, PurpleProtocol } from "./purple/PurpleInstance";
 import { IPurpleInstance } from "./purple/IPurpleInstance";
 import { MROOM_TYPE_IM, MROOM_TYPE_GROUP } from "./StoreTypes";
 import { IBridgeContext, IAliasQuery, IAliasQueried } from "./MatrixTypes";
-import { IReceivedImMsg, IChatInvite, IChatJoined } from "./purple/PurpleEvents";
+import { IReceivedImMsg, IChatInvite, IChatJoined, IConversationEvent } from "./purple/PurpleEvents";
 import { ProfileSync } from "./ProfileSync";
 import { Util } from "./Util";
 import { Account } from "node-purple";
@@ -30,14 +30,20 @@ export class MatrixRoomHandler {
         private deduplicator: Deduplicator,
     ) {
         this.accountRoomLock = new Set();
-        purple.on("chat-joined", (ev: IChatJoined) => {
-            let id = Util.createRemoteId(ev.account.protocol_id, ev.account.username);
-            id = `${id}/${ev.conv.name}`;
-            this.accountRoomLock.add(id);
-            setTimeout(() => {
-                log.debug(`AccountLock unlocking ${id}`);
-                this.accountRoomLock.delete(id);
-            }, ACCOUNT_LOCK_MS);
+        purple.on("chat-joined", this.onChatJoined.bind(this));
+        purple.on("chat-joined-new", async (ev: IChatJoined) => {
+            const matrixUser = await this.store.getMatrixUserForAccount(ev.account);
+            if (!matrixUser) {
+                log.warn("Got a joined chat for an account not tied to a matrix user. WTF?");
+                return;
+            }
+            const intent = this.bridge.getIntent();
+            const roomId = await this.createOrGetGroupChatRoom(ev, intent);
+            const memberlist = Object.keys((await this.bridge.getBot().getJoinedMembers(roomId)));
+            if (!memberlist.includes(matrixUser.getId())) {
+                log.debug(`Invited ${matrixUser.getId()} to a chat they tried to join`);
+                await intent.invite(roomId, matrixUser.getId());
+            }
         });
         purple.on("received-im-msg", this.handleIncomingIM.bind(this));
         purple.on("received-chat-msg", this.handleIncomingChatMsg.bind(this));
@@ -59,6 +65,17 @@ export class MatrixRoomHandler {
 
     public onAliasQueried(request: IAliasQueried, context: IBridgeContext) {
         log.debug(`onAliasQueried:`, request);
+    }
+
+    public async onChatJoined(ev: IConversationEvent) {
+        this.deduplicator.incrementRoomUsers(ev.conv.name);
+        let id = Util.createRemoteId(ev.account.protocol_id, ev.account.username);
+        id = `${id}/${ev.conv.name}`;
+        this.accountRoomLock.add(id);
+        setTimeout(() => {
+            log.debug(`AccountLock unlocking ${id}`);
+            this.accountRoomLock.delete(id);
+        }, ACCOUNT_LOCK_MS);
     }
 
     private async createOrGetIMRoom(data: IReceivedImMsg, matrixUser: MatrixUser, intent: Intent) {
@@ -114,7 +131,7 @@ export class MatrixRoomHandler {
     }
 
     private async createOrGetGroupChatRoom(
-        data: IReceivedImMsg|IChatInvite,
+        data: IConversationEvent|IChatInvite|IChatJoined,
         intent: Intent,
     ) {
         // Check to see if we have a room for this IM.
@@ -144,7 +161,7 @@ export class MatrixRoomHandler {
             remoteData = {
                 protocol_id: data.account.protocol_id,
                 room_name: roomName,
-                properties: props, // for joining
+                properties: ProtoHacks.sanitizeProperties(props), // for joining
             } as any;
             log.info(`Couldn't find room for ${roomName}. Creating a new one`);
             const res = await intent.createRoom({

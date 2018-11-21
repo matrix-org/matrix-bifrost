@@ -5,7 +5,7 @@ import { IPurpleInstance } from "./IPurpleInstance";
 import { Logging } from "matrix-appservice-bridge";
 import * as path from "path";
 import { IConfigPurple } from "../Config";
-import { IUserInfo } from "./PurpleEvents";
+import { IUserInfo, IConversationEvent } from "./PurpleEvents";
 const log = Logging.get("PurpleInstance");
 
 export class PurpleProtocol {
@@ -92,6 +92,18 @@ export class PurpleInstance extends EventEmitter implements IPurpleInstance {
     private eventHandler() {
         helper.pollEvents().forEach((evt) => {
             log.debug(`Got ${evt.eventName} from purple`);
+            if (evt.eventName === "chat-joined") {
+                const chatJoined = evt as IConversationEvent;
+                const purpleAccount = this.getAccount(chatJoined.account.username, chatJoined.account.protocol_id);
+                if (purpleAccount) {
+                    if (purpleAccount._waitingJoinRoomProps) {
+                        // tslint:disable-next-line
+                        const join_properties = purpleAccount._waitingJoinRoomProps;
+                        this.emit("chat-joined-new", Object.assign(evt, {purpleAccount, join_properties}));
+                    }
+                }
+            }
+
             this.emit(evt.eventName, evt);
             if (evt.eventName === "user-info-response") {
                 const uinfo = evt as IUserInfo;

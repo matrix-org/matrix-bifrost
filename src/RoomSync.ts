@@ -77,7 +77,7 @@ export class RoomSync {
                 const remoteUser = remotes[0];
                 const acctMemberList = this.accountRoomMemberships.get(remoteUser.getId()) || [];
                 log.info(`${remoteUser.getId()} will join ${room.remote.get("room_name")} on connection`);
-                const props = Object.assign({}, room.remote.get("properties"));
+                const props = ProtoHacks.desanitizeProperties(Object.assign({}, room.remote.get("properties")));
                 await ProtoHacks.addJoinProps(room.remote.get("protocol_id"), props, userId, this.bridge.getIntent());
                 acctMemberList.push({
                     room_name: room.remote.get("room_name"),
@@ -111,7 +111,7 @@ export class RoomSync {
             if (membership.membership === "join") {
                 log.debug(`${remoteId} is joining ${membership.room_name}`);
                 acct!.joinChat(membership.params);
-                this.deduplicator.incrementRoomUsers(membership.room_name);
+                acct!.setJoinPropertiesForRoom(membership.room_name, membership.params);
             } else {
                 log.debug(`${remoteId} is leaving ${membership.room_name}`);
                 acct!.rejectChat(membership.params);

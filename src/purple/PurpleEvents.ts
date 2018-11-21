@@ -14,11 +14,15 @@ export interface IAccountEvent extends IEventBody {
     account: Account;
 }
 
+
+export interface IConversationEvent extends IAccountEvent {
+    conv: Conversation;
+}
+
  // received-im-msg
-export interface IReceivedImMsg extends IAccountEvent {
+export interface IReceivedImMsg extends IConversationEvent {
     sender: string;
     message: string;
-    conv: Conversation;
 }
 
 export interface IChatInvite extends IAccountEvent {
@@ -28,9 +32,9 @@ export interface IChatInvite extends IAccountEvent {
     join_properties: IChatJoinProperties;
 }
 
-export interface IChatJoined extends IAccountEvent {
-    account: Account;
-    conv: Conversation;
+export interface IChatJoined extends IConversationEvent {
+    purpleAccount: PurpleAccount;
+    join_properties: IChatJoinProperties;
 }
 
 export interface IUserInfo extends IAccountEvent {

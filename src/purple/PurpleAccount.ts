@@ -7,14 +7,25 @@ import { PurpleProtocol } from "./PurpleInstance";
 import { IChatJoinProperties, IUserInfo } from "./PurpleEvents";
 import { Util } from "../Util";
 
+export interface IChatJoinOptions {
+    identifier: string;
+    label: string;
+    required: boolean;
+}
+
 export class PurpleAccount {
     private acctData: Account | undefined;
     private enabled: boolean;
+    private waitingJoinRoomProperties: IChatJoinProperties | undefined;
+    private joinPropertiesForRooms: Map<string, IChatJoinProperties>;
     private userAccountInfoPromises: Map<string, () => any>;
     constructor(private username: string, public readonly protocol: PurpleProtocol) {
         this.enabled = false;
         this.userAccountInfoPromises = new Map();
+        this.joinPropertiesForRooms = new Map();
     }
+
+    get _waitingJoinRoomProps(): IChatJoinProperties|undefined { return this.waitingJoinRoomProperties; }
 
     get remoteId(): string { return Util.createRemoteId(this.protocol.id, this.username); }
 
@@ -73,7 +84,22 @@ export class PurpleAccount {
         return buddy.find(this.acctData!.handle, user);
     }
 
+    public getJoinPropertyForRoom(roomName: string, key: string): string|undefined {
+        const props = this.joinPropertiesForRooms.get(roomName);
+        if (props) {
+            return props[key];
+        }
+    }
+
+    public setJoinPropertiesForRoom(roomName: string, props: IChatJoinProperties) {
+        // We kinda need to know the join properties for things like XMPP's handle.
+        this.joinPropertiesForRooms.set(roomName, props);
+    }
+
     public joinChat(components: IChatJoinProperties) {
+        // XXX: This is extremely bad, but there isn't a way to map "join_properties" of a join
+        // room request to the joined-room event, which throws us off quite badly.
+        this.waitingJoinRoomProperties = components;
         messaging.joinChat(this.handle, components);
     }
 
@@ -90,6 +116,10 @@ export class PurpleAccount {
         if (resolve) {
             resolve()(uinfo);
         }
+    }
+
+    public getChatParamsForProtocol(protocol: PurpleProtocol): IChatJoinOptions[] {
+        return messaging.chatParams(this.handle, protocol.id);
     }
 
     public getUserInfo(who: string): Promise<IUserInfo> {
