@@ -57,17 +57,20 @@ export class Deduplicator {
     }
 
     public incrementRoomUsers(roomName: string) {
+        log.debug("adding a user to ", roomName);
         this.usersInRoom[roomName] = (this.usersInRoom[roomName] || 0) + 1;
     }
 
     public decrementRoomUsers(roomName: string) {
+        log.debug("removing a user from ", roomName);
         this.usersInRoom[roomName] = Math.max(0, (this.usersInRoom[roomName] || 0) - 1);
     }
 
     public insertMessage(roomName: string, sender: string, body: string) {
         const h = Deduplicator.hashMessage(roomName, sender, body);
-        log.debug(`Inserted new hash for (${sender}/${roomName}/${body}):`, h);
-        for (let i = 0; i < this.usersInRoom[roomName]; i++) {
+        const toAdd = this.usersInRoom[roomName];
+        log.debug(`Inserted ${toAdd} hash(es) for (${sender}/${roomName}/${body}):`, h);
+        for (let i = 0; i < toAdd; i++) {
             this.expectedMessages.push(h);
         }
     }
