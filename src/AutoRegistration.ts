@@ -33,7 +33,7 @@ export class AutoRegistration {
         return Object.keys(this.autoRegConfig.protocolSteps!).includes(protocol);
     }
 
-    public async registerUser(protocol: string, mxId: string) {
+    public async registerUser(protocol: string, mxId: string): Promise<PurpleAccount> {
         if (!this.isSupported(protocol)) {
             throw new Error("Protocol unsupported");
         }
@@ -54,6 +54,7 @@ export class AutoRegistration {
         acct.setEnabled(true);
         log.debug(`Storing account in bridge store`);
         await this.store.storeUserAccount(mxId, proto, res.username);
+        return acct;
     }
 
     private async handleHttpRegistration(mxId: string, step: IAutoRegStep) {

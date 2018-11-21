@@ -11,6 +11,7 @@ import { Deduplicator } from "./Deduplicator";
 import { AutoRegistration } from "./AutoRegistration";
 import { Config } from "./Config";
 import { Store } from "./Store";
+import { IAccountEvent, IChatJoinProperties } from "./purple/PurpleEvents";
 const log = Logging.get("MatrixEventHandler");
 
 const RETRY_JOIN_MS = 5000;
@@ -342,8 +343,7 @@ Say \`help\` for more commands.
         const name = context.rooms.remote.get("room_name");
         log.info(`Sending ${membership} to`, context.rooms.remote.get("properties"));
         if (membership === "join") {
-            acct.joinChat(context.rooms.remote.get("properties"));
-            this.deduplicator.incrementRoomUsers(name);
+            this.joinOrDefer(acct, name, context.rooms.remote.get("properties"));
         } else if (membership === "leave") {
             acct.rejectChat(context.rooms.remote.get("properties"));
             this.deduplicator.removeChosenOne(name, acct.remoteId);
@@ -352,11 +352,30 @@ Say \`help\` for more commands.
         }
     }
 
+    private joinOrDefer(acct: PurpleAccount, name: string, properties: IChatJoinProperties) {
+        if (!acct.connected) {
+            log.debug("Account is not connected, deferring join until connected");
+            let cb;
+            cb = (joinEvent: IAccountEvent) => {
+                if (joinEvent.account.username === acct.name &&
+                    acct.protocol.id === joinEvent.account.protocol_id) {
+                    log.debug("Account signed in, joining room");
+                    acct.joinChat(properties);
+                    this.deduplicator.incrementRoomUsers(name);
+                    this.purple.removeListener("account-signed-on", cb);
+                }
+            };
+            this.purple.on("account-signed-on", cb);
+        } else {
+            acct.joinChat(properties);
+            this.deduplicator.incrementRoomUsers(name);
+        }
+    }
+
     private async getAccountForMxid(
         context: IBridgeContext, event: IEventRequestData): Promise<{acct: PurpleAccount, newAcct: boolean}> {
         const roomProtocol = context.rooms.remote.get("protocol_id");
-        let remoteUser = context.senders.remotes.find((remote) => remote.get("protocolId") === roomProtocol);
-        let newAcct = false;
+        const remoteUser = context.senders.remotes.find((remote) => remote.get("protocolId") === roomProtocol);
         if (remoteUser == null) {
             log.info(`Account not found for ${event.sender}`);
             if (!this.autoReg) {
@@ -365,12 +384,10 @@ Say \`help\` for more commands.
             if (!this.autoReg.isSupported(roomProtocol)) {
                 throw Error(`${roomProtocol} cannot be autoregistered`);
             }
-            await this.autoReg.registerUser(roomProtocol, event.sender);
-            remoteUser = context.senders.remotes.find((remote) => remote.get("protocolId") === roomProtocol);
-            if (remoteUser == null) {
-                throw Error(`Autoregistered user didn't turn up in the store. Cannot continue`);
-            }
-            newAcct = true;
+            return {
+                acct: await this.autoReg.registerUser(roomProtocol, event.sender),
+                newAcct: true
+            };
         }
         // XXX: We assume the first remote, this needs to be fixed for multiple accounts
         const acct = this.purple.getAccount(remoteUser.get("username"), roomProtocol);
@@ -382,6 +399,6 @@ Say \`help\` for more commands.
             log.error("Account isn't enabled, we cannot handle this im!");
             throw new Error("Account not enabled");
         }
-        return {acct, newAcct};
+        return {acct, newAcct: false};
     }
 }

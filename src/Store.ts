@@ -49,5 +49,6 @@ export class Store {
         remoteUser.set("protocolId", protocol.id);
         remoteUser.set("username", username);
         await this.userStore.linkUsers(mxUser, remoteUser);
+        log.info("Linked new account:", userId, remoteUser);
     }
 }

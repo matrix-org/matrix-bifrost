@@ -3,10 +3,24 @@ import { PurpleAccount } from "./PurpleAccount";
 import { Event, Conversation } from "node-purple";
 import { IEventBody, IAccountEvent, IChatJoined } from "./PurpleEvents";
 import { IConfigPurple } from "../Config";
+import { EventEmitter } from "events";
 
+export interface IPCMessageIncoming {
+    i: number;
+    module: string;
+    function: string;
+    args: any[];
 }
 
-export interface IPurpleInstance {
+export interface IPCMessageResult {
+    i: number;
+    module: string;
+    function: string;
+    thrown: string|null;
+    result: any;
+}
+
+export interface IPurpleInstance extends EventEmitter {
     getBuddyFromChat(conv: Conversation, buddy: string): any;
     start(config: IConfigPurple): Promise<void>;
     getAccount(username: string, protocolId: string): PurpleAccount|null;
