@@ -1,7 +1,8 @@
-import { IChatInvite } from "./purple/PurpleEvents";
+import { IChatInvite, IChatJoined, IChatJoinProperties } from "./purple/PurpleEvents";
 import { PurpleProtocol } from "./purple/PurpleInstance";
 import { Intent } from "matrix-appservice-bridge";
 import { Logging } from "matrix-appservice-bridge";
+import { PurpleAccount } from "./purple/PurpleAccount";
 const log = Logging.get("ProtoHacks");
 
 const PRPL_MATRIX = "prpl-matrix";
@@ -14,13 +15,32 @@ const PRPL_XMPP = "prpl-jabber";
  */
 export class ProtoHacks {
 
+    public static sanitizeProperties(props: IChatJoinProperties) {
+        for (const k of Object.keys(props)) {
+            const value = props[k];
+            const newkey = k.replace(/\./g, "·");
+            delete props[k];
+            props[newkey] = value;
+        }
+        return props;
+    }
+
+    public static desanitizeProperties(props: IChatJoinProperties) {
+        for (const k of Object.keys(props)) {
+            const value = props[k];
+            const newkey = k.replace(/·/g, ".");
+            delete props[k];
+            props[newkey] = value;
+        }
+        return props;
+    }
+
     public static async addJoinProps(protocolId: string, props: any, userId: string, intent: Intent) {
         // When joining XMPP rooms, we should set a handle so pull off one from the users
         // profile.
         if (protocolId === PRPL_XMPP) {
             try {
                 props.handle = (await intent.getProfileInfo(userId)).displayname;
-                log.debug("HANDLE", props);
             } catch (ex) {
                 log.warn("Failed to get profile for", userId, ex);
                 props.handle = userId;
@@ -36,11 +56,14 @@ export class ProtoHacks {
             delete props.handle;
         }
     }
-    public static getRoomNameForInvite(invite: IChatInvite): string {
+    public static getRoomNameForInvite(invite: IChatInvite|IChatJoined): string {
         // prpl-matrix sends us an invite with the room name set to the
         // matrix user's displayname, but the real room name is the room_id.
         if (invite.account.protocol_id === PRPL_MATRIX) {
             return invite.join_properties.room_id;
+        }
+        if ("conv" in invite) {
+            return invite.conv.name;
         }
         return invite.room_name;
     }
@@ -53,19 +76,12 @@ export class ProtoHacks {
         return senderId;
     }
 
-    public static getSenderId(protocol: PurpleProtocol, senderId: string, isGroupChat: boolean): string {
-        // if (protocol.id === PRPL_XMPP && !isGroupChat) {
-        //     // XXX: XMPP senders have a / host appended to them. if it's a group
-        //     // chat then we want the whole thing since it's a MUC style id:
-        //     //     myconferenceroom@myconference.server/Username
-        //     // wheras group chats have a jabber ID in the form of:
-        //     //     testuser1@localhost/somehost
-        //     // We want to keep the MUC id intact, but do not include the host
-        //     // for PMs.
-        //     if (senderId.includes("/")) {
-        //         senderId = senderId.split("/")[0];
-        //     }
-        // }
+    public static getSenderId(account: PurpleAccount, senderId: string, roomName?: string): string {
+        // XXX: XMPP uses "handles" in group chats which might not be the same as
+        // the username.
+        if (account.protocol.id === PRPL_XMPP && roomName) {
+            return account.getJoinPropertyForRoom(roomName, "handle") || senderId;
+        }
         return senderId;
     }
 }
