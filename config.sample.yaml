@@ -8,5 +8,21 @@ purple:
   pluginDir: "./node_modules/node-purple/deps/libpurple/"
 
 autoRegistration:
-  enabled: true
-  xmpp-url: http://localhost:5280/
+   enabled: false
+## For reference, this is how to autoregister folks with prosody (xmpp)
+## with the included lua script in extras.
+#   protocolSteps:
+#       prpl-jabber:
+#           type: "http"
+#           path: "http://localhost:5280/register_account/"
+#           opts:
+#               method: "post"
+#               usernameResult: null
+#           parameters:
+#               username: "m_<T_LOCALPART>"
+#               nick: "<T_DISPLAYNAME>"
+#               password: "<T_GENERATEPWD>"
+#               auth_token: "bridge-token"
+#               ip: "127.0.0.1"
+#           paramsToStore:
+#               - password
