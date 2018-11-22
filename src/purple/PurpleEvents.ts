@@ -3,6 +3,7 @@
  */
 
 import { Account, Conversation} from "node-purple";
+import { PurpleAccount } from "./PurpleAccount";
 
 export interface IChatJoinProperties {[key: string]: string; }
 

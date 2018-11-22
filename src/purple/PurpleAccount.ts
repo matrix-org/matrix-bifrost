@@ -4,8 +4,9 @@
 
 import { helper, plugins, buddy, accounts, messaging, Buddy, Account, Conversation, notify } from "node-purple";
 import { PurpleProtocol } from "./PurpleInstance";
-import { IChatJoinProperties, IUserInfo } from "./PurpleEvents";
+import { IChatJoinProperties, IUserInfo, IConversationEvent, IChatJoined } from "./PurpleEvents";
 import { Util } from "../Util";
+import { IPurpleInstance } from "./IPurpleInstance";
 
 export interface IChatJoinOptions {
     identifier: string;
@@ -26,6 +27,7 @@ export class PurpleAccount {
     }
 
     get _waitingJoinRoomProps(): IChatJoinProperties|undefined { return this.waitingJoinRoomProperties; }
+
 
     get remoteId(): string { return Util.createRemoteId(this.protocol.id, this.username); }
 
@@ -96,11 +98,37 @@ export class PurpleAccount {
         this.joinPropertiesForRooms.set(roomName, props);
     }
 
-    public joinChat(components: IChatJoinProperties) {
+    public isInRoom(roomName: string) {
+        return this.joinPropertiesForRooms.has(roomName);
+    }
+
+    public joinChat(
+        components: IChatJoinProperties,
+        purple?: IPurpleInstance,
+        timeout: number = 1000,
+        setWaiting: boolean = true)
+        : Promise<IConversationEvent|void> {
         // XXX: This is extremely bad, but there isn't a way to map "join_properties" of a join
         // room request to the joined-room event, which throws us off quite badly.
-        this.waitingJoinRoomProperties = components;
+        if (setWaiting) {
+            this.waitingJoinRoomProperties = components;
+        }
         messaging.joinChat(this.handle, components);
+        if (purple) {
+            return new Promise((resolve, reject) => {
+                let cb;
+                const timer = setTimeout(reject, timeout);
+                cb = (ev: IConversationEvent) => {
+                    if (ev.account.username === this.username && ev.account.protocol_id === this.protocol.id) {
+                        resolve(ev);
+                        purple.removeListener("chat-joined", cb);
+                        clearTimeout(timer);
+                    }
+                };
+                purple.on("chat-joined", cb);
+            });
+        }
+        return Promise.resolve();
     }
 
     public rejectChat(components: IChatJoinProperties) {
@@ -131,6 +159,10 @@ export class PurpleAccount {
                 return resolve;
             });
         });
+    }
+
+    public eraseWaitingJoinRoomProps() {
+        this.waitingJoinRoomProperties = undefined;
     }
 
     // connect() {

@@ -12,6 +12,7 @@ import { Logging } from "matrix-appservice-bridge";
 import { Store } from "./Store";
 import { Deduplicator } from "./Deduplicator";
 import { Config } from "./Config";
+import * as entityDecode from "parse-entities";
 const log = Logging.get("MatrixRoomHandler");
 
 const ACCOUNT_LOCK_MS = 1000;
@@ -196,6 +197,7 @@ export class MatrixRoomHandler {
 
     private async handleIncomingIM(data: IReceivedImMsg) {
         log.debug(`Handling incoming IM from ${data.sender}`);
+        data.message = entityDecode(data.message);
         // First, find out who the message was intended for.
         const matrixUser = await this.store.getMatrixUserForAccount(data.account);
         if (matrixUser === null) {
@@ -236,6 +238,7 @@ export class MatrixRoomHandler {
     }
 
     private async handleIncomingChatMsg(data: IReceivedImMsg) {
+        data.message = entityDecode(data.message);
         const acctId = Util.createRemoteId(data.account.protocol_id, data.account.username);
         if (this.accountRoomLock.has(
             acctId + "/" + data.conv.name)
@@ -250,12 +253,10 @@ export class MatrixRoomHandler {
             remoteId,
             data.message,
         )) {
-                log.debug("Dropping duplicate message");
                 return;
         }
 
         if (!this.deduplicator.isTheChosenOneForRoom(data.conv.name, acctId)) {
-            log.debug("Not the chosen one for this room. Not handling");
             return;
         }
         log.debug(`Handling incoming chat from ${data.sender} (${data.conv.name})`);

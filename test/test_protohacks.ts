@@ -30,13 +30,13 @@ describe("ProtoHacks", () => {
         //         ProtoHacks.getSenderId(XMPP, "testuser1@localhost/somerandoclient", true)
         //     ).to.equal("testuser1@localhost");
         // });
-        it("other protocols should not modify senderId", () => {
-            expect(
-                ProtoHacks.getSenderId(dummyProtocol, "abcdef", true),
-            ).to.equal("abcdef");
-            expect(
-                ProtoHacks.getSenderId(dummyProtocol, "abcdef", false),
-            ).to.equal("abcdef");
-        });
+        // it("other protocols should not modify senderId", () => {
+        //     expect(
+        //         ProtoHacks.getSenderId(dummyProtocol, "abcdef", true),
+        //     ).to.equal("abcdef");
+        //     expect(
+        //         ProtoHacks.getSenderId(dummyProtocol, "abcdef", false),
+        //     ).to.equal("abcdef");
+        // });
     });
 });

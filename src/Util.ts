@@ -17,7 +17,6 @@ export class Util {
         domain: string,
         prefix: string = "",
         isGroupChat: boolean = false): MatrixUser {
-        senderId = ProtoHacks.getSenderId(protocol, senderId, isGroupChat);
         // This is a little bad, but we drop the prpl- because it's a bit ugly.
         const protocolName = protocol.id.startsWith("prpl-") ? protocol.id.substr("prpl-".length) : protocol.id;
         // senderId containing : can mess things up

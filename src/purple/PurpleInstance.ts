@@ -91,19 +91,21 @@ export class PurpleInstance extends EventEmitter implements IPurpleInstance {
 
     private eventHandler() {
         helper.pollEvents().forEach((evt) => {
-            log.debug(`Got ${evt.eventName} from purple`);
+            if (!["received-chat-msg"].includes(evt.eventName)) {
+                log.debug(`Got ${evt.eventName} from purple`);
+            }
             if (evt.eventName === "chat-joined") {
                 const chatJoined = evt as IConversationEvent;
                 const purpleAccount = this.getAccount(chatJoined.account.username, chatJoined.account.protocol_id);
                 if (purpleAccount) {
                     if (purpleAccount._waitingJoinRoomProps) {
+                        purpleAccount.eraseWaitingJoinRoomProps();
                         // tslint:disable-next-line
                         const join_properties = purpleAccount._waitingJoinRoomProps;
                         this.emit("chat-joined-new", Object.assign(evt, {purpleAccount, join_properties}));
                     }
                 }
             }
-
             this.emit(evt.eventName, evt);
             if (evt.eventName === "user-info-response") {
                 const uinfo = evt as IUserInfo;

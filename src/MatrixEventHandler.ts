@@ -1,4 +1,4 @@
-import { Bridge, MatrixRoom, RemoteUser, MatrixUser } from "matrix-appservice-bridge";
+import { Bridge, MatrixRoom, RemoteUser, MatrixUser, RemoteRoom } from "matrix-appservice-bridge";
 import { IEventRequest, IBridgeContext, IEventRequestData } from "./MatrixTypes";
 import { IMatrixRoomData, MROOM_TYPE_UADMIN, MROOM_TYPE_IM, MROOM_TYPE_GROUP } from "./StoreTypes";
 import { PurpleInstance, PurpleProtocol } from "./purple/PurpleInstance";
@@ -11,7 +11,7 @@ import { Deduplicator } from "./Deduplicator";
 import { AutoRegistration } from "./AutoRegistration";
 import { Config } from "./Config";
 import { Store } from "./Store";
-import { IAccountEvent, IChatJoinProperties } from "./purple/PurpleEvents";
+import { IAccountEvent, IChatJoinProperties, IChatJoined, IConversationEvent } from "./purple/PurpleEvents";
 import { ProtoHacks } from "./ProtoHacks";
 const log = Logging.get("MatrixEventHandler");
 
@@ -59,7 +59,6 @@ export class MatrixEventHandler {
             }
             return;
         }
-
         if (roomType === MROOM_TYPE_UADMIN) {
             if (event.type === "m.room.message") {
                 const args = event.content.body.split(" ");
@@ -70,12 +69,17 @@ export class MatrixEventHandler {
                 log.info(`Left and removed entry for ${event.room_id} because the user left`);
             }
             return;
+        } else if (!roomType && event.type === "m.room.message" && event.content.msgtype === "m.text") {
+            // It's probably a room waiting to be given commands.
+            const args = event.content.body.split(" ");
+            await this.handlePlumbingCommand(args, context, event);
+            return;
         }
 
         // Validate room entries
-        const roomProtocol = context.rooms.remote.get("protocol_id");
+        const roomProtocol = roomType ? context.rooms.remote.get("protocol_id") : null;
         if (roomProtocol == null) {
-            log.error("Room protocol was null, we cannot handle this im!");
+            log.error("Room protocol was null, we cannot handle this event!");
             return;
         }
 
@@ -211,19 +215,66 @@ return `- ${account.protocol.name} (${username}) [Enabled=${account.isEnabled}] 
         }
     }
 
+    private async handlePlumbingCommand(args: string[], context: IBridgeContext, event: IEventRequestData) {
+        log.debug(`Handling plumbing command ${args} for ${event.room_id}`);
+        const intent = this.bridge.getIntent();
+        if (args[0] !== "!purple") {
+            return;
+        }
+        try {
+            if (args[1] === "bridge") {
+                log.info(event.sender, "is attempting to plumb", event.room_id);
+                const cmdArgs = args.slice(2);
+                if (!cmdArgs[0]) {
+                    throw new Error("Protocol not supplied");
+                }
+                const protocol = this.purple.findProtocol(cmdArgs[0]);
+                if (!protocol) {
+                    throw new Error("Protocol not found");
+                }
+                const {acct} = await this.getAccountForMxid(context, event, protocol.id);
+                const paramSet = await this.getJoinParametersForCommand(acct, cmdArgs, event.room_id);
+                log.debug("Got appropriate param set", paramSet);
+                if (paramSet != null) {
+                    // We want to join the room to make sure it works.
+                    let res: IConversationEvent;
+                    try {
+                        log.debug("Attempting to join chat");
+                        res = await acct.joinChat(paramSet, this.purple, 5000, false) as IConversationEvent;
+                    } catch (ex) {
+                        throw new Error("Failed to join chat");
+                    }
+                    const roomStore = this.bridge.getRoomStore();
+                    const remoteData = {
+                        protocol_id: acct.protocol.id,
+                        room_name: res.conv.name,
+                        properties: ProtoHacks.sanitizeProperties(paramSet), // for joining
+                    } as any;
+                    const remoteId = Buffer.from(
+                        `${acct.protocol.id}:${res.conv.name}`,
+                    ).toString("base64");
+                    log.debug("Storing remote room ", remoteId, " with data ", remoteData);
+                    const mxRoom = new MatrixRoom(event.room_id);
+                    mxRoom.set("type", MROOM_TYPE_GROUP);
+                    await roomStore.setMatrixRoom(mxRoom);
+                    await roomStore.linkRooms(mxRoom, new RemoteRoom(
+                        remoteId,
+                    remoteData));
+                }
+            }
+        } catch (ex) {
+            log.warn("Plumbing attempt didn't succeed:", ex);
+            await intent.sendMessage(event.room_id, {
+                msgtype: "m.notice",
+                body: "Failed to bridge:" + ex,
+            });
+        }
+    }
+
     private async handleInviteForBot(event: IEventRequestData) {
         log.info(`Got invite from ${event.sender} to ${event.room_id}`);
         const intent = this.bridge.getIntent();
-        try {
-            await intent.join(event.room_id);
-        } catch (e) {
-            log.warn("Failed to join room, retrying in ", RETRY_JOIN_MS);
-            await new Promise((reject, resolve) => {
-                setTimeout(() => {
-                    intent.join(event.room_id).then(resolve).catch(reject);
-                }, RETRY_JOIN_MS);
-            });
-        }
+        await intent.join(event.room_id);
         // Check to see if it's a 1 to 1.
         const members = await this.bridge.getBot().getJoinedMembers(event.room_id);
         if (members.length > 2) {
@@ -319,8 +370,17 @@ Say \`help\` for more commands.
         log.info(`Handling group message for ${event.room_id}`);
         const roomProtocol = context.rooms.remote.get("protocol_id");
         try {
-            const {acct} = await this.getAccountForMxid(context, event);
+            const {acct, newAcct} = await this.getAccountForMxid(context, event);
             log.info(`Got ${acct.name} for ${event.sender}`);
+            const name = context.rooms.remote.get("room_name");
+            if (!acct.isInRoom(name)) {
+                log.debug(`${event.sender} talked in ${name}, joining them.`)
+                const props = ProtoHacks.desanitizeProperties(
+                    Object.assign({}, context.rooms.remote.get("properties"))
+                );
+                await ProtoHacks.addJoinProps(acct.protocol.id, props, event.sender, this.bridge.getIntent());
+                await this.joinOrDefer(acct, name, props);
+            }
             const roomName = context.rooms.remote.get("room_name");
             const body = event.content.body;
             let nick = "";
@@ -390,7 +450,16 @@ Say \`help\` for more commands.
             throw new Error("Protocol not found");
         }
         const acct = await this.getAccountForMxid(context, event, protocol.id);
-        const params = acct.acct.getChatParamsForProtocol(protocol);
+        const paramSet = await this.getJoinParametersForCommand(acct.acct, args, event.room_id);
+        // We don't know the room name, so we have to join and wait for the callback.
+        if (paramSet !== null) {
+            acct.acct.joinChat(paramSet);
+        }
+    }
+
+    private async getJoinParametersForCommand(acct: PurpleAccount, args: string[], roomId: string)
+    : Promise<IChatJoinProperties|null> {
+        const params = acct.getChatParamsForProtocol(acct.protocol);
         if (args.length === 1) {
             let optional = "";
             let required = "";
@@ -418,13 +487,13 @@ E.g. \`join irc.example.com nicknameguy password=$ecr£t!\`
 
 **optional**:\n\n${optional}
 `;
-            await this.bridge.getIntent().sendMessage(event.room_id, {
+            await this.bridge.getIntent().sendMessage(roomId, {
                 msgtype: "m.notice",
                 body,
                 format: "org.matrix.custom.html",
                 formatted_body: marked(body),
             });
-            return;
+            return null;
         }
 
         const requiredParams = params.filter((p) => p.required);
@@ -438,36 +507,43 @@ E.g. \`join irc.example.com nicknameguy password=$ecr£t!\`
         }
 
         if (Object.keys(paramSet).length < requiredParams.length) {
-            throw new Error("Incorrect number of parameters given");
+            throw Error("Incorrect number of parameters given");
         }
 
         // Optionals
         args.slice(1 + requiredParams.length).forEach((arg) => {
             const split = arg.split("=");
+            if (split.length === 1) {
+                throw Error("Optional parameter in the wrong format.");
+            }
             paramSet[split[0]] = split[1];
         });
         log.debug("Parameters for join:", paramSet);
-        // We don't know the room name, so we have to join and wait for the callback.
-        acct.acct.joinChat(paramSet);
+        return paramSet;
     }
 
-    private joinOrDefer(acct: PurpleAccount, name: string, properties: IChatJoinProperties) {
+    private joinOrDefer(acct: PurpleAccount, name: string, properties: IChatJoinProperties): Promise<void> {
         if (!acct.connected) {
             log.debug("Account is not connected, deferring join until connected");
-            let cb;
-            cb = (joinEvent: IAccountEvent) => {
-                if (joinEvent.account.username === acct.name &&
-                    acct.protocol.id === joinEvent.account.protocol_id) {
-                    log.debug("Account signed in, joining room");
-                    acct.joinChat(properties);
-                    acct.setJoinPropertiesForRoom(name, properties);
-                    this.purple.removeListener("account-signed-on", cb);
-                }
-            };
-            this.purple.on("account-signed-on", cb);
+            return new Promise((resolve, reject) => {
+                let cb;
+                cb = (joinEvent: IAccountEvent) => {
+                    if (joinEvent.account.username === acct.name &&
+                        acct.protocol.id === joinEvent.account.protocol_id) {
+                        log.debug("Account signed in, joining room");
+                        const p = acct.joinChat(properties, this.purple, 5000) as Promise<any>;
+                        acct.setJoinPropertiesForRoom(name, properties);
+                        this.purple.removeListener("account-signed-on", cb);
+                        resolve(p);
+                    }
+                };
+                this.purple.on("account-signed-on", cb);
+            });
+
         } else {
             acct.joinChat(properties);
             acct.setJoinPropertiesForRoom(name, properties);
+            return Promise.resolve();
         }
     }
 
