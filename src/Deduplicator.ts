@@ -10,16 +10,16 @@
  * the sent message with the room name and check it against a table.
  */
 
-import * as crypto from "crypto";
 import { Logging } from "matrix-appservice-bridge";
 import { PurpleAccount } from "./purple/PurpleAccount";
 const log = Logging.get("Deduplicator");
+const leven = require("leven") as (a: string, b: string) => number;
+
+const LEVEN_THRESHOLD = 0.1;
 
 export class Deduplicator {
     public static hashMessage(roomName: string, sender: string, body: string): string {
-        const hash = crypto.createHash("MD5");
-        hash.update(`${sender}/${roomName}/${body}`);
-        return hash.digest("hex");
+        return `${sender}/${roomName}/${body}`;
     }
 
     private expectedMessages: string[];
@@ -35,7 +35,7 @@ export class Deduplicator {
     public isTheChosenOneForRoom(roomName: string, remoteId: string) {
         const one = this.chosenOnes.get(roomName);
         if (one === undefined) {
-            log.info("Assigning a new chosen one for", roomName);
+            log.debug("Assigning a new chosen one for", roomName);
             this.chosenOnes.set(roomName, remoteId);
             return true;
         }
@@ -77,8 +77,15 @@ export class Deduplicator {
 
     public checkAndRemove(roomName: string, sender: string, body: string) {
         const h = Deduplicator.hashMessage(roomName, sender, body);
-        log.debug(`Checking for hash (${sender}/${roomName}/${body}):`, h);
-        const index = this.expectedMessages.indexOf(h);
+        const start = `${sender}/${roomName}/`;
+        const index = this.expectedMessages.findIndex((hash) => {
+            if (!hash.startsWith(start)) {
+                return false;
+            }
+            hash = hash.substr(start.length);
+            const l = leven(hash, body) / hash.length;
+            return l <= LEVEN_THRESHOLD;
+        });
         if (index !== -1) {
             this.expectedMessages.splice(index, 1);
             return true;

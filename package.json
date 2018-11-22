@@ -37,6 +37,7 @@
   },
   "dependencies": {
     "@types/request-promise-native": "^1.0.15",
+    "leven": "^2.1.0",
     "marked": "^0.5.1",
     "matrix-appservice-bridge": "^1.7.0",
     "node-purple": "matrix-org/node-purple#hs/make-purple-build-again",
