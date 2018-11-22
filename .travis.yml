@@ -2,7 +2,7 @@ dist: xenial
 language: node_js
 before_install:
   - sudo apt-get install -y build-essential libuv1
-
+cache: false
 jobs:
     include:
     - stage: tests
