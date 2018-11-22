@@ -156,8 +156,7 @@ class Program {
                 Util.createRemoteId(ev.account.protocol_id, ev.account.username),
             );
         });
-        await this.runBotAccounts(this.cfg.bridgeBot.accounts);
-        // await this.startPurpleAccounts();
+        //await this.runBotAccounts(this.cfg.bridgeBot.accounts);
     }
 
     private async runBotAccounts(accounts: IBridgeBotAccount[]) {
