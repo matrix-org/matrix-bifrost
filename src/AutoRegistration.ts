@@ -19,6 +19,7 @@ export interface IAutoRegStep {
     opts: IAutoRegHttpOpts|undefined;
     parameters: {[key: string]: string}; // key -> parameter value
     paramsToStore: string[];
+    headers: {[key: string]: string}; // key -> value
 }
 
 export class AutoRegistration {
@@ -89,15 +90,20 @@ export class AutoRegistration {
         try {
             let username;
             log.debug("HttpReg: Attempting request to ", step.path);
+            const headers = [{
+                name: "content-type",
+                value: "application/json",
+            }];
+            Object.keys(step.headers).forEach((headerKey) => {
+                headers.push({
+                    name: headerKey,
+                    value: step.headers[headerKey],
+                });
+            });
             const res = await request({
                 method: opts.method.toLowerCase(),
                 url: step.path,
-                headers: [
-                  {
-                    name: "content-type",
-                    value: "application/json",
-                },
-                ],
+                headers,
                 json: true && opts.usernameResult, // This will also parse, which we might not want.
                 body: JSON.stringify(body),
             });
