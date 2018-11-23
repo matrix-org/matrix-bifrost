@@ -90,16 +90,11 @@ export class AutoRegistration {
         try {
             let username;
             log.debug("HttpReg: Attempting request to ", step.path);
-            const headers = [{
-                name: "content-type",
-                value: "application/json",
-            }];
-            Object.keys(step.headers).forEach((headerKey) => {
-                headers.push({
-                    name: headerKey,
-                    value: step.headers[headerKey],
-                });
-            });
+            const headers = {
+                "Content-Type": "application/json",
+                ...step.headers
+            };
+            log.debug("Headers:", headers);
             const res = await request({
                 method: opts.method.toLowerCase(),
                 url: step.path,
