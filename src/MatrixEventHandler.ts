@@ -308,11 +308,14 @@ Say \`help\` for more commands.
         if (protocol === undefined) {
             throw new Error("Protocol was not found");
         }
-        if (args[0] === undefined) {
+        if (!args[0]) {
             throw new Error("You need to specify a username");
         }
+        if (!args[1]) {
+            throw new Error("You need to specify a password");
+        }
         const account = new PurpleAccount(args[0], protocol);
-        account.createNew();
+        account.createNew(args[1]);
         const userStore = this.bridge.getUserStore();
         await this.store.storeUserAccount(event.sender, protocol, args[0]);
         await this.bridge.getIntent().sendMessage(event.room_id, {
