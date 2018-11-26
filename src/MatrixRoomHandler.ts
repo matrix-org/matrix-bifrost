@@ -159,6 +159,7 @@ export class MatrixRoomHandler {
         const remoteEntries = await roomStore.getEntriesByRemoteRoomData(remoteData);
         let roomId;
         if (remoteEntries === null || remoteEntries.length === 0) {
+            console.log(data, props);
             remoteData = {
                 protocol_id: data.account.protocol_id,
                 room_name: roomName,
