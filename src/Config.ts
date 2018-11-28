@@ -21,6 +21,11 @@ export class Config {
     public readonly bridgeBot: IConfigBridgeBot = {
         accounts: [],
     };
+
+    public readonly logging: IConfigLogging = {
+        console: "info",
+        files: { },
+    };
   /**
    * Apply a set of keys and values over the default config.
    * @param newConfig Config keys
@@ -61,4 +66,9 @@ export interface IConfigBridgeBot {
 export interface IBridgeBotAccount {
     name: string;
     protocol: string;
+}
+
+interface IConfigLogging {
+  console: "debug"|"info"|"warn"|"error"
+  files: {[filename: string]: "debug"|"info"|"warn"|"error"}
 }
