@@ -238,6 +238,7 @@ return `- ${account.protocol.name} (${username}) [Enabled=${account.isEnabled}] 
                 }
                 const {acct} = await this.getAccountForMxid(context, event, protocol.id);
                 const paramSet = await this.getJoinParametersForCommand(acct, cmdArgs, event.room_id);
+                await ProtoHacks.addJoinProps(protocol.id, paramSet, event.sender, this.bridge.getIntent());
                 log.debug("Got appropriate param set", paramSet);
                 if (paramSet != null) {
                     // We want to join the room to make sure it works.
@@ -510,6 +511,10 @@ E.g. \`join irc.example.com nicknameguy password=$ecr£t!\`
         for (let i = 0; i < requiredParams.length; i++) {
             const arg = argsParams[i];
             const param = requiredParams[i];
+            // XXX: Hack so users do not have to specify handle.
+            if (param.identifier === "handle") {
+                continue;
+            }
             paramSet[param.identifier] = arg;
         }
 
