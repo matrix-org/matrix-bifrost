@@ -111,8 +111,7 @@ class Program {
     private async runBridge(port: number, config: any) {
         log.info("Starting purple bridge on port ", port);
         this.cfg.ApplyConfig(config);
-        // XXX: Fix this
-        Logging.configure(this.config || this.cfg);
+        Logging.configure(this.cfg.logging);
         this.bridge = new Bridge({
           // clientFactory,
           controller: {
