@@ -59,6 +59,14 @@ export class MatrixEventHandler {
             }
             return;
         }
+
+        if (event.type === "m.room.message" && event.content.msgtype === "m.text" && event.content.body.startsWith("!purple")) {
+            // It's probably a room waiting to be given commands.
+            const args = event.content.body.split(" ");
+            await this.handlePlumbingCommand(args, context, event);
+            return;
+        }
+
         if (roomType === MROOM_TYPE_UADMIN) {
             if (event.type === "m.room.message") {
                 const args = event.content.body.split(" ");
@@ -69,12 +77,8 @@ export class MatrixEventHandler {
                 log.info(`Left and removed entry for ${event.room_id} because the user left`);
             }
             return;
-        } else if (!roomType && event.type === "m.room.message" && event.content.msgtype === "m.text") {
-            // It's probably a room waiting to be given commands.
-            const args = event.content.body.split(" ");
-            await this.handlePlumbingCommand(args, context, event);
-            return;
         }
+
 
         // Validate room entries
         const roomProtocol = roomType ? context.rooms.remote.get("protocol_id") : null;
@@ -294,12 +298,12 @@ You can then connect your account to one of these protocols via \`create $PROTOC
 See \`protocol $PROTOCOL\` for help on what options they take.
 Say \`help\` for more commands.
 `;
-        await intent.sendMessage(event.room_id, {
+        /*await intent.sendMessage(event.room_id, {
             msgtype: "m.notice",
             body,
             format: "org.matrix.custom.html",
             formatted_body: marked(body),
-        });
+        });*/
     }
 
     private async handleNewAccount(nameOrId: string, args: string[], event: IEventRequestData) {
