@@ -503,7 +503,7 @@ E.g. \`join irc.example.com nicknameguy password=$ecr£t!\`
 
         const argsParams = args.slice(1);
         const paramSet: IChatJoinProperties = {};
-        for (let i = 0; i < argsParams.length; i++) {
+        for (let i = 0; i < requiredParams.length; i++) {
             const arg = argsParams[i];
             const param = requiredParams[i];
             paramSet[param.identifier] = arg;
