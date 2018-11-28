@@ -53,6 +53,7 @@ export class RoomSync {
             const roomId = room.matrix.getId();
             if (!room.remote) {
                 log.warn(`Not syncing ${roomId} because it has no remote links`);
+                log.debug(roomId, "->", room);
                 return;
             }
             log.debug(`Syncing members for ${roomId}`);
