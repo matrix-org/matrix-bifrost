@@ -111,7 +111,6 @@ export class PurpleAccount {
         // XXX: This is extremely bad, but there isn't a way to map "join_properties" of a join
         // room request to the joined-room event, which throws us off quite badly.
         if (setWaiting) {
-            console.log("SET WAITING:", components);
             this.waitingJoinRoomProperties = components;
         }
         messaging.joinChat(this.handle, components);
@@ -163,7 +162,6 @@ export class PurpleAccount {
     }
 
     public eraseWaitingJoinRoomProps() {
-        console.log("ERASED this.waitingJoinRoomProperties");
         this.waitingJoinRoomProperties = undefined;
     }
 
