@@ -45,11 +45,11 @@ export class ProfileSync {
         const remoteProfileSet:
         {
             nick: string|undefined,
-            name: string|undefined,
+            name: string,
             icon_path: string|undefined
         } = {
             nick: undefined,
-            name: undefined,
+            name: senderId,
             icon_path: undefined,
         };
         const buddy = account.getBuddy(remoteUser.get("username"));
