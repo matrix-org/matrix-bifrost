@@ -69,6 +69,6 @@ export interface IBridgeBotAccount {
 }
 
 interface IConfigLogging {
-  console: "debug"|"info"|"warn"|"error"
+  console: "debug"|"info"|"warn"|"error"|"off"
   files: {[filename: string]: "debug"|"info"|"warn"|"error"}
 }

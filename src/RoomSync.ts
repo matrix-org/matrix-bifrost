@@ -109,11 +109,12 @@ export class RoomSync {
         membership = reconnectStack.pop();
         while (membership) {
             if (membership.membership === "join") {
-                log.debug(`${remoteId} is joining ${membership.room_name} with `, membership.params);
+                log.info(`${remoteId} is joining ${membership.room_name}`);
+                log.debug("with", membership.params);
                 acct!.joinChat(membership.params);
                 acct!.setJoinPropertiesForRoom(membership.room_name, membership.params);
             } else {
-                log.debug(`${remoteId} is leaving ${membership.room_name}`);
+                log.info(`${remoteId} is leaving ${membership.room_name}`);
                 acct!.rejectChat(membership.params);
                 this.deduplicator.decrementRoomUsers(membership.room_name);
             }
