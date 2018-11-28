@@ -5,8 +5,8 @@ import { Logging } from "matrix-appservice-bridge";
 import { PurpleAccount } from "./purple/PurpleAccount";
 const log = Logging.get("ProtoHacks");
 
-const PRPL_MATRIX = "prpl-matrix";
-const PRPL_XMPP = "prpl-jabber";
+export const PRPL_MATRIX = "prpl-matrix";
+export const PRPL_XMPP = "prpl-jabber";
 
 /**
  * This class hacks around issues with certain protocols when interloping with

@@ -36,7 +36,9 @@
     "tslint": "^5.11.0"
   },
   "dependencies": {
+    "@types/htmlparser2": "^3.7.31",
     "@types/request-promise-native": "^1.0.15",
+    "htmlparser2": "^3.10.0",
     "leven": "^2.1.0",
     "marked": "^0.5.1",
     "matrix-appservice-bridge": "^1.7.0",
