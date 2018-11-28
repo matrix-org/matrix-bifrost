@@ -34,7 +34,7 @@ export class MatrixRoomHandler {
         this.accountRoomLock = new Set();
         purple.on("chat-joined", this.onChatJoined.bind(this));
         purple.on("chat-joined-new", async (ev: IChatJoined) => {
-            log.info("Handling joining of new chat", ex);
+            log.info("Handling joining of new chat", ev);
             const matrixUser = await this.store.getMatrixUserForAccount(ev.account);
             if (!matrixUser) {
                 log.warn("Got a joined chat for an account not tied to a matrix user. WTF?");
