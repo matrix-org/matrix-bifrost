@@ -13,6 +13,7 @@ import { Store } from "./Store";
 import { Deduplicator } from "./Deduplicator";
 import { Config } from "./Config";
 import * as entityDecode from "parse-entities";
+import { MessageFormatter } from "./MessageFormatter";
 const log = Logging.get("MatrixRoomHandler");
 
 const ACCOUNT_LOCK_MS = 1000;
@@ -291,10 +292,9 @@ export class MatrixRoomHandler {
             log.error(`Failed to get/create room for this IM: ${e}`);
             return;
         }
-        await intent.sendMessage(roomId, {
-            msgtype: "m.text",
-            body: data.message,
-        });
+        await intent.sendMessage(roomId,
+            MessageFormatter.messageToMatrixEvent(data.message, protocol),
+        );
     }
 
     private async handleChatInvite(data: IChatInvite) {
