@@ -24,6 +24,7 @@ const ACCOUNT_LOCK_MS = 1000;
 export class MatrixRoomHandler {
     private bridge: Bridge;
     private accountRoomLock: Set<string>;
+    private roomCreationLock: Map<string, Promise<void>>;
     constructor(
         private purple: IPurpleInstance,
         private profileSync: ProfileSync,
@@ -32,6 +33,7 @@ export class MatrixRoomHandler {
         private deduplicator: Deduplicator,
     ) {
         this.accountRoomLock = new Set();
+        this.roomCreationLock = new Map();
         purple.on("chat-joined", this.onChatJoined.bind(this));
         purple.on("chat-joined-new", async (ev: IChatJoined) => {
             log.info("Handling joining of new chat", ev.account.username, ev.conv, ev.join_properties);
@@ -131,8 +133,6 @@ export class MatrixRoomHandler {
         data: IConversationEvent|IChatInvite|IChatJoined,
         intent: Intent,
     ) {
-        // Check to see if we have a room for this IM.
-        const roomStore = this.bridge.getRoomStore();
         let roomName;
         let props;
         if ("join_properties" in data) {
@@ -141,6 +141,17 @@ export class MatrixRoomHandler {
         } else {
             roomName = data.conv.name;
         }
+        const remoteId = Buffer.from(
+            `${data.account.protocol_id}:${roomName}`,
+        ).toString("base64");
+        if (this.roomCreationLock.has(remoteId)) {
+            log.info(remoteId, "is already being created, waiting...");
+            await (this.roomCreationLock.get(remoteId) || Promise.resolve());
+        }
+
+        // Check to see if we have a room for this IM.
+        const roomStore = this.bridge.getRoomStore();
+
         // XXX: This is potentially fragile as we are basically doing a lookup via
         // a set of properties we hope will be unique.
         if (props) {
@@ -159,26 +170,30 @@ export class MatrixRoomHandler {
             }
             return remoteEntries[0].matrix.getId();
         }
-        // Room doesn't exist yet, create it.
-        remoteData = {
-            protocol_id: data.account.protocol_id,
-            room_name: roomName,
-            properties: ProtoHacks.sanitizeProperties(props), // for joining
-        } as any;
-        log.info(`Couldn't find room for ${roomName}. Creating a new one`);
-        const res = await intent.createRoom({
-            createAsClient: false,
-            options: {
-                name: roomName,
-                visibility: "private",
-            },
+        let roomId;
+        const createPromise = new Promise((resolve) => {
+            // Room doesn't exist yet, create it.
+            remoteData = {
+                protocol_id: data.account.protocol_id,
+                room_name: roomName,
+                properties: ProtoHacks.sanitizeProperties(props), // for joining
+            } as any;
+            log.info(`Couldn't find room for ${roomName}. Creating a new one`);
+            resolve(intent.createRoom({
+                createAsClient: false,
+                options: {
+                    name: roomName,
+                    visibility: "private",
+                },
+            }));
+        }).then((res: any) => {
+            roomId = res.room_id;
+            log.debug("Created room with id ", roomId);
+            return this.store.storeRoom(roomId, MROOM_TYPE_GROUP, remoteId, remoteData);
         });
-        log.debug("Created room with id ", res.room_id);
-        const remoteId = Buffer.from(
-            `${data.account.protocol_id}:${roomName}`,
-        ).toString("base64");
-        await this.store.storeRoom(res.room_id, MROOM_TYPE_GROUP, remoteId, remoteData);
-        return res.room_id;
+        this.roomCreationLock.set(remoteId, createPromise);
+        await createPromise;
+        return roomId;
     }
 
     private async handleIncomingIM(data: IReceivedImMsg) {
