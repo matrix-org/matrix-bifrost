@@ -193,6 +193,7 @@ export class MatrixRoomHandler {
         });
         this.roomCreationLock.set(remoteId, createPromise);
         await createPromise;
+        this.roomCreationLock.delete(remoteId);
         return roomId;
     }
 
