@@ -56,6 +56,7 @@ export class ProfileSync {
             try {
                 log.info("Fetching user info for", senderIdToLookup);
                 const uinfo = await account.getUserInfo(senderIdToLookup);
+                log.debug("getUserInfo got:", uinfo);
                 remoteProfileSet.nick = uinfo.Nickname as string;
                 remoteProfileSet.name = uinfo["Full Name"] as string;
             } catch (ex) {
@@ -70,9 +71,11 @@ export class ProfileSync {
         const intent = this.bridge.getIntent(matrixUser.getId());
 
         if (remoteProfileSet.nick && matrixUser.get("displayname") !== remoteProfileSet.nick) {
+            log.debug(`Got a nick "${remoteProfileSet.nick}", setting`);
             await intent.setDisplayName(remoteProfileSet.nick);
             matrixUser.set("displayname", remoteProfileSet.nick);
         } else if (!matrixUser.get("displayname") && remoteProfileSet.name) {
+            log.debug(`Got a name "${remoteProfileSet.name}", setting`);
             // Don't ever set the name (ugly) over the nick unless we have never set it.
             // Nicks come and go depending on the libpurple cache and whether the user
             // is online (in XMPPs case at least).
@@ -81,6 +84,7 @@ export class ProfileSync {
         }
 
         if (remoteProfileSet.icon_path && matrixUser.get("avatar_url") !== remoteProfileSet.icon_path) {
+            log.debug(`Got an avatar, setting`);
             try {
                 const file = await fs.readFile(remoteProfileSet.icon_path);
                 const mxcUrl = await intent.getClient().uploadContent(file, {
@@ -95,7 +99,6 @@ export class ProfileSync {
                 log.error("Failed to update avatar_url for user:", e);
             }
         }
-
         await store.setMatrixUser(matrixUser);
     }
 
