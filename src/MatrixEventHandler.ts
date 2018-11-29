@@ -263,8 +263,8 @@ return `- ${account.protocol.name} (${username}) [Enabled=${account.isEnabled}] 
                     mxRoom.set("type", MROOM_TYPE_GROUP);
                     await roomStore.setMatrixRoom(mxRoom);
                     await roomStore.linkRooms(mxRoom, new RemoteRoom(
-                        remoteId,
-                    remoteData));
+                        remoteId, remoteData)
+                    );
                 }
             }
         } catch (ex) {
