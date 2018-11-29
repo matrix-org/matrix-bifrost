@@ -26,6 +26,10 @@ export class Config {
         console: "info",
         files: { },
     };
+
+    public readonly profile: IConfigProfile = {
+        updateInterval: 60000 * 15
+    };
   /**
    * Apply a set of keys and values over the default config.
    * @param newConfig Config keys
@@ -66,6 +70,10 @@ export interface IConfigBridgeBot {
 export interface IBridgeBotAccount {
     name: string;
     protocol: string;
+}
+
+export interface IConfigProfile {
+    updateInterval: number;
 }
 
 interface IConfigLogging {

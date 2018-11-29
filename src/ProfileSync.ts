@@ -5,6 +5,7 @@ import * as path from "path";
 import { PurpleProtocol } from "./purple/PurpleInstance";
 import { Util } from "./Util";
 import { Logging } from "matrix-appservice-bridge";
+import { Config } from "./Config";
 const log = Logging.get("ProfileSync");
 
 const fs = _fs.promises;
@@ -19,10 +20,8 @@ We don't yet support non-fs-promise versions of node.`,
     process.exit(1);
 }
 
-const CHECK_PROFILE_INTERVAL_MS = Util.MINUTE_MS * 15;
-
 export class ProfileSync {
-    constructor(private bridge: Bridge, private config: any) {
+    constructor(private bridge: Bridge, private config: Config) {
 
     }
 
@@ -39,7 +38,7 @@ export class ProfileSync {
         const lastCheck = matrixUser.get("last_check");
         matrixUser.set("last_check", Date.now());
         if (!force &&
-            lastCheck != null && (Date.now() - lastCheck) < CHECK_PROFILE_INTERVAL_MS) {
+            lastCheck != null && (Date.now() - lastCheck) < this.config.profile.updateInterval) {
                 return; // Don't need to check.
         }
         const remoteProfileSet:
