@@ -58,7 +58,8 @@ export class ProfileSync {
                 const uinfo = await account.getUserInfo(senderIdToLookup);
                 log.debug("getUserInfo got:", uinfo);
                 remoteProfileSet.nick = uinfo.Nickname as string;
-                remoteProfileSet.name = uinfo["Full Name"] as string;
+                // XXX: This is dependant on the protocol.
+                remoteProfileSet.name = (uinfo["Full Name"] || uinfo["User ID"] || senderId) as string;
             } catch (ex) {
                 log.info("Couldn't fetch user info for ", remoteUser.get("username"));
             }
