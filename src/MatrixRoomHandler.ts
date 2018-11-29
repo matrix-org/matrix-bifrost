@@ -113,13 +113,7 @@ export class MatrixRoomHandler {
             const remoteId = Buffer.from(
                 `${matrixUser.getId()}:${data.account.protocol_id}:${data.sender}`,
             ).toString("base64");
-            log.debug("Storing remote room ", remoteId, " with data ", remoteData);
-            const mxRoom = new MatrixRoom(roomId);
-            mxRoom.set("type", MROOM_TYPE_IM);
-            await roomStore.setMatrixRoom(mxRoom);
-            await roomStore.linkRooms(mxRoom, new RemoteRoom(
-                remoteId,
-            remoteData));
+            await this.store.storeRoom(roomId, MROOM_TYPE_GROUP, remoteId, remoteData);
             // Room doesn't exist yet, create it.
         } else {
             if (remoteEntries.length > 1) {
@@ -159,42 +153,32 @@ export class MatrixRoomHandler {
         };
         // For some reason the following function wites to remoteData, so recreate it later
         const remoteEntries = await roomStore.getEntriesByRemoteRoomData(remoteData);
-        let roomId;
-        if (remoteEntries === null || remoteEntries.length === 0) {
-            remoteData = {
-                protocol_id: data.account.protocol_id,
-                room_name: roomName,
-                properties: ProtoHacks.sanitizeProperties(props), // for joining
-            } as any;
-            log.info(`Couldn't find room for ${roomName}. Creating a new one`);
-            const res = await intent.createRoom({
-                createAsClient: false,
-                options: {
-                    name: roomName,
-                    visibility: "private",
-                },
-            });
-            roomId = res.room_id;
-            log.debug("Created room with id ", roomId);
-            const remoteId = Buffer.from(
-                `${data.account.protocol_id}:${roomName}`,
-            ).toString("base64");
-            log.debug("Storing remote room ", remoteId, " with data ", remoteData);
-            const mxRoom = new MatrixRoom(roomId);
-            mxRoom.set("type", MROOM_TYPE_GROUP);
-            await roomStore.setMatrixRoom(mxRoom);
-            await roomStore.linkRooms(mxRoom, new RemoteRoom(
-                remoteId,
-            remoteData));
-            // Room doesn't exist yet, create it.
-        } else {
+        if (remoteEntries !== null || remoteEntries.length > 1) {
             if (remoteEntries.length > 1) {
-                log.error(`Have multiple matrix rooms assigned for chat. Bailing`);
-                return;
+                throw Error(`Have multiple matrix rooms assigned for chat. Bailing`);
             }
-            roomId = remoteEntries[0].matrix.getId();
+            return remoteEntries[0].matrix.getId();
         }
-        return roomId;
+        // Room doesn't exist yet, create it.
+        remoteData = {
+            protocol_id: data.account.protocol_id,
+            room_name: roomName,
+            properties: ProtoHacks.sanitizeProperties(props), // for joining
+        } as any;
+        log.info(`Couldn't find room for ${roomName}. Creating a new one`);
+        const res = await intent.createRoom({
+            createAsClient: false,
+            options: {
+                name: roomName,
+                visibility: "private",
+            },
+        });
+        log.debug("Created room with id ", res.room_id);
+        const remoteId = Buffer.from(
+            `${data.account.protocol_id}:${roomName}`,
+        ).toString("base64");
+        await this.store.storeRoom(res.room_id, MROOM_TYPE_GROUP, remoteId, remoteData);
+        return res.room_id;
     }
 
     private async handleIncomingIM(data: IReceivedImMsg) {
@@ -331,11 +315,5 @@ export class MatrixRoomHandler {
             return;
         }
         // XXX: Matrix doesn't support invite messages
-        // if (data.message) {
-        //     await intent.sendMessage(roomId, {
-        //         msgtype: "m.text",
-        //         body: data.message,
-        //     });
-        // }
     }
 }

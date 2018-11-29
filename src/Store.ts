@@ -1,4 +1,5 @@
-import { Bridge, MatrixRoom, RemoteUser, MatrixUser, UserStore, RoomStore, Logging } from "matrix-appservice-bridge";
+import { Bridge, MatrixRoom,RemoteRoom, RemoteUser,
+    MatrixUser, UserStore, RoomStore, Logging } from "matrix-appservice-bridge";
 import { Account } from "node-purple";
 import { Util } from "./Util";
 import { MROOM_TYPES, IRoomEntry } from "./StoreTypes";
@@ -50,5 +51,22 @@ export class Store {
         remoteUser.set("username", username);
         await this.userStore.linkUsers(mxUser, remoteUser);
         log.info("Linked new account:", userId, remoteUser);
+    }
+
+    public async storeRoom(matrixId: string, type: MROOM_TYPES, remoteId: string, remoteData: {}) {
+        log.info(`Storing remote room (${type}) ${matrixId}`);
+        log.debug("with data ", remoteData);
+        const mxRoom = new MatrixRoom(matrixId);
+        mxRoom.set("type", type);
+        try {
+            await this.roomStore.setMatrixRoom(mxRoom);
+            await this.roomStore.linkRooms(mxRoom, new RemoteRoom(
+                remoteId,
+            remoteData));
+        } catch (ex) {
+            log.error("Failed to store room:", ex);
+            throw ex;
+        }
+
     }
 }

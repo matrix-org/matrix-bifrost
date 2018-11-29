@@ -258,13 +258,7 @@ return `- ${account.protocol.name} (${username}) [Enabled=${account.isEnabled}] 
                     const remoteId = Buffer.from(
                         `${acct.protocol.id}:${res.conv.name}`,
                     ).toString("base64");
-                    log.debug("Storing remote room ", remoteId, " with data ", remoteData);
-                    const mxRoom = new MatrixRoom(event.room_id);
-                    mxRoom.set("type", MROOM_TYPE_GROUP);
-                    await roomStore.setMatrixRoom(mxRoom);
-                    await roomStore.linkRooms(mxRoom, new RemoteRoom(
-                        remoteId, remoteData)
-                    );
+                    await this.store.storeRoom(event.room_id, MROOM_TYPE_GROUP, remoteId, remoteData);
                 }
             }
         } catch (ex) {
