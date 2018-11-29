@@ -483,7 +483,7 @@ Say \`help\` for more commands.
 Optional parameters must be in the form of name=value *after* the required options.
 The parameters ARE case sensitive.
 
-E.g. \`join irc.example.com nicknameguy password=$ecr£t!\`
+E.g. \`join xmpp roomname conf.matrix.org password=$ecr£t!\`
 
 **required**:\n\n${required}
 
@@ -507,17 +507,20 @@ E.g. \`join irc.example.com nicknameguy password=$ecr£t!\`
             const param = requiredParams[i];
             // XXX: Hack so users do not have to specify handle.
             if (param.identifier === "handle") {
+                log.info("Ignoring handle");
                 continue;
             }
             paramSet[param.identifier] = arg;
         }
 
-        if (Object.keys(paramSet).length < requiredParams.length) {
+        const requiredCount = Object.keys(paramSet).length;
+
+        if (Object.keys(argsParams).length < requiredCount) {
             throw Error("Incorrect number of parameters given");
         }
 
         // Optionals
-        args.slice(1 + requiredParams.length).forEach((arg) => {
+        args.slice(1 + requiredCount).forEach((arg) => {
             const split = arg.split("=");
             if (split.length === 1) {
                 throw Error("Optional parameter in the wrong format.");
