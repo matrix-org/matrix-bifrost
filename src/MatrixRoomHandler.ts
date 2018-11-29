@@ -92,7 +92,7 @@ export class MatrixRoomHandler {
         // For some reason the following function wites to remoteData, so recreate it later
         const remoteEntries = await roomStore.getEntriesByRemoteRoomData(remoteData);
         let roomId;
-        if (remoteEntries === null || remoteEntries.length === 0) {
+        if (remoteEntries == null || remoteEntries.length === 0) {
             remoteData = {
                 matrixUser: matrixUser.getId(),
                 protocol_id: data.account.protocol_id,
@@ -153,7 +153,7 @@ export class MatrixRoomHandler {
         };
         // For some reason the following function wites to remoteData, so recreate it later
         const remoteEntries = await roomStore.getEntriesByRemoteRoomData(remoteData);
-        if (remoteEntries !== null || remoteEntries.length > 1) {
+        if (remoteEntries !== null && remoteEntries.length > 0) {
             if (remoteEntries.length > 1) {
                 throw Error(`Have multiple matrix rooms assigned for chat. Bailing`);
             }
