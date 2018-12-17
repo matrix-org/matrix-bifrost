@@ -3,9 +3,9 @@
 [![Build Status](https://travis-ci.org/matrix-org/matrix-appservice-purple.svg?branch=master)](https://travis-ci.org/matrix-org/matrix-appservice-purple)
 [![#purple-bridge:half-shot.uk](https://img.shields.io/badge/matrix-%23purple--bridge%3Ahalf--shot.uk-lightgrey.svg)](https://matrix.to/#/#purple-bridge:half-shot.uk)
 
-General purpose bridging using libpurple 
+General purpose puppeting bridges using libpurple 
 
-This bridge is in a pre-alpha state while we get all the bits and pieces working. However you may run it at your own risk
+This bridge is in very active development currently and intended mainly for experimentation and evaluation purposes.
 
 ## Installing
 
