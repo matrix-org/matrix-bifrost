@@ -1,12 +1,13 @@
 import { IChatInvite, IChatJoined, IChatJoinProperties } from "./purple/PurpleEvents";
-import { PurpleProtocol } from "./purple/PurpleInstance";
+import { PurpleProtocol } from "./purple/PurpleProtocol";
 import { Intent } from "matrix-appservice-bridge";
 import { Logging } from "matrix-appservice-bridge";
-import { PurpleAccount } from "./purple/PurpleAccount";
+import { IPurpleAccount } from "./purple/IPurpleAccount";
 const log = Logging.get("ProtoHacks");
 
 export const PRPL_MATRIX = "prpl-matrix";
 export const PRPL_XMPP = "prpl-jabber";
+export const XMPP_JS = "xmpp-js";
 
 /**
  * This class hacks around issues with certain protocols when interloping with
@@ -38,7 +39,7 @@ export class ProtoHacks {
     public static async addJoinProps(protocolId: string, props: any, userId: string, intent: Intent) {
         // When joining XMPP rooms, we should set a handle so pull off one from the users
         // profile.
-        if (protocolId === PRPL_XMPP) {
+        if (protocolId === PRPL_XMPP || protocolId === XMPP_JS) {
             try {
                 props.handle = (await intent.getProfileInfo(userId)).displayname;
             } catch (ex) {
@@ -51,11 +52,18 @@ export class ProtoHacks {
     public static removeSensitiveJoinProps(protocolId: string, props: any) {
         // XXX: We *don't* currently drop passwords to groups which leaves them
         // exposed in the room-store. Please be careful.
-        if (protocolId === PRPL_XMPP) {
+        if (protocolId === PRPL_XMPP || protocolId === XMPP_JS) {
             // Handles are like room nicks, so obviously don't store it.
             delete props.handle;
         }
     }
+
+    public static getRoomNameFromProps(protocolId: string, props: IChatJoinProperties): string | undefined {
+        if (protocolId === XMPP_JS) {
+            return `${props.room}@${props.server}`;
+        }
+    }
+
     public static getRoomNameForInvite(invite: IChatInvite|IChatJoined): string {
         // prpl-matrix sends us an invite with the room name set to the
         // matrix user's displayname, but the real room name is the room_id.
@@ -76,7 +84,7 @@ export class ProtoHacks {
         return senderId;
     }
 
-    public static getSenderId(account: PurpleAccount, senderId: string, roomName?: string): string {
+    public static getSenderId(account: IPurpleAccount, senderId: string, roomName?: string): string {
         // XXX: XMPP uses "handles" in group chats which might not be the same as
         // the username.
         if (account.protocol.id === PRPL_XMPP && roomName) {
