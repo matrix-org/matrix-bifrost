@@ -1,10 +1,11 @@
 import { Bridge, MatrixRoom, RemoteUser, MatrixUser, RemoteRoom } from "matrix-appservice-bridge";
 import { IEventRequest, IBridgeContext, IEventRequestData } from "./MatrixTypes";
 import { IMatrixRoomData, MROOM_TYPE_UADMIN, MROOM_TYPE_IM, MROOM_TYPE_GROUP } from "./StoreTypes";
-import { PurpleInstance, PurpleProtocol } from "./purple/PurpleInstance";
+import { PurpleProtocol } from "./purple/PurpleProtocol";
 import { IPurpleInstance } from "./purple/IPurpleInstance";
 import * as marked from "marked";
 import { PurpleAccount } from "./purple/PurpleAccount";
+import { IPurpleAccount } from "./purple/IPurpleAccount";
 import { Util } from "./Util";
 import { Logging } from "matrix-appservice-bridge";
 import { Deduplicator } from "./Deduplicator";
@@ -13,6 +14,7 @@ import { Config } from "./Config";
 import { Store } from "./Store";
 import { IAccountEvent, IChatJoinProperties, IChatJoined, IConversationEvent } from "./purple/PurpleEvents";
 import { ProtoHacks } from "./ProtoHacks";
+import { RoomAliasSet } from "./RoomAliasSet";
 const log = Logging.get("MatrixEventHandler");
 
 const RETRY_JOIN_MS = 5000;
@@ -23,13 +25,16 @@ const RETRY_JOIN_MS = 5000;
 export class MatrixEventHandler {
     private bridge: Bridge;
     private autoReg!: AutoRegistration | null;
-
+    private roomAliases: RoomAliasSet;
+    private pendingRoomAliases: Map<string,{protocol: PurpleProtocol, props: IChatJoinProperties}>
     constructor(
         private purple: IPurpleInstance,
         private store: Store,
         private deduplicator: Deduplicator,
         private config: Config,
     ) {
+        this.roomAliases = new RoomAliasSet(this.config.portals, this.purple);
+        this.pendingRoomAliases = new Map();
     }
 
     /**
@@ -44,6 +49,55 @@ export class MatrixEventHandler {
         } else {
             this.autoReg = null;
         }
+    }
+
+    public async onAliasQuery(alias: string, aliasLocalpart: string) {
+        const res = this.roomAliases.getOptsForAlias(aliasLocalpart);
+        log.info(`Got request to bridge ${aliasLocalpart}`);
+        if (!res) {
+            log.warn(`..but there is no protocol configured to handle it.`);
+            return;
+        }
+        const {protocol, properties} = res;
+        // XXX: Check if this chat already has a portal and refuse to bridge it.
+        if(await this.store.getRoomByRemoteData({
+            properties: ProtoHacks.sanitizeProperties(properties), // for joining
+            protocol_id: protocol.id,
+        }, "group")) {
+            log.warn("Room for", properties, "already exists, not allowing alias.");
+            return null;
+        }
+        log.info(`Creating new room for ${protocol.id} with`, properties);
+        this.pendingRoomAliases.set(alias, {protocol, props: properties});
+        return {
+            creationOpts: {
+                room_alias_name: aliasLocalpart,
+                initial_state: [
+                    {
+                        type: "m.room.join_rules",
+                        content: {
+                            join_rule: "public",
+                        },
+                        state_key: "",
+                    },
+                ],
+            },
+        }
+    }
+
+    public onAliasQueried(alias: string, roomId: string) {
+        log.debug(`onAliasQueried:`, alias, roomId);
+        const {protocol, props} = this.pendingRoomAliases.get(alias)!;
+        this.pendingRoomAliases.delete(alias);
+        const remoteData = {
+            protocol_id: protocol.id,
+            room_name: ProtoHacks.getRoomNameFromProps(protocol.id, props),
+            properties: ProtoHacks.sanitizeProperties(props), // for joining
+        } as any;
+        const remoteId = Buffer.from(
+            `${protocol.id}:${remoteData.room_name}`,
+        ).toString("base64");
+        return this.store.storeRoom(roomId, MROOM_TYPE_GROUP, remoteId, remoteData);
     }
 
     public async onEvent(request: IEventRequest, context: IBridgeContext) {
@@ -69,7 +123,7 @@ export class MatrixEventHandler {
 
         if (roomType === MROOM_TYPE_UADMIN) {
             if (event.type === "m.room.message") {
-                const args = event.content.body.split(" ");
+                const args = event.content.body.trim().split(" ");
                 await this.handleCommand(args, context, event);
             } else if (event.content.membership === "leave") {
                 await this.bridge.getRoomStore().removeEntriesByMatrixRoomId(event.room_id);
@@ -139,7 +193,7 @@ export class MatrixEventHandler {
             body += users.map((remoteUser: RemoteUser) => {
                 const pid = remoteUser.get("protocolId");
                 const username = remoteUser.get("username");
-                let account: PurpleAccount|null = null;
+                let account: IPurpleAccount|null = null;
                 try {
                     account = this.purple.getAccount(username, pid);
                 } catch (ex) {
@@ -202,7 +256,7 @@ return `- ${account.protocol.name} (${username}) [Enabled=${account.isEnabled}] 
 - \`accounts add $PROTOCOL ...$OPTS\` Add a new account, this will take some options given.
 - \`accounts add-existing $PROTOCOL $NAME\` Add an existing account from accounts.xml.
 - \`accounts enable|disable $PROTOCOL $USERNAME\` Enables or disables an account.
-- \`join $PROTOCOL [$USERNAME] opts\` Join a chat. Don't include opts to find out what you need to supply.
+- \`join $PROTOCOL opts\` Join a chat. Don't include opts to find out what you need to supply.
 - \`help\` This help prompt
 `;
             await intent.sendMessage(event.room_id, {
@@ -307,6 +361,9 @@ Say \`help\` for more commands.
         if (protocol === undefined) {
             throw new Error("Protocol was not found");
         }
+        if (!protocol.canCreateNew) {
+            throw Error("Protocol does not let you create new accounts");
+        }
         if (!args[0]) {
             throw new Error("You need to specify a username");
         }
@@ -326,16 +383,15 @@ Say \`help\` for more commands.
     private async handleAddExistingAccount(protocolId: string, name: string, event: IEventRequestData) {
         // TODO: Check to see if the user has an account matching this already.
         if (protocolId === undefined) {
-            throw new Error("You need to specify a protocol");
+            throw Error("You need to specify a protocol");
         }
         if (name === undefined) {
-            throw new Error("You need to specify a name");
+            throw Error("You need to specify a name");
         }
         const protocol = this.purple.findProtocol(protocolId);
         if (protocol === undefined) {
-            throw new Error("Protocol was not found");
+            throw Error("Protocol was not found");
         }
-        const account = new PurpleAccount(name, protocol);
         await this.store.storeUserAccount(event.sender, protocol, name);
         await this.bridge.getIntent().sendMessage(event.room_id, {
             msgtype: "m.notice",
@@ -348,6 +404,9 @@ Say \`help\` for more commands.
         if (!protocol) {
             throw Error("Protocol not found");
         }
+        if (!protocol.canAddExisting) {
+            throw Error("Protocol does not let you create new accounts");
+        }
         const acct = this.purple.getAccount(username, protocol.id);
         if (acct === null) {
             throw Error("Account not found");
@@ -357,7 +416,7 @@ Say \`help\` for more commands.
 
     private async handleImMessage(context: IBridgeContext, event: IEventRequestData) {
         log.info("Handling IM message");
-        let acct: PurpleAccount;
+        let acct: IPurpleAccount;
         try {
             acct = (await this.getAccountForMxid(context, event)).acct;
         } catch (ex) {
@@ -389,7 +448,10 @@ Say \`help\` for more commands.
             // XXX: Gnarly way of trying to determine who we are.
             try {
                 const conv = acct.getConversation(roomName);
-                nick = this.purple.getNickForChat(conv) || acct.name;
+                if (!conv) {
+                    throw Error();
+                }
+                nick = conv ? this.purple.getNickForChat(conv) || acct.name : acct.name;
             } catch (ex) {
                 nick = acct.name;
             }
@@ -414,7 +476,7 @@ Say \`help\` for more commands.
         // XXX: We are assuming here that the previous state was invite.
         const membership = event.content.membership;
         log.info(`Handling group ${event.sender} ${membership}`);
-        let acct: PurpleAccount;
+        let acct: IPurpleAccount;
         try {
             acct = (await this.getAccountForMxid(context, event)).acct;
         } catch (ex) {
@@ -442,26 +504,35 @@ Say \`help\` for more commands.
     }
 
     private async handleJoin(args: string[], context: IBridgeContext, event: IEventRequestData) {
+        console.log(args);
         // XXX: This only supports the first account of a protocol for now.
         log.debug("Handling join request");
         if (!args[0]) {
-            throw new Error("Protocol not supplied");
+            throw Error("Protocol not supplied");
         }
         const protocol = this.purple.findProtocol(args[0]);
         if (!protocol) {
-            throw new Error("Protocol not found");
+            throw Error("Protocol not found");
         }
-        const acct = await this.getAccountForMxid(context, event, protocol.id);
-        const paramSet = await this.getJoinParametersForCommand(acct.acct, args, event.room_id);
+        let paramSet, acct;
+        try {
+            acct = await this.getAccountForMxid(context, event, protocol.id);
+            paramSet = await this.getJoinParametersForCommand(acct.acct, args, event.room_id);
+            await ProtoHacks.addJoinProps(protocol.id, paramSet, event.sender, this.bridge.getIntent());
+        } catch(ex) {
+            log.error("Failed to get account:", ex);
+            throw Error("Failed to get account");
+        }
         // We don't know the room name, so we have to join and wait for the callback.
         if (paramSet !== null) {
             acct.acct.joinChat(paramSet);
         }
     }
 
-    private async getJoinParametersForCommand(acct: PurpleAccount, args: string[], roomId: string)
+    private async getJoinParametersForCommand(acct: IPurpleAccount, args: string[], roomId: string)
     : Promise<IChatJoinProperties|null> {
-        const params = acct.getChatParamsForProtocol(acct.protocol);
+        const params = acct.getChatParamsForProtocol();
+        console.log(args.length);
         if (args.length === 1) {
             let optional = "";
             let required = "";
@@ -531,7 +602,7 @@ E.g. \`join xmpp roomname conf.matrix.org password=$ecr£t!\`
         return paramSet;
     }
 
-    private joinOrDefer(acct: PurpleAccount, name: string, properties: IChatJoinProperties): Promise<void> {
+    private joinOrDefer(acct: IPurpleAccount, name: string, properties: IChatJoinProperties): Promise<void> {
         if (!acct.connected) {
             log.debug("Account is not connected, deferring join until connected");
             return new Promise((resolve, reject) => {
@@ -558,7 +629,7 @@ E.g. \`join xmpp roomname conf.matrix.org password=$ecr£t!\`
 
     private async getAccountForMxid(
         context: IBridgeContext, event: IEventRequestData, protocol?: string
-    ): Promise<{acct: PurpleAccount, newAcct: boolean}> {
+    ): Promise<{acct: IPurpleAccount, newAcct: boolean}> {
         const roomProtocol = protocol || context.rooms.remote.get("protocol_id");
         const remoteUser = context.senders.remotes.find((remote) => remote.get("protocolId") === roomProtocol);
         if (remoteUser == null) {
