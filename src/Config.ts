@@ -1,5 +1,6 @@
 import { IAutoRegStep } from "./AutoRegistration";
-
+import { IRoomAlias } from "./RoomAliasSet";
+import { XJSBackendOpts } from "./xmppjs/XJSBackendOpts";
 export class Config {
 
     public readonly bridge: IConfigBridge = {
@@ -9,6 +10,8 @@ export class Config {
     };
 
     public readonly purple: IConfigPurple = {
+        backendOpts: undefined,
+        backend: "node-purple",
         enableDebug: false,
         pluginDir: "./node_modules/node-purple/deps/libpurple/",
     };
@@ -28,8 +31,12 @@ export class Config {
     };
 
     public readonly profile: IConfigProfile = {
-        updateInterval: 60000 * 15
+        updateInterval: 60000 * 15,
     };
+
+    public readonly portals: IConfigPortals = {
+        aliases: undefined,
+    }
   /**
    * Apply a set of keys and values over the default config.
    * @param newConfig Config keys
@@ -54,6 +61,8 @@ export interface IConfigBridge {
 }
 
 export interface IConfigPurple {
+    backendOpts: {}|XJSBackendOpts|undefined,
+    backend: "node-purple"|"xmpp.js";
     enableDebug: boolean;
     pluginDir: string;
 }
@@ -74,6 +83,10 @@ export interface IBridgeBotAccount {
 
 export interface IConfigProfile {
     updateInterval: number;
+}
+
+export interface IConfigPortals {
+    aliases: {[regex: string]: IRoomAlias} | undefined
 }
 
 interface IConfigLogging {
