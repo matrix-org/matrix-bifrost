@@ -1,8 +1,8 @@
 import { MatrixUser, RemoteUser, Bridge, Intent} from "matrix-appservice-bridge";
-import { PurpleAccount } from "./purple/PurpleAccount";
+import { IPurpleAccount } from "./purple/IPurpleAccount";
 import * as _fs from "fs";
 import * as path from "path";
-import { PurpleProtocol } from "./purple/PurpleInstance";
+import { PurpleProtocol } from "./purple/PurpleProtocol";
 import { Util } from "./Util";
 import { Logging } from "matrix-appservice-bridge";
 import { Config } from "./Config";
@@ -28,7 +28,7 @@ export class ProfileSync {
     public async updateProfile(
         protocol: PurpleProtocol,
         senderId: string,
-        account: PurpleAccount,
+        account: IPurpleAccount,
         force: boolean = false,
         senderIdToLookup?: string
     ) {
@@ -125,6 +125,7 @@ export class ProfileSync {
             rmUser = new RemoteUser(Util.createRemoteId(protocol.id, senderId));
             rmUser.set("protocolId", protocol.id);
             rmUser.set("username", senderId);
+            rmUser.set("isRemoteUser", true);
             await store.linkUsers(mxUser, rmUser);
         } else {
             rmUser = remoteUsers[0];

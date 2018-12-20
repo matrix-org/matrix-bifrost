@@ -1,4 +1,4 @@
-import { PurpleProtocol } from "./purple/PurpleInstance";
+import { PurpleProtocol } from "./purple/PurpleProtocol";
 import { PRPL_XMPP } from "./ProtoHacks";
 import { Parser } from "htmlparser2";
 import { Logging } from "matrix-appservice-bridge";

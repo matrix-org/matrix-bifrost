@@ -6,20 +6,8 @@ import { Logging } from "matrix-appservice-bridge";
 import * as path from "path";
 import { IConfigPurple } from "../Config";
 import { IUserInfo, IConversationEvent } from "./PurpleEvents";
+import { PurpleProtocol } from "./PurpleProtocol";
 const log = Logging.get("PurpleInstance");
-
-export class PurpleProtocol {
-    public readonly name: string;
-    public readonly summary: string;
-    public readonly homepage: string;
-    public readonly id: string;
-    constructor(data: Protocol) {
-        this.name = data.name;
-        this.summary = data.summary!;
-        this.homepage = data.homepage!;
-        this.id = data.id;
-    }
-}
 
 export class PurpleInstance extends EventEmitter implements IPurpleInstance {
     private protocols: PurpleProtocol[];

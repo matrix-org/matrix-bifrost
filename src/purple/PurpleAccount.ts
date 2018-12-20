@@ -3,10 +3,11 @@
  */
 
 import { helper, plugins, buddy, accounts, messaging, Buddy, Account, Conversation, notify } from "node-purple";
-import { PurpleProtocol } from "./PurpleInstance";
+import { PurpleProtocol } from "./PurpleProtocol";
 import { IChatJoinProperties, IUserInfo, IConversationEvent, IChatJoined } from "./PurpleEvents";
 import { Util } from "../Util";
 import { IPurpleInstance } from "./IPurpleInstance";
+import { IPurpleAccount } from "./IPurpleAccount";
 
 export interface IChatJoinOptions {
     identifier: string;
@@ -14,7 +15,7 @@ export interface IChatJoinOptions {
     required: boolean;
 }
 
-export class PurpleAccount {
+export class PurpleAccount implements IPurpleAccount {
     private acctData: Account | undefined;
     private enabled: boolean;
     private waitingJoinRoomProperties: IChatJoinProperties | undefined;
@@ -146,8 +147,8 @@ export class PurpleAccount {
         }
     }
 
-    public getChatParamsForProtocol(protocol: PurpleProtocol): IChatJoinOptions[] {
-        return messaging.chatParams(this.handle, protocol.id);
+    public getChatParamsForProtocol(): IChatJoinOptions[] {
+        return messaging.chatParams(this.handle, this.protocol.id);
     }
 
     public getUserInfo(who: string): Promise<IUserInfo> {

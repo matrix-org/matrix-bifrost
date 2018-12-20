@@ -1,4 +1,4 @@
-import { PurpleProtocol } from "./purple/PurpleInstance";
+import { PurpleProtocol } from "./purple/PurpleProtocol";
 import { MatrixUser } from "matrix-appservice-bridge";
 import { ProtoHacks } from "./ProtoHacks";
 import * as crypto from "crypto";

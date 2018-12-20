@@ -1,5 +1,5 @@
 import * as Chai from "chai";
-import { PurpleProtocol } from "../src/purple/PurpleInstance";
+import { PurpleProtocol } from "../src/purple/PurpleProtocol";
 import { MessageFormatter } from "../src/MessageFormatter";
 const expect = Chai.expect;
 

@@ -1,9 +1,9 @@
 import { Bridge, MatrixRoom,RemoteRoom, RemoteUser,
     MatrixUser, UserStore, RoomStore, Logging } from "matrix-appservice-bridge";
-import { Account } from "node-purple";
 import { Util } from "./Util";
 import { MROOM_TYPES, IRoomEntry } from "./StoreTypes";
-import { PurpleProtocol } from "./purple/PurpleInstance";
+import { PurpleProtocol } from "./purple/PurpleProtocol";
+import { IAccountMinimal } from "./purple/PurpleEvents";
 
 const log = Logging.get("Store");
 
@@ -15,7 +15,7 @@ export class Store {
         this.userStore = bridge.getUserStore();
     }
 
-    public async getMatrixUserForAccount(account: Account): Promise<MatrixUser|null> {
+    public async getMatrixUserForAccount(account: IAccountMinimal): Promise<MatrixUser|null> {
         const remoteId = Util.createRemoteId(account.protocol_id, account.username);
         const matrixUsers = await this.userStore.getMatrixUsersFromRemoteId(
             remoteId,
@@ -37,6 +37,23 @@ export class Store {
     public getRemoteUsersFromMxId(userId: string): Promise<RemoteUser[]> {
         return this.bridge.getUserStore().getRemoteUsersFromMatrixId(
             userId,
+        );
+    }
+
+    public async getRoomByRemoteData(remoteData: any, type: MROOM_TYPES|undefined) {
+        const remoteEntries = await this.roomStore.getEntriesByRemoteRoomData(remoteData);
+        if (remoteEntries !== null && remoteEntries.length > 0) {
+            if (remoteEntries.length > 1) {
+                throw Error(`Have multiple matrix rooms assigned for chat. Bailing`);
+            }
+            return remoteEntries[0];
+        }
+    }
+
+    public async getUsernamesForProtocol(protocol: PurpleProtocol) {
+        return (await this.userStore.getByRemoteData({protocolId: protocol.id})).filter(
+            (u) => u.data.isRemoteUser != true).map(
+            (u) => u.get("username")
         );
     }
 

@@ -1,5 +1,5 @@
-import { PurpleProtocol } from "./PurpleInstance";
-import { PurpleAccount } from "./PurpleAccount";
+import { PurpleProtocol } from "./PurpleProtocol";
+import { IPurpleAccount } from "./IPurpleAccount";
 import { Event, Conversation } from "node-purple";
 import { IEventBody, IAccountEvent, IChatJoined, IConversationEvent } from "./PurpleEvents";
 import { IConfigPurple } from "../Config";
@@ -23,7 +23,7 @@ export interface IPCMessageResult {
 export interface IPurpleInstance extends EventEmitter {
     getBuddyFromChat(conv: Conversation, buddy: string): any;
     start(config: IConfigPurple): Promise<void>;
-    getAccount(username: string, protocolId: string): PurpleAccount|null;
+    getAccount(username: string, protocolId: string): IPurpleAccount|null;
     getProtocol(id: string): PurpleProtocol|undefined;
     getProtocols(): PurpleProtocol[];
     findProtocol(nameOrId: string): PurpleProtocol|undefined;

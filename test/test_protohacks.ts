@@ -1,6 +1,6 @@
 import * as Chai from "chai";
 import { Util } from "../src/Util";
-import { PurpleProtocol } from "../src/purple/PurpleInstance";
+import { PurpleProtocol } from "../src/purple/PurpleProtocol";
 import { ProtoHacks } from "../src/ProtoHacks";
 const expect = Chai.expect;
 

@@ -12,16 +12,6 @@ export interface IEventRequest {
     getPromise(): Promise<void>;
 }
 
-export interface IAliasQueried {
-    alias: string;
-    roomId: string;
-}
-
-export interface IAliasQuery {
-    alias: string;
-    aliasLocalpart: string;
-}
-
  /**
   * This is actually just a matrix event, as far as we care.
   */
