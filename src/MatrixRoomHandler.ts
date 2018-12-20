@@ -1,14 +1,10 @@
-import { Bridge, MatrixRoom, RemoteRoom, MatrixUser, Intent} from "matrix-appservice-bridge";
-import { PurpleInstance, PurpleProtocol } from "./purple/PurpleInstance";
+import { Bridge, MatrixUser, Intent, Logging} from "matrix-appservice-bridge";
 import { IPurpleInstance } from "./purple/IPurpleInstance";
-import { MROOM_TYPE_IM, MROOM_TYPE_GROUP } from "./StoreTypes";
-import { IBridgeContext, IAliasQuery, IAliasQueried } from "./MatrixTypes";
+import { MROOM_TYPE_GROUP, MROOM_TYPE_IM } from "./StoreTypes";
 import { IReceivedImMsg, IChatInvite, IChatJoined, IConversationEvent } from "./purple/PurpleEvents";
 import { ProfileSync } from "./ProfileSync";
 import { Util } from "./Util";
-import { Account } from "node-purple";
 import { ProtoHacks } from "./ProtoHacks";
-import { Logging } from "matrix-appservice-bridge";
 import { Store } from "./Store";
 import { Deduplicator } from "./Deduplicator";
 import { Config } from "./Config";
@@ -64,14 +60,6 @@ export class MatrixRoomHandler {
         this.bridge = bridge;
     }
 
-    public onAliasQuery(request: IAliasQuery, context: IBridgeContext) {
-        log.debug(`onAliasQuery:`, request);
-    }
-
-    public onAliasQueried(request: IAliasQueried, context: IBridgeContext) {
-        log.debug(`onAliasQueried:`, request);
-    }
-
     public async onChatJoined(ev: IConversationEvent) {
         this.deduplicator.incrementRoomUsers(ev.conv.name);
         let id = Util.createRemoteId(ev.account.protocol_id, ev.account.username);
@@ -115,7 +103,7 @@ export class MatrixRoomHandler {
             const remoteId = Buffer.from(
                 `${matrixUser.getId()}:${data.account.protocol_id}:${data.sender}`,
             ).toString("base64");
-            await this.store.storeRoom(roomId, MROOM_TYPE_GROUP, remoteId, remoteData);
+            await this.store.storeRoom(roomId, MROOM_TYPE_IM, remoteId, remoteData);
             // Room doesn't exist yet, create it.
         } else {
             if (remoteEntries.length > 1) {
@@ -157,11 +145,11 @@ export class MatrixRoomHandler {
         if (props) {
             ProtoHacks.removeSensitiveJoinProps(data.account.protocol_id, props);
         }
-        // Delete a password, if given because we don't need to lookup/store it·
         let remoteData = {
             protocol_id: data.account.protocol_id,
             room_name: roomName,
         };
+        log.debug("Searching for existing remote room:", remoteData);   
         // For some reason the following function wites to remoteData, so recreate it later
         const remoteEntries = await roomStore.getEntriesByRemoteRoomData(remoteData);
         if (remoteEntries !== null && remoteEntries.length > 0) {
@@ -290,7 +278,7 @@ export class MatrixRoomHandler {
             // Note that this will not invite anyone.
             roomId = await this.createOrGetGroupChatRoom(data, intent);
         } catch (e) {
-            log.error(`Failed to get/create room for this IM: ${e}`);
+            log.error(`Failed to get/create room for this chat:`, e);
             return;
         }
         await intent.sendMessage(roomId,
@@ -327,7 +315,7 @@ export class MatrixRoomHandler {
             log.debug(`Found room ${roomId} for ${data.room_name}`);
             intent.invite(roomId, matrixUser.getId());
         } catch (e) {
-            log.error(`Failed to get/create room for this IM: ${e}`);
+            log.error(`Failed to handle invite: ${e}`);
             return;
         }
         // XXX: Matrix doesn't support invite messages
