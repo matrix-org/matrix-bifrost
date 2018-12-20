@@ -48,7 +48,8 @@
     "request-promise-native": "^1.0.5",
     "typescript": "^3.0.1",
     "winston": "^3.0.0",
-    "winston-daily-rotate-file": "^3.3.2"
+    "winston-daily-rotate-file": "^3.3.2",
+    "xmpp.js": "^0.6.1"
   },
   "nyc": {
     "check-coverage": true,

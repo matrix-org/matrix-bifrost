@@ -1,7 +1,7 @@
 import { Cli, Bridge, AppServiceRegistration, ClientFactory, Logging } from "matrix-appservice-bridge";
 import { MatrixEventHandler } from "./MatrixEventHandler";
 import { MatrixRoomHandler } from "./MatrixRoomHandler";
-import { PurpleInstance, PurpleProtocol } from "./purple/PurpleInstance";
+import { PurpleProtocol } from "./purple/PurpleProtocol";
 import { IPurpleInstance } from "./purple/IPurpleInstance";
 import { PurpleAccount } from "./purple/PurpleAccount";
 import { EventEmitter } from "events";
@@ -13,6 +13,7 @@ import { Store } from "./Store";
 import { Deduplicator } from "./Deduplicator";
 import { Config, IBridgeBotAccount } from "./Config";
 import { Util } from "./Util";
+import { XmppJsInstance } from "./xmppjs/XJSInstance";
 
 const log = Logging.get("Program");
 
@@ -55,7 +56,7 @@ class Program {
     private roomHandler: MatrixRoomHandler|undefined;
     private profileSync: ProfileSync|undefined;
     private roomSync: RoomSync|undefined;
-    private purple: IPurpleInstance;
+    private purple?: IPurpleInstance;
     private store: Store|undefined;
     private cfg: Config;
     private deduplicator: Deduplicator;
@@ -71,7 +72,6 @@ class Program {
           run: this.runBridge.bind(this),
         });
         this.cfg = new Config();
-        this.purple = new PurpleInstance();
         this.deduplicator = new Deduplicator();
         // For testing w/o libpurple.
         // this.purple = new MockPurpleInstance();
@@ -111,19 +111,27 @@ class Program {
     private async runBridge(port: number, config: any) {
         log.info("Starting purple bridge on port ", port);
         this.cfg.ApplyConfig(config);
+        if (this.cfg.purple.backend === "node-purple") {
+            log.info("Selecting node-purple as a backend");
+            this.purple = new (require("./purple/PurpleInstance").PurpleInstance)();
+        } else if (this.cfg.purple.backend === "xmpp.js") {
+            log.info("Selecting xmpp.js as a backend");
+            this.purple = new (require("./xmppjs/XJSInstance").XmppJsInstance)();
+        } else {
+            throw new Error(`Backend ${this.cfg.purple.backend} not supported`);
+        }
         Logging.configure(this.cfg.logging);
         this.bridge = new Bridge({
-          // clientFactory,
           controller: {
             // onUserQuery: userQuery,
-            onAliasQuery: () => { (this.roomHandler as MatrixRoomHandler).onAliasQuery.bind(this.roomHandler); },
+            onAliasQuery: (alias, aliasLocalpart) => this.eventHandler!.onAliasQuery(alias, aliasLocalpart),
             onEvent: (request: IEventRequest, context) => {
                 if (this.eventHandler === undefined) {return; }
                 this.eventHandler.onEvent(request, context).catch((err) => {
                     log.error("onEvent err", err);
                 });
             },
-            onAliasQueried: () => { (this.roomHandler as MatrixRoomHandler).onAliasQueried.bind(this.roomHandler); },
+            onAliasQueried: (alias, roomId) => this.eventHandler!.onAliasQueried(alias, roomId),
             // We don't handle these just yet.
             // thirdPartyLookup: this.thirdpa.ThirdPartyLookup,
           },
@@ -134,24 +142,34 @@ class Program {
         await this.bridge.run(port, this.cfg);
         this.store = new Store(this.bridge);
         this.profileSync = new ProfileSync(this.bridge, this.cfg);
-        this.eventHandler = new MatrixEventHandler(this.purple, this.store, this.deduplicator, this.config);
+        this.eventHandler = new MatrixEventHandler(this.purple!, this.store, this.deduplicator, this.config);
         this.roomHandler = new MatrixRoomHandler(
-            this.purple, this.profileSync, this.store, this.cfg, this.deduplicator,
+            this.purple!, this.profileSync, this.store, this.cfg, this.deduplicator,
         );
-        this.roomSync = new RoomSync(this.purple, this.bridge, this.store, this.deduplicator);
+        this.roomSync = new RoomSync(this.purple!, this.bridge, this.store, this.deduplicator);
         // TODO: Remove these eventually
         this.eventHandler.setBridge(this.bridge);
         this.roomHandler.setBridge(this.bridge);
         log.info("Bridge has started.");
         await this.roomSync.sync();
-        await this.purple.start(this.cfg.purple);
-        this.purple.on("account-signed-on", (ev: IAccountEvent) => {
+        try {
+            await this.purple!.start(this.cfg.purple);
+            if (this.purple instanceof XmppJsInstance) {
+                this.purple.signInAccounts(
+                    await this.store.getUsernamesForProtocol(this.purple.getProtocols()[0])
+                );
+            }
+        } catch (ex) {
+            log.error("Encountered an error starting the purple backend:", ex);
+            process.exit(1);
+        }
+        this.purple!.on("account-signed-on", (ev: IAccountEvent) => {
             log.info(`${ev.account.protocol_id}://${ev.account.username} signed on`);
         });
-        this.purple.on("account-connection-error", (ev: IAccountEvent) => {
+        this.purple!.on("account-connection-error", (ev: IAccountEvent) => {
             log.warn(`${ev.account.protocol_id}://${ev.account.username} had a connection error`, ev);
         });
-        this.purple.on("account-signed-off", (ev: IAccountEvent) => {
+        this.purple!.on("account-signed-off", (ev: IAccountEvent) => {
             log.info(`${ev.account.protocol_id}://${ev.account.username} signed off.`);
             this.deduplicator.removeChosenOneFromAllRooms(
                 Util.createRemoteId(ev.account.protocol_id, ev.account.username),
@@ -163,7 +181,7 @@ class Program {
     private async runBotAccounts(accounts: IBridgeBotAccount[]) {
         // Fetch accounts from config
         accounts.forEach((account) => {
-            const acct = this.purple.getAccount(account.name, account.protocol);
+            const acct = this.purple!.getAccount(account.name, account.protocol);
             if (!acct) {
                 log.error(
 `${account.protocol}:${account.name} is not configured in libpurple. Ensure that accounts.xml is correct.`,
@@ -182,31 +200,6 @@ class Program {
         // Check they all exist and start.
         // If one is missing from the purple config, fail.
     }
-
-    private async getBotForProtocol(protocol: string) {
-
-    }
-
-    private async startPurpleAccounts() {
-        const store = this.bridge.getUserStore();
-        log.info("Starting enabled purple accounts..");
-        const matrixUsers = await store.getByMatrixData({});
-        await Promise.all(matrixUsers.map(async (matrixUser) => {
-            log.info(`Getting remote accounts for ${matrixUser.getId()}`);
-            const remotes = await store.getRemoteUsersFromMatrixId(matrixUser.getId());
-            await Promise.all(remotes.map(async (remoteUser) => {
-                log.info(`Starting ${remoteUser.getId()} (${remoteUser.get("protocolId")})`);
-                try {
-                    const acct = this.purple.getAccount(remoteUser.getId(), remoteUser.get("protocolId"));
-                    // TODO: At the moment, accounts start automatically.
-                } catch (ex) {
-                    log.error("Failed to start account, ", ex);
-                }
-            }));
-        }));
-        log.info("Fnished enabling purple accounts..");
-    }
-
 }
 
 new Program().start();
