@@ -4,8 +4,22 @@ bridge:
   userPrefix: "_purple_"
 
 purple:
+  backend: "node-purple" # For selecting a specific backend. One of "node-purple", "xmpp.js". Defaults to "node-purple"
   enableDebug: false
   pluginDir: "./node_modules/node-purple/deps/libpurple/"
+
+portals:
+  aliases:
+    # For auto selecting the conference server
+    "/^([A-Za-z0-9]+)$/":
+      protocol: "prpl-jabber"
+      properties:
+        room: "regex:1"
+        server: "conf.localhost"
+    "/([A-Za-z0-9]+)/":
+      protocol: "prpl-jabber"
+      properties:
+        conf: ""
 
 autoRegistration:
    enabled: false
