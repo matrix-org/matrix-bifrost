@@ -6,6 +6,7 @@ import { Logging } from "matrix-appservice-bridge";
 import { Store } from "./Store";
 import { IPurpleInstance } from "./purple/IPurpleInstance";
 import { PurpleAccount } from "./purple/PurpleAccount";
+import { IPurpleAccount } from "./purple/IPurpleAccount";
 const log = Logging.get("AutoRegistration");
 
 export interface IAutoRegHttpOpts {
@@ -14,11 +15,11 @@ export interface IAutoRegHttpOpts {
 }
 
 export interface IAutoRegStep {
-    type: "http"|"executable";
+    type: "http"|"executable"|"implicit";
     path: string;
     opts: IAutoRegHttpOpts|undefined;
     parameters: {[key: string]: string}; // key -> parameter value
-    paramsToStore: string[];
+    paramsToStore: string[];    
     headers: {[key: string]: string}; // key -> value
 }
 
@@ -34,19 +35,24 @@ export class AutoRegistration {
         return Object.keys(this.autoRegConfig.protocolSteps!).includes(protocol);
     }
 
-    public async registerUser(protocol: string, mxId: string): Promise<PurpleAccount> {
+    public async registerUser(protocol: string, mxId: string): Promise<IPurpleAccount> {
         if (!this.isSupported(protocol)) {
             throw new Error("Protocol unsupported");
         }
+        // We assume the caller has already validated this.
+        const proto = this.purple.getProtocol(protocol)!;
         const step = this.autoRegConfig.protocolSteps![protocol];
         let res: {username: string, extraParams: any};
         if (step.type === "http") {
             res = await this.handleHttpRegistration(mxId, step);
+        } else if (step.type === "implicit") {
+            const params = this.generateParameters(step.parameters, mxId);
+            await this.store.storeUserAccount(mxId, proto, params["username"]);
+            const acct = this.purple.getAccount(params["username"], protocol)!;
+            return acct;
         } else {
             throw new Error(`This method of registration is unsupported (${step.type})`);
         }
-        // We assume the caller has already validated this.
-        const proto = this.purple.getProtocol(protocol)!;
         // XXX: Slight hard-code here.
         new PurpleAccount(res.username, proto).createNew(res.extraParams.password);
         log.debug(`Creating purple account for ${protocol} ${res.username}`);
@@ -58,11 +64,24 @@ export class AutoRegistration {
         return acct;
     }
 
+    private generateParameters(parameters: {[key: string]: string}, mxId: string, profile: any = {}) {
+        let body = {};
+        const mxIdParts = mxId.substr(1).split(":");
+        for (const key of Object.keys(parameters)) {
+            let val = parameters[key];
+            val = val.replace("<T_MXID>", mxId);
+            val = val.replace("<T_LOCALPART>", mxIdParts[0]);
+            val = val.replace("<T_DISPLAYNAME>", profile.displayname || mxIdParts[0]);
+            val = val.replace("<T_GENERATEPWD>", Util.passwordGen(32));
+            val = val.replace("<T_AVATAR>", profile.avatar_url || "");
+            body[key] = val;
+        }
+        return body;
+    }
+
     private async handleHttpRegistration(mxId: string, step: IAutoRegStep) {
         log.debug("HttpReg: Running register step", step);
         const opts = step.opts as IAutoRegHttpOpts;
-        const body = {};
-        const mxIdParts = mxId.substr(1).split(":");
         log.debug("HttpReg: Fetching user profile");
         const intent = this.bridge.getIntent();
         let profile: any = {};
@@ -77,15 +96,7 @@ export class AutoRegistration {
         }
 
         log.debug("HttpReg: Got profile", profile);
-        for (const key of Object.keys(step.parameters)) {
-            let val = step.parameters[key];
-            val = val.replace("<T_MXID>", mxId);
-            val = val.replace("<T_LOCALPART>", mxIdParts[0]);
-            val = val.replace("<T_DISPLAYNAME>", profile.displayname || mxIdParts[0]);
-            val = val.replace("<T_GENERATEPWD>", Util.passwordGen(32));
-            val = val.replace("<T_AVATAR>", profile.avatar_url || "");
-            body[key] = val;
-        }
+        const body = this.generateParameters(step.parameters, mxId, profile);
         log.debug("HttpReg: Set parameters:", body);
         try {
             let username;
