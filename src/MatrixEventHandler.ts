@@ -300,6 +300,7 @@ return `- ${account.protocol.name} (${username}) [Enabled=${account.isEnabled}] 
                         log.debug("Attempting to join chat");
                         res = await acct.joinChat(paramSet, this.purple, 5000, false) as IConversationEvent;
                     } catch (ex) {
+                        log.warn("Failed to join chat for plumbing:", ex);
                         throw new Error("Failed to join chat");
                     }
                     const roomStore = this.bridge.getRoomStore();
