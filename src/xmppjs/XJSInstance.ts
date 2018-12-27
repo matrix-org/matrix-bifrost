@@ -116,7 +116,10 @@ export class XmppJsInstance extends EventEmitter implements IPurpleInstance {
 
     private onStanza(stanza: any) {
         log.info("Stanza:", stanza);
-        const error = stanza.children.find((e) => e.name === "error");
+        let error: any = null;
+        if (stanza.children) {
+            error = stanza.children.find((e) => e.name === "error");
+        }
         
         if (error) {
             log.error("error:", error.children);
