@@ -164,6 +164,10 @@ export class XmppJsInstance extends EventEmitter implements IPurpleInstance {
             }
         } else if (stanza.is("presence")) {
             const localAcct = this.accounts.get(stanza.attrs.to)!;
+            if (!localAcct) {
+                log.debug(`Not handling presence for ${stanza.attrs.to}, not a local account`);
+                return;
+            }
             // emit a chat-joined-new if an account was joining this room.
             if (localAcct.waitingToJoin.has(convName)) {
                 localAcct.waitingToJoin.delete(convName);
