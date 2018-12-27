@@ -34,6 +34,10 @@ export class XmppJsInstance extends EventEmitter implements IPurpleInstance {
         this.seenMessages = new Set();
     }
 
+    public createPurpleAccount(username) {
+        return new XmppJsAccount(username, this);
+    }
+
     xmppWriteToStream(xml: any) {
         if (this.canWrite) {
             return this.xmpp.write(xml);

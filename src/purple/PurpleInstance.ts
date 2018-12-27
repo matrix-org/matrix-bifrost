@@ -19,6 +19,10 @@ export class PurpleInstance extends EventEmitter implements IPurpleInstance {
         this.accounts = new Map();
     }
 
+    public createPurpleAccount(username, protocol: PurpleProtocol) {
+        return new PurpleAccount(username, protocol);
+    }
+
     public async start(config: IConfigPurple) {
         log.info("Starting purple instance");
         const pluginDir = path.resolve(config.pluginDir);

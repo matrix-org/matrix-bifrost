@@ -21,6 +21,9 @@ export interface IPCMessageResult {
 }
 
 export interface IPurpleInstance extends EventEmitter {
+
+    createPurpleAccount(username, protocol: PurpleProtocol): IPurpleAccount;
+
     getBuddyFromChat(conv: any, buddy: string): any;
     start(config: IConfigPurple): Promise<void>;
     getAccount(username: string, protocolId: string): IPurpleAccount|null;

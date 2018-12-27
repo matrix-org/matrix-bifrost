@@ -4,7 +4,6 @@ import { IMatrixRoomData, MROOM_TYPE_UADMIN, MROOM_TYPE_IM, MROOM_TYPE_GROUP } f
 import { PurpleProtocol } from "./purple/PurpleProtocol";
 import { IPurpleInstance } from "./purple/IPurpleInstance";
 import * as marked from "marked";
-import { PurpleAccount } from "./purple/PurpleAccount";
 import { IPurpleAccount } from "./purple/IPurpleAccount";
 import { Util } from "./Util";
 import { Logging } from "matrix-appservice-bridge";
@@ -370,9 +369,8 @@ Say \`help\` for more commands.
         if (!args[1]) {
             throw new Error("You need to specify a password");
         }
-        const account = new PurpleAccount(args[0], protocol);
+        const account = this.purple.createPurpleAccount(args[0], protocol);
         account.createNew(args[1]);
-        const userStore = this.bridge.getUserStore();
         await this.store.storeUserAccount(event.sender, protocol, args[0]);
         await this.bridge.getIntent().sendMessage(event.room_id, {
             msgtype: "m.notice",

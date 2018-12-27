@@ -5,7 +5,7 @@ import { Util } from "./Util";
 import { Logging } from "matrix-appservice-bridge";
 import { Store } from "./Store";
 import { IPurpleInstance } from "./purple/IPurpleInstance";
-import { PurpleAccount } from "./purple/PurpleAccount";
+//import { PurpleAccount } from "./purple/PurpleAccount";
 import { IPurpleAccount } from "./purple/IPurpleAccount";
 const log = Logging.get("AutoRegistration");
 
@@ -54,7 +54,7 @@ export class AutoRegistration {
             throw new Error(`This method of registration is unsupported (${step.type})`);
         }
         // XXX: Slight hard-code here.
-        new PurpleAccount(res.username, proto).createNew(res.extraParams.password);
+        this.purple.createPurpleAccount(res.username, proto).createNew(res.extraParams.password);
         log.debug(`Creating purple account for ${protocol} ${res.username}`);
         const acct = this.purple.getAccount(res.username, protocol)!;
         log.debug(`Enabling account`);

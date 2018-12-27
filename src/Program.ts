@@ -3,7 +3,6 @@ import { MatrixEventHandler } from "./MatrixEventHandler";
 import { MatrixRoomHandler } from "./MatrixRoomHandler";
 import { PurpleProtocol } from "./purple/PurpleProtocol";
 import { IPurpleInstance } from "./purple/IPurpleInstance";
-import { PurpleAccount } from "./purple/PurpleAccount";
 import { EventEmitter } from "events";
 import { IReceivedImMsg, IAccountEvent } from "./purple/PurpleEvents";
 import { ProfileSync } from "./ProfileSync";
@@ -16,35 +15,6 @@ import { Util } from "./Util";
 import { XmppJsInstance } from "./xmppjs/XJSInstance";
 
 const log = Logging.get("Program");
-
-class MockPurpleInstance extends EventEmitter {
-    private protocol: PurpleProtocol;
-    constructor() {
-        super();
-        this.protocol = new PurpleProtocol({
-            name: "fakeProtocol",
-            id: "fake-protocol",
-            homepage: undefined,
-            summary: undefined,
-        });
-    }
-
-    public start() {
-        return Promise.resolve();
-    }
-
-    public getAccount() {
-        return new PurpleAccount("SomeName", this.protocol);
-    }
-
-    public getProtocol(id: string) {
-        return this.protocol;
-    }
-
-    public getProtocols() {
-        return [];
-    }
-}
 
 /**
  * This is the entry point for the bridge. It contains

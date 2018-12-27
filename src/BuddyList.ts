@@ -1,4 +1,4 @@
-import { PurpleAccount } from "./purple/PurpleAccount";
+//import { PurpleAccount } from "./purple/PurpleAccount";
 
 /**
  * The buddylist in purple will be reflected by a set of commands to
@@ -7,7 +7,7 @@ import { PurpleAccount } from "./purple/PurpleAccount";
  */
 
 class BuddyList {
-    constructor(private account: PurpleAccount, private mxid: string) {
+    constructor(private account: any, private mxid: string) {
 
     }
  }

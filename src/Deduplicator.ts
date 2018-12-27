@@ -11,7 +11,6 @@
  */
 
 import { Logging } from "matrix-appservice-bridge";
-import { PurpleAccount } from "./purple/PurpleAccount";
 const log = Logging.get("Deduplicator");
 const leven = require("leven") as (a: string, b: string) => number;
 
