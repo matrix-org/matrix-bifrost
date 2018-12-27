@@ -161,7 +161,7 @@ export class XmppJsAccount implements IPurpleAccount {
     public async getUserInfo(who: string): Promise<IUserInfo> {
         const split = who.split("/");
         return {
-            Nickname: split.length > 1 ? split[0]: split[1],
+            Nickname: split.length > 1 ? split[1]: split[0],
             eventName: "meh",
             who,
             account: {
