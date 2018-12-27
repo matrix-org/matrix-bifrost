@@ -2,7 +2,7 @@
  * A collection of interfaces that may be emitted by PurpleInterface
  */
 
-import { Account, Conversation} from "node-purple";
+//import { Account, Conversation} from "node-purple";
 import { IPurpleAccount } from "./IPurpleAccount";
 
 export interface IChatJoinProperties {[key: string]: string; }
@@ -21,12 +21,12 @@ export interface IConversationMinimal {
 }
 
 export interface IAccountEvent extends IEventBody {
-    account: Account|IAccountMinimal;
+    account: any|IAccountMinimal;
 }
 
 
 export interface IConversationEvent extends IAccountEvent {
-    conv: Conversation | IConversationMinimal;
+    conv: any | IConversationMinimal;
 }
 
  // received-im-msg

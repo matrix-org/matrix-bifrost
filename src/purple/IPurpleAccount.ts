@@ -1,4 +1,4 @@
-import { helper, plugins, buddy, accounts, messaging, Buddy, Account, Conversation, notify } from "node-purple";
+//import { helper, plugins, buddy, accounts, messaging, Buddy, Account, Conversation, notify } from "node-purple";
 import { IChatJoinProperties, IUserInfo, IConversationEvent, IChatJoined } from "./PurpleEvents";
 import { IPurpleInstance } from "./IPurpleInstance";
 import { PurpleProtocol } from "./PurpleProtocol";
@@ -21,7 +21,7 @@ export interface IPurpleAccount {
     setEnabled(enable: boolean);
     sendIM(recipient: string, body: string);
     sendChat(chatName: string, body: string);
-    getBuddy(user: string): Buddy|undefined;
+    getBuddy(user: string): any|undefined;
     getJoinPropertyForRoom(roomName: string, key: string): string|undefined;
     setJoinPropertiesForRoom(roomName: string, props: IChatJoinProperties);
     isInRoom(roomName: string): boolean;
@@ -33,7 +33,7 @@ export interface IPurpleAccount {
         : Promise<IConversationEvent|void>;
 
     rejectChat(components: IChatJoinProperties);
-    getConversation(name: string): Conversation|undefined;
+    getConversation(name: string): any|undefined;
     getChatParamsForProtocol(): IChatJoinOptions[];
     getUserInfo(who: string): Promise<IUserInfo>;
 }

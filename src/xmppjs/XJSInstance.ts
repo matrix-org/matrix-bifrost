@@ -1,6 +1,5 @@
 import { IPurpleInstance } from "../purple/IPurpleInstance";
 import { EventEmitter } from "events";
-import { Conversation, accounts } from "node-purple";
 import { Logging } from "matrix-appservice-bridge";
 import { IConfigPurple } from "../Config";
 import { PurpleProtocol } from "../purple/PurpleProtocol";
@@ -47,7 +46,7 @@ export class XmppJsInstance extends EventEmitter implements IPurpleInstance {
 
     xmppAddSentMessage(id: string) { this.seenMessages.add(id); }
 
-    getBuddyFromChat(conv: Conversation, buddy: string): any {
+    getBuddyFromChat(conv: any, buddy: string): any {
         return undefined;
     }
 
@@ -221,7 +220,7 @@ export class XmppJsInstance extends EventEmitter implements IPurpleInstance {
         if (nameOrId.toLowerCase() === "xmpp-js") { return XMPP_PROTOCOL; }
     }
 
-    getNickForChat(conv: Conversation): string {
+    getNickForChat(conv: any): string {
         throw new Error("Not supported.");
     }
 }

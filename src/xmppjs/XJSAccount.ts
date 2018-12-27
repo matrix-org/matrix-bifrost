@@ -1,4 +1,3 @@
-import { helper, plugins, buddy, accounts, messaging, Buddy, Account, Conversation, notify } from "node-purple";
 import { IChatJoinProperties, IUserInfo, IConversationEvent, IChatJoined } from "../purple/PurpleEvents";
 import { XmppJsInstance, XMPP_PROTOCOL } from "./XJSInstance";
 import { IPurpleAccount, IChatJoinOptions } from "../purple/IPurpleAccount";
@@ -76,7 +75,7 @@ export class XmppJsAccount implements IPurpleAccount {
         this.xmpp.xmppWriteToStream(message);
     }
 
-    public getBuddy(user: string): Buddy|undefined {
+    public getBuddy(user: string): any|undefined {
         //TODO: Not implemented
         return;
     }
@@ -135,7 +134,7 @@ export class XmppJsAccount implements IPurpleAccount {
         throw Error("Rejecting not implemented");
     }
 
-    public getConversation(name: string): Conversation {
+    public getConversation(name: string): any {
         throw Error("getConversation not implemented");
     }
 
