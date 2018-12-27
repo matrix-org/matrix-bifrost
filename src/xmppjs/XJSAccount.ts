@@ -105,6 +105,11 @@ export class XmppJsAccount implements IPurpleAccount {
                     to: `${components.room}@${components.server}/${components.handle}`,
                     from: this.remoteId
                 },
+                xml ('x', {
+                    xmlns: 'http://jabber.org/protocol/muc',
+                }, xml ("history", {
+                    maxchars: '0', // No history
+                }))
             );
             if (setWaiting) {
                 this.waitingToJoin.add(`${components.room}@${components.server}`);
