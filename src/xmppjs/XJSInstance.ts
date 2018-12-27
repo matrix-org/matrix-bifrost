@@ -140,7 +140,7 @@ export class XmppJsInstance extends EventEmitter implements IPurpleInstance {
             this.seenMessages.add(id);  
             const messageWrapper = stanza.children.find((e) => e.name === "body")
             let message = "";
-            if (messageWrapper.children) {
+            if (messageWrapper && messageWrapper.children) {
                 message = messageWrapper.children[0];
             } else {
                 log.debug("Don't know how to handle a message without children");
