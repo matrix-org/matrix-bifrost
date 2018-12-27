@@ -138,7 +138,14 @@ export class XmppJsInstance extends EventEmitter implements IPurpleInstance {
                 return;
             }
             this.seenMessages.add(id);  
-            const message = stanza.children.find((e) => e.name === "body").children[0];
+            const messageWrapper = stanza.children.find((e) => e.name === "body")
+            let message = "";
+            if (messageWrapper.children) {
+                message = messageWrapper.children[0];
+            } else {
+                log.debug("Don't know how to handle a message without children");
+                return;
+            }
             if (type === "groupchat") {
                 this.emit("received-chat-msg", {
                     eventName: "received-chat-msg",
