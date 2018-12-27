@@ -59,7 +59,7 @@ export class XmppJsInstance extends EventEmitter implements IPurpleInstance {
         if (!opts || !opts.service || !opts.domain || !opts.password) {
             throw Error("Missing opts for xmpp: service, domain, password");
         }
-        log.info("Starting new XMPP component instance with", opts);
+        log.info(`Starting new XMPP component instance to ${opts.service} using domain ${opts.domain}`);
         const xmpp = component({
             service: opts.service,
             domain: opts.domain,

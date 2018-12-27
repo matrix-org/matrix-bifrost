@@ -121,7 +121,7 @@ export class MatrixEventHandler {
         }
 
         if (roomType === MROOM_TYPE_UADMIN) {
-            if (event.type === "m.room.message") {
+            if (event.type === "m.room.message" && event.content.msgtype === "m.text") {
                 const args = event.content.body.trim().split(" ");
                 await this.handleCommand(args, context, event);
             } else if (event.content.membership === "leave") {
