@@ -99,9 +99,6 @@ export class XmppJsAccount implements IPurpleAccount {
         timeout: number = 5000,
         setWaiting: boolean = true)
         : Promise<IConversationEvent|void> {
-            if (instance && instance instanceof XmppJsAccount === false) {
-                throw Error("'instance' should be a XmppJsAccount");
-            }
             const message = xml(
                 'presence',
                 {
