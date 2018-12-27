@@ -10,9 +10,11 @@ const IDPREFIX = "pbridge";
 
 export class XmppJsAccount implements IPurpleAccount {
     private rooms: Set<string>;
+    public readonly waitingToJoin: Set<string>;
     // remoteId == jid
     constructor(public readonly remoteId: string, private xmpp: XmppJsInstance) {
         this.rooms = new Set();
+        this.waitingToJoin = new Set();
     }
 
     get _waitingJoinRoomProps(): IChatJoinProperties|undefined {
@@ -55,7 +57,7 @@ export class XmppJsAccount implements IPurpleAccount {
             xml('body', null, body),
         );
         this.xmpp.xmppAddSentMessage(id);
-        this.xmpp.stream.send(message);
+        this.xmpp.xmppWriteToStream(message);
     }
 
     public sendChat(chatName: string, body: string) {
@@ -71,7 +73,7 @@ export class XmppJsAccount implements IPurpleAccount {
             xml('body', null, body),
         );
         this.xmpp.xmppAddSentMessage(id);
-        this.xmpp.stream.send(message);
+        this.xmpp.xmppWriteToStream(message);
     }
 
     public getBuddy(user: string): Buddy|undefined {
@@ -94,10 +96,13 @@ export class XmppJsAccount implements IPurpleAccount {
 
     public async joinChat(
         components: IChatJoinProperties,
-        purple?: IPurpleInstance,
-        timeout: number = 1000,
+        instance?: IPurpleInstance,
+        timeout: number = 5000,
         setWaiting: boolean = true)
         : Promise<IConversationEvent|void> {
+            if (instance && instance instanceof XmppJsAccount === false) {
+                throw Error("'instance' should be a XmppJsAccount");
+            }
             const message = xml(
                 'presence',
                 {
@@ -105,8 +110,25 @@ export class XmppJsAccount implements IPurpleAccount {
                     from: this.remoteId
                 },
             );
-            await this.xmpp.stream.send(message);
-            return;
+            if (setWaiting) {
+                this.waitingToJoin.add(`${components.room}@${components.server}`);
+            }
+            let p: Promise<IChatJoined>|undefined = undefined;
+            if (instance) {
+                p = new Promise(() => (resolve, reject) => {
+                    const timer = setTimeout(reject, timeout);
+                    const cb = (data: IChatJoined) => {
+                        if (data.conv.name === `${components.room}@${components.server}`) {
+                            clearTimeout(timer);
+                            this.xmpp.removeListener("chat-joined", cb);
+                            resolve(data);
+                        }
+                    };
+                    this.xmpp.addListener("chat-joined", cb);
+                });
+            }
+            await this.xmpp.xmppWriteToStream(message);
+            return p;
         }
 
     public rejectChat(components: IChatJoinProperties) {
@@ -138,6 +160,15 @@ export class XmppJsAccount implements IPurpleAccount {
     }
 
     public async getUserInfo(who: string): Promise<IUserInfo> {
-        throw new Error("getUserInfo not implemented");
+        const split = who.split("/");
+        return {
+            Nickname: split.length > 1 ? split[0]: split[1],
+            eventName: "meh",
+            who,
+            account: {
+                protocol_id: this.protocol.id,
+                username: this.remoteId
+            }
+        }
     }
 }

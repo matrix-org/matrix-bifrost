@@ -48,7 +48,6 @@ export interface IChatJoined extends IConversationEvent {
 }
 
 export interface IUserInfo extends IAccountEvent {
-    [key: string]: string|Account;
-    account: Account;
+    [key: string]: string|IAccountMinimal;
     who: string;
 }

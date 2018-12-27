@@ -8,7 +8,7 @@ import { component, xml, jid } from "@xmpp/component";
 import { XJSBackendOpts } from "./XJSBackendOpts";
 import { XmppJsAccount } from "./XJSAccount";
 import { IPurpleAccount } from "../purple/IPurpleAccount";
-import { IAccountEvent, IChatJoined, IReceivedImMsg } from "../purple/PurpleEvents";
+import { IAccountEvent, IChatJoined, IReceivedImMsg, IConversationEvent } from "../purple/PurpleEvents";
 
 const xLog = Logging.get("XMPP-conn");
 const log = Logging.get("XmppJsInstance");
@@ -25,21 +25,30 @@ export class XmppJsInstance extends EventEmitter implements IPurpleInstance {
     private myAddress: any;
     private accounts: Map<string, XmppJsAccount>;
     private seenMessages: Set<string>;
-
+    private canWrite: boolean;
+    private bufferedMessages: {xml: any, resolve: (any: Promise<any>) => void}[];
     constructor () {
         super();
+        this.canWrite = false;
         this.accounts = new Map();
+        this.bufferedMessages = [];
         this.seenMessages = new Set();
     }
 
-    get stream() {
-        return this.xmpp;
+    xmppWriteToStream(xml: any) {
+        if (this.canWrite) {
+            return this.xmpp.write(xml);
+        }
+        const p = new Promise((resolve) => {
+            this.bufferedMessages.push({xml, resolve});
+        });
+        return p;
     }
 
     xmppAddSentMessage(id: string) { this.seenMessages.add(id); }
 
     getBuddyFromChat(conv: Conversation, buddy: string): any {
-        throw new Error("Not supported.");
+        return undefined;
     }
 
     async start(config: IConfigPurple): Promise<void> {
@@ -64,12 +73,24 @@ export class XmppJsInstance extends EventEmitter implements IPurpleInstance {
         xmpp.on('online', async address => {
             xLog.info("gone online as " + address);
             this.myAddress = address;
+            this.canWrite = true;
+            log.info(`flushing ${this.bufferedMessages.length} buffered messages`);
+            while (this.bufferedMessages.length) {
+                if (!this.canWrite) {
+                    return;
+                }
+                const msg = this.bufferedMessages.splice(0, 1)[0];
+                msg.resolve(this.xmpp.write(msg.xml));
+            }
         });
           
         // Debug
         xmpp.on('status', status => {
+          if (status === "disconnecting" || status === "disconnected") {
+              this.canWrite = false;
+          }
           xLog.debug("status:", status);
-        })
+        });
         xmpp.on('input', input => {
             xLog.debug('RX:', input)
         });
@@ -93,6 +114,7 @@ export class XmppJsInstance extends EventEmitter implements IPurpleInstance {
         }
         const from = stanza.attrs.from ? jid(stanza.attrs.from) : null;
         const to = stanza.attrs.to ? jid(stanza.attrs.to) : null;
+        const convName = `${from.local}@${from.domain}`;
         log.info(`Got from=${from} to=${to}`);
 
         //"received-im-msg"
@@ -103,7 +125,7 @@ export class XmppJsInstance extends EventEmitter implements IPurpleInstance {
             if (this.seenMessages.has(id)) {
                 return;
             }
-            this.seenMessages.add(id);
+            this.seenMessages.add(id);  
             const message = stanza.children.find((e) => e.name === "body").children[0];
             if (type === "groupchat") {
                 this.emit("received-chat-msg", {
@@ -112,7 +134,7 @@ export class XmppJsInstance extends EventEmitter implements IPurpleInstance {
                     message,
                     conv: {
                         // Don't include the handle
-                        name: `${from.local}@${from.domain}`
+                        name: convName,
                     },
                     account: {
                         protocol_id: XMPP_PROTOCOL.id,
@@ -132,24 +154,38 @@ export class XmppJsInstance extends EventEmitter implements IPurpleInstance {
                 } as IReceivedImMsg);
             }
         } else if (stanza.is("presence")) {
-            const localAcct = this.accounts.get(stanza.attrs.to);
-            this.emit("chat-joined-new", {
-                eventName: "chat-joined-new",
-                purpleAccount: localAcct!,
+            const localAcct = this.accounts.get(stanza.attrs.to)!;
+            // emit a chat-joined-new if an account was joining this room.
+            if (localAcct.waitingToJoin.has(convName)) {
+                localAcct.waitingToJoin.delete(convName);
+                this.emit(`chat-joined-new`, {
+                    eventName: "chat-joined-new",
+                    purpleAccount: localAcct,
+                    conv: {
+                        name: convName,
+                    },
+                    account: {
+                        protocol_id: localAcct!.protocol.id,
+                        username: localAcct!.remoteId,
+                    },
+                    join_properties: {
+                        room: from.local,
+                        server: from.domain,
+                        handle: from.resource,
+                    }
+                } as IChatJoined);
+            }
+            // Always emit this.
+            this.emit("chat-joined", {
+                eventName: "chat-joined",
                 conv: {
-                    name: `${from.local}@${from.domain}`,
+                    name: convName,
                 },
                 account: {
                     protocol_id: localAcct!.protocol.id,
                     username: localAcct!.remoteId,
-                },
-                join_properties: {
-                    room: from.local,
-                    server: from.domain,
-                    handle: from.resource,
                 }
-            } as IChatJoined)
-            console.log(stanza);
+            } as IConversationEvent);
         }
     }
 
