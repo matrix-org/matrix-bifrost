@@ -114,7 +114,7 @@ export class XmppJsAccount implements IPurpleAccount {
                 p = new Promise((resolve, reject) => {
                     const timer = setTimeout(reject, timeout);
                     const cb = (data: IChatJoined) => {
-                        if (data.conv.name === `${components.room}@${components.server}` && data.account.remoteId === this.remoteId) {
+                        if (data.conv.name === `${components.room}@${components.server}` && data.account.username === this.remoteId) {
                             clearTimeout(timer);
                             this.xmpp.removeListener("chat-joined", cb);
                             resolve(data);
