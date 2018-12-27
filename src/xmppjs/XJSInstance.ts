@@ -71,7 +71,13 @@ export class XmppJsInstance extends EventEmitter implements IPurpleInstance {
         xmpp.on("offline", () => {
             xLog.info("gone offline.");
         });
-        xmpp.on("stanza", this.onStanza.bind(this));
+        xmpp.on("stanza", (stanza) => {
+            try {
+                this.onStanza(stanza);
+            } catch (ex) {
+                log.error("Failed to handle stanza:", ex);
+            }
+        });
         
         xmpp.on('online', async address => {
             xLog.info("gone online as " + address);
