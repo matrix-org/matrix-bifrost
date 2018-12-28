@@ -27,7 +27,7 @@ export class Config {
 
     public readonly logging: IConfigLogging = {
         console: "info",
-        files: { },
+        files: undefined,
     };
 
     public readonly profile: IConfigProfile = {
@@ -91,5 +91,5 @@ export interface IConfigPortals {
 
 interface IConfigLogging {
   console: "debug"|"info"|"warn"|"error"|"off"
-  files: {[filename: string]: "debug"|"info"|"warn"|"error"}
+  files?: {[filename: string]: "debug"|"info"|"warn"|"error"}
 }
