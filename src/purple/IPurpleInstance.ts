@@ -35,4 +35,6 @@ export interface IPurpleInstance extends EventEmitter {
     on(name: "account-connection-error"|"account-signed-on"|"account-signed-off", cb: (ev: IAccountEvent) => void);
     on(name: "chat-joined", cb: (ev: IConversationEvent) => void);
     on(name: "chat-joined-new", cb: (ev: IChatJoined) => void);
+    needsDedupe(): boolean;
+    needsAccountLock(): boolean;
 }

@@ -248,4 +248,12 @@ export class XmppJsInstance extends EventEmitter implements IPurpleInstance {
     getNickForChat(conv: any): string {
         throw new Error("Not supported.");
     }
+
+    needsDedupe() {
+        return false;
+    }
+
+    needsAccountLock() {
+        return false;
+    }
 }

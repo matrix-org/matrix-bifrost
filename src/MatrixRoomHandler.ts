@@ -1,7 +1,7 @@
 import { Bridge, MatrixUser, Intent, Logging} from "matrix-appservice-bridge";
 import { IPurpleInstance } from "./purple/IPurpleInstance";
 import { MROOM_TYPE_GROUP, MROOM_TYPE_IM } from "./StoreTypes";
-import { IReceivedImMsg, IChatInvite, IChatJoined, IConversationEvent } from "./purple/PurpleEvents";
+import { IReceivedImMsg, IChatInvite, IChatJoined, IConversationEvent, IAccountMinimal } from "./purple/PurpleEvents";
 import { ProfileSync } from "./ProfileSync";
 import { Util } from "./Util";
 import { ProtoHacks } from "./ProtoHacks";
@@ -61,14 +61,19 @@ export class MatrixRoomHandler {
     }
 
     public async onChatJoined(ev: IConversationEvent) {
-        this.deduplicator.incrementRoomUsers(ev.conv.name);
-        let id = Util.createRemoteId(ev.account.protocol_id, ev.account.username);
-        id = `${id}/${ev.conv.name}`;
-        this.accountRoomLock.add(id);
-        setTimeout(() => {
-            log.debug(`AccountLock unlocking ${id}`);
-            this.accountRoomLock.delete(id);
-        }, ACCOUNT_LOCK_MS);
+        if (this.purple.needsDedupe()) {
+            this.deduplicator.incrementRoomUsers(ev.conv.name);
+        }
+
+        if (this.purple.needsAccountLock()) {
+            let id = Util.createRemoteId(ev.account.protocol_id, ev.account.username);
+            id = `${id}/${ev.conv.name}`;
+            this.accountRoomLock.add(id);
+            setTimeout(() => {
+                log.debug(`AccountLock unlocking ${id}`);
+                this.accountRoomLock.delete(id);
+            }, ACCOUNT_LOCK_MS);
+        }
     }
 
     private async createOrGetIMRoom(data: IReceivedImMsg, matrixUser: MatrixUser, intent: Intent) {

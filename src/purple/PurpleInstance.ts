@@ -110,4 +110,12 @@ export class PurpleInstance extends EventEmitter implements IPurpleInstance {
             }
         });
     }
+
+    needsDedupe() {
+        return true;
+    }
+
+    needsAccountLock() {
+        return true;
+    }
 }
