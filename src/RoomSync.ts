@@ -26,7 +26,7 @@ export class RoomSync {
         this.purple.on("account-signed-on", this.onAccountSignedin.bind(this));
     }
 
-    public async sync(initial: boolean = true) {
+    public async sync() {
         // XXX: There is no retry handling for this.
         log.info("Beginning sync");
         try {
@@ -36,7 +36,6 @@ export class RoomSync {
             throw Error("Encountered error while syncing. Cannot continue");
         }
         log.info("Finished sync");
-
     }
 
     /**
