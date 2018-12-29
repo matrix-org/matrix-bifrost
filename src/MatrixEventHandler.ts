@@ -102,15 +102,21 @@ export class MatrixEventHandler {
     public async onEvent(request: IEventRequest, context: IBridgeContext) {
         const roomType: string|null = context.rooms.matrix ? context.rooms.matrix.get("type") : null;
         const event = request.getData();
+        const newInvite = !roomType && event.type === "m.room.member" && event.content.membership === "invite";
         log.debug("Got event (id, type, sender, roomtype):", event.event_id, event.type, event.sender, roomType);
         const botUserId = this.bridge.getBot().client.getUserId();
-        if (!roomType && event.content.membership === "invite" && event.state_key === botUserId) {
-            try {
-                await this.handleInviteForBot(event);
-            } catch (e) {
-                log.error("Failed to handle invite for bot:", e);
+        if (newInvite) {
+            log.debug(`Handling invite from ${event.sender}.`);
+            if (event.state_key === botUserId) {
+                try {
+                    await this.handleInviteForBot(event);
+                } catch (e) {
+                    log.error("Failed to handle invite for bot:", e);
+                }
+            } else if (this.bridge.getBot().isRemoteUser(event.state_key)) {
+                // This is a PM, maybe?
+                log.debug("Got request to PM", event.state_key);
             }
-            return;
         }
 
         if (event.type === "m.room.message" && event.content.msgtype === "m.text" && event.content.body.startsWith("!purple")) {
