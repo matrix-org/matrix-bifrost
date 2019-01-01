@@ -57,7 +57,8 @@ sending `accounts add-existing $PROTOCOL $USERNAME` where the protocol and usern
 
 You should also run `accounts enable $PROTOCOL $USERNAME` to enable the account for the bridge, and then it should connect automatically.
 
-#### Bridging XMPP room
+
+### Bridging XMPP room
 
 Connect to your matrix server and open a chat with `@_purple_bot:$YOUR_MATRIX_DOMAIN`.
 ```
@@ -73,3 +74,36 @@ join xmpp $ROOM $XMPP_SERVER
 
 The `node-purple` rewrite is still not quite bugfree and we are working hard to iron out the kinks in it. We ask that you report
 if certain purple plugins cause more crashes, or if anything in particular lead up to it.
+
+### TLS certificates missing
+If you're having issues connecting, consider enabling debug in `config.yaml`
+```
+purple:
+  enableDebug: true
+
+```
+Restart the appservice using `start.sh`.
+```
+(12:36:54) nss: subject=CN=jabber.ccc.de issuer=CN=Let's Encrypt Authority X3,O=Let's Encrypt,C=US
+(12:36:54) nss: subject=CN=Let's Encrypt Authority X3,O=Let's Encrypt,C=US issuer=CN=DST Root CA X3,O=Digital Signature Trust Co.
+(12:36:54) nss: partial certificate chain
+(12:36:54) certificate/x509/tls_cached: Starting verify for jabber.ccc.de
+(12:36:54) certificate/x509/tls_cached: Checking for cached cert...
+(12:36:54) certificate/x509/tls_cached: ...Not in cache
+(12:36:54) certificate/x509/ca: Couldn't open location '/usr/local/share/purple/ca-certs'
+(12:36:54) certificate/x509/ca: Lazy init completed.
+(12:36:54) nss: CERT 1. CN=Let's Encrypt Authority X3,O=Let's Encrypt,C=US [Certificate Authority]:
+(12:36:54) nss:   ERROR -8179: SEC_ERROR_UNKNOWN_ISSUER
+```
+
+```
+
+If you're seeing issues like the ones above, consider installing the correct TLS certificates.
+In my case the Let's Encrypt certificates.
+```
+mkdir -p /usr/local/share/purple/ca-certs
+cd /usr/local/share/purple/ca-certs
+wget https://letsencrypt.org/certs/isrgrootx1.pem
+wget https://letsencrypt.org/certs/letsencryptauthorityx3.pem
+wget https://letsencrypt.org/certs/lets-encrypt-x3-cross-signed.pem
+````
