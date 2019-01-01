@@ -23,9 +23,9 @@ export interface IEventRequestData {
     // tslint:disable-next-line:no-any
     content: any;
     // tslint:disable-next-line:no-any
-    unsigned: any;
+    unsigned?: any;
     room_id: string;
-    state_key: string;
+    state_key?: string;
 }
 
 export interface IBridgeContext {
