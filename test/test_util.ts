@@ -60,7 +60,7 @@ describe("Util", () => {
     });
     describe("desanitizeProperties", () => {
         it("should desanitize properties", () => {
-            expect(Util.sanitizeProperties({
+            expect(Util.desanitizeProperties({
                 "my·wonderful·property": "foo",
                 "normal_property": "bar"
             })).to.deep.equal({
