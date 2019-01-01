@@ -5,7 +5,6 @@ import { Logging } from "matrix-appservice-bridge";
 import { IEventRequestData } from "./MatrixTypes";
 import { IConfigBridge } from "./Config";
 import * as request from "request-promise-native";
-import { stringify } from "querystring";
 const log = Logging.get("MessageFormatter");
 
 export interface IMatrixMsgContents {
@@ -115,7 +114,7 @@ export class MessageFormatter {
                 log.warn("Don't know how to handle attachment for message, not a http format uri");
                 return matrixMsg;
             }
-            const file = await request.get(attachment.uri).response!;
+            const file = (await request.get(attachment.uri).promise()).response!;
 
             // Use the headers if a type isn't given.
             if (!attachment.mimetype) {

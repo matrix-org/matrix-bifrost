@@ -1,4 +1,3 @@
-//import { PurpleAccount } from "./purple/PurpleAccount";
 
 /**
  * The buddylist in purple will be reflected by a set of commands to

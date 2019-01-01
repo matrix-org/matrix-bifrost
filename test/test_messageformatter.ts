@@ -18,8 +18,8 @@ const XMPP = new PurpleProtocol({
 
 describe("MessageFormatter", () => {
     describe("matrixEventToBody", () => {
-        it("should transform a plain text message to a basic body", async () => {
-            const msg = await MessageFormatter.matrixEventToBody({
+        it("should transform a plain text message to a basic body", () => {
+            const msg = MessageFormatter.matrixEventToBody({
                 sender: "@foo:bar",
                 event_id: "$event:bar",
                 content: {
@@ -40,8 +40,8 @@ describe("MessageFormatter", () => {
                 id: "$event:bar",
             });
         });
-        it("should transform a formatted message", async () => {
-            const msg = await MessageFormatter.matrixEventToBody({
+        it("should transform a formatted message", () => {
+            const msg = MessageFormatter.matrixEventToBody({
                 sender: "@foo:bar",
                 event_id: "$event:bar",
                 content: {
@@ -67,8 +67,8 @@ describe("MessageFormatter", () => {
                 id: "$event:bar",
             });
         });
-        it("should transform an info-less media event", async () => {
-            const msg = await MessageFormatter.matrixEventToBody({
+        it("should transform an info-less media event", () => {
+            const msg = MessageFormatter.matrixEventToBody({
                 sender: "@foo:bar",
                 event_id: "$event:bar",
                 content: {
@@ -98,8 +98,8 @@ describe("MessageFormatter", () => {
                 id: "$event:bar",
             });
         });
-        it("should transform a media event", async () => {
-            const msg = await MessageFormatter.matrixEventToBody({
+        it("should transform a media event", () => {
+            const msg = MessageFormatter.matrixEventToBody({
                 sender: "@foo:bar",
                 event_id: "$event:bar",
                 content: {
@@ -133,8 +133,8 @@ describe("MessageFormatter", () => {
                 id: "$event:bar",
             });
         });
-        it("should transform a emote message to a basic body", async () => {
-            const msg = await MessageFormatter.matrixEventToBody({
+        it("should transform a emote message to a basic body", () => {
+            const msg = MessageFormatter.matrixEventToBody({
                 sender: "@foo:bar",
                 event_id: "$event:bar",
                 content: {
@@ -159,7 +159,7 @@ describe("MessageFormatter", () => {
 
     describe("messageToMatrixEvent", () => {
         it("should transform an ordinary message to plaintext", async () => {
-            const contents = await MessageFormatter.messageToMatrixEvent(
+            const contents = MessageFormatter.messageToMatrixEvent(
                 {body: "This is an ordinary message"},
             dummyProtocol);
             expect(

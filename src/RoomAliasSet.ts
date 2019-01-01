@@ -7,7 +7,7 @@ const log = Logging.get("RoomAliasSet");
 
 export interface IRoomAlias {
     protocol: string;
-    properties: {[key: string]: string}
+    properties: {[key: string]: string};
 }
 
 export interface IAliasResult {
@@ -18,7 +18,7 @@ export interface IAliasResult {
 export class RoomAliasSet {
     private aliases: Map<RegExp, IRoomAlias>;
 
-    constructor (config: IConfigPortals, private purple: IPurpleInstance) {
+    constructor(config: IConfigPortals, private purple: IPurpleInstance) {
         config.aliases = config.aliases || {};
         this.aliases = new Map();
         Object.keys(config.aliases).forEach((regex) => {
@@ -29,7 +29,7 @@ export class RoomAliasSet {
 
     public getOptsForAlias(alias: string): IAliasResult | undefined  {
         log.info("Checking alias", alias);
-        for (const regex of this.aliases.keys()){
+        for (const regex of this.aliases.keys()) {
             const match = regex.exec(alias);
             if (!match) {
                 log.debug(`No match for ${alias} against ${regex}`);

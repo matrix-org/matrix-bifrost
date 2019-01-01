@@ -30,7 +30,7 @@ export class ProfileSync {
         senderId: string,
         account: IPurpleAccount,
         force: boolean = false,
-        senderIdToLookup?: string
+        senderIdToLookup?: string,
     ) {
         senderIdToLookup = senderIdToLookup ? senderIdToLookup : senderId;
         const store = this.bridge.getUserStore();
@@ -45,7 +45,7 @@ export class ProfileSync {
         {
             nick: string|undefined,
             name: string,
-            icon_path: string|undefined
+            icon_path: string|undefined,
         } = {
             nick: undefined,
             name: senderId,

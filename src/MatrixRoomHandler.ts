@@ -155,7 +155,7 @@ export class MatrixRoomHandler {
             protocol_id: data.account.protocol_id,
             room_name: roomName,
         };
-        log.debug("Searching for existing remote room:", remoteData);   
+        log.debug("Searching for existing remote room:", remoteData);
         // For some reason the following function wites to remoteData, so recreate it later
         const remoteEntries = await roomStore.getEntriesByRemoteRoomData(remoteData);
         if (remoteEntries !== null && remoteEntries.length > 0) {

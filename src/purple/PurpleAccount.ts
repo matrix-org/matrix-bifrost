@@ -30,7 +30,6 @@ export class PurpleAccount implements IPurpleAccount {
 
     get _waitingJoinRoomProps(): IChatJoinProperties|undefined { return this.waitingJoinRoomProperties; }
 
-
     get remoteId(): string { return Util.createRemoteId(this.protocol.id, this.username); }
 
     get name(): string { return this.acctData!.username; }

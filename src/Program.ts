@@ -126,7 +126,7 @@ class Program {
             await this.purple!.start(this.cfg.purple);
             if (this.purple instanceof XmppJsInstance) {
                 this.purple.signInAccounts(
-                    await this.store.getUsernamesForProtocol(this.purple.getProtocols()[0])
+                    await this.store.getUsernamesForProtocol(this.purple.getProtocols()[0]),
                 );
             }
         } catch (ex) {
@@ -145,7 +145,7 @@ class Program {
                 Util.createRemoteId(ev.account.protocol_id, ev.account.username),
             );
         });
-        //await this.runBotAccounts(this.cfg.bridgeBot.accounts);
+        // await this.runBotAccounts(this.cfg.bridgeBot.accounts);
     }
 
     private async runBotAccounts(accounts: IBridgeBotAccount[]) {

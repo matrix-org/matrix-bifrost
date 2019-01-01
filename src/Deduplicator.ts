@@ -12,6 +12,8 @@
 
 import { Logging } from "matrix-appservice-bridge";
 const log = Logging.get("Deduplicator");
+// This is a little lazy, but it's typed :).
+// tslint:disable-next-line:no-var-requires
 const leven = require("leven") as (a: string, b: string) => number;
 
 const LEVEN_THRESHOLD = 0.1;

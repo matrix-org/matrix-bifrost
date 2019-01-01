@@ -1,4 +1,3 @@
-//import { helper, plugins, buddy, accounts, messaging, Buddy, Account, Conversation, notify } from "node-purple";
 import { IChatJoinProperties, IUserInfo, IConversationEvent, IChatJoined } from "./PurpleEvents";
 import { IPurpleInstance } from "./IPurpleInstance";
 import { PurpleProtocol } from "./PurpleProtocol";

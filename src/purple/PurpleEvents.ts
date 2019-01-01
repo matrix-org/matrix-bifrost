@@ -2,7 +2,6 @@
  * A collection of interfaces that may be emitted by PurpleInterface
  */
 
-//import { Account, Conversation} from "node-purple";
 import { IPurpleAccount } from "./IPurpleAccount";
 import { IBasicProtocolMessage } from "../MessageFormatter";
 
@@ -13,8 +12,8 @@ export interface IEventBody {
 }
 
 export interface IAccountMinimal {
-    protocol_id: string,
-    username: string,
+    protocol_id: string;
+    username: string;
 }
 
 export interface IConversationMinimal {
@@ -25,12 +24,11 @@ export interface IAccountEvent extends IEventBody {
     account: any|IAccountMinimal;
 }
 
-
 export interface IConversationEvent extends IAccountEvent {
     conv: any | IConversationMinimal;
 }
 
- // received-im-msg
+// received-im-msg
 export interface IReceivedImMsg extends IConversationEvent {
     sender: string;
     message: IBasicProtocolMessage;

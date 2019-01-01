@@ -81,6 +81,14 @@ export class PurpleInstance extends EventEmitter implements IPurpleInstance {
         return messaging.getNickForChat(conv.handle);
     }
 
+    public needsDedupe() {
+        return true;
+    }
+
+    public needsAccountLock() {
+        return true;
+    }
+
     private eventHandler() {
         helper.pollEvents().forEach((evt) => {
             if (!["received-chat-msg"].includes(evt.eventName)) {
@@ -94,12 +102,12 @@ export class PurpleInstance extends EventEmitter implements IPurpleInstance {
                         // tslint:disable-next-line
                         const join_properties = purpleAccount._waitingJoinRoomProps;
                         this.emit("chat-joined-new", Object.assign(evt, {purpleAccount, join_properties}));
-	                    purpleAccount.eraseWaitingJoinRoomProps();
+                        purpleAccount.eraseWaitingJoinRoomProps();
                     }
                 }
             }
             if (["received-chat-msg", "received-im-msg"].includes(evt.eventName)) {
-                let rawEvent = evt as any;
+                const rawEvent = evt as any;
                 evt = Object.assign(evt, {
                     message: {
                         body: rawEvent.message,
@@ -117,13 +125,5 @@ export class PurpleInstance extends EventEmitter implements IPurpleInstance {
                 }
             }
         });
-    }
-
-    needsDedupe() {
-        return true;
-    }
-
-    needsAccountLock() {
-        return true;
     }
 }

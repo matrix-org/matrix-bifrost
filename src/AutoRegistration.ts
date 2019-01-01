@@ -5,7 +5,6 @@ import { Util } from "./Util";
 import { Logging } from "matrix-appservice-bridge";
 import { Store } from "./Store";
 import { IPurpleInstance } from "./purple/IPurpleInstance";
-//import { PurpleAccount } from "./purple/PurpleAccount";
 import { IPurpleAccount } from "./purple/IPurpleAccount";
 const log = Logging.get("AutoRegistration");
 
@@ -19,7 +18,7 @@ export interface IAutoRegStep {
     path: string;
     opts: IAutoRegHttpOpts|undefined;
     parameters: {[key: string]: string}; // key -> parameter value
-    paramsToStore: string[];    
+    paramsToStore: string[];
     headers: {[key: string]: string}; // key -> value
 }
 
@@ -47,9 +46,8 @@ export class AutoRegistration {
             res = await this.handleHttpRegistration(mxId, step);
         } else if (step.type === "implicit") {
             const params = this.generateParameters(step.parameters, mxId);
-            await this.store.storeUserAccount(mxId, proto, params["username"]);
-            const acct = this.purple.getAccount(params["username"], protocol)!;
-            return acct;
+            await this.store.storeUserAccount(mxId, proto, params.username);
+            return this.purple.getAccount(params.username, protocol)!;
         } else {
             throw new Error(`This method of registration is unsupported (${step.type})`);
         }
@@ -64,8 +62,9 @@ export class AutoRegistration {
         return acct;
     }
 
-    private generateParameters(parameters: {[key: string]: string}, mxId: string, profile: any = {}) {
-        let body = {};
+    private generateParameters(parameters: {[key: string]: string}, mxId: string, profile: any = {})
+        : {[key: string]: string} {
+        const body = {};
         const mxIdParts = mxId.substr(1).split(":");
         for (const key of Object.keys(parameters)) {
             let val = parameters[key];
@@ -103,11 +102,10 @@ export class AutoRegistration {
             let username;
             const headers = {
                 "Content-Type": "application/json",
-                ...step.headers
+                ...step.headers,
             };
             log.debug("HttpReg: Attempting request to ", step.path, headers);
-            const res = await request({
-                method: opts.method.toLowerCase(),
+            const res = await request[opts.method.toLowerCase()]({
                 url: step.path,
                 headers,
                 json: true && opts.usernameResult, // This will also parse, which we might not want.
