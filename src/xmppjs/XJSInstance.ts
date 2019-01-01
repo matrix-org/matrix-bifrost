@@ -35,6 +35,8 @@ export class XmppJsInstance extends EventEmitter implements IPurpleInstance {
         this.accounts = new Map();
         this.bufferedMessages = [];
         this.seenMessages = new Set();
+    public get defaultResource() {
+        return this.defaultRes;
     }
 
     public createPurpleAccount(username) {
