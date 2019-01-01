@@ -26,7 +26,8 @@ Instructions for other distributions will come soon.
 npm install # Install dependencies
 npm run build # Build files
 cp config.sample.yaml config.yaml
-# ... Edit the config to taste
+# ... Set the domain name, homeserver url, and then review the rest of the config
+sed -i  "s/domain: \"localhost\"/domain: \"$YOUR_MATRIX_DOMAIN\"/g" config.yaml
 ```
 
 ## Usage
@@ -55,6 +56,16 @@ Once you have started the bridge, you can instruct it to bind by starting a conv
 sending `accounts add-existing $PROTOCOL $USERNAME` where the protocol and username are given in the `accounts.xml` file.
 
 You should also run `accounts enable $PROTOCOL $USERNAME` to enable the account for the bridge, and then it should connect automatically.
+
+#### Bridging XMPP room
+
+Connect to your matrix server and open a chat with `@_purple_bot:$YOUR_MATRIX_DOMAIN`.
+```
+accounts add-existing prpl-jabber $USERNAME@$XMPP_SERVER/$CLIENT_NAME
+accounts enable prpl-jabber $USERNAME@$XMPP_SERVER/$CLIENT_NAME
+accounts
+join xmpp $ROOM $XMPP_SERVER
+```
 
 ## Help
 
