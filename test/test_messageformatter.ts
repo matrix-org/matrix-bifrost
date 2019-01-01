@@ -157,9 +157,9 @@ describe("MessageFormatter", () => {
         });
     });
 
-    describe("messageToMatrixEvent", () => {
+    describe("messageToMatrixEvent", async () => {
         it("should transform an ordinary message to plaintext", async () => {
-            const contents = MessageFormatter.messageToMatrixEvent(
+            const contents = await MessageFormatter.messageToMatrixEvent(
                 {body: "This is an ordinary message"},
             dummyProtocol);
             expect(
