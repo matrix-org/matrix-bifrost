@@ -140,6 +140,7 @@ export class MatrixRoomHandler {
         if (this.roomCreationLock.has(remoteId)) {
             log.info(remoteId, "is already being created, waiting...");
             await (this.roomCreationLock.get(remoteId) || Promise.resolve());
+            log.info("room was created, no longer waiting");
         }
 
         // Check to see if we have a room for this IM.
@@ -169,7 +170,7 @@ export class MatrixRoomHandler {
             remoteData = {
                 protocol_id: data.account.protocol_id,
                 room_name: roomName,
-                properties: Util.sanitizeProperties(props), // for joining
+                properties: props ? Util.sanitizeProperties(props) : {}, // for joining
             } as any;
             log.info(`Couldn't find room for ${roomName}. Creating a new one`);
             resolve(intent.createRoom({
