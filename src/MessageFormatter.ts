@@ -2,11 +2,18 @@ import { PurpleProtocol } from "./purple/PurpleProtocol";
 import { PRPL_XMPP } from "./ProtoHacks";
 import { Parser } from "htmlparser2";
 import { Logging } from "matrix-appservice-bridge";
+import { IEventRequestData } from "./MatrixTypes";
+import { IConfigBridge } from "./Config";
+import * as request from "request-promise-native";
+import { stringify } from "querystring";
 const log = Logging.get("MessageFormatter");
 
 export interface IMatrixMsgContents {
-    msgtype: "m.text";
+    msgtype: string;
     body: string;
+    remote_id?: string;
+    info?: {mimetype: string, size: number};
+    [key: string]: any|undefined;
 }
 
 export interface IMatrixMsgContentsFormatted extends IMatrixMsgContents {
@@ -14,33 +21,143 @@ export interface IMatrixMsgContentsFormatted extends IMatrixMsgContents {
     format: string;
 }
 
+export interface IBasicProtocolMessage {
+    body: string;
+    formatted?: Array<{type: string, body: string}>;
+    id?: string;
+    opts?: {
+        attachments?: IMessageAttachment[];
+    };
+}
+
+export interface IMessageAttachment {
+    uri: string;
+    mimetype?: string;
+    size?: number;
+}
 
 export class MessageFormatter {
-    public static messageToMatrixEvent(msg: string, protocol: PurpleProtocol): IMatrixMsgContents {
+
+    public static matrixEventToBody(event: IEventRequestData, config: IConfigBridge): IBasicProtocolMessage {
+        const body = event.content.body;
+        const formatted: Array<{type: string, body: string}> = [];
+        if (event.content.formatted_body) {
+            formatted.push({
+                body: event.content.formatted_body,
+                type: event.content.format === "org.matrix.custom.html" ? "html" : "unknown",
+            });
+        }
+        if (event.content.msgtype === "m.emote") {
+            return {body: `/me ${body}`, formatted, id: event.event_id};
+        }
+        if (["m.file", "m.image", "m.video"].includes(event.content.msgtype)) {
+            const uriBits = event.content.url.substr("mxc://".length).split("/");
+            const url = (config.mediaserverUrl ? config.mediaserverUrl : config.homeserverUrl).replace(/\/$/, "");
+            event.content.info = event.content.info || {};
+            return {
+                body,
+                id: event.event_id,
+                opts: {
+                    attachments: [
+                        {
+                            uri: `${url}/_matrix/media/v1/download/${uriBits[0]}/${uriBits[1]}`,
+                            mimetype: event.content.info.mimetype,
+                            size: event.content.info.size,
+                        },
+                    ],
+                },
+            };
+        }
+        return {body, formatted, id: event.event_id};
+    }
+
+    public static async messageToMatrixEvent(msg: IBasicProtocolMessage, protocol: PurpleProtocol, intent?: any):
+        Promise<IMatrixMsgContents> {
+        const matrixMsg: IMatrixMsgContents = {
+            msgtype: "m.text",
+            body: msg.body.trim(),
+        };
+        if (msg.id) {
+            matrixMsg.remote_id = msg.id;
+        }
+        const hasAttachment = msg.opts && msg.opts.attachments && msg.opts.attachments.length;
         if (protocol.id === PRPL_XMPP) {
-            msg = msg.trim();
-            if (msg.startsWith("<")) {
+            if (matrixMsg.body.startsWith("<")) {
                 // It *might* be HTML so go for it.
                 try {
-                    const md = MessageFormatter.parseHTMLIntoMatrixFormat(msg);
-                    return {
-                        msgtype: "m.text",
-                        body: md.markdown,
-                        formatted_body: md.html,
-                        format: "org.matrix.custom.html",
-                    } as IMatrixMsgContentsFormatted;
+                    const md = MessageFormatter.parseHTMLIntoMatrixFormat(matrixMsg.body);
+                    if (md.markdown.length === 0 || md.html.length === 0) {
+                        throw new Error("Markdown/HTML was zero length, which probably means it didn't parse well");
+                    }
+                    matrixMsg.body = md.markdown;
+                    matrixMsg.formatted_body = md.html;
+                    matrixMsg.format = "org.matrix.custom.html";
+                    return matrixMsg;
                 } catch (ex) {
-                    log.error("Error while parsing HTML", ex);
+                    log.warn("Error while parsing HTML", ex);
                     // Not html, or bad formatting.
-                    return {
-                        msgtype: "m.text",
-                        body: msg
-                    };
                 }
             }
-            return {msgtype: "m.text", body: msg};
         }
-        return {msgtype: "m.text", body: msg};
+
+        if (matrixMsg.body.startsWith("/me ")) {
+            matrixMsg.msgtype = "m.emote";
+            matrixMsg.body = matrixMsg.body.substr("/me ".length);
+        }
+
+        // XXX: This currently only handles one attachment
+        if (hasAttachment) {
+            if (!intent) {
+                throw new Error("No intent given");
+            }
+            const attachment = msg.opts!.attachments![0];
+            if (!attachment.uri.startsWith("http")) {
+                log.warn("Don't know how to handle attachment for message, not a http format uri");
+                return matrixMsg;
+            }
+            const file = await request.get(attachment.uri).response!;
+
+            // Use the headers if a type isn't given.
+            if (!attachment.mimetype) {
+                attachment.mimetype = file.headers["content-type"];
+            }
+            if (!attachment.size) {
+                attachment.size = parseInt(file.headers["content-length"] || "0", 10);
+            }
+            const client = intent.getClient();
+            const maxSize = await client.getMediaConfig().then((cfg) => cfg.m.upload.size).catch(() => -1);
+
+            if (attachment.size && maxSize > -1 && maxSize < attachment.size!) {
+                log.info("File is too large, linking instead");
+                matrixMsg.body = attachment.uri;
+                return matrixMsg;
+            }
+
+            log.info(`Uploading ${attachment.uri}...`);
+            const mxcurl = intent.uploadContent(file.body, {
+                onlyContentUri: true,
+                includeFilename: false,
+                type: attachment.mimetype || undefined,
+            });
+            matrixMsg.url = mxcurl;
+            matrixMsg.body = msg.body;
+            matrixMsg.filename = attachment.uri.split("/").reverse()[0];
+            matrixMsg.info = {
+                mimetype: attachment.mimetype!,
+                size: attachment.size || 0,
+            };
+            if (!attachment.mimetype) {
+                matrixMsg.msgtype = "m.file";
+            } else if (attachment.mimetype.startsWith("image")) {
+                matrixMsg.msgtype = "m.image";
+            } else if (attachment.mimetype.startsWith("video")) {
+                matrixMsg.msgtype = "m.video";
+            } else if (attachment.mimetype.startsWith("audio")) {
+                matrixMsg.msgtype = "m.audio";
+            }
+        }
+
+        return matrixMsg;
     }
 
     private static parseHTMLIntoMatrixFormat(msg: string): {html: string, markdown: string} {
