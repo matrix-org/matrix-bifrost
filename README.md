@@ -26,7 +26,8 @@ Instructions for other distributions will come soon.
 npm install # Install dependencies
 npm run build # Build files
 cp config.sample.yaml config.yaml
-# ... Edit the config to taste
+# ... Set the domain name, homeserver url, and then review the rest of the config
+sed -i  "s/domain: \"localhost\"/domain: \"$YOUR_MATRIX_DOMAIN\"/g" config.yaml
 ```
 
 ## Usage
