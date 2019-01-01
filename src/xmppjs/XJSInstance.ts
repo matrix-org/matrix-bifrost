@@ -260,7 +260,6 @@ export class XmppJsInstance extends EventEmitter implements IPurpleInstance {
         const from = stanza.attrs.from ? jid(stanza.attrs.from) : null;
         const to = stanza.attrs.to ? jid(stanza.attrs.to) : null;
         const convName = `${from.local}@${from.domain}`;
-        this.presenceCache.add(stanza);
 
         if (!localAcct) {
             log.debug(`Not handling presence for ${stanza.attrs.to}, not a local account`);
