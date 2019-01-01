@@ -57,6 +57,16 @@ sending `accounts add-existing $PROTOCOL $USERNAME` where the protocol and usern
 
 You should also run `accounts enable $PROTOCOL $USERNAME` to enable the account for the bridge, and then it should connect automatically.
 
+#### Bridging XMPP room
+
+Connect to your matrix server and open a chat with `@_purple_bot:$YOUR_MATRIX_DOMAIN`.
+```
+accounts add-existing prpl-jabber $USERNAME@$XMPP_SERVER/$CLIENT_NAME
+accounts enable prpl-jabber $USERNAME@$XMPP_SERVER/$CLIENT_NAME
+accounts
+join xmpp $ROOM $XMPP_SERVER
+```
+
 ## Help
 
 ### My bridge crashed with a segfault
