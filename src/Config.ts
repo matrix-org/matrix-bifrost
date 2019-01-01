@@ -1,11 +1,12 @@
 import { IAutoRegStep } from "./AutoRegistration";
 import { IRoomAlias } from "./RoomAliasSet";
-import { XJSBackendOpts } from "./xmppjs/XJSBackendOpts";
+import { IXJSBackendOpts } from "./xmppjs/XJSBackendOpts";
 export class Config {
 
     public readonly bridge: IConfigBridge = {
         domain: "",
         homeserverUrl: "",
+        mediaserverUrl: undefined,
         userPrefix: "_purple_",
     };
 
@@ -36,7 +37,7 @@ export class Config {
 
     public readonly portals: IConfigPortals = {
         aliases: undefined,
-    }
+    };
   /**
    * Apply a set of keys and values over the default config.
    * @param newConfig Config keys
@@ -57,11 +58,12 @@ export class Config {
 export interface IConfigBridge {
     domain: string;
     homeserverUrl: string;
+    mediaserverUrl?: string;
     userPrefix: string;
 }
 
 export interface IConfigPurple {
-    backendOpts: {}|XJSBackendOpts|undefined,
+    backendOpts: {}|IXJSBackendOpts|undefined;
     backend: "node-purple"|"xmpp.js";
     enableDebug: boolean;
     pluginDir: string;
@@ -86,10 +88,10 @@ export interface IConfigProfile {
 }
 
 export interface IConfigPortals {
-    aliases: {[regex: string]: IRoomAlias} | undefined
+    aliases: {[regex: string]: IRoomAlias} | undefined;
 }
 
 interface IConfigLogging {
-  console: "debug"|"info"|"warn"|"error"|"off"
-  files?: {[filename: string]: "debug"|"info"|"warn"|"error"}
+  console: "debug"|"info"|"warn"|"error"|"off";
+  files?: {[filename: string]: "debug"|"info"|"warn"|"error"};
 }
