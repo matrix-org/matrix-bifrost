@@ -169,7 +169,7 @@ export class MatrixRoomHandler {
             remoteData = {
                 protocol_id: data.account.protocol_id,
                 room_name: roomName,
-                properties: ProtoHacks.sanitizeProperties(props), // for joining
+                properties: Util.sanitizeProperties(props), // for joining
             } as any;
             log.info(`Couldn't find room for ${roomName}. Creating a new one`);
             resolve(intent.createRoom({

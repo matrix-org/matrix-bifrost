@@ -1,3 +1,4 @@
+import { IChatJoinProperties } from "./purple/PurpleEvents";
 import { PurpleProtocol } from "./purple/PurpleProtocol";
 import { MatrixUser } from "matrix-appservice-bridge";
 import { ProtoHacks } from "./ProtoHacks";
@@ -35,5 +36,25 @@ export class Util {
             }
         }
         return password;
+    }
+
+    public static sanitizeProperties(props: IChatJoinProperties) {
+        for (const k of Object.keys(props)) {
+            const value = props[k];
+            const newkey = k.replace(/\./g, "·");
+            delete props[k];
+            props[newkey] = value;
+        }
+        return props;
+    }
+
+    public static desanitizeProperties(props: IChatJoinProperties) {
+        for (const k of Object.keys(props)) {
+            const value = props[k];
+            const newkey = k.replace(/·/g, ".");
+            delete props[k];
+            props[newkey] = value;
+        }
+        return props;
     }
 }

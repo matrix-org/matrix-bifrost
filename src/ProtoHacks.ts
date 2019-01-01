@@ -15,27 +15,6 @@ export const XMPP_JS = "xmpp-js";
  * carefully so that future folks can understand what is going on.
  */
 export class ProtoHacks {
-
-    public static sanitizeProperties(props: IChatJoinProperties) {
-        for (const k of Object.keys(props)) {
-            const value = props[k];
-            const newkey = k.replace(/\./g, "·");
-            delete props[k];
-            props[newkey] = value;
-        }
-        return props;
-    }
-
-    public static desanitizeProperties(props: IChatJoinProperties) {
-        for (const k of Object.keys(props)) {
-            const value = props[k];
-            const newkey = k.replace(/·/g, ".");
-            delete props[k];
-            props[newkey] = value;
-        }
-        return props;
-    }
-
     public static async addJoinProps(protocolId: string, props: any, userId: string, intent: Intent) {
         // When joining XMPP rooms, we should set a handle so pull off one from the users
         // profile.

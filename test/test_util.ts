@@ -47,4 +47,26 @@ describe("Util", () => {
             }
         });
     });
+    describe("sanitizeProperties", () => {
+        it("should sanitize properties", () => {
+            expect(Util.sanitizeProperties({
+                "my.wonderful.property": "foo",
+                "normal_property": "bar"
+            })).to.deep.equal({
+                "my·wonderful·property": "foo",
+                "normal_property": "bar"
+            });
+        });
+    });
+    describe("desanitizeProperties", () => {
+        it("should desanitize properties", () => {
+            expect(Util.sanitizeProperties({
+                "my·wonderful·property": "foo",
+                "normal_property": "bar"
+            })).to.deep.equal({
+                "my.wonderful.property": "foo",
+                "normal_property": "bar"
+            });
+        });
+    });
 });
