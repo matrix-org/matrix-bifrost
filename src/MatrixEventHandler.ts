@@ -60,7 +60,7 @@ export class MatrixEventHandler {
         const {protocol, properties} = res;
         // XXX: Check if this chat already has a portal and refuse to bridge it.
         if(await this.store.getRoomByRemoteData({
-            properties: ProtoHacks.sanitizeProperties(properties), // for joining
+            properties: Util.sanitizeProperties(properties), // for joining
             protocol_id: protocol.id,
         }, "group")) {
             log.warn("Room for", properties, "already exists, not allowing alias.");
@@ -91,7 +91,7 @@ export class MatrixEventHandler {
         const remoteData = {
             protocol_id: protocol.id,
             room_name: ProtoHacks.getRoomNameFromProps(protocol.id, props),
-            properties: ProtoHacks.sanitizeProperties(props), // for joining
+            properties: Util.sanitizeProperties(props), // for joining
         } as any;
         const remoteId = Buffer.from(
             `${protocol.id}:${remoteData.room_name}`,
@@ -313,7 +313,7 @@ return `- ${account.protocol.name} (${username}) [Enabled=${account.isEnabled}] 
                     const remoteData = {
                         protocol_id: acct.protocol.id,
                         room_name: res.conv.name,
-                        properties: ProtoHacks.sanitizeProperties(paramSet), // for joining
+                        properties: Util.sanitizeProperties(paramSet), // for joining
                     } as any;
                     const remoteId = Buffer.from(
                         `${acct.protocol.id}:${res.conv.name}`,
@@ -441,7 +441,7 @@ Say \`help\` for more commands.
             const name = context.rooms.remote.get("room_name");
             if (!acct.isInRoom(name)) {
                 log.debug(`${event.sender} talked in ${name}, joining them.`)
-                const props = ProtoHacks.desanitizeProperties(
+                const props = Util.desanitizeProperties(
                     Object.assign({}, context.rooms.remote.get("properties"))
                 );
                 await ProtoHacks.addJoinProps(acct.protocol.id, props, event.sender, this.bridge.getIntent());
@@ -495,7 +495,7 @@ Say \`help\` for more commands.
             return;
         }
         const name = context.rooms.remote.get("room_name");
-        const props = ProtoHacks.desanitizeProperties(Object.assign({}, context.rooms.remote.get("properties")));
+        const props = Util.desanitizeProperties(Object.assign({}, context.rooms.remote.get("properties")));
         log.info(`Sending ${membership} to`, props);
         if (membership === "join") {
             await ProtoHacks.addJoinProps(acct.protocol.id, props, event.sender, this.bridge.getIntent());
