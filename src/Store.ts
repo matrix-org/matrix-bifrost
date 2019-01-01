@@ -1,4 +1,4 @@
-import { Bridge, MatrixRoom,RemoteRoom, RemoteUser,
+import { Bridge, MatrixRoom, RemoteRoom, RemoteUser,
     MatrixUser, UserStore, RoomStore, Logging } from "matrix-appservice-bridge";
 import { Util } from "./Util";
 import { MROOM_TYPES, IRoomEntry } from "./StoreTypes";
@@ -52,8 +52,8 @@ export class Store {
 
     public async getUsernamesForProtocol(protocol: PurpleProtocol) {
         return (await this.userStore.getByRemoteData({protocolId: protocol.id})).filter(
-            (u) => u.data.isRemoteUser != true).map(
-            (u) => u.get("username")
+            (u) => u.data.isRemoteUser !== true).map(
+            (u) => u.get("username"),
         );
     }
 

@@ -5,6 +5,7 @@
 import { helper, plugins, buddy, accounts, messaging, Buddy, Account, Conversation, notify } from "node-purple";
 import { PurpleProtocol } from "./PurpleProtocol";
 import { IChatJoinProperties, IUserInfo, IConversationEvent, IChatJoined } from "./PurpleEvents";
+import { IBasicProtocolMessage } from "../MessageFormatter";
 import { Util } from "../Util";
 import { IPurpleInstance } from "./IPurpleInstance";
 import { IPurpleAccount } from "./IPurpleAccount";
@@ -66,18 +67,18 @@ export class PurpleAccount implements IPurpleAccount {
         this.enabled = enable;
     }
 
-    public sendIM(recipient: string, body: string) {
+    public sendIM(recipient: string, msg: IBasicProtocolMessage) {
         if (!this.handle) {
             throw Error("No account is binded to this instance. Call findAccount()");
         }
-        messaging.sendIM(this.acctData!.handle, recipient, body);
+        messaging.sendIM(this.acctData!.handle, recipient, msg.body);
     }
 
-    public sendChat(chatName: string, body: string) {
+    public sendChat(chatName: string, msg: IBasicProtocolMessage) {
         if (!this.handle) {
             throw Error("No account is binded to this instance. Call findAccount()");
         }
-        messaging.sendChat(this.acctData!.handle, chatName, body);
+        messaging.sendChat(this.acctData!.handle, chatName, msg.body);
     }
 
     public getBuddy(user: string): Buddy {

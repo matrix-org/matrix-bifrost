@@ -234,7 +234,7 @@ export class MatrixRoomHandler {
     }
 
     private async handleIncomingChatMsg(data: IReceivedImMsg) {
-        data.message = entityDecode(data.message);
+        data.message.body = entityDecode(data.message.body);
         const acctId = Util.createRemoteId(data.account.protocol_id, data.account.username);
         if (this.accountRoomLock.has(
             acctId + "/" + data.conv.name)
@@ -247,7 +247,7 @@ export class MatrixRoomHandler {
         if (this.deduplicator.checkAndRemove(
             data.conv.name,
             remoteId,
-            data.message,
+            data.message.body,
         )) {
                 return;
         }
@@ -288,7 +288,7 @@ export class MatrixRoomHandler {
             return;
         }
         await intent.sendMessage(roomId,
-            MessageFormatter.messageToMatrixEvent(data.message, protocol),
+            MessageFormatter.messageToMatrixEvent(data.message, protocol, intent),
         );
     }
 

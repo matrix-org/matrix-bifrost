@@ -4,22 +4,16 @@ import { IPurpleAccount, IChatJoinOptions } from "../purple/IPurpleAccount";
 import { IPurpleInstance } from "../purple/IPurpleInstance";
 import { PurpleProtocol } from "../purple/PurpleProtocol";
 import { xml, jid } from "@xmpp/component";
+import { IBasicProtocolMessage } from "../MessageFormatter";
 
 const IDPREFIX = "pbridge";
 
 export class XmppJsAccount implements IPurpleAccount {
-    private rooms: Set<string>;
-    public readonly waitingToJoin: Set<string>;
-    // remoteId == jid
-    constructor(public readonly remoteId: string, private xmpp: XmppJsInstance) {
-        this.rooms = new Set();
-        this.waitingToJoin = new Set();
-    }
 
     get _waitingJoinRoomProps(): IChatJoinProperties|undefined {
         return undefined;
     }
-    
+
     get name(): string {
         return this.remoteId;
     }
@@ -27,10 +21,17 @@ export class XmppJsAccount implements IPurpleAccount {
     get protocol(): PurpleProtocol {
         return XMPP_PROTOCOL;
     }
+    public readonly waitingToJoin: Set<string>;
 
     public readonly isEnabled = true;
 
     public readonly connected = true;
+    private rooms: Set<string>;
+    // remoteId == jid
+    constructor(public readonly remoteId: string, public readonly resource, private xmpp: XmppJsInstance) {
+        this.rooms = new Set();
+        this.waitingToJoin = new Set();
+    }
 
     public findAccount() {
         // TODO: What do we actually need to find.
@@ -41,52 +42,68 @@ export class XmppJsAccount implements IPurpleAccount {
     }
 
     public setEnabled(enable: boolean) {
-        throw Error("Xmpp.js doesn't allow you to enable or disable accounts")
+        throw Error("Xmpp.js doesn't allow you to enable or disable accounts");
     }
 
-    public sendIM(recipient: string, body: string) {
+    public sendIM(recipient: string, msg: IBasicProtocolMessage) {
         const id = IDPREFIX + Date.now().toString();
         const message = xml(
-            'message',
+            "message",
             {
                 to: recipient,
                 id,
-                from: this.remoteId,
+                from: `${this.remoteId}/${this.resource}`,
             },
-            xml('body', null, body),
+            xml("body", null, msg.body),
         );
         this.xmpp.xmppAddSentMessage(id);
         this.xmpp.xmppWriteToStream(message);
     }
 
-    public sendChat(chatName: string, body: string) {
-        const id = IDPREFIX + Date.now().toString();
+    public sendChat(chatName: string, msg: IBasicProtocolMessage) {
+        const id = msg.id || IDPREFIX + Date.now().toString();
+        const contents: any[] = [];
+        contents.push(xml("body", null, msg.body));
+        if (msg.opts && msg.opts.attachments) {
+            msg.opts.attachments.forEach((a) => {
+                contents.push(
+                    xml("x", {
+                        xmlns: "jabber:x:oob",
+                    }, xml("url", null, a.uri)));
+            });
+        }
+        const htmlMsg = (msg.formatted || []).find((f) => f.type === "html");
+        if (htmlMsg) {
+            contents.push(xml("html", {
+                xmlns: "http://jabber.org/protocol/xhtml-im",
+            }), htmlMsg.body);
+        }
         const message = xml(
-            'message',
+            "message",
             {
                 to: chatName,
                 id,
-                from: this.remoteId,
-                type: 'groupchat',
+                from: `${this.remoteId}/${this.resource}`,
+                type: "groupchat",
             },
-            xml('body', null, body),
+            contents,
         );
         this.xmpp.xmppAddSentMessage(id);
         this.xmpp.xmppWriteToStream(message);
     }
 
     public getBuddy(user: string): any|undefined {
-        //TODO: Not implemented
+        // TODO: Not implemented
         return;
     }
 
     public getJoinPropertyForRoom(roomName: string, key: string): string|undefined {
-        //TODO: Not implemented
+        // TODO: Not implemented
         return;
     }
 
     public setJoinPropertiesForRoom(roomName: string, props: IChatJoinProperties) {
-        //TODO: Not implemented
+        // TODO: Not implemented
     }
 
     public isInRoom(roomName: string): boolean {
@@ -100,26 +117,27 @@ export class XmppJsAccount implements IPurpleAccount {
         setWaiting: boolean = true)
         : Promise<IConversationEvent|void> {
             const message = xml(
-                'presence',
+                "presence",
                 {
                     to: `${components.room}@${components.server}/${components.handle}`,
-                    from: this.remoteId
+                    from: `${this.remoteId}/${this.resource}`,
                 },
-                xml ('x', {
-                    xmlns: 'http://jabber.org/protocol/muc',
+                xml ("x", {
+                    xmlns: "http://jabber.org/protocol/muc",
                 }, xml ("history", {
-                    maxchars: '0', // No history
-                }))
+                    maxchars: "0", // No history
+                })),
             );
             if (setWaiting) {
                 this.waitingToJoin.add(`${components.room}@${components.server}`);
             }
-            let p: Promise<IChatJoined>|undefined = undefined;
+            let p: Promise<IChatJoined>|undefined;
             if (instance) {
                 p = new Promise((resolve, reject) => {
                     const timer = setTimeout(reject, timeout);
                     const cb = (data: IChatJoined) => {
-                        if (data.conv.name === `${components.room}@${components.server}` && data.account.username === this.remoteId) {
+                        if (data.conv.name === `${components.room}@${components.server}` &&
+                            data.account.username === this.remoteId) {
                             clearTimeout(timer);
                             this.xmpp.removeListener("chat-joined", cb);
                             resolve(data);
@@ -156,20 +174,21 @@ export class XmppJsAccount implements IPurpleAccount {
                 identifier: "handle",
                 label: "handle",
                 required: false,
-            }
+            },
         ];
     }
 
     public async getUserInfo(who: string): Promise<IUserInfo> {
         const split = who.split("/");
+
         return {
-            Nickname: split.length > 1 ? split[1]: split[0],
+            Nickname: split.length > 1 ? split[1] : split[0],
             eventName: "meh",
             who,
             account: {
                 protocol_id: this.protocol.id,
-                username: this.remoteId
-            }
-        }
+                username: this.remoteId,
+            },
+        };
     }
 }

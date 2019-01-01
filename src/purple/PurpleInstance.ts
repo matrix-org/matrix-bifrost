@@ -5,7 +5,7 @@ import { IPurpleInstance } from "./IPurpleInstance";
 import { Logging } from "matrix-appservice-bridge";
 import * as path from "path";
 import { IConfigPurple } from "../Config";
-import { IUserInfo, IConversationEvent } from "./PurpleEvents";
+import { IUserInfo, IConversationEvent, IReceivedImMsg } from "./PurpleEvents";
 import { PurpleProtocol } from "./PurpleProtocol";
 const log = Logging.get("PurpleInstance");
 
@@ -97,6 +97,14 @@ export class PurpleInstance extends EventEmitter implements IPurpleInstance {
 	                    purpleAccount.eraseWaitingJoinRoomProps();
                     }
                 }
+            }
+            if (["received-chat-msg", "received-im-msg"].includes(evt.eventName)) {
+                let rawEvent = evt as any;
+                evt = Object.assign(evt, {
+                    message: {
+                        body: rawEvent.message,
+                    },
+                });
             }
             this.emit(evt.eventName, evt);
             if (evt.eventName === "user-info-response") {

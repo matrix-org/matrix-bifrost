@@ -4,6 +4,7 @@
 
 //import { Account, Conversation} from "node-purple";
 import { IPurpleAccount } from "./IPurpleAccount";
+import { IBasicProtocolMessage } from "../MessageFormatter";
 
 export interface IChatJoinProperties {[key: string]: string; }
 
@@ -32,7 +33,7 @@ export interface IConversationEvent extends IAccountEvent {
  // received-im-msg
 export interface IReceivedImMsg extends IConversationEvent {
     sender: string;
-    message: string;
+    message: IBasicProtocolMessage;
 }
 
 export interface IChatInvite extends IAccountEvent {

@@ -2,6 +2,7 @@
 import { IChatJoinProperties, IUserInfo, IConversationEvent, IChatJoined } from "./PurpleEvents";
 import { IPurpleInstance } from "./IPurpleInstance";
 import { PurpleProtocol } from "./PurpleProtocol";
+import { IBasicProtocolMessage } from "../MessageFormatter";
 
 export interface IChatJoinOptions {
     identifier: string;
@@ -19,8 +20,8 @@ export interface IPurpleAccount {
     findAccount();
     createNew(password?: string);
     setEnabled(enable: boolean);
-    sendIM(recipient: string, body: string);
-    sendChat(chatName: string, body: string);
+    sendIM(recipient: string, body: IBasicProtocolMessage);
+    sendChat(chatName: string, body: IBasicProtocolMessage);
     getBuddy(user: string): any|undefined;
     getJoinPropertyForRoom(roomName: string, key: string): string|undefined;
     setJoinPropertiesForRoom(roomName: string, props: IChatJoinProperties);
