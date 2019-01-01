@@ -40,10 +40,10 @@ npm run genreg -- -u http://localhost:9555 # Set listener url here.
 
 ### Starting
 
-(Note, we reccomend using the `start.sh` script and modifying the port where needed)
+Run the start script below, note that the application can be started without it by running `npm run start -- -p 9555`.
 
 ```shell
-npm run start -- -p 9555
+start.sh
 ```
 
 ### Binding purple accounts to a Matrix User
