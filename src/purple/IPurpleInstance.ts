@@ -1,6 +1,6 @@
 import { PurpleProtocol } from "./PurpleProtocol";
 import { IPurpleAccount } from "./IPurpleAccount";
-import { IEventBody, IAccountEvent, IChatJoined, IConversationEvent } from "./PurpleEvents";
+import { IEventBody, IAccountEvent, IChatJoined, IConversationEvent, IUserStateChanged } from "./PurpleEvents";
 import { IConfigPurple } from "../Config";
 import { EventEmitter } from "events";
 
@@ -32,6 +32,7 @@ export interface IPurpleInstance extends EventEmitter {
     on(name: "account-connection-error"|"account-signed-on"|"account-signed-off", cb: (ev: IAccountEvent) => void);
     on(name: "chat-joined", cb: (ev: IConversationEvent) => void);
     on(name: "chat-joined-new", cb: (ev: IChatJoined) => void);
+    on(name: "chat-user-joined"|"chat-user-left", cb: (ev: IUserStateChanged) => void);
     needsDedupe(): boolean;
     needsAccountLock(): boolean;
 }

@@ -1,7 +1,7 @@
 import { Bridge, MatrixUser, Intent, Logging} from "matrix-appservice-bridge";
 import { IPurpleInstance } from "./purple/IPurpleInstance";
 import { MROOM_TYPE_GROUP, MROOM_TYPE_IM } from "./StoreTypes";
-import { IReceivedImMsg, IChatInvite, IChatJoined, IConversationEvent, IAccountMinimal } from "./purple/PurpleEvents";
+import { IReceivedImMsg, IChatInvite, IChatJoined, IConversationEvent, IAccountMinimal, IUserStateChanged } from "./purple/PurpleEvents";
 import { ProfileSync } from "./ProfileSync";
 import { Util } from "./Util";
 import { ProtoHacks } from "./ProtoHacks";
@@ -49,6 +49,8 @@ export class MatrixRoomHandler {
         purple.on("received-im-msg", this.handleIncomingIM.bind(this));
         purple.on("received-chat-msg", this.handleIncomingChatMsg.bind(this));
         purple.on("chat-invite", this.handleChatInvite.bind(this));
+        purple.on("chat-user-joined", this.handleRemoteUserState.bind(this));
+        purple.on("chat-user-left", this.handleRemoteUserState.bind(this));
     }
 
     /**
@@ -325,5 +327,34 @@ export class MatrixRoomHandler {
             return;
         }
         // XXX: Matrix doesn't support invite messages
+    }
+
+    private async handleRemoteUserState(data: IUserStateChanged) {
+        log.info(data.state === "joined" ? "Joining" : "Leaving", data.sender, "from", data.conv.name);
+        const protocol = this.purple.getProtocol(data.account.protocol_id)!;
+        const senderMatrixUser = Util.getMxIdForProtocol(
+            protocol,
+            data.sender,
+            this.config.bridge.domain,
+            this.config.bridge.userPrefix,
+            true,
+        );
+        const intent = this.bridge.getIntent(senderMatrixUser.getId());
+        const roomId = await this.createOrGetGroupChatRoom(data, intent);
+        try {
+            if (data.state === "joined") {
+                const account = this.purple.getAccount(data.account.username, data.account.protocol_id)!;
+                await intent.join(roomId);
+                await this.profileSync.updateProfile(
+                    protocol,
+                    data.sender,
+                    account,
+                );
+            } else {
+                await intent.kick(roomId, senderMatrixUser.getId(), data.reason || undefined);
+            }
+        } catch (ex) {
+            log.warn("Failed to apply state change:", ex);
+        }
     }
 }

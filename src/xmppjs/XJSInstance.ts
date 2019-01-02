@@ -3,12 +3,20 @@ import { EventEmitter } from "events";
 import { Logging } from "matrix-appservice-bridge";
 import { IConfigPurple } from "../Config";
 import { PurpleProtocol } from "../purple/PurpleProtocol";
-import { component, xml, jid } from "@xmpp/component";
+import { component} from "@xmpp/component";
+import * as xml from "@xmpp/xml";
+import * as jid from "@xmpp/jid";
 import { IXJSBackendOpts } from "./XJSBackendOpts";
 import { XmppJsAccount } from "./XJSAccount";
 import { IPurpleAccount } from "../purple/IPurpleAccount";
-import { IAccountEvent, IChatJoined, IReceivedImMsg, IConversationEvent } from "../purple/PurpleEvents";
+import { IAccountEvent,
+    IChatJoined,
+    IReceivedImMsg,
+    IConversationEvent,
+    IUserStateChanged } from "../purple/PurpleEvents";
 import { IBasicProtocolMessage, IMessageAttachment } from "../MessageFormatter";
+import { PresenceCache } from "./PresenceCache";
+import { deflateRaw } from "zlib";
 
 const xLog = Logging.get("XMPP-conn");
 const log = Logging.get("XmppJsInstance");
@@ -27,6 +35,7 @@ export class XmppJsInstance extends EventEmitter implements IPurpleInstance {
     private accounts: Map<string, XmppJsAccount>;
     private seenMessages: Set<string>;
     private canWrite: boolean;
+    private presenceCache: PresenceCache;
     private defaultRes!: string;
     private bufferedMessages: Array<{xmlMsg: any, resolve: (res: Promise<any>) => void}>;
     constructor() {
@@ -35,6 +44,7 @@ export class XmppJsInstance extends EventEmitter implements IPurpleInstance {
         this.accounts = new Map();
         this.bufferedMessages = [];
         this.seenMessages = new Set();
+        this.presenceCache = new PresenceCache();
     }
 
     get defaultResource(): string {
@@ -167,13 +177,13 @@ export class XmppJsInstance extends EventEmitter implements IPurpleInstance {
         return false;
     }
 
-    private onStanza(stanza: any) {
+    private onStanza(stanza: xml.Element) {
         const id = stanza.attrs.id;
         if (this.seenMessages.has(id)) {
             return;
         }
         this.seenMessages.add(id);
-        log.debug("Stanza:", stanza);
+        log.debug("Stanza:", stanza.toJSON());
         const error: any = stanza.getChild("error") || null;
 
         if (error) {
@@ -181,7 +191,6 @@ export class XmppJsInstance extends EventEmitter implements IPurpleInstance {
         }
         const from = stanza.attrs.from ? jid(stanza.attrs.from) : null;
         const to = stanza.attrs.to ? jid(stanza.attrs.to) : null;
-        const convName = `${from.local}@${from.domain}`;
         log.info(`Got from=${from} to=${to}`);
 
         // "received-im-msg"
@@ -193,9 +202,12 @@ export class XmppJsInstance extends EventEmitter implements IPurpleInstance {
         }
     }
 
-    private handleMessageStanza(stanza) {
+    private handleMessageStanza(stanza: xml.Element) {
         const from = stanza.attrs.from ? jid(stanza.attrs.from) : null;
         const to = stanza.attrs.to ? jid(stanza.attrs.to) : null;
+        if (!from) {
+            return;
+        }
         const convName = `${from.local}@${from.domain}`;
         const type = stanza.attrs.type;
 
@@ -255,19 +267,19 @@ export class XmppJsInstance extends EventEmitter implements IPurpleInstance {
         }
     }
 
-    private handlePresenceStanza(stanza) {
-        const localAcct = this.accounts.get(stanza.attrs.to)!;
-        const from = stanza.attrs.from ? jid(stanza.attrs.from) : null;
-        const to = stanza.attrs.to ? jid(stanza.attrs.to) : null;
+    private handlePresenceStanza(stanza: xml.Element) {
+
+        const localAcct = this.accounts.get(stanza.getAttr("to"))!;
+        const from = jid(stanza.getAttr("from"));
         const convName = `${from.local}@${from.domain}`;
 
-        if (!localAcct) {
-            log.debug(`Not handling presence for ${stanza.attrs.to}, not a local account`);
+        const delta = this.presenceCache.add(stanza);
+        if (!delta) {
             return;
         }
 
         // emit a chat-joined-new if an account was joining this room.
-        if (localAcct.waitingToJoin.has(convName)) {
+        if (delta.isSelf && localAcct.waitingToJoin.has(convName)) {
             localAcct.waitingToJoin.delete(convName);
             this.emit(`chat-joined-new`, {
                 eventName: "chat-joined-new",
@@ -286,17 +298,55 @@ export class XmppJsInstance extends EventEmitter implements IPurpleInstance {
                 },
             } as IChatJoined);
         }
-        // Always emit this.
-        this.emit("chat-joined", {
-            eventName: "chat-joined",
-            conv: {
-                name: convName,
-            },
-            account: {
-                protocol_id: localAcct!.protocol.id,
-                username: localAcct!.remoteId,
-            },
-        } as IConversationEvent);
+
+        if (delta.changed.includes("offline")) {
+            if (delta.isSelf) {
+                // XXX: Should we attempt to reconnect/kick the user?
+                return;
+            }
+            this.emit("chat-user-left", {
+                conv: {
+                    name: convName,
+                },
+                account: {
+                    protocol_id: localAcct!.protocol.id,
+                    username: localAcct!.remoteId,
+                },
+                sender: stanza.attrs.from,
+                state: "left",
+                reason: delta.status!.status,
+            } as IUserStateChanged);
+            return;
+        }
+
+        if (delta.changed.includes("online")) {
+            if (delta.isSelf) {
+                // Always emit this.
+                this.emit("chat-joined", {
+                    eventName: "chat-joined",
+                    conv: {
+                        name: convName,
+                    },
+                    account: {
+                        protocol_id: localAcct!.protocol.id,
+                        username: localAcct!.remoteId,
+                    },
+                } as IConversationEvent);
+                return;
+            }
+            this.emit("chat-user-joined", {
+                conv: {
+                    name: convName,
+                },
+                account: {
+                    protocol_id: localAcct!.protocol.id,
+                    username: localAcct!.remoteId,
+                },
+                sender: stanza.attrs.from,
+                state: "joined",
+            } as IUserStateChanged);
+            return;
+        }
 
     }
 }

@@ -46,6 +46,12 @@ export interface IChatJoined extends IConversationEvent {
     join_properties: IChatJoinProperties;
 }
 
+export interface IUserStateChanged extends IConversationEvent {
+    sender: string;
+    state: "joined"|"left";
+    reason?: string;
+}
+
 export interface IUserInfo extends IAccountEvent {
     [key: string]: string|IAccountMinimal;
     who: string;
