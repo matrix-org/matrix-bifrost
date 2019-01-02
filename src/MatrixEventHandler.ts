@@ -507,7 +507,7 @@ Say \`help\` for more commands.
             await ProtoHacks.addJoinProps(acct.protocol.id, props, event.sender, this.bridge.getIntent());
             this.joinOrDefer(acct, name, props);
         } else if (membership === "leave") {
-            acct.rejectChat(props);
+            await acct.rejectChat(props);
             this.deduplicator.removeChosenOne(name, acct.remoteId);
             // Only do this if it's NOT an invite.
             this.deduplicator.decrementRoomUsers(name);

@@ -9,12 +9,26 @@ const dummyProtocol = new PurpleProtocol({
     homepage: undefined,
     summary: undefined,
 });
+
 const XMPP = new PurpleProtocol({
     id: "prpl-jabber",
     name: "XMPP",
     homepage: undefined,
     summary: undefined,
 });
+
+const intent = {
+    uploadContent: (content) => {
+        return Promise.resolve("mxc://abc/def");
+    },
+    getClient: () => {
+        return {
+            getMediaConfig: () => {
+                return Promise.resolve({"m.upload.size": 1024});
+            },
+        };
+    },
+};
 
 describe("MessageFormatter", () => {
     describe("matrixEventToBody", () => {
@@ -195,15 +209,36 @@ describe("MessageFormatter", () => {
                 body: "wags tail",
             });
         });
-        it("should ignore an attachment", async () => {
+        it("should ignore an attachment without http", async () => {
             const contents = await MessageFormatter.messageToMatrixEvent(
-                {body: "/me wags tail"},
-            dummyProtocol);
+                {body: "awoo", opts: {
+                    attachments: [{uri: "fake://thing"}],
+                }},
+            dummyProtocol, intent);
             expect(
                 contents,
             ).to.deep.equal({
-                msgtype: "m.emote",
-                body: "wags tail",
+                msgtype: "m.text",
+                body: "awoo",
+            });
+        });
+        it("should handle an attachment using http", async () => {
+            const contents = await MessageFormatter.messageToMatrixEvent(
+                {body: "awoo", opts: {
+                    attachments: [{uri: "https://matrix.org/blog/wp-content/uploads/2015/01/logo1.png"}],
+                }},
+            dummyProtocol, intent);
+            expect(
+                contents,
+            ).to.deep.equal({
+                msgtype: "m.image",
+                filename: "logo1.png",
+                url: "mxc://abc/def",
+                info: {
+                    mimetype: "image/png",
+                    size: 2239,
+                },
+                body: "awoo",
             });
         });
         it("prpl-jabber: should transform an ordinary message to plaintext", async () => {

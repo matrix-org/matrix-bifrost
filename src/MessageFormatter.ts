@@ -116,8 +116,7 @@ export class MessageFormatter {
                     log.warn("Don't know how to handle attachment for message, not a http format uri");
                     return matrixMsg;
                 }
-                const file = (await request.get(attachment.uri).promise()).response!;
-
+                const file = (await request.get(attachment.uri, {resolveWithFullResponse: true}).promise())!;
                 // Use the headers if a type isn't given.
                 if (!attachment.mimetype) {
                     attachment.mimetype = file.headers["content-type"];
@@ -135,7 +134,7 @@ export class MessageFormatter {
                 }
 
                 log.info(`Uploading ${attachment.uri}...`);
-                const mxcurl = intent.uploadContent(file.body, {
+                const mxcurl = await intent.uploadContent(file.body, {
                     onlyContentUri: true,
                     includeFilename: false,
                     type: attachment.mimetype || undefined,
