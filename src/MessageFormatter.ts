@@ -107,57 +107,61 @@ export class MessageFormatter {
 
         // XXX: This currently only handles one attachment
         if (hasAttachment) {
-            if (!intent) {
-                throw new Error("No intent given");
-            }
-            const attachment = msg.opts!.attachments![0];
-            if (!attachment.uri.startsWith("http")) {
-                log.warn("Don't know how to handle attachment for message, not a http format uri");
-                return matrixMsg;
-            }
-            const file = (await request.get(attachment.uri).promise()).response!;
+            try {
+                if (!intent) {
+                    throw new Error("No intent given");
+                }
+                const attachment = msg.opts!.attachments![0];
+                if (!attachment.uri.startsWith("http")) {
+                    log.warn("Don't know how to handle attachment for message, not a http format uri");
+                    return matrixMsg;
+                }
+                const file = (await request.get(attachment.uri).promise()).response!;
 
-            // Use the headers if a type isn't given.
-            if (!attachment.mimetype) {
-                attachment.mimetype = file.headers["content-type"];
-            }
-            if (!attachment.size) {
-                attachment.size = parseInt(file.headers["content-length"] || "0", 10);
-            }
-            const client = intent.getClient();
-            const maxSize = await client.getMediaConfig().then((cfg) => cfg.m.upload.size).catch(() => -1);
+                // Use the headers if a type isn't given.
+                if (!attachment.mimetype) {
+                    attachment.mimetype = file.headers["content-type"];
+                }
+                if (!attachment.size) {
+                    attachment.size = parseInt(file.headers["content-length"] || "0", 10);
+                }
+                const client = intent.getClient();
+                const maxSize = await client.getMediaConfig().then((cfg) => cfg.m.upload.size).catch(() => -1);
 
-            if (attachment.size && maxSize > -1 && maxSize < attachment.size!) {
-                log.info("File is too large, linking instead");
-                matrixMsg.body = attachment.uri;
-                return matrixMsg;
-            }
+                if (attachment.size && maxSize > -1 && maxSize < attachment.size!) {
+                    log.info("File is too large, linking instead");
+                    matrixMsg.body = attachment.uri;
+                    return matrixMsg;
+                }
 
-            log.info(`Uploading ${attachment.uri}...`);
-            const mxcurl = intent.uploadContent(file.body, {
-                onlyContentUri: true,
-                includeFilename: false,
-                type: attachment.mimetype || undefined,
-            });
-            matrixMsg.url = mxcurl;
-            matrixMsg.body = msg.body;
-            matrixMsg.filename = attachment.uri.split("/").reverse()[0];
-            matrixMsg.info = {
-                mimetype: attachment.mimetype!,
-                size: attachment.size || 0,
-            };
-            if (!attachment.mimetype) {
-                matrixMsg.msgtype = "m.file";
-            } else if (attachment.mimetype.startsWith("image")) {
-                matrixMsg.msgtype = "m.image";
-            } else if (attachment.mimetype.startsWith("video")) {
-                matrixMsg.msgtype = "m.video";
-            } else if (attachment.mimetype.startsWith("audio")) {
-                matrixMsg.msgtype = "m.audio";
+                log.info(`Uploading ${attachment.uri}...`);
+                const mxcurl = intent.uploadContent(file.body, {
+                    onlyContentUri: true,
+                    includeFilename: false,
+                    type: attachment.mimetype || undefined,
+                });
+                matrixMsg.url = mxcurl;
+                matrixMsg.body = msg.body;
+                matrixMsg.filename = attachment.uri.split("/").reverse()[0];
+                matrixMsg.info = {
+                    mimetype: attachment.mimetype!,
+                    size: attachment.size || 0,
+                };
+                if (!attachment.mimetype) {
+                    matrixMsg.msgtype = "m.file";
+                } else if (attachment.mimetype.startsWith("image")) {
+                    matrixMsg.msgtype = "m.image";
+                } else if (attachment.mimetype.startsWith("video")) {
+                    matrixMsg.msgtype = "m.video";
+                } else if (attachment.mimetype.startsWith("audio")) {
+                    matrixMsg.msgtype = "m.audio";
+                }
+            } catch (ex) {
+                log.warn("Failed to handle attachment:", ex);
             }
         }
 
-        log.debug("Resulting matrix event is:", matrixMsg);
+        log.debug("Resulting matrix event :", matrixMsg);
         return matrixMsg;
     }
 
