@@ -5,6 +5,8 @@ export interface IPresenceDelta {
     status?: IPresenceStatus;
     changed: string[];
     isSelf: boolean;
+    error: "conflict"|"other"|null;
+    errorMsg: string|null;
 }
 
 export interface IPresenceStatus {
@@ -13,6 +15,7 @@ export interface IPresenceStatus {
     status: string;
     affiliation: string;
     role: string;
+    ours: boolean;
 }
 
 /**
@@ -25,8 +28,19 @@ export class PresenceCache {
     constructor() {
         this.roomPresence = {};
     }
+
     public add(stanza: xml.Element): IPresenceDelta|undefined {
-        if (stanza.getChild("error")) {
+        const errorElement = stanza.getChild("error");
+        if (errorElement) {
+            const conflict = errorElement.getChild("conflict");
+            if (conflict) {
+                return {
+                    changed: [],
+                    error: "conflict",
+                    isSelf: true,
+                    errorMsg: null,
+                };
+            }
             return;
         }
         const type = stanza.getAttr("type")!;
@@ -52,11 +66,19 @@ export class PresenceCache {
             affiliation: "",
             role: "",
             online: false,
+            ours: false,
         } as IPresenceStatus;
-        const delta: IPresenceDelta = {changed: [], isSelf};
+        const delta: IPresenceDelta = {changed: [], isSelf, error: null, errorMsg: null};
+
         if (newUser) {
             delta.changed.push("new");
         }
+
+        if (isSelf) {
+            currentPresence.ours = true;
+            roomPresence.set(from.resource, currentPresence);
+        }
+
         if (mucUser && mucUser.getChild("item")) {
             const affiliation = mucUser.getChild("item")!.getAttr("affiliation");
             const role = mucUser.getChild("item")!.getAttr("role");

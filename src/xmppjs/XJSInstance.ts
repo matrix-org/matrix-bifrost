@@ -16,11 +16,9 @@ import { IAccountEvent,
     IUserStateChanged } from "../purple/PurpleEvents";
 import { IBasicProtocolMessage, IMessageAttachment } from "../MessageFormatter";
 import { PresenceCache } from "./PresenceCache";
-import { deflateRaw } from "zlib";
 
 const xLog = Logging.get("XMPP-conn");
 const log = Logging.get("XmppJsInstance");
-const LOCK_TIME_MS = 1500;
 
 export const XMPP_PROTOCOL = new PurpleProtocol({
     id: "xmpp-js",
@@ -279,6 +277,15 @@ export class XmppJsInstance extends EventEmitter implements IPurpleInstance {
         const delta = this.presenceCache.add(stanza);
         if (!delta) {
             return;
+        }
+
+        if (delta.error) {
+            if (delta.error === "conflict") {
+                localAcct.xmppRetryJoin(from).catch((err) => {
+                    log.error("Failed to retry join", err);
+                });
+                return;
+            }
         }
 
         // emit a chat-joined-new if an account was joining this room.

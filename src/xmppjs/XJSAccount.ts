@@ -6,8 +6,12 @@ import { PurpleProtocol } from "../purple/PurpleProtocol";
 import { xml, jid } from "@xmpp/component";
 import { IBasicProtocolMessage } from "../MessageFormatter";
 import { Metrics } from "../Metrics";
+import { JID } from "@xmpp/jid";
+import { PurpleInstance } from "src/purple/PurpleInstance";
 
 const IDPREFIX = "pbridge";
+const CONFLICT_SUFFIX = "[m]";
+
 
 export class XmppJsAccount implements IPurpleAccount {
 
@@ -152,10 +156,29 @@ export class XmppJsAccount implements IPurpleAccount {
             await this.xmpp.xmppWriteToStream(message);
             Metrics.remoteCall("xmpp.presence.join");
             return p;
+    }
+
+    public async xmppRetryJoin(from: JID, instance: PurpleInstance) {
+        if (from.resource.endsWith(CONFLICT_SUFFIX)) {
+            // Kick from the room.
+            throw new Error(`A user with the prefix '${CONFLICT_SUFFIX}' already exists, cannot join to room.`);
         }
+        return this.joinChat({
+            room: from.local,
+            server: from.domain,
+            handle: `${from.resource}${CONFLICT_SUFFIX}`,
+        });
+    }
 
     public rejectChat(components: IChatJoinProperties) {
-        throw Error("Rejecting not implemented");
+        const message = xml(
+            "presence",
+            {
+                to: `${components.room}@${components.server}/${components.handle}`,
+                from: `${this.remoteId}/${this.resource}`,
+                type: "unavailable",
+            },
+        );
         Metrics.remoteCall("xmpp.presence.left");
     }
 
