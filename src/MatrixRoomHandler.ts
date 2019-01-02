@@ -289,9 +289,8 @@ export class MatrixRoomHandler {
             log.error(`Failed to get/create room for this chat:`, e);
             return;
         }
-        await intent.sendMessage(roomId,
-            MessageFormatter.messageToMatrixEvent(data.message, protocol, intent),
-        );
+        const content = await MessageFormatter.messageToMatrixEvent(data.message, protocol, intent);
+        await intent.sendMessage(roomId, content);
     }
 
     private async handleChatInvite(data: IChatInvite) {
