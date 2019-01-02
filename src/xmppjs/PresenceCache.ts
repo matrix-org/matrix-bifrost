@@ -16,6 +16,7 @@ export interface IPresenceStatus {
     affiliation: string;
     role: string;
     ours: boolean;
+    photoId: string|undefined;
 }
 
 /**
@@ -105,6 +106,15 @@ export class PresenceCache {
             delta.changed.push("online");
             currentPresence.online = true;
             delta.status = currentPresence;
+        }
+        const vcard = stanza.getChildByAttr("xmlns", "vcard-temp:x:update");
+        if (vcard) {
+            const photoId = stanza.getChildText("photo");
+            if (photoId !== currentPresence.photoId) {
+                currentPresence.photoId = photoId || undefined;
+                delta.status = currentPresence;
+                delta.changed.push("photo");
+            }
         }
 
         if (delta.status) {
