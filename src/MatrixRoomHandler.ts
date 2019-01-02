@@ -1,7 +1,14 @@
 import { Bridge, MatrixUser, Intent, Logging} from "matrix-appservice-bridge";
 import { IPurpleInstance } from "./purple/IPurpleInstance";
 import { MROOM_TYPE_GROUP, MROOM_TYPE_IM } from "./StoreTypes";
-import { IReceivedImMsg, IChatInvite, IChatJoined, IConversationEvent, IUserStateChanged } from "./purple/PurpleEvents";
+import {
+    IReceivedImMsg,
+    IChatInvite,
+    IChatJoined,
+    IConversationEvent,
+    IUserStateChanged,
+    IChatStringState,
+} from "./purple/PurpleEvents";
 import { ProfileSync } from "./ProfileSync";
 import { Util } from "./Util";
 import { ProtoHacks } from "./ProtoHacks";
@@ -10,6 +17,7 @@ import { Deduplicator } from "./Deduplicator";
 import { Config } from "./Config";
 import * as entityDecode from "parse-entities";
 import { MessageFormatter } from "./MessageFormatter";
+import { IEventRequest, IEventRequestData } from "./MatrixTypes";
 const log = Logging.get("MatrixRoomHandler");
 
 const ACCOUNT_LOCK_MS = 1000;
@@ -51,6 +59,8 @@ export class MatrixRoomHandler {
         purple.on("chat-invite", this.handleChatInvite.bind(this));
         purple.on("chat-user-joined", this.handleRemoteUserState.bind(this));
         purple.on("chat-user-left", this.handleRemoteUserState.bind(this));
+        /* This also handles chat names, which are just set as the conv.name */
+        purple.on("chat-topic", this.handleTopic.bind(this));
     }
 
     /**
@@ -354,6 +364,26 @@ export class MatrixRoomHandler {
             }
         } catch (ex) {
             log.warn("Failed to apply state change:", ex);
+        }
+    }
+
+    private async handleTopic(data: IChatStringState) {
+        const intent = this.bridge.getIntent();
+        const roomId = await this.createOrGetGroupChatRoom(data, intent);
+        const state = (intent.roomState(roomId) as IEventRequestData[]);
+        const topicEv = state.find((ev) => ev.type === "m.room.topic");
+        const nameEv = state.find((ev) => ev.type === "m.room.name");
+        const currentName = nameEv ? nameEv.content.name : "";
+        const currentTopic = topicEv ? topicEv.content.name : "";
+        if (currentTopic !== data.string ? data.string : "") {
+            intent.setRoomTopic(data.string || "").catch((err) => {
+                log.warn("Failed to set topic of", roomId, err);
+            });
+        }
+        if (currentName !== data.conv.name) {
+            intent.setRoomTopic(data.conv.name).catch((err) => {
+                log.warn("Failed to set name of", roomId, err);
+            });
         }
     }
 }

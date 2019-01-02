@@ -52,6 +52,11 @@ export interface IUserStateChanged extends IConversationEvent {
     reason?: string;
 }
 
+export interface IChatStringState extends IConversationEvent {
+    sender: string;
+    string: string;
+}
+
 export interface IUserInfo extends IAccountEvent {
     [key: string]: string|IAccountMinimal;
     who: string;

@@ -211,6 +211,25 @@ export class XmppJsInstance extends EventEmitter implements IPurpleInstance {
         }
         const convName = `${from.local}@${from.domain}`;
         const type = stanza.attrs.type;
+        const subject = stanza.getChildText("subject");
+        if (subject) {
+            this.emit("chat-topic", {
+                conv: {
+                    name: convName,
+                },
+                account: {
+                    protocol_id: XMPP_PROTOCOL.id,
+                    // XXX: We could probably be more sophisticated than this.
+                    username: this.accounts.keys().next().value,
+                },
+                sender: stanza.attrs.from,
+                string: subject,
+            });
+            // Room names in XMPP are basically just local@domain,
+            // and so is sort of implied by the from address. We will emit
+            // a room name change at the same time as the subject. The
+            // RoomHandler code shoudln't attempt to change the name unless it is wrong.
+        }
 
         const bodyWrapper = stanza.getChild("body");
         let body = "";
