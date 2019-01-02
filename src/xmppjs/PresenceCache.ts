@@ -123,11 +123,7 @@ export class PresenceCache {
         return delta;
     }
 
-    public getStatus(userJid: string) {
-
-    }
-
-    public getProfile(userJid: string) {
-
+    public getStatus(roomId: string, userResource: string): IPresenceStatus|undefined {
+        return this.roomPresence[roomId] ? this.roomPresence[roomId].get(userResource) : undefined;
     }
 }

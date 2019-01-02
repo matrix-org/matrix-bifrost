@@ -7,9 +7,11 @@ import { xml, jid } from "@xmpp/component";
 import { IBasicProtocolMessage } from "../MessageFormatter";
 import { Metrics } from "../Metrics";
 import { JID } from "@xmpp/jid";
+import { Logging } from "matrix-appservice-bridge";
 
 const IDPREFIX = "pbridge";
 const CONFLICT_SUFFIX = "[m]";
+const log = Logging.get("XmppJsAccount");
 
 export class XmppJsAccount implements IPurpleAccount {
 
@@ -25,14 +27,12 @@ export class XmppJsAccount implements IPurpleAccount {
         return XMPP_PROTOCOL;
     }
     public readonly waitingToJoin: Set<string>;
-
     public readonly isEnabled = true;
-
     public readonly connected = true;
-    private rooms: Set<string>;
-    // remoteId == jid
+
+    private roomHandles: Map<string, string>;
     constructor(public readonly remoteId: string, public readonly resource, private xmpp: XmppJsInstance) {
-        this.rooms = new Set();
+        this.roomHandles = new Map();
         this.waitingToJoin = new Set();
     }
 
@@ -112,7 +112,15 @@ export class XmppJsAccount implements IPurpleAccount {
     }
 
     public isInRoom(roomName: string): boolean {
-        return false;
+        const handle = this.roomHandles.get(roomName);
+        if (!handle) {
+            return false;
+        }
+        const res = this.xmpp.presenceCache.getStatus(roomName, handle);
+        if (!res) {
+            return false;
+        }
+        return res.online;
     }
 
     public async joinChat(
@@ -121,11 +129,15 @@ export class XmppJsAccount implements IPurpleAccount {
         timeout: number = 5000,
         setWaiting: boolean = true)
         : Promise<IConversationEvent|void> {
+            const roomName = `${components.room}@${components.server}`;
+            const to = `${roomName}/${components.handle}`;
+            const from = `${this.remoteId}/${this.resource}`;
+            log.info(`Joining to=${to} from=${from}`);
             const message = xml(
                 "presence",
                 {
-                    to: `${components.room}@${components.server}/${components.handle}`,
-                    from: `${this.remoteId}/${this.resource}`,
+                    to,
+                    from,
                 },
                 xml ("x", {
                     xmlns: "http://jabber.org/protocol/muc",
@@ -134,15 +146,16 @@ export class XmppJsAccount implements IPurpleAccount {
                 })),
             );
             if (setWaiting) {
-                this.waitingToJoin.add(`${components.room}@${components.server}`);
+                this.waitingToJoin.add(roomName);
             }
             let p: Promise<IChatJoined>|undefined;
             if (instance) {
                 p = new Promise((resolve, reject) => {
                     const timer = setTimeout(reject, timeout);
                     const cb = (data: IChatJoined) => {
-                        if (data.conv.name === `${components.room}@${components.server}` &&
+                        if (data.conv.name === roomName &&
                             data.account.username === this.remoteId) {
+                            this.roomHandles.set(roomName, components.handle);
                             clearTimeout(timer);
                             this.xmpp.removeListener("chat-joined", cb);
                             resolve(data);
@@ -157,6 +170,7 @@ export class XmppJsAccount implements IPurpleAccount {
     }
 
     public async xmppRetryJoin(from: JID) {
+        log.info("Retrying join for ", from.toString());
         if (from.resource.endsWith(CONFLICT_SUFFIX)) {
             // Kick from the room.
             throw new Error(`A user with the prefix '${CONFLICT_SUFFIX}' already exists, cannot join to room.`);
@@ -168,7 +182,7 @@ export class XmppJsAccount implements IPurpleAccount {
         });
     }
 
-    public rejectChat(components: IChatJoinProperties) {
+    public async rejectChat(components: IChatJoinProperties) {
         const message = xml(
             "presence",
             {
@@ -177,6 +191,7 @@ export class XmppJsAccount implements IPurpleAccount {
                 type: "unavailable",
             },
         );
+        await this.xmpp.xmppWriteToStream(message);
         Metrics.remoteCall("xmpp.presence.left");
     }
 
@@ -206,7 +221,6 @@ export class XmppJsAccount implements IPurpleAccount {
 
     public async getUserInfo(who: string): Promise<IUserInfo> {
         const split = who.split("/");
-
         return {
             Nickname: split.length > 1 ? split[1] : split[0],
             eventName: "meh",

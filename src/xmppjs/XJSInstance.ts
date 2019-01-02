@@ -28,12 +28,12 @@ export const XMPP_PROTOCOL = new PurpleProtocol({
 }, false, false);
 
 export class XmppJsInstance extends EventEmitter implements IPurpleInstance {
+    public readonly presenceCache: PresenceCache;
     private xmpp?: any;
     private myAddress: any;
     private accounts: Map<string, XmppJsAccount>;
     private seenMessages: Set<string>;
     private canWrite: boolean;
-    private presenceCache: PresenceCache;
     private defaultRes!: string;
     private bufferedMessages: Array<{xmlMsg: any, resolve: (res: Promise<any>) => void}>;
     constructor() {
