@@ -118,12 +118,15 @@ export class XmppJsInstance extends EventEmitter implements IPurpleInstance {
           }
           xLog.debug("status:", status);
         });
-        xmpp.on("input", (input) => {
-            xLog.debug("RX:", input);
-        });
-        xmpp.on("output", (output) => {
-            xLog.debug("TX:", output);
-        });
+
+        if (opts.logRawStream) {
+            xmpp.on("input", (input) => {
+                xLog.debug("RX:", input);
+            });
+            xmpp.on("output", (output) => {
+                xLog.debug("TX:", output);
+            });
+        }
         await xmpp.start();
         this.xmpp = xmpp;
     }

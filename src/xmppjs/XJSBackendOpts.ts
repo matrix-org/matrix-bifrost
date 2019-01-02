@@ -3,4 +3,5 @@ export interface IXJSBackendOpts {
     domain: string;
     password: string;
     defaultResource: string;
+    logRawStream: boolean;
 }

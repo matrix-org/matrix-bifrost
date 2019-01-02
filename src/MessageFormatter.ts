@@ -72,6 +72,7 @@ export class MessageFormatter {
 
     public static async messageToMatrixEvent(msg: IBasicProtocolMessage, protocol: PurpleProtocol, intent?: any):
         Promise<IMatrixMsgContents> {
+        log.debug("Got message:", msg);
         const matrixMsg: IMatrixMsgContents = {
             msgtype: "m.text",
             body: msg.body.trim(),
@@ -156,6 +157,7 @@ export class MessageFormatter {
             }
         }
 
+        log.debug("Resulting matrix event is:", matrixMsg);
         return matrixMsg;
     }
 
