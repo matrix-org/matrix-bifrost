@@ -7,11 +7,9 @@ import { xml, jid } from "@xmpp/component";
 import { IBasicProtocolMessage } from "../MessageFormatter";
 import { Metrics } from "../Metrics";
 import { JID } from "@xmpp/jid";
-import { PurpleInstance } from "src/purple/PurpleInstance";
 
 const IDPREFIX = "pbridge";
 const CONFLICT_SUFFIX = "[m]";
-
 
 export class XmppJsAccount implements IPurpleAccount {
 
@@ -158,7 +156,7 @@ export class XmppJsAccount implements IPurpleAccount {
             return p;
     }
 
-    public async xmppRetryJoin(from: JID, instance: PurpleInstance) {
+    public async xmppRetryJoin(from: JID) {
         if (from.resource.endsWith(CONFLICT_SUFFIX)) {
             // Kick from the room.
             throw new Error(`A user with the prefix '${CONFLICT_SUFFIX}' already exists, cannot join to room.`);

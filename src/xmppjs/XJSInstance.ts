@@ -300,6 +300,7 @@ export class XmppJsInstance extends EventEmitter implements IPurpleInstance {
 
         if (delta.error) {
             if (delta.error === "conflict") {
+                log.info(`${from.toString()} conflicted with another user, attempting to fix`);
                 localAcct.xmppRetryJoin(from).catch((err) => {
                     log.error("Failed to retry join", err);
                 });
@@ -376,6 +377,5 @@ export class XmppJsInstance extends EventEmitter implements IPurpleInstance {
             } as IUserStateChanged);
             return;
         }
-
     }
 }
