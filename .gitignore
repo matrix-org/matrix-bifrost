@@ -2,3 +2,7 @@ node_modules/
 .nyc/
 .nyc_output/
 build/
+*.db
+config.yaml
+purple-registration.yaml
+*.log*
