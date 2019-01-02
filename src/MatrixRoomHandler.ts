@@ -1,7 +1,7 @@
 import { Bridge, MatrixUser, Intent, Logging} from "matrix-appservice-bridge";
 import { IPurpleInstance } from "./purple/IPurpleInstance";
 import { MROOM_TYPE_GROUP, MROOM_TYPE_IM } from "./StoreTypes";
-import { IReceivedImMsg, IChatInvite, IChatJoined, IConversationEvent, IAccountMinimal, IUserStateChanged } from "./purple/PurpleEvents";
+import { IReceivedImMsg, IChatInvite, IChatJoined, IConversationEvent, IUserStateChanged } from "./purple/PurpleEvents";
 import { ProfileSync } from "./ProfileSync";
 import { Util } from "./Util";
 import { ProtoHacks } from "./ProtoHacks";
