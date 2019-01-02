@@ -271,8 +271,8 @@ export class XmppJsInstance extends EventEmitter implements IPurpleInstance {
     }
 
     private handlePresenceStanza(stanza: xml.Element) {
-
-        const localAcct = this.accounts.get(stanza.getAttr("to"))!;
+        const to = jid(stanza.getAttr("to"));
+        const localAcct = this.accounts.get(`${to.local}@${to.domain}`)!;
         const from = jid(stanza.getAttr("from"));
         const convName = `${from.local}@${from.domain}`;
 
@@ -291,8 +291,8 @@ export class XmppJsInstance extends EventEmitter implements IPurpleInstance {
                     name: convName,
                 },
                 account: {
-                    protocol_id: localAcct!.protocol.id,
-                    username: localAcct!.remoteId,
+                    protocol_id: localAcct.protocol.id,
+                    username: localAcct.remoteId,
                 },
                 join_properties: {
                     room: from.local,
@@ -331,8 +331,8 @@ export class XmppJsInstance extends EventEmitter implements IPurpleInstance {
                         name: convName,
                     },
                     account: {
-                        protocol_id: localAcct!.protocol.id,
-                        username: localAcct!.remoteId,
+                        protocol_id: localAcct.protocol.id,
+                        username: localAcct.remoteId,
                     },
                 } as IConversationEvent);
                 return;
@@ -342,8 +342,8 @@ export class XmppJsInstance extends EventEmitter implements IPurpleInstance {
                     name: convName,
                 },
                 account: {
-                    protocol_id: localAcct!.protocol.id,
-                    username: localAcct!.remoteId,
+                    protocol_id: localAcct.protocol.id,
+                    username: localAcct.remoteId,
                 },
                 sender: stanza.attrs.from,
                 state: "joined",
