@@ -112,6 +112,7 @@ class Program {
         });
         await this.bridge.run(port, this.cfg);
         if (this.cfg.metrics.enable) {
+            log.info("Enabling metrics");
             Metrics.init(this.bridge);
         }
         this.store = new Store(this.bridge);

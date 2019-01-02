@@ -1,5 +1,7 @@
-import { PrometheusMetrics, AgeCounter } from "matrix-appservice-bridge";
+import { PrometheusMetrics } from "matrix-appservice-bridge";
 import { Gauge, Counter } from "prom-client";
+
+const AgeCounters = PrometheusMetrics.AgeCounters;
 
 interface IAgeCounter {
     setGauge(gauge: Gauge, morelabels: any);
@@ -23,16 +25,6 @@ export class Metrics {
         this.metrics.registerMatrixSdkMetrics();
         this.metrics.registerBridgeGauges(() => this.bridgeGauges);
         this.metrics.addAppServicePath(bridge);
-        this.bridgeGauges = {
-            matrixRoomConfigs: 0,
-            remoteRoomConfigs: 0,
-            matrixGhosts: 0,
-            remoteGhosts: 0,
-            matrixRoomsByAge: new AgeCounter(),
-            remoteRoomsByAge: new AgeCounter(),
-            matrixUsersByAge: new AgeCounter(),
-            remoteUsersByAge: new AgeCounter(),
-        };
         this.remoteCallCounter = this.metrics.addCounter({
             name: "remote_api_calls",
             help: "Count of the number of remote API calls made",
@@ -60,9 +52,9 @@ export class Metrics {
         remoteRoomConfigs: 0,
         matrixGhosts: 0,
         remoteGhosts: 0,
-        matrixRoomsByAge: new AgeCounter(),
-        remoteRoomsByAge: new AgeCounter(),
-        matrixUsersByAge: new AgeCounter(),
-        remoteUsersByAge: new AgeCounter(),
+        matrixRoomsByAge: new AgeCounters(),
+        remoteRoomsByAge: new AgeCounters(),
+        matrixUsersByAge: new AgeCounters(),
+        remoteUsersByAge: new AgeCounters(),
     };
 }
