@@ -1,30 +1,69 @@
 bridge:
+  # Your homeserver server_name.
   domain: "localhost"
+  # A internally reachable endpoint for the CS api of the homeserver.
   homeserverUrl: "http://localhost:8008"
+  # Prefix of all users of the bridge.
   userPrefix: "_purple_"
+  # If homeserverUrl is not reachable publically, the public address that media can be reached on.
+  # mediaserverUrl: "http://example.com:8008"
 
 purple:
-  backend: "node-purple" # For selecting a specific backend. One of "node-purple", "xmpp.js". Defaults to "node-purple"
+  # For selecting a specific backend. One of "node-purple", "xmpp.js". Defaults to "node-purple"
+  backend: "node-purple" 
+  # For node-purple, whether to debug to stdout. Usually not needed.
   enableDebug: false
+  # For node-purple, a directory containing plugins to load.
   pluginDir: "./node_modules/node-purple/deps/libpurple/"
+# -- For xmpp.js
+#  backendOpts:
+     # endpoint to reach the component on.
+#    service: "xmpp://localhost:5233"
+     # domin assigned to the component.
+#    domain: "matrix.localhost"
+     # password needed by the component.
+#    password: "jam"
 
+# Matrix forwards room aliases join requests matching a regex in the 
+# registration file to the owner's bridge, if the room doesn't exist.
+# The following options allow you to configure how the purple bridge may
+# match those aliases to remote rooms.
 portals:
+  # List of regexes to match a alias that can be turned into a bridge.
   aliases:
-    # For auto selecting the conference server
-    "/^([A-Za-z0-9]+)$/":
+    # This matches _purple_ followed by anything
+    "/^_purple_(.+)$/":
+      # Use the prpl-jabber protocol.
       protocol: "prpl-jabber"
       properties:
+        # Set room to the first regex match
         room: "regex:1"
+        # Set the server to be conf.localhost
         server: "conf.localhost"
-    "/([A-Za-z0-9]+)/":
-      protocol: "prpl-jabber"
-      properties:
-        conf: ""
 
+# Automatically register users with accounts if they join/get invited
+# a room with a protocol they are not bound to.
+# This is REQUIRED for xmpp.js to work.
 autoRegistration:
-   enabled: false
-## For reference, this is how to autoregister folks with prosody (xmpp)
-## with the included lua script in extras.
+  enabled: false
+  protocolSteps:
+# For xmpp.js, please use:
+#   xmpp-js:
+#     type: "implicit"
+#     parameters:
+#       username: "<T_LOCALPART>@matrix.localhost"
+ 
+# Available subsitution variables for parameters:
+# <T_MXID> - The users mxid.
+# <T_MXID_SANE> - The users mxid, with @ an : replaced with _.
+# <T_LOCALPART> - The users localpart.
+# <T_DISPLAYNAME> - The users displayname, or localpart if not set.
+# <T_GENERATEPWD> - Generates a 32 char password
+# <T_AVATAR> - The MXC url of the users avatar, if available.
+
+
+## This is how to autoregister folks with prosody (xmpp)
+## with the included lua script in extras. This applies to node-purple.
 #   protocolSteps:
 #       prpl-jabber:
 #           type: "http"
@@ -40,3 +79,20 @@ autoRegistration:
 #               ip: "127.0.0.1"
 #           paramsToStore:
 #               - password
+
+# Enable prometheus metrics reporting.
+# This will report metrics on /metrics on the same port as the bridge.
+metrics:
+  enabled: false
+
+logging:
+  # Set the logging level for stdout.
+  # Lower levels are inclusive of higher levels e.g. info will contain warn and error logging.
+  console: "info" # "debug", "info", "warn", "error", "off"
+  # A list of files and their associated logging levels.
+  files:
+    "./info.log": "info"
+#    "./error.log": "error"
+#    "./warn.log": "warn"
+#    "./debug.log": "debug"
+
