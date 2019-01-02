@@ -46,6 +46,7 @@
     "matrix-appservice-bridge": "^1.7.0",
     "node-purple": "matrix-org/node-purple#hs/make-purple-build-again",
     "parse-entities": "^1.2.0",
+    "prom-client": "^11.2.1",
     "request": "^2.88.0",
     "request-promise-native": "^1.0.5",
     "typescript": "^3.0.1",

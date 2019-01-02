@@ -5,6 +5,7 @@ import { IPurpleInstance } from "../purple/IPurpleInstance";
 import { PurpleProtocol } from "../purple/PurpleProtocol";
 import { xml, jid } from "@xmpp/component";
 import { IBasicProtocolMessage } from "../MessageFormatter";
+import { Metrics } from "../Metrics";
 
 const IDPREFIX = "pbridge";
 
@@ -58,6 +59,7 @@ export class XmppJsAccount implements IPurpleAccount {
         );
         this.xmpp.xmppAddSentMessage(id);
         this.xmpp.xmppWriteToStream(message);
+        Metrics.remoteCall("xmpp.message.im");
     }
 
     public sendChat(chatName: string, msg: IBasicProtocolMessage) {
@@ -90,6 +92,7 @@ export class XmppJsAccount implements IPurpleAccount {
         );
         this.xmpp.xmppAddSentMessage(id);
         this.xmpp.xmppWriteToStream(message);
+        Metrics.remoteCall("xmpp.message.groupchat");
     }
 
     public getBuddy(user: string): any|undefined {
@@ -147,11 +150,13 @@ export class XmppJsAccount implements IPurpleAccount {
                 });
             }
             await this.xmpp.xmppWriteToStream(message);
+            Metrics.remoteCall("xmpp.presence.join");
             return p;
         }
 
     public rejectChat(components: IChatJoinProperties) {
         throw Error("Rejecting not implemented");
+        Metrics.remoteCall("xmpp.presence.left");
     }
 
     public getConversation(name: string): any {

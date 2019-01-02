@@ -13,6 +13,7 @@ import { Deduplicator } from "./Deduplicator";
 import { Config, IBridgeBotAccount } from "./Config";
 import { Util } from "./Util";
 import { XmppJsInstance } from "./xmppjs/XJSInstance";
+import { Metrics } from "./Metrics";
 
 const log = Logging.get("Program");
 
@@ -110,6 +111,9 @@ class Program {
           registration: "purple-registration.yaml",
         });
         await this.bridge.run(port, this.cfg);
+        if (this.cfg.metrics.enable) {
+            Metrics.init(this.bridge);
+        }
         this.store = new Store(this.bridge);
         this.profileSync = new ProfileSync(this.bridge, this.cfg);
         this.eventHandler = new MatrixEventHandler(this.purple!, this.store, this.deduplicator, this.config);

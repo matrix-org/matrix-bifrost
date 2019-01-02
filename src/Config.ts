@@ -38,6 +38,10 @@ export class Config {
     public readonly portals: IConfigPortals = {
         aliases: undefined,
     };
+
+    public readonly metrics: IConfigMetrics = {
+        enable: false,
+    };
   /**
    * Apply a set of keys and values over the default config.
    * @param newConfig Config keys
@@ -89,6 +93,10 @@ export interface IConfigProfile {
 
 export interface IConfigPortals {
     aliases: {[regex: string]: IRoomAlias} | undefined;
+}
+
+interface IConfigMetrics {
+    enable: boolean;
 }
 
 interface IConfigLogging {
