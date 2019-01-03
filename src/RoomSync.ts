@@ -14,6 +14,8 @@ interface IRoomMembership {
     membership: "join"|"leave";
 }
 
+const SYNC_RETRY_MS = 3000;
+
 export class RoomSync {
     private accountRoomMemberships: Map<string, IRoomMembership[]>;
     constructor(
@@ -38,6 +40,20 @@ export class RoomSync {
         log.info("Finished sync");
     }
 
+    private async getJoinedMembers(roomId: string): any {
+        const bot = this.bridge.getBot();
+        let members;
+        while (members !== undefined) {
+            try {
+                members = await bot.getJoinedMembers(roomId);
+            } catch (ex) {
+                log.warn(`Failed to get joined members for ${roomId}, retrying in ${SYNC_RETRY_MS}`, ex);
+                await new Promise((resolve) => setTimeout(resolve, SYNC_RETRY_MS));
+            }
+        }
+        return members;
+    }
+
     /**
      * This function will collect all the members of the group rooms and decide
      * if the libpurple side needs to "reconnect" to the rooms.
@@ -47,7 +63,8 @@ export class RoomSync {
         const bot = this.bridge.getBot();
         const rooms = await this.store.getRoomsOfType(MROOM_TYPE_GROUP);
         log.info(`Got ${rooms.length} group rooms`);
-
+        const MAX_SYNCS = 8;
+        let ongoingSyncs = 0;
         await Promise.all(rooms.map(async (room: IRoomEntry) => {
             const roomId = room.matrix.getId();
             if (!room.remote) {
@@ -55,17 +72,19 @@ export class RoomSync {
                 log.debug(roomId, "->", room);
                 return;
             }
-            log.debug(`Syncing members for ${roomId}`);
-
-            const members = await bot.getJoinedMembers(roomId);
+            log.debug(`Syncing members for ${roomId} (${ongoingSyncs}/${MAX_SYNCS})`);
+            while (ongoingSyncs > MAX_SYNCS) {
+                await new Promise((resolve) => setTimeout(resolve, 5000));
+            }
+            ongoingSyncs++;
+            const members = await this.getJoinedMembers(roomId);
+            ongoingSyncs--;
             log.debug(`${roomId} has ${Object.keys(members).length} members`);
             const userIds = Object.keys(members);
             for (const userId of userIds) {
-                log.debug(`Checking ${userId}`);
                 if (bot.isRemoteUser(userId)) {
                     continue;
                 }
-                log.debug("Checking the store for the user's account");
                 const remotes = (await this.store.getRemoteUsersFromMxId(userId)).filter(
                     (ruser) => ruser &&
                         ruser.get("protocolId") === room.remote.get("protocol_id"),
