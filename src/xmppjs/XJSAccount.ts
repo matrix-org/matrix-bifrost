@@ -56,6 +56,7 @@ export class XmppJsAccount implements IPurpleAccount {
                 to: recipient,
                 id,
                 from: `${this.remoteId}/${this.resource}`,
+                type: "chat",
             },
             xml("body", null, msg.body),
         );
