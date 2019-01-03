@@ -433,7 +433,8 @@ Say \`help\` for more commands.
             return;
         }
         log.info(`Sending IM to ${context.rooms.remote.get("recipient")}`);
-        acct.sendIM(context.rooms.remote.get("recipient"), event.content.body);
+        const msg = MessageFormatter.matrixEventToBody(event, this.config.bridge);
+        acct.sendIM(context.rooms.remote.get("recipient"), msg);
     }
 
     private async handleGroupMessage(context: IBridgeContext, event: IEventRequestData) {
