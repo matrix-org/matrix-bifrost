@@ -271,7 +271,7 @@ export class XmppJsInstance extends EventEmitter implements IPurpleInstance {
                 account: {
                     protocol_id: XMPP_PROTOCOL.id,
                     // XXX: We could probably be more sophisticated than this.
-                    username: this.accounts.keys().next().value,
+                    username: `${to!.local}@${to!.domain}`,
                 },
             } as IReceivedImMsg);
         } else if (type === "chat") {
@@ -281,7 +281,7 @@ export class XmppJsInstance extends EventEmitter implements IPurpleInstance {
                 message,
                 account: {
                     protocol_id: XMPP_PROTOCOL.id,
-                    username: to,
+                    username: `${to!.local}@${to!.domain}`,
                 },
             } as IReceivedImMsg);
         }
