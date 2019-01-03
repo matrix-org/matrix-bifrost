@@ -204,7 +204,7 @@ export class MatrixRoomHandler {
 
     private async handleIncomingIM(data: IReceivedImMsg) {
         log.debug(`Handling incoming IM from ${data.sender}`);
-        data.message = entityDecode(data.message);
+        data.message.body = entityDecode(data.message.body);
         // First, find out who the message was intended for.
         const matrixUser = await this.store.getMatrixUserForAccount(data.account);
         if (matrixUser === null) {
