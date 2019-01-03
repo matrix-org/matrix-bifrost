@@ -44,7 +44,6 @@
     "leven": "^2.1.0",
     "marked": "^0.5.1",
     "matrix-appservice-bridge": "^1.7.0",
-    "node-purple": "matrix-org/node-purple#hs/make-purple-build-again",
     "parse-entities": "^1.2.0",
     "prom-client": "^11.2.1",
     "request": "^2.88.0",
@@ -53,6 +52,9 @@
     "winston": "^3.0.0",
     "winston-daily-rotate-file": "^3.3.2",
     "xmpp.js": "^0.6.1"
+  },
+  "optionalDependencies": {
+    "node-purple": "matrix-org/node-purple"
   },
   "nyc": {
     "check-coverage": true,

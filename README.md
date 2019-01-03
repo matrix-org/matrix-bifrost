@@ -17,7 +17,7 @@ The following are supported:
     Designed to bridge to XMPP networks directly, without purple. Good for setups requiring an extremely scalable XMPP bridge. Uses XMPP components.
 * `node-purple`
     Uses libpurple to bridge to a number of networks supported by libpurple2. Good for simple bridges for a small number of users, or for bridging to less available protocols.
-
+    * **WARNING**: If using `node-purple` then you MUST install the dependency: `npm i node-purple`
 ## Installing
 
 ### Dependencies
