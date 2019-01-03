@@ -103,7 +103,7 @@ export class MessageFormatter {
         if (msg.formatted) {
             const html = msg.formatted.find((t) => t.type === "html");
             if (html) {
-                matrixMsg.formatted_body = html;
+                matrixMsg.formatted_body = html.body;
                 matrixMsg.format = "org.matrix.custom.html";
             }
         }

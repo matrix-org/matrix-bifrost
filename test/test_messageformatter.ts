@@ -209,6 +209,27 @@ describe("MessageFormatter", () => {
                 body: "wags tail",
             });
         });
+        it("should transform a html message", async () => {
+            const contents = await MessageFormatter.messageToMatrixEvent(
+                {
+                    body: "wags tail",
+                    formatted: [
+                        {
+                            type: "html",
+                            body: "<body><span>Hi</span></body>",
+                        },
+                    ],
+                },
+            dummyProtocol);
+            expect(
+                contents,
+            ).to.deep.equal({
+                msgtype: "m.text",
+                body: "wags tail",
+                format: "org.matrix.custom.html",
+                formatted_body: "<body><span>Hi</span></body>",
+            });
+        });
         it("should ignore an attachment without http", async () => {
             const contents = await MessageFormatter.messageToMatrixEvent(
                 {body: "awoo", opts: {

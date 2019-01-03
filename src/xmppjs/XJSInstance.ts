@@ -261,8 +261,9 @@ export class XmppJsInstance extends EventEmitter implements IPurpleInstance {
         } as IBasicProtocolMessage;
 
 
-        const html = stanza.getChild("html");
+        let html = stanza.getChild("html");
         if (html) {
+            html = html.getChild("body") || html;
             message.formatted!.push({
                 type: "html",
                 body: html.toString(),
