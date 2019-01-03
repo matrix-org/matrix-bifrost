@@ -40,7 +40,7 @@ export class RoomSync {
         log.info("Finished sync");
     }
 
-    private async getJoinedMembers(roomId: string): any {
+    private async getJoinedMembers(roomId: string): Promise<any> {
         const bot = this.bridge.getBot();
         let members;
         while (members !== undefined) {
