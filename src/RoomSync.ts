@@ -43,7 +43,7 @@ export class RoomSync {
     private async getJoinedMembers(roomId: string): Promise<any> {
         const bot = this.bridge.getBot();
         let members;
-        while (members !== undefined) {
+        while (members === undefined) {
             try {
                 members = await bot.getJoinedMembers(roomId);
             } catch (ex) {
