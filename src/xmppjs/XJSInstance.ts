@@ -297,6 +297,7 @@ export class XmppJsInstance extends EventEmitter implements IPurpleInstance {
         if (!delta) {
             return;
         }
+        log.debug("Presence delta:", delta);
 
         if (delta.error) {
             if (delta.error === "conflict") {
