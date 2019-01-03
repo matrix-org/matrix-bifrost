@@ -9,6 +9,8 @@ This bridge is in very active development currently and intended mainly for expe
 
 This has been tested to work on `Node.JS v10` and `Synapse 0.34.0`.
 
+**You must read this README carefully as simply installing required dependencies may NOT be enough for some backends**
+
 ## Backends
 
 This bridge features multiple backends for spinning up bridges on different types of network.
@@ -97,3 +99,8 @@ join xmpp $ROOM $XMPP_SERVER
 
 The `node-purple` rewrite is still not quite bugfree and we are working hard to iron out the kinks in it. We ask that you report
 if certain purple plugins cause more crashes, or if anything in particular lead up to it.
+
+
+## Testing
+
+Running the tests is as simple as doing `npm run test`
