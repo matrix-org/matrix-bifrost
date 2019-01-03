@@ -100,6 +100,14 @@ export class MessageFormatter {
             }
         }
 
+        if (msg.formatted) {
+            const html = msg.formatted.find((t) => t.type === "html");
+            if (html) {
+                matrixMsg.formatted_body = html;
+                matrixMsg.format = "org.matrix.custom.html";
+            }
+        }
+
         if (matrixMsg.body.startsWith("/me ")) {
             matrixMsg.msgtype = "m.emote";
             matrixMsg.body = matrixMsg.body.substr("/me ".length);

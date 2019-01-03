@@ -3,7 +3,7 @@ import { EventEmitter } from "events";
 import { Logging } from "matrix-appservice-bridge";
 import { IConfigPurple } from "../Config";
 import { PurpleProtocol } from "../purple/PurpleProtocol";
-import { component} from "@xmpp/component";
+import { component } from "@xmpp/component";
 import * as xml from "@xmpp/xml";
 import * as jid from "@xmpp/jid";
 import { IXJSBackendOpts } from "./XJSBackendOpts";
@@ -251,11 +251,23 @@ export class XmppJsInstance extends EventEmitter implements IPurpleInstance {
 
         const message = {
             body,
+            formatted: [
+
+            ],
             id: stanza.attrs.id,
             opts: {
                    attachments,
             },
         } as IBasicProtocolMessage;
+
+
+        const html = stanza.getChild("html");
+        if (html) {
+            message.formatted!.push({
+                type: "html",
+                body: html.toString(),
+            });
+        }
 
         if (type === "groupchat") {
             this.emit("received-chat-msg", {

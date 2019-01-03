@@ -40,6 +40,7 @@
     "tslint": "^5.11.0"
   },
   "dependencies": {
+    "@xmpp/component": "^0.6.1",
     "htmlparser2": "^3.10.0",
     "leven": "^2.1.0",
     "marked": "^0.5.1",
