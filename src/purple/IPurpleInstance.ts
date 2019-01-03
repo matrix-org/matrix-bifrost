@@ -47,6 +47,6 @@ export interface IPurpleInstance extends EventEmitter {
 
     needsDedupe(): boolean;
     needsAccountLock(): boolean;
-    //getMXIDForSender(sender: string, domain: string, prefix: string, protocol: Protocol);
-    //parseMxIdForSender(mxid: string): {protocol: PurpleProtocol, sender: string};
+    // getMXIDForSender(sender: string, domain: string, prefix: string, protocol: Protocol);
+    // parseMxIdForSender(mxid: string): {protocol: PurpleProtocol, sender: string};
 }
