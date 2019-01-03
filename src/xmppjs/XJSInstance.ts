@@ -260,7 +260,6 @@ export class XmppJsInstance extends EventEmitter implements IPurpleInstance {
             },
         } as IBasicProtocolMessage;
 
-
         let html = stanza.getChild("html");
         if (html) {
             html = html.getChild("body") || html;
@@ -299,6 +298,7 @@ export class XmppJsInstance extends EventEmitter implements IPurpleInstance {
 
     private handlePresenceStanza(stanza: xml.Element) {
         const to = jid(stanza.getAttr("to"));
+        // XMPP is case insensitive.
         const localAcct = this.accounts.get(`${to.local}@${to.domain}`)!;
         const from = jid(stanza.getAttr("from"));
         const convName = `${from.local}@${from.domain}`;
