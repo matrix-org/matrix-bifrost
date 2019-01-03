@@ -133,7 +133,8 @@ export class MessageFormatter {
                     attachment.size = parseInt(file.headers["content-length"] || "0", 10);
                 }
                 const client = intent.getClient();
-                const maxSize = await client.getMediaConfig().then((cfg) => cfg.m.upload.size).catch(() => -1);
+                const maxSize = client.getMediaConfig ?
+                    (await client.getMediaConfig().then((cfg) => cfg.m.upload.size).catch(() => -1)) : -1;
 
                 if (attachment.size && maxSize > -1 && maxSize < attachment.size!) {
                     log.info("File is too large, linking instead");
