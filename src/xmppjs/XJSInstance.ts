@@ -232,15 +232,12 @@ export class XmppJsInstance extends EventEmitter implements IPurpleInstance {
             // RoomHandler code shoudln't attempt to change the name unless it is wrong.
         }
 
-        const bodyWrapper = stanza.getChild("body");
-        let body = "";
-        const attachments: IMessageAttachment[] = [];
-        if (bodyWrapper && bodyWrapper.children) {
-            body = bodyWrapper.text();
-        } else {
+        const body = stanza.getChildText("body");
+        if (!body) {
             log.debug("Don't know how to handle a message without children");
             return;
         }
+        const attachments: IMessageAttachment[] = [];
         // https://xmpp.org/extensions/xep-0066.html#x-oob
         const attachmentWrapper = stanza.getChild("x");
         if (attachmentWrapper && attachmentWrapper.attrs.xmlns === "jabber:x:oob") {

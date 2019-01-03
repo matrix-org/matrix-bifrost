@@ -110,7 +110,6 @@ export class MatrixRoomHandler {
                 createAsClient: true,
                 options: {
                     is_direct: true,
-                    name: data.sender,
                     visibility: "private",
                     invite: [matrixUser.getId()],
                 },
@@ -239,10 +238,8 @@ export class MatrixRoomHandler {
             account,
         );
         log.debug(`Sending message to ${roomId} as ${senderMatrixUser.getId()}`);
-        await intent.sendMessage(roomId, {
-            msgtype: "m.text",
-            body: data.message,
-        });
+        const content = await MessageFormatter.messageToMatrixEvent(data.message, protocol, intent);
+        await intent.sendMessage(roomId, content);
     }
 
     private async handleIncomingChatMsg(data: IReceivedImMsg) {
