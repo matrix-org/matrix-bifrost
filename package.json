@@ -1,6 +1,6 @@
 {
   "name": "matrix-appservice-purple",
-  "version": "0.0.1",
+  "version": "0.1.0",
   "description": "General purpose bridging using libpurple.",
   "main": "index.js",
   "scripts": {
