@@ -2,6 +2,8 @@
  * An interface for storing account data inside the userstore.
  */
 
+
+// @ts-ignore - These are optional.
 import { helper, plugins, buddy, accounts, messaging, Buddy, Account, Conversation, notify } from "node-purple";
 import { PurpleProtocol } from "./PurpleProtocol";
 import { IChatJoinProperties, IUserInfo, IConversationEvent, IChatJoined } from "./PurpleEvents";

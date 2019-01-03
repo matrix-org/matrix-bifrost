@@ -6,6 +6,8 @@ import { IEventBody,
     IConversationEvent,
     IUserStateChanged,
     IChatStringState,
+    IChatInvite,
+    IReceivedImMsg,
 } from "./PurpleEvents";
 import { IConfigPurple } from "../Config";
 import { EventEmitter } from "events";
@@ -40,6 +42,11 @@ export interface IPurpleInstance extends EventEmitter {
     on(name: "chat-joined-new", cb: (ev: IChatJoined) => void);
     on(name: "chat-user-joined"|"chat-user-left", cb: (ev: IUserStateChanged) => void);
     on(name: "chat-topic", cb: (ev: IChatStringState) => void);
+    on(name: "chat-invite", cb: (ev: IChatInvite) => void);
+    on(name: "received-im-msg"|"received-chat-msg", cb: (ev: IReceivedImMsg) => void);
+
     needsDedupe(): boolean;
     needsAccountLock(): boolean;
+    //getMXIDForSender(sender: string, domain: string, prefix: string, protocol: Protocol);
+    //parseMxIdForSender(mxid: string): {protocol: PurpleProtocol, sender: string};
 }

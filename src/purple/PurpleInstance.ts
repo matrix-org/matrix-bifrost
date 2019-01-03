@@ -1,5 +1,6 @@
-import { EventEmitter } from "events";
+// @ts-ignore - These are optional.
 import { helper, plugins, messaging, Protocol, Conversation } from "node-purple";
+import { EventEmitter } from "events";
 import { PurpleAccount } from "./PurpleAccount";
 import { IPurpleInstance } from "./IPurpleInstance";
 import { Logging } from "matrix-appservice-bridge";
