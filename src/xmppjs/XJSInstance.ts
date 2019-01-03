@@ -206,6 +206,7 @@ export class XmppJsInstance extends EventEmitter implements IPurpleInstance {
     private handleMessageStanza(stanza: xml.Element) {
         const from = stanza.attrs.from ? jid(stanza.attrs.from) : null;
         const to = stanza.attrs.to ? jid(stanza.attrs.to) : null;
+        const localAcct = this.accounts.get(`${to!.local}@${to!.domain}`)!;
         if (!from) {
             return;
         }
@@ -270,8 +271,7 @@ export class XmppJsInstance extends EventEmitter implements IPurpleInstance {
                 },
                 account: {
                     protocol_id: XMPP_PROTOCOL.id,
-                    // XXX: We could probably be more sophisticated than this.
-                    username: `${to!.local}@${to!.domain}`,
+                    username: localAcct.remoteId,
                 },
             } as IReceivedImMsg);
         } else if (type === "chat") {
@@ -281,7 +281,7 @@ export class XmppJsInstance extends EventEmitter implements IPurpleInstance {
                 message,
                 account: {
                     protocol_id: XMPP_PROTOCOL.id,
-                    username: `${to!.local}@${to!.domain}`,
+                    username: localAcct.remoteId,
                 },
             } as IReceivedImMsg);
         }
