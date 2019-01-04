@@ -68,6 +68,8 @@ export class XmppJsAccount implements IPurpleAccount {
     public sendChat(chatName: string, msg: IBasicProtocolMessage) {
         const id = msg.id || IDPREFIX + Date.now().toString();
         const contents: any[] = [];
+        const htmlMsg = (msg.formatted || []).find((f) => f.type === "html");
+        let htmlAnchor;
         if (msg.opts && msg.opts.attachments) {
             msg.opts.attachments.forEach((a) => {
                 contents.push(
@@ -77,16 +79,14 @@ export class XmppJsAccount implements IPurpleAccount {
                 // *some* XMPP clients expect the URL to be in the body, silly clients...
                 msg.body = a.uri;
             });
-        } else {
-            const htmlMsg = (msg.formatted || []).find((f) => f.type === "html");
-            if (htmlMsg) {
-                contents.push(xml("html", {
-                    xmlns: "http://jabber.org/protocol/xhtml-im",
-                }), htmlMsg.body);
-            }
+        } else if (htmlMsg) {
+            htmlAnchor = Buffer.from(htmlMsg.body).toString("base64").replace(/\W/g, "a");
+            contents.push(xml("html", {
+                xmlns: "http://jabber.org/protocol/xhtml-im",
+            }), htmlAnchor);
         }
         contents.push(xml("body", null, msg.body));
-        const message = xml(
+        let message: string = xml(
             "message",
             {
                 to: chatName,
@@ -95,7 +95,10 @@ export class XmppJsAccount implements IPurpleAccount {
                 type: "groupchat",
             },
             contents,
-        );
+        ).toString();
+        if (htmlMsg) {
+            message = message.replace(htmlAnchor, htmlMsg.body);
+        }
         this.xmpp.xmppAddSentMessage(id);
         this.xmpp.xmppWriteToStream(message);
         Metrics.remoteCall("xmpp.message.groupchat");
