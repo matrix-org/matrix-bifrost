@@ -317,6 +317,7 @@ export class XmppJsInstance extends EventEmitter implements IPurpleInstance {
                 });
                 return;
             }
+            log.error(`Failed to join ${from} ${to} :`, delta.errorMsg);
         }
 
         // emit a chat-joined-new if an account was joining this room.
