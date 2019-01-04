@@ -121,12 +121,12 @@ class Program {
         this.roomHandler = new MatrixRoomHandler(
             this.purple!, this.profileSync, this.store, this.cfg, this.deduplicator,
         );
-        this.roomSync = new RoomSync(this.purple!, this.bridge, this.store, this.deduplicator);
+        this.roomSync = new RoomSync(this.purple!, this.store, this.deduplicator);
         // TODO: Remove these eventually
         this.eventHandler.setBridge(this.bridge);
         this.roomHandler.setBridge(this.bridge);
         log.info("Bridge has started.");
-        await this.roomSync.sync();
+        await this.roomSync.sync(this.bridge.getBot(), this.bridge.getIntent());
         try {
             await this.purple!.start(this.cfg.purple);
             if (this.purple instanceof XmppJsInstance) {

@@ -1,4 +1,4 @@
-import { Bridge, Logging, MatrixRoom } from "matrix-appservice-bridge";
+import { Logging } from "matrix-appservice-bridge";
 import { IPurpleInstance } from "./purple/IPurpleInstance";
 import { IAccountEvent, IChatJoinProperties } from "./purple/PurpleEvents";
 import { Store } from "./Store";
@@ -14,13 +14,14 @@ interface IRoomMembership {
     membership: "join"|"leave";
 }
 
-const SYNC_RETRY_MS = 3000;
+const SYNC_RETRY_MS = 100;
+const MAX_SYNCS = 8;
 
 export class RoomSync {
     private accountRoomMemberships: Map<string, IRoomMembership[]>;
+    private ongoingSyncs = 0;
     constructor(
         private purple: IPurpleInstance,
-        private bridge: Bridge,
         private store: Store,
         private deduplicator: Deduplicator,
     ) {
@@ -28,11 +29,14 @@ export class RoomSync {
         this.purple.on("account-signed-on", this.onAccountSignedin.bind(this));
     }
 
-    public async sync() {
-        // XXX: There is no retry handling for this.
+    public getMembershipForUser(user: string): IRoomMembership[]|undefined {
+        return this.accountRoomMemberships.get(user);
+    }
+
+    public async sync(bot: any, intent: any) {
         log.info("Beginning sync");
         try {
-            await this.syncAccountsToGroupRooms();
+            await this.syncAccountsToGroupRooms(bot, intent);
         } catch (err) {
             log.error("Caugh error while trying to sync group rooms", err);
             throw Error("Encountered error while syncing. Cannot continue");
@@ -40,9 +44,13 @@ export class RoomSync {
         log.info("Finished sync");
     }
 
-    private async getJoinedMembers(roomId: string): Promise<any> {
-        const bot = this.bridge.getBot();
+    private async getJoinedMembers(bot: any, roomId: string): Promise<any> {
         let members;
+        while (this.ongoingSyncs >= MAX_SYNCS) {
+            await new Promise((resolve) => setTimeout(resolve, 100));
+        }
+        this.ongoingSyncs++;
+        log.debug(`Syncing members for ${roomId} (${this.ongoingSyncs}/${MAX_SYNCS})`);
         while (members === undefined) {
             try {
                 members = await bot.getJoinedMembers(roomId);
@@ -51,6 +59,7 @@ export class RoomSync {
                 await new Promise((resolve) => setTimeout(resolve, SYNC_RETRY_MS));
             }
         }
+        this.ongoingSyncs--;
         return members;
     }
 
@@ -59,12 +68,9 @@ export class RoomSync {
      * if the libpurple side needs to "reconnect" to the rooms.
      * @return [description]
      */
-    private async syncAccountsToGroupRooms() {
-        const bot = this.bridge.getBot();
+    private async syncAccountsToGroupRooms(bot: any, intent: any) {
         const rooms = await this.store.getRoomsOfType(MROOM_TYPE_GROUP);
         log.info(`Got ${rooms.length} group rooms`);
-        const MAX_SYNCS = 8;
-        let ongoingSyncs = 0;
         await Promise.all(rooms.map(async (room: IRoomEntry) => {
             const roomId = room.matrix.getId();
             if (!room.remote) {
@@ -72,13 +78,7 @@ export class RoomSync {
                 log.debug(roomId, "->", room);
                 return;
             }
-            log.debug(`Syncing members for ${roomId} (${ongoingSyncs}/${MAX_SYNCS})`);
-            while (ongoingSyncs > MAX_SYNCS) {
-                await new Promise((resolve) => setTimeout(resolve, 5000));
-            }
-            ongoingSyncs++;
-            const members = await this.getJoinedMembers(roomId);
-            ongoingSyncs--;
+            const members = await this.getJoinedMembers(bot, roomId);
             log.debug(`${roomId} has ${Object.keys(members).length} members`);
             const userIds = Object.keys(members);
             for (const userId of userIds) {
@@ -97,7 +97,7 @@ export class RoomSync {
                 const acctMemberList = this.accountRoomMemberships.get(remoteUser.getId()) || [];
                 log.info(`${remoteUser.getId()} will join ${room.remote.get("room_name")} on connection`);
                 const props = Util.desanitizeProperties(Object.assign({}, room.remote.get("properties")));
-                await ProtoHacks.addJoinProps(room.remote.get("protocol_id"), props, userId, this.bridge.getIntent());
+                await ProtoHacks.addJoinProps(room.remote.get("protocol_id"), props, userId, intent);
                 acctMemberList.push({
                     room_name: room.remote.get("room_name"),
                     params: props,
