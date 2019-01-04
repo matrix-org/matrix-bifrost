@@ -243,6 +243,7 @@ export class MatrixRoomHandler {
     }
 
     private async handleIncomingChatMsg(data: IReceivedImMsg) {
+        log.debug(`Handling incoming chat from ${data.sender} (${data.conv.name})`);
         data.message.body = entityDecode(data.message.body);
         const acctId = Util.createRemoteId(data.account.protocol_id, data.account.username);
         if (this.accountRoomLock.has(
@@ -264,7 +265,6 @@ export class MatrixRoomHandler {
         if (!this.deduplicator.isTheChosenOneForRoom(data.conv.name, acctId)) {
             return;
         }
-        log.debug(`Handling incoming chat from ${data.sender} (${data.conv.name})`);
         // this.purple.getBuddyFromChat(data.conv, data.sender);
         // If multiple of our users are in this room, it may dupe up here.
         const protocol = this.purple.getProtocol(data.account.protocol_id);

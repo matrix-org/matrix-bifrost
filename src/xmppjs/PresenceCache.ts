@@ -38,11 +38,11 @@ export class PresenceCache {
     }
 
     public add(stanza: xml.Element): IPresenceDelta|undefined {
-        const res = this.add(stanza);
+        const res = this._add(stanza);
         if (res) {
             log.debug("Computed delta:", stanza);
         }
-        return this._add(stanza);
+        return res;
     }
 
     private _add(stanza: xml.Element): IPresenceDelta|undefined {

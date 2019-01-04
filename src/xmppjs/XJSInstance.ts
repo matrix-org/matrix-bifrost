@@ -278,6 +278,7 @@ export class XmppJsInstance extends EventEmitter implements IPurpleInstance {
         }
 
         if (type === "groupchat") {
+            log.debug("Emitting group message", message);
             this.emit("received-chat-msg", {
                 eventName: "received-chat-msg",
                 sender: stanza.attrs.from,
@@ -292,6 +293,7 @@ export class XmppJsInstance extends EventEmitter implements IPurpleInstance {
                 },
             } as IReceivedImMsg);
         } else if (type === "chat") {
+            log.debug("Emitting chat message", message);
             this.emit("received-im-msg", {
                 eventName: "received-im-msg",
                 sender: stanza.attrs.from,
