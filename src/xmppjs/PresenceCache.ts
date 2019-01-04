@@ -1,5 +1,8 @@
-import * as jid from "@xmpp/jid";
 import * as xml from "@xmpp/xml";
+import * as jid from "@xmpp/jid";
+import { Logging } from "matrix-appservice-bridge";
+
+const log = Logging.get("PresenceCache");
 
 export interface IPresenceDelta {
     status?: IPresenceStatus;
@@ -30,7 +33,19 @@ export class PresenceCache {
         this.roomPresence = {};
     }
 
+    public getStatus(roomId: string, userResource: string): IPresenceStatus|undefined {
+        return this.roomPresence[roomId] ? this.roomPresence[roomId].get(userResource) : undefined;
+    }
+
     public add(stanza: xml.Element): IPresenceDelta|undefined {
+        const res = this.add(stanza);
+        if (res) {
+            log.debug("Computed delta:", stanza);
+        }
+        return this._add(stanza);
+    }
+
+    private _add(stanza: xml.Element): IPresenceDelta|undefined {
         const errorElement = stanza.getChild("error");
         if (errorElement) {
             const conflict = errorElement.getChild("conflict");
@@ -42,7 +57,12 @@ export class PresenceCache {
                     errorMsg: null,
                 };
             }
-            return;
+            return {
+                changed: [],
+                error: "other",
+                isSelf: false,
+                errorMsg: errorElement.toString(),
+            };
         }
         const type = stanza.getAttr("type")!;
         const from = jid(stanza.getAttr("from"));
@@ -121,9 +141,5 @@ export class PresenceCache {
             roomPresence.set(from.resource, currentPresence);
         }
         return delta;
-    }
-
-    public getStatus(roomId: string, userResource: string): IPresenceStatus|undefined {
-        return this.roomPresence[roomId] ? this.roomPresence[roomId].get(userResource) : undefined;
     }
 }
