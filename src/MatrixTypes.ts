@@ -10,6 +10,7 @@ export interface IEventRequest {
     getDuration(): number;
     getId(): string;
     getPromise(): Promise<void>;
+    outcomeFrom(p: Promise<any>);
 }
 
  /**

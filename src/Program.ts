@@ -96,11 +96,16 @@ class Program {
           controller: {
             // onUserQuery: userQuery,
             onAliasQuery: (alias, aliasLocalpart) => this.eventHandler!.onAliasQuery(alias, aliasLocalpart),
-            onEvent: (request: IEventRequest, context) => {
+            onEvent: async (request: IEventRequest, context) => {
                 if (this.eventHandler === undefined) {return; }
-                this.eventHandler.onEvent(request, context).catch((err) => {
+                const p = this.eventHandler.onEvent(request, context).catch((err) => {
                     log.error("onEvent err", err);
                 });
+                (p as any).done = () => (resolve, reject) => {
+                    p.then(resolve);
+                    p.catch(reject);
+                };
+                request.outcomeFrom(p);
             },
             onAliasQueried: (alias, roomId) => this.eventHandler!.onAliasQueried(alias, roomId),
             // We don't handle these just yet.
