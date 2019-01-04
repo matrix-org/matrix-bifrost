@@ -1,5 +1,5 @@
 import { PrometheusMetrics } from "matrix-appservice-bridge";
-import { Gauge, Counter } from "prom-client";
+import { Gauge, Counter, Timer } from "prom-client";
 
 const AgeCounters = PrometheusMetrics.AgeCounters;
 
@@ -30,6 +30,23 @@ export class Metrics {
             help: "Count of the number of remote API calls made",
             labels: ["method"],
         });
+        this.matrixRequest = this.metrics.addTimer({
+            name: "matrix_request_seconds",
+            help: "Histogram of processing durations of received Matrix messages",
+            labels: ["outcome"],
+        });
+        this.remoteRequest = this.metrics.addTimer({
+            name: "remote_request_seconds",
+            help: "Histogram of processing durations of received remote messages",
+            labels: ["outcome"],
+    });
+    }
+
+    public static requestOutcome(isRemote: boolean, duration: number, outcome: string) {
+        if (!this.metrics) {
+            return;
+        }
+        (isRemote ? this.remoteRequest : this.matrixRequest).observe({outcome}, duration / 1000);
     }
 
     public static incRemoteGhosts(n: number) {
@@ -41,12 +58,14 @@ export class Metrics {
     }
 
     public static remoteCall(method: string) {
-        if (!this.remoteCallCounter) { return; }
+        if (!this.metrics) { return; }
         this.remoteCallCounter.inc({method});
     }
 
     private static metrics;
     private static remoteCallCounter: Counter;
+    private static remoteRequest: Timer;
+    private static matrixRequest: Timer;
     private static bridgeGauges: IBridgeGauges = {
         matrixRoomConfigs: 0,
         remoteRoomConfigs: 0,

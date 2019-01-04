@@ -16,6 +16,7 @@ import { IAccountEvent,
     IUserStateChanged } from "../purple/PurpleEvents";
 import { IBasicProtocolMessage, IMessageAttachment } from "../MessageFormatter";
 import { PresenceCache } from "./PresenceCache";
+import { Metrics } from "../Metrics";
 
 const xLog = Logging.get("XMPP-conn");
 const log = Logging.get("XmppJsInstance");
@@ -179,6 +180,7 @@ export class XmppJsInstance extends EventEmitter implements IPurpleInstance {
     }
 
     private onStanza(stanza: xml.Element) {
+        const startedAt = Date.now();
         const id = stanza.attrs.id;
         if (this.seenMessages.has(id)) {
             return;
@@ -196,11 +198,17 @@ export class XmppJsInstance extends EventEmitter implements IPurpleInstance {
 
         // "received-im-msg"
         // "received-chat-msg"
-        if (stanza.is("message")) {
-            this.handleMessageStanza(stanza);
-        } else if (stanza.is("presence")) {
-            this.handlePresenceStanza(stanza);
+        try {
+            if (stanza.is("message")) {
+                this.handleMessageStanza(stanza);
+            } else if (stanza.is("presence")) {
+                this.handlePresenceStanza(stanza);
+            }
+        } catch (ex) {
+            log.warn("Failed to handle stanza: ", ex);
+            Metrics.requestOutcome(true, Date.now() - startedAt, "fail");
         }
+        Metrics.requestOutcome(true, Date.now() - startedAt, "success");
     }
 
     private handleMessageStanza(stanza: xml.Element) {
