@@ -254,7 +254,7 @@ export class MatrixRoomHandler {
             return;
         }
         const remoteId = Util.createRemoteId(data.account.protocol_id, data.sender);
-        if (this.deduplicator.checkAndRemove(
+        if (this.purple.needsDedupe() && this.deduplicator.checkAndRemove(
             data.conv.name,
             remoteId,
             data.message.body,
@@ -262,7 +262,7 @@ export class MatrixRoomHandler {
                 return;
         }
 
-        if (!this.deduplicator.isTheChosenOneForRoom(data.conv.name, acctId)) {
+        if (this.purple.needsDedupe() && !this.deduplicator.isTheChosenOneForRoom(data.conv.name, acctId)) {
             return;
         }
         // this.purple.getBuddyFromChat(data.conv, data.sender);
