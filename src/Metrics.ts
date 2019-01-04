@@ -1,5 +1,5 @@
 import { PrometheusMetrics } from "matrix-appservice-bridge";
-import { Gauge, Counter, Timer } from "prom-client";
+import { Gauge, Counter, Histogram } from "prom-client";
 
 const AgeCounters = PrometheusMetrics.AgeCounters;
 
@@ -64,8 +64,8 @@ export class Metrics {
 
     private static metrics;
     private static remoteCallCounter: Counter;
-    private static remoteRequest: Timer;
-    private static matrixRequest: Timer;
+    private static remoteRequest: Histogram;
+    private static matrixRequest: Histogram;
     private static bridgeGauges: IBridgeGauges = {
         matrixRoomConfigs: 0,
         remoteRoomConfigs: 0,
