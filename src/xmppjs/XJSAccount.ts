@@ -68,21 +68,24 @@ export class XmppJsAccount implements IPurpleAccount {
     public sendChat(chatName: string, msg: IBasicProtocolMessage) {
         const id = msg.id || IDPREFIX + Date.now().toString();
         const contents: any[] = [];
-        contents.push(xml("body", null, msg.body));
         if (msg.opts && msg.opts.attachments) {
             msg.opts.attachments.forEach((a) => {
                 contents.push(
                     xml("x", {
                         xmlns: "jabber:x:oob",
                     }, xml("url", null, a.uri)));
+                // *some* XMPP clients expect the URL to be in the body, silly clients...
+                msg.body = a.uri;
             });
+        } else {
+            const htmlMsg = (msg.formatted || []).find((f) => f.type === "html");
+            if (htmlMsg) {
+                contents.push(xml("html", {
+                    xmlns: "http://jabber.org/protocol/xhtml-im",
+                }), htmlMsg.body);
+            }
         }
-        const htmlMsg = (msg.formatted || []).find((f) => f.type === "html");
-        if (htmlMsg) {
-            contents.push(xml("html", {
-                xmlns: "http://jabber.org/protocol/xhtml-im",
-            }), htmlMsg.body);
-        }
+        contents.push(xml("body", null, msg.body));
         const message = xml(
             "message",
             {
