@@ -179,9 +179,19 @@ export class XmppJsInstance extends EventEmitter implements IPurpleInstance {
         return false;
     }
 
+    private generateIdforMsg(stanza: xml.Element) {
+        const body = stanza.getChildText("body");
+
+        if (body) {
+            return Buffer.from(`${stanza.getAttr("from")}${body}`).toString("base64");
+        }
+
+        return Buffer.from(stanza.children.map((c) => c.toString()).join("")).toString("base64");
+    }
+
     private onStanza(stanza: xml.Element) {
         const startedAt = Date.now();
-        const id = stanza.attrs.id;
+        const id = stanza.attrs.id || this.generateIdforMsg(stanza);
         if (this.seenMessages.has(id)) {
             return;
         }
