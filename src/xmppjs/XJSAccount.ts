@@ -6,7 +6,6 @@ import { PurpleProtocol } from "../purple/PurpleProtocol";
 import { xml, jid } from "@xmpp/component";
 import { IBasicProtocolMessage } from "../MessageFormatter";
 import { Metrics } from "../Metrics";
-import { JID } from "@xmpp/jid";
 import { Logging } from "matrix-appservice-bridge";
 
 const IDPREFIX = "pbridge";
@@ -176,7 +175,7 @@ export class XmppJsAccount implements IPurpleAccount {
             return p;
     }
 
-    public async xmppRetryJoin(from: JID) {
+    public async xmppRetryJoin(from: jid.JID) {
         log.info("Retrying join for ", from.toString());
         if (from.resource.endsWith(CONFLICT_SUFFIX)) {
             // Kick from the room.
