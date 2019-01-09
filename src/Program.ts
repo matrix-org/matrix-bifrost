@@ -38,7 +38,7 @@ class Program {
             affectsRegistration: true,
             schema: "./config/config.schema.yaml",
           },
-          registrationPath: "purple-registration.yaml",
+          registrationPath: "bifrost-registration.yaml",
           generateRegistration: this.generateRegistration,
           run: this.runBridge.bind(this),
         });
@@ -73,14 +73,14 @@ class Program {
       reg.setId(AppServiceRegistration.generateToken());
       reg.setHomeserverToken(AppServiceRegistration.generateToken());
       reg.setAppServiceToken(AppServiceRegistration.generateToken());
-      reg.setSenderLocalpart("_purple_bot");
-      reg.addRegexPattern("users", "@_purple_.*", true);
-      reg.addRegexPattern("aliases", "#_purple_.*", true);
+      reg.setSenderLocalpart("_bf_bot");
+      reg.addRegexPattern("users", "@_bf_.*", true);
+      reg.addRegexPattern("aliases", "#_bf_.*", true);
       callback(reg);
     }
 
     private async runBridge(port: number, config: any) {
-        log.info("Starting purple bridge on port ", port);
+        log.info("Starting bifröst bridge on port ", port);
         this.cfg.ApplyConfig(config);
         if (this.cfg.purple.backend === "node-purple") {
             log.info("Selecting node-purple as a backend");
@@ -112,7 +112,7 @@ class Program {
           },
           domain: this.cfg.bridge.domain,
           homeserverUrl: this.cfg.bridge.homeserverUrl,
-          registration: "purple-registration.yaml",
+          registration: "bifrost-registration.yaml",
         });
         await this.bridge.run(port, this.cfg);
         if (this.cfg.metrics.enable) {

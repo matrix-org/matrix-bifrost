@@ -1,6 +1,6 @@
 # matrix-bifröst
 
-[![Build Status](https://travis-ci.org/matrix-org/matrix-appservice-purple.svg?branch=master)](https://travis-ci.org/matrix-org/matrix-bifr-st)
+[![Build Status](https://travis-ci.org/matrix-org/matrix-bifr-st.svg?branch=master)](https://travis-ci.org/matrix-org/matrix-bifr-st)
 [![#rainbum:half-shot.uk](https://img.shields.io/badge/matrix-%23bifrost%3Ahalf--shot.uk-lightgrey.svg)](https://matrix.to/#/#bifrost:half-shot.uk)
 
 General purpose puppeting bridges using libpurple and other backends.
@@ -64,7 +64,7 @@ After completing all the above, you should do the following:
 
 ### Starting
 
-The `start.sh` script will auto preload the build libpurple library and offers a better experience than the system libraries in most cases. Pleas remember to modify the port in the script if you are using a different port. 
+The `start.sh` script will auto preload the build libpurple library and offers a better experience than the system libraries in most cases. Pleas remember to modify the port in the script if you are using a different port.
 
 If you are not using the `node-purple` backend, you can just start the service with:
 
@@ -80,7 +80,7 @@ The bridge won't do much unless it has accounts to bind. Due to the infancy of t
 for the location of all the accounts. Our advice is to create the accounts you want to use on your local machine with Pidgin, and
 then copy the `accounts.xml` file to the bridge (where you should be copying the file to `/$BRIDGE_USER/.purple/accounts.xml`).
 
-Once you have started the bridge, you can instruct it to bind by starting a conversation with the bridge user and 
+Once you have started the bridge, you can instruct it to bind by starting a conversation with the bridge user and
 sending `accounts add-existing $PROTOCOL $USERNAME` where the protocol and username are given in the `accounts.xml` file.
 
 You should also run `accounts enable $PROTOCOL $USERNAME` to enable the account for the bridge, and then it should connect automatically.
