@@ -4,12 +4,28 @@
 
 // @ts-ignore - These are optional.
 import { helper, plugins, buddy, accounts, messaging, Buddy, Account, Conversation, notify } from "node-purple";
+import * as _fs from "fs";
+import { Logging } from "matrix-appservice-bridge";
 import { PurpleProtocol } from "./PurpleProtocol";
 import { IChatJoinProperties, IUserInfo, IConversationEvent, IChatJoined } from "./PurpleEvents";
 import { IBasicProtocolMessage } from "../MessageFormatter";
 import { Util } from "../Util";
 import { IPurpleInstance } from "./IPurpleInstance";
 import { IPurpleAccount } from "./IPurpleAccount";
+const fs = _fs.promises;
+
+const log = Logging.get("PurpleAccount");
+
+if (fs === undefined) {
+    log.error(
+`Warning: Your version of node doesn't support fs.promises.
+(See: https://nodejs.org/api/fs.html#fs_fs_promises_api)
+
+We don't yet support non-fs-promise versions of node.`,
+);
+    process.exit(1);
+}
+
 
 export interface IChatJoinOptions {
     identifier: string;
@@ -165,6 +181,10 @@ export class PurpleAccount implements IPurpleAccount {
 
     public eraseWaitingJoinRoomProps() {
         this.waitingJoinRoomProperties = undefined;
+    }
+
+    public async getAvatarBuffer(iconPath: string): Promise<Buffer> {
+        return fs.readFile(iconPath);
     }
 
     // connect() {

@@ -31,14 +31,14 @@ export interface IPresenceStatus {
  * determines deltas.
  */
 export class PresenceCache {
-    private roomPresence: {[roomId: string]: Map<string, IPresenceStatus>};
+    private presence: Map<string, IPresenceStatus>;
 
     constructor() {
-        this.roomPresence = {};
+        this.presence = new Map();
     }
 
-    public getStatus(roomId: string, userResource: string): IPresenceStatus|undefined {
-        return this.roomPresence[roomId] ? this.roomPresence[roomId].get(userResource) : undefined;
+    public getStatus(userJid: string): IPresenceStatus|undefined {
+        return this.presence.get(userJid) || undefined;
     }
 
     public add(stanza: xml.Element): IPresenceDelta|undefined {
@@ -70,14 +70,7 @@ export class PresenceCache {
         }
         const type = stanza.getAttr("type")!;
         const from = jid(stanza.getAttr("from"));
-        const roomId = `${from.local}@${from.domain}`;
 
-        let roomPresence: Map<string, IPresenceStatus>;
-        if (!this.roomPresence[roomId]) {
-            roomPresence = this.roomPresence[roomId] = new Map();
-        } else {
-            roomPresence = this.roomPresence[roomId];
-        }
         if (!from.resource) {
             // Not sure how to handle presence without a resource.
             return;
@@ -86,8 +79,8 @@ export class PresenceCache {
         const isSelf = !!(mucUser && mucUser.getChildByAttr("code", "110"));
         const isKick = !!(mucUser && mucUser.getChildByAttr("code", "307"));
         const isTechnicalRemoval = !!(mucUser && mucUser.getChildByAttr("code", "333"));
-        const newUser = !roomPresence.get(from.resource);
-        const currentPresence = roomPresence.get(from.resource) || {
+        const newUser = !this.presence.get(from.toString());
+        const currentPresence = this.presence.get(from.toString()) || {
             resource: from.resource,
             status: "",
             affiliation: "",
@@ -103,7 +96,7 @@ export class PresenceCache {
 
         if (isSelf) {
             currentPresence.ours = true;
-            roomPresence.set(from.resource, currentPresence);
+            this.presence.set(from.toString(), currentPresence);
         }
 
         if (mucUser && mucUser.getChild("item")) {
@@ -157,7 +150,7 @@ export class PresenceCache {
         }
 
         if (delta.status) {
-            roomPresence.set(from.resource, currentPresence);
+            this.presence.set(from.toString(), currentPresence);
         }
         return delta;
     }

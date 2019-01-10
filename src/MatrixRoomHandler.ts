@@ -216,8 +216,7 @@ export class MatrixRoomHandler {
             return;
         }
         log.debug(`Message intended for ${matrixUser.getId()}`);
-        const senderMatrixUser = Util.getMxIdForProtocol(
-            protocol,
+        const senderMatrixUser = protocol.getMxIdForProtocol(
             data.sender,
             this.config.bridge.domain,
             this.config.bridge.userPrefix,
@@ -272,8 +271,7 @@ export class MatrixRoomHandler {
             log.error(`Unknown protocol ${data.account.protocol_id}. Bailing`);
             return;
         }
-        const senderMatrixUser = Util.getMxIdForProtocol(
-            protocol,
+        const senderMatrixUser = protocol.getMxIdForProtocol(
             data.sender,
             this.config.bridge.domain,
             this.config.bridge.userPrefix,
@@ -312,8 +310,7 @@ export class MatrixRoomHandler {
             log.error(`Unknown protocol ${data.account.protocol_id}. Bailing`);
             return;
         }
-        const senderMatrixUser = Util.getMxIdForProtocol(
-            protocol,
+        const senderMatrixUser = protocol.getMxIdForProtocol(
             data.sender,
             this.config.bridge.domain,
             this.config.bridge.userPrefix,
@@ -338,15 +335,13 @@ export class MatrixRoomHandler {
     private async handleRemoteUserState(data: IUserStateChanged) {
         log.info(data.state === "joined" ? "Joining" : "Leaving", data.sender, "from", data.conv.name);
         const protocol = this.purple.getProtocol(data.account.protocol_id)!;
-        const senderMatrixUser = Util.getMxIdForProtocol(
-            protocol,
+        const senderMatrixUser = protocol.getMxIdForProtocol(
             data.sender,
             this.config.bridge.domain,
             this.config.bridge.userPrefix,
             true,
         );
-        const intentUser = data.kicker ? Util.getMxIdForProtocol(
-            protocol,
+        const intentUser = data.kicker ? protocol.getMxIdForProtocol(
             data.kicker,
             this.config.bridge.domain,
             this.config.bridge.userPrefix,

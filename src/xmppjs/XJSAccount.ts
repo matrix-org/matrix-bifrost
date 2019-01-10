@@ -3,10 +3,12 @@ import { XmppJsInstance, XMPP_PROTOCOL } from "./XJSInstance";
 import { IPurpleAccount, IChatJoinOptions } from "../purple/IPurpleAccount";
 import { IPurpleInstance } from "../purple/IPurpleInstance";
 import { PurpleProtocol } from "../purple/PurpleProtocol";
-import { xml, jid } from "@xmpp/component";
+import { jid } from "@xmpp/component";
+import { Element, x } from "@xmpp/xml";
 import { IBasicProtocolMessage } from "../MessageFormatter";
 import { Metrics } from "../Metrics";
 import { Logging } from "matrix-appservice-bridge";
+import * as uuid from "uuid/v4";
 
 const IDPREFIX = "pbridge";
 const CONFLICT_SUFFIX = "[m]";
@@ -33,6 +35,7 @@ export class XmppJsAccount implements IPurpleAccount {
     constructor(public readonly remoteId: string, public readonly resource, private xmpp: XmppJsInstance) {
         this.roomHandles = new Map();
         this.waitingToJoin = new Set();
+        this.iqWaiting = new Map();
     }
 
     public findAccount() {
@@ -49,7 +52,7 @@ export class XmppJsAccount implements IPurpleAccount {
 
     public sendIM(recipient: string, msg: IBasicProtocolMessage) {
         const id = IDPREFIX + Date.now().toString();
-        const message = xml(
+        const message = x(
             "message",
             {
                 to: recipient,
@@ -57,7 +60,7 @@ export class XmppJsAccount implements IPurpleAccount {
                 from: `${this.remoteId}/${this.resource}`,
                 type: "chat",
             },
-            xml("body", null, msg.body),
+            x("body", undefined, msg.body),
         );
         this.xmpp.xmppAddSentMessage(id);
         this.xmpp.xmppWriteToStream(message);
@@ -72,20 +75,20 @@ export class XmppJsAccount implements IPurpleAccount {
         if (msg.opts && msg.opts.attachments) {
             msg.opts.attachments.forEach((a) => {
                 contents.push(
-                    xml("x", {
+                    x("x", {
                         xmlns: "jabber:x:oob",
-                    }, xml("url", null, a.uri)));
+                    }, x("url", undefined, a.uri)));
                 // *some* XMPP clients expect the URL to be in the body, silly clients...
                 msg.body = a.uri;
             });
         } else if (htmlMsg) {
             htmlAnchor = Buffer.from(htmlMsg.body).toString("base64").replace(/\W/g, "a");
-            contents.push(xml("html", {
+            contents.push(x("html", {
                 xmlns: "http://jabber.org/protocol/xhtml-im",
             }), htmlAnchor);
         }
-        contents.push(xml("body", null, msg.body));
-        let message: string = xml(
+        contents.push(x("body", undefined, msg.body));
+        let message: string = x(
             "message",
             {
                 to: chatName,
@@ -123,7 +126,7 @@ export class XmppJsAccount implements IPurpleAccount {
             log.debug("isInRoom: no handle set for ", this.remoteId);
             return false;
         }
-        const res = this.xmpp.presenceCache.getStatus(roomName, handle);
+        const res = this.xmpp.presenceCache.getStatus(roomName + "/" + handle);
         log.debug("isInRoom: Got presence for user:", res, this.remoteId);
         if (!res) {
             return false;
@@ -141,15 +144,15 @@ export class XmppJsAccount implements IPurpleAccount {
             const to = `${roomName}/${components.handle}`;
             const from = `${this.remoteId}/${this.resource}`;
             log.info(`Joining to=${to} from=${from}`);
-            const message = xml(
+            const message = x(
                 "presence",
                 {
                     to,
                     from,
                 },
-                xml ("x", {
+                x ("x", {
                     xmlns: "http://jabber.org/protocol/muc",
-                }, xml ("history", {
+                }, x ("history", {
                     maxchars: "0", // No history
                 })),
             );
@@ -191,7 +194,7 @@ export class XmppJsAccount implements IPurpleAccount {
     }
 
     public async rejectChat(components: IChatJoinProperties) {
-        const message = xml(
+        const message = x(
             "presence",
             {
                 to: `${components.room}@${components.server}/${components.handle}`,
@@ -229,7 +232,8 @@ export class XmppJsAccount implements IPurpleAccount {
 
     public async getUserInfo(who: string): Promise<IUserInfo> {
         const split = who.split("/");
-        return {
+        const status = this.xmpp.presenceCache.getStatus(who);
+        const ui: IUserInfo = {
             Nickname: split.length > 1 ? split[1] : split[0],
             eventName: "meh",
             who,
@@ -238,5 +242,40 @@ export class XmppJsAccount implements IPurpleAccount {
                 username: this.remoteId,
             },
         };
+        if (status && status.photoId) {
+            ui.Avatar = status.photoId;
+        }
+        return ui;
     }
+
+    public async getAvatarBuffer(iconPath: string, senderId: string): Promise<Buffer> {
+        const toJid = jid(senderId);
+        const to = `${toJid.local}@${toJid.domain}`;
+        const id = uuid();
+        log.info(`Fetching avatar for ${senderId} (hash: ${iconPath})`);
+        this.xmpp.xmppWriteToStream(
+            x("iq", {
+                from: `${this.remoteId}/${this.resource}`,
+                to,
+                type: "get",
+                id,
+            }, x("vCard", {xmlns: "vcard-temp"}),
+        ));
+        Metrics.remoteCall("xmpp.iq.vc2");
+        return new Promise((resolve, reject) => {
+            const timeout = setTimeout(() => reject(Error("Timeout")), 5000);
+            this.xmpp.once("iq." + id, (stanza: Element) => {
+                clearTimeout(timeout);
+                const vCard = stanza.getChild("vCard");
+                if (vCard) {
+                    resolve(Buffer.from(
+                        stanza.getChild("photo")!.getChildText("binval")!,
+                        "base64"
+                    ));
+                }
+                reject("No vCard given");
+            });
+        });
+    }
+
 }

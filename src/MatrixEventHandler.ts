@@ -659,7 +659,7 @@ E.g. \`join xmpp roomname conf.matrix.org password=$ecr£t!\`
         // XXX: We assume the first remote, this needs to be fixed for multiple accounts
         const acct = this.purple.getAccount(remoteUser.get("username"), roomProtocol);
         if (!acct) {
-            log.error("Account wasn't found in libpurple, we cannot handle this im!");
+            log.error("Account wasn't found in backend, we cannot handle this im!");
             throw new Error("Account not found");
         }
         if (!acct.isEnabled) {

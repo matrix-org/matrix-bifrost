@@ -1,9 +1,11 @@
 import { IPurpleInstance } from "../purple/IPurpleInstance";
 import { EventEmitter } from "events";
-import { Logging } from "matrix-appservice-bridge";
+import { Logging, MatrixUser } from "matrix-appservice-bridge";
 import { IConfigPurple } from "../Config";
 import { PurpleProtocol } from "../purple/PurpleProtocol";
-import { component, xml, jid } from "@xmpp/component";
+import { component } from "@xmpp/component";
+import { x, Element } from "@xmpp/xml";
+import { jid } from "@xmpp/jid";
 import { IXJSBackendOpts } from "./XJSBackendOpts";
 import { XmppJsAccount } from "./XJSAccount";
 import { IPurpleAccount } from "../purple/IPurpleAccount";
@@ -19,12 +21,30 @@ import { Metrics } from "../Metrics";
 const xLog = Logging.get("XMPP-conn");
 const log = Logging.get("XmppJsInstance");
 
-export const XMPP_PROTOCOL = new PurpleProtocol({
-    id: "xmpp-js",
-    name: "XMPP.js Protocol Plugin",
-    homepage: "N/A",
-    summary: "Fake purple protocol plugin for xmpp.js",
-}, false, false);
+class XmppProtocol extends PurpleProtocol {
+    constructor() {
+        super({
+            id: "xmpp-js",
+            name: "XMPP.js Protocol Plugin",
+            homepage: "N/A",
+            summary: "Fake purple protocol plugin for xmpp.js",
+        }, false, false);
+    }
+
+    public getMxIdForProtocol(
+            senderId: string,
+            domain: string,
+            prefix: string = "",
+            isGroupChat: boolean = false) {
+        // This is a little bad, but we drop the prpl- because it's a bit ugly.
+        const protocolName = this.id.startsWith("prpl-") ? this.id.substr("prpl-".length) : this.id;
+        // senderId containing : can mess things up
+        senderId = senderId.replace(/\:/g, "=3a");
+        return new MatrixUser(`@${prefix}_${senderId}:${domain}`);
+    }
+}
+
+export const XMPP_PROTOCOL = new XmppProtocol();
 
 export class XmppJsInstance extends EventEmitter implements IPurpleInstance {
     public readonly presenceCache: PresenceCache;
@@ -177,7 +197,7 @@ export class XmppJsInstance extends EventEmitter implements IPurpleInstance {
         return false;
     }
 
-    private generateIdforMsg(stanza: xml.Element) {
+    private generateIdforMsg(stanza: Element) {
         const body = stanza.getChildText("body");
 
         if (body) {
@@ -187,7 +207,7 @@ export class XmppJsInstance extends EventEmitter implements IPurpleInstance {
         return Buffer.from(stanza.children.map((c) => c.toString()).join("")).toString("base64");
     }
 
-    private onStanza(stanza: xml.Element) {
+    private onStanza(stanza: Element) {
         const startedAt = Date.now();
         const id = stanza.attrs.id || this.generateIdforMsg(stanza);
         if (this.seenMessages.has(id)) {
@@ -212,6 +232,9 @@ export class XmppJsInstance extends EventEmitter implements IPurpleInstance {
             } else if (stanza.is("presence")) {
                 this.handlePresenceStanza(stanza);
             }
+            if (stanza.is("iq") && stanza.getAttr("type") === "get" && stanza.attrs.id) {
+                this.emit("iq." + id, stanza);
+            }
         } catch (ex) {
             log.warn("Failed to handle stanza: ", ex);
             Metrics.requestOutcome(true, Date.now() - startedAt, "fail");
@@ -219,7 +242,7 @@ export class XmppJsInstance extends EventEmitter implements IPurpleInstance {
         Metrics.requestOutcome(true, Date.now() - startedAt, "success");
     }
 
-    private handleMessageStanza(stanza: xml.Element) {
+    private handleMessageStanza(stanza: Element) {
         const from = stanza.attrs.from ? jid(stanza.attrs.from) : null;
         const to = stanza.attrs.to ? jid(stanza.attrs.to) : null;
         const localAcct = this.accounts.get(`${to!.local}@${to!.domain}`)!;
@@ -300,6 +323,9 @@ export class XmppJsInstance extends EventEmitter implements IPurpleInstance {
                 },
             } as IReceivedImMsg);
         } else if (type === "chat") {
+            if (!localAcct) {
+                log.debug(`Handling a message to ${to}, who does not yet exist.`);
+            }
             log.debug("Emitting chat message", message);
             this.emit("received-im-msg", {
                 eventName: "received-im-msg",
@@ -313,7 +339,7 @@ export class XmppJsInstance extends EventEmitter implements IPurpleInstance {
         }
     }
 
-    private handlePresenceStanza(stanza: xml.Element) {
+    private handlePresenceStanza(stanza: Element) {
         const to = jid(stanza.getAttr("to"));
         // XMPP is case insensitive.
         const localAcct = this.accounts.get(`${to.local}@${to.domain}`)!;

@@ -8,18 +8,6 @@ import { Logging } from "matrix-appservice-bridge";
 import { Config } from "./Config";
 const log = Logging.get("ProfileSync");
 
-const fs = _fs.promises;
-
-if (fs === undefined) {
-    log.error(
-`Warning: Your version of node doesn't support fs.promises.
-(See: https://nodejs.org/api/fs.html#fs_fs_promises_api)
-
-We don't yet support non-fs-promise versions of node.`,
-);
-    process.exit(1);
-}
-
 export class ProfileSync {
     constructor(private bridge: Bridge, private config: Config) {
 
@@ -45,11 +33,11 @@ export class ProfileSync {
         {
             nick: string|undefined,
             name: string,
-            icon_path: string|undefined,
+            avatar_uri: string|undefined,
         } = {
             nick: undefined,
             name: senderId,
-            icon_path: undefined,
+            avatar_uri: undefined,
         };
         const buddy = account.getBuddy(remoteUser.get("username"));
         if (buddy === undefined) {
@@ -58,6 +46,9 @@ export class ProfileSync {
                 const uinfo = await account.getUserInfo(senderIdToLookup);
                 log.debug("getUserInfo got:", uinfo);
                 remoteProfileSet.nick = uinfo.Nickname as string;
+                if (uinfo.Avatar) {
+                    remoteProfileSet.avatar_uri = uinfo.Avatar as string;
+                }
                 // XXX: This is dependant on the protocol.
                 remoteProfileSet.name = (uinfo["Full Name"] || uinfo["User ID"] || senderId) as string;
             } catch (ex) {
@@ -66,7 +57,7 @@ export class ProfileSync {
         } else {
             remoteProfileSet.name = buddy.name;
             remoteProfileSet.nick = buddy.nick;
-            remoteProfileSet.icon_path = buddy.icon_path;
+            remoteProfileSet.avatar_uri = buddy.icon_path;
         }
 
         const intent = this.bridge.getIntent(matrixUser.getId());
@@ -84,18 +75,17 @@ export class ProfileSync {
             matrixUser.set("displayname", remoteProfileSet.name);
         }
 
-        if (remoteProfileSet.icon_path && matrixUser.get("avatar_url") !== remoteProfileSet.icon_path) {
+        if (remoteProfileSet.avatar_uri && matrixUser.get("avatar_url") !== remoteProfileSet.avatar_uri) {
             log.debug(`Got an avatar, setting`);
             try {
-                const file = await fs.readFile(remoteProfileSet.icon_path);
+                const file = await account.getAvatarBuffer(remoteProfileSet.avatar_uri, senderId);
                 const mxcUrl = await intent.getClient().uploadContent(file, {
-                    name: path.basename(remoteProfileSet.icon_path),
-                    type: "image/jpeg", // XXX: This is what pidgin usually outputs
+                    name: path.basename(remoteProfileSet.avatar_uri),
                     rawResponse: false,
                     onlyContentUri: true,
                 });
                 await intent.setAvatarUrl(mxcUrl);
-                matrixUser.set("avatar_url", remoteProfileSet.icon_path);
+                matrixUser.set("avatar_url", remoteProfileSet.avatar_uri);
             } catch (e) {
                 log.error("Failed to update avatar_url for user:", e);
             }
@@ -109,8 +99,8 @@ export class ProfileSync {
 
     private async getOrCreateStoreUsers(protocol: PurpleProtocol, senderId: string): Promise<[MatrixUser, RemoteUser]> {
         const store = this.bridge.getUserStore();
-        const tempMxUser = Util.getMxIdForProtocol(
-            protocol, senderId,
+        const tempMxUser = protocol.getMxIdForProtocol(
+            senderId,
             this.config.bridge.domain,
             this.config.bridge.userPrefix,
         );

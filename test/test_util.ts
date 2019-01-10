@@ -1,6 +1,7 @@
 import * as Chai from "chai";
 import { Util } from "../src/Util";
 import { PurpleProtocol } from "../src/purple/PurpleProtocol";
+import { XMPP_PROTOCOL } from "../src/xmppjs/XJSInstance";
 const expect = Chai.expect;
 
 describe("Util", () => {
@@ -17,22 +18,36 @@ describe("Util", () => {
             summary: undefined,
         });
         it("should create a simple userId", () => {
-            const mxUser = Util.getMxIdForProtocol(protocol, "simple", "example.com", "_purple_");
+            const mxUser = protocol.getMxIdForProtocol("simple", "example.com", "_purple_");
             expect(
                 mxUser.getId(),
             ).to.equal("@_purple_protocol_simple:example.com");
         });
         it("should create a sensible userId from a sender containing url parts", () => {
-            const mxUser = Util.getMxIdForProtocol(protocol, "fred@banana.com", "example.com", "_purple_");
+            const mxUser = protocol.getMxIdForProtocol("fred@banana.com", "example.com", "_purple_");
             expect(
                 mxUser.getId(),
             ).to.equal("@_purple_protocol_fred=40banana.com:example.com");
         });
         it("should create a sensible userId from a sender containing a matrix userid", () => {
-            const mxUser = Util.getMxIdForProtocol(protocol, "@fred:banana.com", "example.com", "_purple_");
+            const mxUser =  protocol.getMxIdForProtocol("@fred:banana.com", "example.com", "_purple_");
             expect(
                 mxUser.getId(),
             ).to.equal("@_purple_protocol_=40fred=3abanana.com:example.com");
+        });
+        it("should create a sensible userId for an xmpp jid", () => {
+            const mxUser =  XMPP_PROTOCOL.getMxIdForProtocol("frogman@frogplanet.com", "example.com", "_xmpp");
+            expect(
+                mxUser.getId(),
+            ).to.equal("@_xmpp_frogman=40frogplanet.com:example.com");
+        });
+        it("should create a sensible userId for an xmpp jid", () => {
+            const mxUser =  XMPP_PROTOCOL.getMxIdForProtocol(
+                "frogman@frogplanet.com/frogdevice", "example.com", "_xmpp"
+            );
+            expect(
+                mxUser.getId(),
+            ).to.equal("@_xmpp_frogman=40frogplanet.com:example.com");
         });
     });
     describe("passwordGen", () => {
