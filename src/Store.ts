@@ -70,6 +70,14 @@ export class Store {
         log.info("Linked new account:", userId, remoteUser);
     }
 
+    public async removeRoomByRoomId(matrixId: string) {
+        log.info(`Removing room ${matrixId}`);
+        (await this.roomStore.getLinkedRemoteRooms(matrixId)).forEach((remote) => {
+            this.roomStore.removeEntriesByRemoteRoomId(remote.getId());
+        });
+        await this.roomStore.removeEntriesByMatrixRoomId(matrixId);
+    }
+
     public async storeRoom(matrixId: string, type: MROOM_TYPES, remoteId: string, remoteData: {}) {
         log.info(`Storing remote room (${type}) ${matrixId}`);
         log.debug("with data ", remoteData);

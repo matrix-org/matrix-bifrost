@@ -239,6 +239,15 @@ export class MatrixRoomHandler {
             log.error(`Failed to get/create room for this IM: ${e}`);
             return;
         }
+
+        try {
+            await intent._ensureJoined(roomId);
+        } catch (ex) {
+            log.warn("Not joined to room, discarding " + roomId);
+            await this.store.removeRoomByRoomId(roomId);
+            roomId = await this.createOrGetIMRoom(data, matrixUser, intent);
+        }
+
         // Update the user if needed.
         const account = this.purple.getAccount(data.account.username, data.account.protocol_id)!;
         await this.profileSync.updateProfile(protocol, data.sender,
@@ -356,7 +365,7 @@ export class MatrixRoomHandler {
             true,
         ) : senderMatrixUser;
         const intent = this.bridge.getIntent(intentUser.userId);
-        const roomId = await this.createOrGetGroupChatRoom(data, intent);
+        const roomId = await this.createOrGetGroupChatRoom(data, intent, true);
         try {
             if (data.state === "joined") {
                 await intent.join(roomId);
@@ -377,7 +386,7 @@ export class MatrixRoomHandler {
     private async handleTopic(data: IChatStringState) {
         const intent = this.bridge.getIntent();
         log.info(`Setting topic for ${data.conv.name}: ${data.string}`);
-        const roomId = await this.createOrGetGroupChatRoom(data, intent);
+        const roomId = await this.createOrGetGroupChatRoom(data, intent, true);
         const state = (intent.roomState(roomId) as IEventRequestData[]);
         const topicEv = state.find((ev) => ev.type === "m.room.topic");
         const nameEv = state.find((ev) => ev.type === "m.room.name");
@@ -403,7 +412,7 @@ export class MatrixRoomHandler {
             this.config.bridge.userPrefix,
             true,
         ).userId);
-        const roomId = await this.createOrGetGroupChatRoom(data, intent);
+        const roomId = await this.createOrGetGroupChatRoom(data, intent, true);
         await intent.sendTyping(roomId, data.typing);
     }
 }

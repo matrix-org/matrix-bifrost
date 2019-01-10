@@ -143,7 +143,7 @@ export class PresenceCache {
         if (vcard) {
             const photoId = vcard.getChildText("photo") || undefined;
             if (photoId !== currentPresence.photoId) {
-                currentPresence.photoId = photoId || undefined;
+                currentPresence.photoId = photoId;
                 delta.status = currentPresence;
                 delta.changed.push("photo");
             }
