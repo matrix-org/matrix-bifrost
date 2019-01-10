@@ -4,8 +4,8 @@ import { XmppJsInstance, XMPP_PROTOCOL } from "./XJSInstance";
 import { IPurpleAccount, IChatJoinOptions } from "../purple/IPurpleAccount";
 import { IPurpleInstance } from "../purple/IPurpleInstance";
 import { PurpleProtocol } from "../purple/PurpleProtocol";
-import { jid } from "@xmpp/component";
 import { Element, x } from "@xmpp/xml";
+import { jid } from "@xmpp/jid";
 import { IBasicProtocolMessage } from "../MessageFormatter";
 import { Metrics } from "../Metrics";
 import { Logging } from "matrix-appservice-bridge";
@@ -245,10 +245,11 @@ export class XmppJsAccount implements IPurpleAccount {
     }
 
     public async getUserInfo(who: string): Promise<IUserInfo> {
+        const j = jid("who");
         const split = who.split("/");
         const status = this.xmpp.presenceCache.getStatus(who);
         const ui: IUserInfo = {
-            Nickname: split.length > 1 ? split[1] : split[0],
+            Nickname: j.resource || j.local,
             eventName: "meh",
             who,
             account: {

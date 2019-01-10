@@ -348,9 +348,10 @@ export class XmppJsInstance extends EventEmitter implements IPurpleInstance {
                 log.debug(`Handling a message to ${to}, who does not yet exist.`);
             }
             log.debug("Emitting chat message", message);
+            const isMucPm = stanza.getChildByAttr("xmlns", "http://jabber.org/protocol/muc#user");
             this.emit("received-im-msg", {
                 eventName: "received-im-msg",
-                sender: stanza.attrs.from,
+                sender: isMucPm ? from.toString() : `${from.local}@${from.domain}`,
                 message,
                 account: {
                     protocol_id: XMPP_PROTOCOL.id,
