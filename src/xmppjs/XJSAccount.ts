@@ -5,7 +5,7 @@ import { IPurpleAccount, IChatJoinOptions } from "../purple/IPurpleAccount";
 import { IPurpleInstance } from "../purple/IPurpleInstance";
 import { PurpleProtocol } from "../purple/PurpleProtocol";
 import { Element, x } from "@xmpp/xml";
-import { jid } from "@xmpp/jid";
+import { jid, JID } from "@xmpp/jid";
 import { IBasicProtocolMessage } from "../MessageFormatter";
 import { Metrics } from "../Metrics";
 import { Logging } from "matrix-appservice-bridge";
@@ -194,7 +194,7 @@ export class XmppJsAccount implements IPurpleAccount {
             return p;
     }
 
-    public async xmppRetryJoin(from: jid.JID) {
+    public async xmppRetryJoin(from: JID) {
         log.info("Retrying join for ", from.toString());
         if (from.resource.endsWith(CONFLICT_SUFFIX)) {
             // Kick from the room.
@@ -285,7 +285,7 @@ export class XmppJsAccount implements IPurpleAccount {
                 if (vCard) {
                     resolve(Buffer.from(
                         stanza.getChild("PHOTO")!.getChildText("BINVAL")!,
-                        "base64"
+                        "base64",
                     ));
                 }
                 reject("No vCard given");

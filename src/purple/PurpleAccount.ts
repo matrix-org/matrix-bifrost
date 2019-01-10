@@ -26,7 +26,6 @@ We don't yet support non-fs-promise versions of node.`,
     process.exit(1);
 }
 
-
 export interface IChatJoinOptions {
     identifier: string;
     label: string;
