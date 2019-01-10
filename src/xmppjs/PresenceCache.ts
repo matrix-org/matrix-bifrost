@@ -38,7 +38,15 @@ export class PresenceCache {
     }
 
     public getStatus(userJid: string): IPresenceStatus|undefined {
-        return this.presence.get(userJid) || undefined;
+        const exactMatch = this.presence.get(userJid);
+        if (exactMatch) {
+            return exactMatch;
+        }
+        for (const k of this.presence.keys()) {
+            if (k.startsWith(userJid)) {
+                return this.presence.get(k);
+            }
+        }
     }
 
     public add(stanza: xml.Element): IPresenceDelta|undefined {
