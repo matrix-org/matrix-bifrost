@@ -1,4 +1,4 @@
-import { IChatJoinProperties, IUserInfo, IConversationEvent, IChatJoined } from "../purple/PurpleEvents";
+import { IChatJoinProperties, IUserInfo, IConversationEvent, IChatJoined, IAccountMinimal } from "../purple/PurpleEvents";
 import { XmppJsInstance, XMPP_PROTOCOL } from "./XJSInstance";
 import { IPurpleAccount, IChatJoinOptions } from "../purple/IPurpleAccount";
 import { IPurpleInstance } from "../purple/IPurpleInstance";
@@ -142,13 +142,27 @@ export class XmppJsAccount implements IPurpleAccount {
         : Promise<IConversationEvent|void> {
             const roomName = `${components.room}@${components.server}`;
             const to = `${roomName}/${components.handle}`;
+            if (this.isInRoom(roomName)) {
+                return {
+                    eventName: "already-joined",
+                    account: {
+                        username: this.remoteId,
+                        protocol_id: XMPP_PROTOCOL.id,
+                    } as IAccountMinimal,
+                    conv: {
+                        name: roomName,
+                    },
+                };
+            }
             const from = `${this.remoteId}/${this.resource}`;
+            const id = uuid();
             log.info(`Joining to=${to} from=${from}`);
             const message = x(
                 "presence",
                 {
                     to,
                     from,
+                    id,
                 },
                 x ("x", {
                     xmlns: "http://jabber.org/protocol/muc",
