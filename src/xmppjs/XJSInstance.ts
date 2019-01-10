@@ -5,7 +5,7 @@ import { IConfigPurple } from "../Config";
 import { PurpleProtocol } from "../purple/PurpleProtocol";
 import { component } from "@xmpp/component";
 import { Element } from "@xmpp/xml";
-import { jid } from "@xmpp/jid";
+import { jid, JID } from "@xmpp/jid";
 import { IXJSBackendOpts } from "./XJSBackendOpts";
 import { XmppJsAccount } from "./XJSAccount";
 import { IPurpleAccount } from "../purple/IPurpleAccount";
@@ -86,6 +86,15 @@ export class XmppJsInstance extends EventEmitter implements IPurpleInstance {
     }
 
     public xmppAddSentMessage(id: string) { this.seenMessages.add(id); }
+
+    public isOurJid(j: JID): boolean {
+        for (const acct of this.accounts.values()) {
+            if (acct.roomHandles.get(`${j.local}@${j.domain}`) === j.resource) {
+                return true;
+            }
+        }
+        return false;
+    }
 
     public getBuddyFromChat(conv: any, buddy: string): any {
         return undefined;
@@ -433,6 +442,8 @@ export class XmppJsInstance extends EventEmitter implements IPurpleInstance {
 
         if (delta.changed.includes("online")) {
             if (delta.status && delta.status.ours || delta.isSelf) {
+                // Ensure the account knows it's handle.
+                localAcct.roomHandles.set(convName, from.resource);
                 // Always emit this.
                 this.emit("chat-joined", {
                     eventName: "chat-joined",
@@ -444,6 +455,9 @@ export class XmppJsInstance extends EventEmitter implements IPurpleInstance {
                         username: localAcct.remoteId,
                     },
                 } as IConversationEvent);
+                return;
+            }
+            if (this.isOurJid(from)) {
                 return;
             }
             this.emit("chat-user-joined", {
