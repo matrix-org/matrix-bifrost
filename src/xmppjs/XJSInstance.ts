@@ -434,7 +434,7 @@ export class XmppJsInstance extends EventEmitter implements IPurpleInstance {
         }
 
         if (delta.changed.includes("online")) {
-            if (delta.isSelf) {
+            if (delta.status && delta.status.ours) {
                 // Always emit this.
                 this.emit("chat-joined", {
                     eventName: "chat-joined",
@@ -459,7 +459,6 @@ export class XmppJsInstance extends EventEmitter implements IPurpleInstance {
                 sender: stanza.attrs.from,
                 state: "joined",
             } as IUserStateChanged);
-            return;
         }
     }
 }
