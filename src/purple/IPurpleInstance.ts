@@ -8,6 +8,7 @@ import { IEventBody,
     IChatStringState,
     IChatInvite,
     IReceivedImMsg,
+    IChatTyping,
 } from "./PurpleEvents";
 import { IConfigPurple } from "../Config";
 import { EventEmitter } from "events";
@@ -44,6 +45,7 @@ export interface IPurpleInstance extends EventEmitter {
     on(name: "chat-topic", cb: (ev: IChatStringState) => void);
     on(name: "chat-invite", cb: (ev: IChatInvite) => void);
     on(name: "received-im-msg"|"received-chat-msg", cb: (ev: IReceivedImMsg) => void);
+    on(name: "chat-typing"|"im-typing", cb: (ev: IChatTyping) => void);
 
     needsDedupe(): boolean;
     needsAccountLock(): boolean;

@@ -8,6 +8,7 @@ import {
     IConversationEvent,
     IUserStateChanged,
     IChatStringState,
+    IChatTyping,
 } from "./purple/PurpleEvents";
 import { ProfileSync } from "./ProfileSync";
 import { Util } from "./Util";
@@ -61,6 +62,7 @@ export class MatrixRoomHandler {
         purple.on("chat-user-left", this.handleRemoteUserState.bind(this));
         /* This also handles chat names, which are just set as the conv.name */
         purple.on("chat-topic", this.handleTopic.bind(this));
+        purple.on("chat-typing", this.handleTyping.bind(this));
     }
 
     /**
@@ -136,6 +138,7 @@ export class MatrixRoomHandler {
     private async createOrGetGroupChatRoom(
         data: IConversationEvent|IChatInvite|IChatJoined,
         intent: Intent,
+        getOnly: boolean = false,
     ) {
         let roomName;
         let props;
@@ -176,6 +179,11 @@ export class MatrixRoomHandler {
             return remoteEntries[0].matrix.getId();
         }
         let roomId;
+
+        if (getOnly) {
+            throw new Error("Room doesn't exist, refusing to make room");
+        }
+
         const createPromise = new Promise((resolve) => {
             // Room doesn't exist yet, create it.
             remoteData = {
@@ -385,5 +393,17 @@ export class MatrixRoomHandler {
                 log.warn("Failed to set name of", roomId, err);
             });
         }
+    }
+
+    private async handleTyping(data: IChatTyping) {
+        log.debug(`Setting typing status for ${data.conv.name} ${data.sender}: ${data.typing}`);
+        const intent = this.bridge.getIntent(this.purple.getProtocol(data.account.protocol_id)!.getMxIdForProtocol(
+            data.sender,
+            this.config.bridge.domain,
+            this.config.bridge.userPrefix,
+            true,
+        ).userId);
+        const roomId = await this.createOrGetGroupChatRoom(data, intent);
+        await intent.sendTyping(roomId, data.typing);
     }
 }

@@ -62,3 +62,8 @@ export interface IUserInfo extends IAccountEvent {
     [key: string]: string|IAccountMinimal;
     who: string;
 }
+
+export interface IChatTyping extends IConversationEvent {
+    sender: string;
+    typing: boolean;
+}

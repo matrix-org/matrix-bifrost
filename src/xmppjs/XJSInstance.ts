@@ -4,7 +4,7 @@ import { Logging, MatrixUser } from "matrix-appservice-bridge";
 import { IConfigPurple } from "../Config";
 import { PurpleProtocol } from "../purple/PurpleProtocol";
 import { component } from "@xmpp/component";
-import { x, Element } from "@xmpp/xml";
+import { Element } from "@xmpp/xml";
 import { jid } from "@xmpp/jid";
 import { IXJSBackendOpts } from "./XJSBackendOpts";
 import { XmppJsAccount } from "./XJSAccount";
@@ -13,7 +13,8 @@ import { IAccountEvent,
     IChatJoined,
     IReceivedImMsg,
     IConversationEvent,
-    IUserStateChanged } from "../purple/PurpleEvents";
+    IUserStateChanged,
+    IChatTyping} from "../purple/PurpleEvents";
 import { IBasicProtocolMessage, IMessageAttachment } from "../MessageFormatter";
 import { PresenceCache } from "./PresenceCache";
 import { Metrics } from "../Metrics";
@@ -268,6 +269,24 @@ export class XmppJsInstance extends EventEmitter implements IPurpleInstance {
             // and so is sort of implied by the from address. We will emit
             // a room name change at the same time as the subject. The
             // RoomHandler code shoudln't attempt to change the name unless it is wrong.
+        }
+        const chatState = stanza.getChildByAttr("xmlns", "http://jabber.org/protocol/chatstates");
+        if (chatState) {
+            if (chatState.is("composing") || chatState.is("active") || chatState.is("paused")) {
+                const eventName = type === "groupchat" ? "chat-typing" : "im-typing";
+                this.emit(eventName, {
+                    eventName,
+                    conv: {
+                        name: convName,
+                    },
+                    account: {
+                        protocol_id: XMPP_PROTOCOL.id,
+                        username: localAcct.remoteId,
+                    },
+                    sender: stanza.attrs.from,
+                    typing: chatState.is("composing"),
+                } as IChatTyping);
+            }
         }
 
         const body = stanza.getChildText("body");
