@@ -120,9 +120,11 @@ export class XmppJsAccount implements IPurpleAccount {
     public isInRoom(roomName: string): boolean {
         const handle = this.roomHandles.get(roomName);
         if (!handle) {
+            log.debug("isInRoom: no handle set for ", this.remoteId);
             return false;
         }
         const res = this.xmpp.presenceCache.getStatus(roomName, handle);
+        log.debug("isInRoom: Got presence for user:", res, this.remoteId);
         if (!res) {
             return false;
         }
