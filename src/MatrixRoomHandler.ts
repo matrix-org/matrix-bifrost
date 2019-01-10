@@ -373,6 +373,7 @@ export class MatrixRoomHandler {
 
     private async handleTopic(data: IChatStringState) {
         const intent = this.bridge.getIntent();
+        log.info(`Setting topic for ${data.conv.name}: ${data.string}`);
         const roomId = await this.createOrGetGroupChatRoom(data, intent);
         const state = (intent.roomState(roomId) as IEventRequestData[]);
         const topicEv = state.find((ev) => ev.type === "m.room.topic");

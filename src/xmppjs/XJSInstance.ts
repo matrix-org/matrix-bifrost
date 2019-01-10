@@ -236,8 +236,7 @@ export class XmppJsInstance extends EventEmitter implements IPurpleInstance {
                 },
                 account: {
                     protocol_id: XMPP_PROTOCOL.id,
-                    // XXX: We could probably be more sophisticated than this.
-                    username: this.accounts.keys().next().value,
+                    username: localAcct.remoteId,
                 },
                 sender: stanza.attrs.from,
                 string: subject,
