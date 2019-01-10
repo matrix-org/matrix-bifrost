@@ -43,7 +43,7 @@ class XmppProtocol extends PurpleProtocol {
         senderId = senderId.replace(/\:/g, "=3a");
         const j = jid(senderId);
         const resource = j.resource ? j.resource + "_" : "";
-        return new MatrixUser(`@${prefix}_${resource}${j.local}_${j.domain}:${domain}`);
+        return new MatrixUser(`@${prefix}${resource}${j.local}_${j.domain}:${domain}`);
     }
 }
 
