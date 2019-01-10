@@ -227,15 +227,13 @@ export class XmppJsInstance extends EventEmitter implements IPurpleInstance {
         const to = stanza.attrs.to ? jid(stanza.attrs.to) : null;
         log.info(`Got from=${from} to=${to}`);
 
-        // "received-im-msg"
-        // "received-chat-msg"
         try {
             if (stanza.is("message")) {
                 this.handleMessageStanza(stanza);
             } else if (stanza.is("presence")) {
                 this.handlePresenceStanza(stanza);
             }
-            if (stanza.is("iq") && stanza.getAttr("type") === "get" && stanza.attrs.id) {
+            if (stanza.is("iq") && stanza.getAttr("type") === "result" && stanza.attrs.id) {
                 this.emit("iq." + id, stanza);
             }
         } catch (ex) {
