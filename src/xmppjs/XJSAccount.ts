@@ -245,8 +245,7 @@ export class XmppJsAccount implements IPurpleAccount {
     }
 
     public async getUserInfo(who: string): Promise<IUserInfo> {
-        const j = jid("who");
-        const split = who.split("/");
+        const j = jid(who);
         const status = this.xmpp.presenceCache.getStatus(who);
         const ui: IUserInfo = {
             Nickname: j.resource || j.local,
