@@ -352,6 +352,7 @@ export class MatrixRoomHandler {
             this.config.bridge.userPrefix,
             true,
         ) : senderMatrixUser;
+        log.debug(senderMatrixUser, intentUser, data);
         const intent = this.bridge.getIntent(intentUser);
         const roomId = await this.createOrGetGroupChatRoom(data, intent);
         try {
