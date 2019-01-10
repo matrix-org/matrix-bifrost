@@ -49,6 +49,7 @@ export interface IChatJoined extends IConversationEvent {
 export interface IUserStateChanged extends IConversationEvent {
     sender: string;
     state: "joined"|"left";
+    kicker: string|undefined;
     reason?: string;
 }
 

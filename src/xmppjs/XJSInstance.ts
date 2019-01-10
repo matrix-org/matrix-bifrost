@@ -364,6 +364,12 @@ export class XmppJsInstance extends EventEmitter implements IPurpleInstance {
                 // XXX: Should we attempt to reconnect/kick the user?
                 return;
             }
+            const wasKicked = delta.status!.kick;
+            let kicker;
+            if (wasKicked && wasKicked.kicker) {
+                kicker = `${convName}/${wasKicked.kicker}`;
+            }
+
             this.emit("chat-user-left", {
                 conv: {
                     name: convName,
@@ -374,7 +380,8 @@ export class XmppJsInstance extends EventEmitter implements IPurpleInstance {
                 },
                 sender: stanza.attrs.from,
                 state: "left",
-                reason: delta.status!.status,
+                kicker,
+                reason: wasKicked ? wasKicked.reason : delta.status!.status,
             } as IUserStateChanged);
             return;
         }

@@ -345,7 +345,14 @@ export class MatrixRoomHandler {
             this.config.bridge.userPrefix,
             true,
         );
-        const intent = this.bridge.getIntent(senderMatrixUser.getId());
+        const intentUser = data.kicker ? Util.getMxIdForProtocol(
+            protocol,
+            data.kicker,
+            this.config.bridge.domain,
+            this.config.bridge.userPrefix,
+            true,
+        ) : senderMatrixUser;
+        const intent = this.bridge.getIntent(intentUser);
         const roomId = await this.createOrGetGroupChatRoom(data, intent);
         try {
             if (data.state === "joined") {
