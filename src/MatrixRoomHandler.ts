@@ -352,13 +352,12 @@ export class MatrixRoomHandler {
             this.config.bridge.userPrefix,
             true,
         ) : senderMatrixUser;
-        log.debug(senderMatrixUser, intentUser, data);
-        const intent = this.bridge.getIntent(intentUser);
+        const intent = this.bridge.getIntent(intentUser.userId);
         const roomId = await this.createOrGetGroupChatRoom(data, intent);
         try {
             if (data.state === "joined") {
-                const account = this.purple.getAccount(data.account.username, data.account.protocol_id)!;
                 await intent.join(roomId);
+                const account = this.purple.getAccount(data.account.username, data.account.protocol_id)!;
                 await this.profileSync.updateProfile(
                     protocol,
                     data.sender,
