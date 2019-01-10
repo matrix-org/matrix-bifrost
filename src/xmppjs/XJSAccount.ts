@@ -248,7 +248,7 @@ export class XmppJsAccount implements IPurpleAccount {
         return ui;
     }
 
-    public async getAvatarBuffer(iconPath: string, senderId: string): Promise<Buffer> {
+    public getAvatarBuffer(iconPath: string, senderId: string): Promise<Buffer> {
         const toJid = jid(senderId);
         const to = `${toJid.local}@${toJid.domain}`;
         const id = uuid();
@@ -269,7 +269,7 @@ export class XmppJsAccount implements IPurpleAccount {
                 const vCard = stanza.getChild("vCard");
                 if (vCard) {
                     resolve(Buffer.from(
-                        stanza.getChild("photo")!.getChildText("binval")!,
+                        stanza.getChild("PHOTO")!.getChildText("BINVAL")!,
                         "base64"
                     ));
                 }
