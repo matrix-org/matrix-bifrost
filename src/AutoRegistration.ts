@@ -69,7 +69,7 @@ export class AutoRegistration {
         for (const key of Object.keys(parameters)) {
             let val = parameters[key];
             val = val.replace("<T_MXID>", mxId);
-            val = val.replace("<T_MXID_SANE>", mxId.replace(/(:|@)/g, "_"));
+            val = val.replace("<T_MXID_SANE>", mxId.replace(/:/g, "_").replace(/@/g, ""));
             val = val.replace("<T_LOCALPART>", mxIdParts[0]);
             val = val.replace("<T_DISPLAYNAME>", profile.displayname || mxIdParts[0]);
             val = val.replace("<T_GENERATEPWD>", Util.passwordGen(32));
