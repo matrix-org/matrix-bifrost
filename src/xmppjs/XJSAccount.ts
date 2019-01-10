@@ -282,8 +282,13 @@ export class XmppJsAccount implements IPurpleAccount {
                 clearTimeout(timeout);
                 const vCard = stanza.getChild("vCard");
                 if (vCard) {
+                    const photo = vCard.getChild("PHOTO");
+                    const photoString = photo ? photo.getChildText("BINVAL") : "";
+                    if (!photoString) {
+                        reject("No vCard given");
+                    }
                     resolve(Buffer.from(
-                        stanza.getChild("PHOTO")!.getChildText("BINVAL")!,
+                        vCard.getChild("PHOTO")!.getChildText("BINVAL")!,
                         "base64",
                     ));
                 }
