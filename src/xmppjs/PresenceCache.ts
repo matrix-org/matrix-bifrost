@@ -141,7 +141,7 @@ export class PresenceCache {
 
         const vcard = stanza.getChildByAttr("xmlns", "vcard-temp:x:update");
         if (vcard) {
-            const photoId = stanza.getChildText("photo");
+            const photoId = vcard.getChildText("photo") || undefined;
             if (photoId !== currentPresence.photoId) {
                 currentPresence.photoId = photoId || undefined;
                 delta.status = currentPresence;
