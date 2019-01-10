@@ -275,10 +275,10 @@ return `- ${account.protocol.name} (${username}) [Enabled=${account.isEnabled}] 
                 formatted_body: marked(body),
             });
         } else {
-            await intent.sendMessage(event.room_id, {
-                msgtype: "m.notice",
-                body: "Command not understood",
-            });
+            // await intent.sendMessage(event.room_id, {
+            //     msgtype: "m.notice",
+            //     body: "Command not understood",
+            // });
         }
     }
 
