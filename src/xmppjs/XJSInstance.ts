@@ -41,7 +41,9 @@ class XmppProtocol extends PurpleProtocol {
         const protocolName = this.id.startsWith("prpl-") ? this.id.substr("prpl-".length) : this.id;
         // senderId containing : can mess things up
         senderId = senderId.replace(/\:/g, "=3a");
-        return new MatrixUser(`@${prefix}_${senderId}:${domain}`);
+        const j = jid(senderId);
+        const resource = j.resource ? j.resource + "_" : "";
+        return new MatrixUser(`@${prefix}_${resource}${j.local}_${j.domain}:${domain}`);
     }
 }
 

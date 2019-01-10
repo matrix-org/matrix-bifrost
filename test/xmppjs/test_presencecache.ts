@@ -49,7 +49,7 @@ describe("PresenceCache", () => {
         expect(delta.error).to.be.null;
         expect(delta.isSelf).to.be.false;
         expect(delta.status!.resource).to.eq("alice");
-        const status = p.getStatus("aroom@conf.xmpp.matrix.org", "alice");
+        const status = p.getStatus("aroom@conf.xmpp.matrix.org/alice");
         expect(status).to.not.be.undefined;
         expect(status!.online).to.be.true;
         expect(status!.ours).to.be.false;
@@ -65,7 +65,7 @@ describe("PresenceCache", () => {
         expect(delta.error).to.be.null;
         expect(delta.isSelf).to.be.false;
         expect(delta.status!.resource).to.eq("alice");
-        const status = p.getStatus("aroom@conf.xmpp.matrix.org", "alice");
+        const status = p.getStatus("aroom@conf.xmpp.matrix.org/alice");
         expect(status).to.not.be.undefined;
         expect(status!.online).to.be.false;
         expect(status!.ours).to.be.false;
@@ -81,7 +81,7 @@ describe("PresenceCache", () => {
         expect(delta.error).to.be.null;
         expect(delta.isSelf).to.be.false;
         expect(delta.status!.resource).to.eq("alice");
-        const status = p.getStatus("aroom@conf.xmpp.matrix.org", "alice");
+        const status = p.getStatus("aroom@conf.xmpp.matrix.org/alice");
         expect(status).to.not.be.undefined;
         expect(status!.online).to.be.false;
         expect(status!.ours).to.be.false;

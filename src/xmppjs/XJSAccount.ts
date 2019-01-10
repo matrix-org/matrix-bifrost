@@ -1,4 +1,5 @@
-import { IChatJoinProperties, IUserInfo, IConversationEvent, IChatJoined, IAccountMinimal } from "../purple/PurpleEvents";
+import { IChatJoinProperties,
+    IUserInfo, IConversationEvent, IChatJoined, IAccountMinimal } from "../purple/PurpleEvents";
 import { XmppJsInstance, XMPP_PROTOCOL } from "./XJSInstance";
 import { IPurpleAccount, IChatJoinOptions } from "../purple/IPurpleAccount";
 import { IPurpleInstance } from "../purple/IPurpleInstance";
@@ -35,7 +36,6 @@ export class XmppJsAccount implements IPurpleAccount {
     constructor(public readonly remoteId: string, public readonly resource, private xmpp: XmppJsInstance) {
         this.roomHandles = new Map();
         this.waitingToJoin = new Set();
-        this.iqWaiting = new Map();
     }
 
     public findAccount() {
