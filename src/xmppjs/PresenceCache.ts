@@ -15,6 +15,10 @@ export interface IPresenceDelta {
 export interface IPresenceStatus {
     resource: string;
     online: boolean;
+    kick: {
+        reason: string | null;
+        kicker: string | null;
+    } | undefined;
     status: string;
     affiliation: string;
     role: string;
@@ -80,6 +84,8 @@ export class PresenceCache {
         }
         const mucUser = stanza.getChild("x", "http://jabber.org/protocol/muc#user");
         const isSelf = !!(mucUser && mucUser.getChildByAttr("code", "110"));
+        const isKick = !!(mucUser && mucUser.getChildByAttr("code", "307"));
+        const isTechnicalRemoval = !!(mucUser && mucUser.getChildByAttr("code", "333"));
         const newUser = !roomPresence.get(from.resource);
         const currentPresence = roomPresence.get(from.resource) || {
             resource: from.resource,
@@ -127,6 +133,19 @@ export class PresenceCache {
             currentPresence.online = true;
             delta.status = currentPresence;
         }
+
+        if (isKick) {
+            delta.changed.push("kick");
+            const item = mucUser!.getChild("item");
+            if (item) {
+                const actor = item.getChild("actor");
+                currentPresence.kick = {
+                    kicker: actor ? actor.getAttr("nick") : null,
+                    reason: item.getChildText("reason"),
+                };
+            }
+        }
+
         const vcard = stanza.getChildByAttr("xmlns", "vcard-temp:x:update");
         if (vcard) {
             const photoId = stanza.getChildText("photo");
