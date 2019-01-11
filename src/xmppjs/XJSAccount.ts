@@ -134,6 +134,31 @@ export class XmppJsAccount implements IPurpleAccount {
         return res.online;
     }
 
+    public async selfPing(from: string): Promise<boolean> {
+        const id = uuid();
+        await this.xmpp.xmppWriteToStream(x("iq", {
+            xmlns: "jabber:client",
+            type: "get",
+            from: `${this.remoteId}/${this.resource}`,
+            id,
+        }, x("ping", {
+            xmlns: "urn:xmpp:ping",
+        })));
+        return new Promise((resolve, reject) => {
+            const timeout = setTimeout(() => reject(Error("Timeout")), 1000);
+            this.xmpp.on("iq." + id, (stanza: Element) => {
+                clearTimeout(timeout);
+                const error = stanza.getChild("error");
+                if (error) {
+                    log.warn("Self ping returned: ", error.toString());
+                    resolve(false);
+                }
+                resolve(true);
+            });
+        });
+        Metrics.remoteCall("xmpp.iq.ping");
+    }
+
     public async joinChat(
         components: IChatJoinProperties,
         instance?: IPurpleInstance,
@@ -143,6 +168,19 @@ export class XmppJsAccount implements IPurpleAccount {
             const roomName = `${components.room}@${components.server}`;
             const to = `${roomName}/${components.handle}`;
             if (this.isInRoom(roomName)) {
+                return {
+                    eventName: "already-joined",
+                    account: {
+                        username: this.remoteId,
+                        protocol_id: XMPP_PROTOCOL.id,
+                    } as IAccountMinimal,
+                    conv: {
+                        name: roomName,
+                    },
+                };
+            }
+            if (await this.selfPing(to)) {
+                this.roomHandles.set(roomName, components.handle);
                 return {
                     eventName: "already-joined",
                     account: {
