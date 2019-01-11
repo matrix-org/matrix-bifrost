@@ -301,14 +301,12 @@ export class XmppJsAccount implements IPurpleAccount {
     }
 
     public getAvatarBuffer(iconPath: string, senderId: string): Promise<{type: string, data: Buffer}> {
-        const toJid = jid(senderId);
-        const to = `${toJid.local}@${toJid.domain}`;
         const id = uuid();
         log.info(`Fetching avatar for ${senderId} (hash: ${iconPath})`);
         this.xmpp.xmppWriteToStream(
             x("iq", {
                 from: `${this.remoteId}/${this.resource}`,
-                to,
+                to: senderId,
                 type: "get",
                 id,
             }, x("vCard", {xmlns: "vcard-temp"}),
