@@ -142,7 +142,7 @@ export class XmppJsInstance extends EventEmitter implements IPurpleInstance {
                 log.warn("Connection was dropped, attempting reconnect..");
                 this.presenceCache.clear();
                 for (const account of this.accounts.values()) {
-                    await account.reconnectToRooms();
+                    account.reconnectToRooms();
                 }
             }
             while (this.bufferedMessages.length) {
@@ -347,12 +347,10 @@ export class XmppJsInstance extends EventEmitter implements IPurpleInstance {
 
         const message = {
             body,
-            formatted: [
-
-            ],
+            formatted: [ ],
             id: stanza.attrs.id,
             opts: {
-                   attachments,
+                attachments,
             },
         } as IBasicProtocolMessage;
 

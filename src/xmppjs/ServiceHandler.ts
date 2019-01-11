@@ -66,7 +66,7 @@ export class ServiceHandler {
             return avatar;
         }
         const thumbUrl = intent.getClient().mxcUrlToHttp(
-            avatarUrl, 256, 256, "scale", false
+            avatarUrl, 256, 256, "scale", false,
         );
         if (!thumbUrl) {
             return undefined;
@@ -76,7 +76,7 @@ export class ServiceHandler {
         avatar = {
             data: file.buffer,
             type: file.headers["content-type"],
-        }
+        };
         this.avatarCache.set(avatarUrl, avatar);
         if (this.avatarCache.size > MAX_AVATARS) {
             this.avatarCache.delete(this.avatarCache.keys()[0]);

@@ -351,7 +351,7 @@ export class XmppJsAccount implements IPurpleAccount {
                                 "base64",
                             ),
                             type: photo!.getChildText("TYPE") || "image/jpeg",
-                        }
+                        },
                     );
                 }
                 reject("No vCard given");
