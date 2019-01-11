@@ -160,13 +160,28 @@ export class XmppJsAccount implements IPurpleAccount {
         Metrics.remoteCall("xmpp.iq.ping");
     }
 
+    public reconnectToRooms() {
+        log.info("Recovering rooms for", this.remoteId);
+        this.roomHandles.forEach(async (handle, fullRoomName) => {
+            try {
+                log.debug("Rejoining", fullRoomName);
+                await this.joinChat({
+                    handle,
+                    fullRoomName,
+                });
+            } catch (ex) {
+                log.warn(`Failed to rejoin ${fullRoomName}`, ex);
+            }
+        });
+    }
+
     public async joinChat(
         components: IChatJoinProperties,
         instance?: IPurpleInstance,
         timeout: number = 5000,
         setWaiting: boolean = true)
         : Promise<IConversationEvent|void> {
-            const roomName = `${components.room}@${components.server}`;
+            const roomName = components.fullRoomName || `${components.room}@${components.server}`;
             const to = `${roomName}/${components.handle}`;
             if (this.isInRoom(roomName)) {
                 return {

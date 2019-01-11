@@ -37,6 +37,10 @@ export class PresenceCache {
         this.presence = new Map();
     }
 
+    public clear() {
+        this.presence.clear();
+    }
+
     public getStatus(userJid: string): IPresenceStatus|undefined {
         const exactMatch = this.presence.get(userJid);
         if (exactMatch) {

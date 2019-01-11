@@ -57,6 +57,7 @@ export class XmppJsInstance extends EventEmitter implements IPurpleInstance {
     private seenMessages: Set<string>;
     private canWrite: boolean;
     private defaultRes!: string;
+    private connectionWasDropped: boolean;
     private bufferedMessages: Array<{xmlMsg: any, resolve: (res: Promise<any>) => void}>;
     constructor() {
         super();
@@ -65,6 +66,7 @@ export class XmppJsInstance extends EventEmitter implements IPurpleInstance {
         this.bufferedMessages = [];
         this.seenMessages = new Set();
         this.presenceCache = new PresenceCache();
+        this.connectionWasDropped = false;
     }
 
     get defaultResource(): string {
@@ -131,6 +133,13 @@ export class XmppJsInstance extends EventEmitter implements IPurpleInstance {
             this.myAddress = address;
             this.canWrite = true;
             log.info(`flushing ${this.bufferedMessages.length} buffered messages`);
+            if (this.connectionWasDropped) {
+                log.warn("Connection was dropped, attempting reconnect..");
+                this.presenceCache.clear();
+                for (const account of this.accounts.values()) {
+                    await account.reconnectToRooms();
+                }
+            }
             while (this.bufferedMessages.length) {
                 if (!this.canWrite) {
                     return;
@@ -144,6 +153,9 @@ export class XmppJsInstance extends EventEmitter implements IPurpleInstance {
         xmpp.on("status", (status) => {
           if (status === "disconnecting" || status === "disconnected") {
               this.canWrite = false;
+          }
+          if (status === "close") {
+              this.connectionWasDropped = true;
           }
           xLog.debug("status:", status);
         });
