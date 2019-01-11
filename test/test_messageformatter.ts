@@ -18,11 +18,11 @@ const XMPP = new PurpleProtocol({
 });
 
 const intent = {
-    uploadContent: (content) => {
-        return Promise.resolve("mxc://abc/def");
-    },
     getClient: () => {
         return {
+            uploadContent: (content) => {
+                return Promise.resolve("mxc://abc/def");
+            },
             getMediaConfig: () => {
                 return Promise.resolve({"m.upload.size": 1024});
             },

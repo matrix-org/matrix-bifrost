@@ -143,7 +143,7 @@ export class MessageFormatter {
                 }
 
                 log.info(`Uploading ${attachment.uri}...`);
-                const mxcurl = await intent.uploadContent(file.body, {
+                const mxcurl = await intent.getClient().uploadContent(file.body, {
                     onlyContentUri: true,
                     includeFilename: false,
                     type: attachment.mimetype || undefined,
