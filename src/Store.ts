@@ -50,11 +50,20 @@ export class Store {
         }
     }
 
-    public async getUsernamesForProtocol(protocol: PurpleProtocol) {
-        return (await this.userStore.getByRemoteData({protocolId: protocol.id})).filter(
-            (u) => u.data.isRemoteUser !== true).map(
-            (u) => u.get("username"),
+    public async getUsernameMxidForProtocol(protocol: PurpleProtocol): Promise<{[mxid: string]: string}> {
+        const set = {};
+        const users = (await this.userStore.getByRemoteData({protocolId: protocol.id})).filter(
+            (u) => u.data.isRemoteUser !== true,
         );
+        for (const remoteUser of users) {
+            const username = remoteUser.get("username");
+            const matrixUsers = await this.userStore.getMatrixUsersFromRemoteId(remoteUser.getId());
+            if (!matrixUsers) {
+                continue;
+            }
+            set[matrixUsers[0].getId()] = username;
+        }
+        return set;
     }
 
     public getRoomsOfType(type: MROOM_TYPES): Promise<IRoomEntry[]> {

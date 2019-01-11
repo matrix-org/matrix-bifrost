@@ -33,7 +33,12 @@ export class XmppJsAccount implements IPurpleAccount {
     public readonly connected = true;
 
     public readonly roomHandles: Map<string, string>;
-    constructor(public readonly remoteId: string, public readonly resource, private xmpp: XmppJsInstance) {
+    constructor(
+        public readonly remoteId: string,
+        public readonly resource: string,
+        private xmpp: XmppJsInstance,
+        public readonly mxId: string,
+    ) {
         this.roomHandles = new Map();
         this.waitingToJoin = new Set();
     }

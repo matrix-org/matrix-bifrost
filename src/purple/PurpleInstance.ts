@@ -41,7 +41,7 @@ export class PurpleInstance extends EventEmitter implements IPurpleInstance {
         this.interval = setInterval(this.eventHandler.bind(this), 300);
     }
 
-    public getAccount(username: string, protocolId: string, force: boolean = false): PurpleAccount|null {
+    public getAccount(username: string, protocolId: string, mxid: string, force: boolean = false): PurpleAccount|null {
         const key = `${protocolId}://${username}`;
         let acct = this.accounts.get(key);
         if (!acct || force) {
@@ -97,7 +97,7 @@ export class PurpleInstance extends EventEmitter implements IPurpleInstance {
             }
             if (evt.eventName === "chat-joined") {
                 const chatJoined = evt as IConversationEvent;
-                const purpleAccount = this.getAccount(chatJoined.account.username, chatJoined.account.protocol_id);
+                const purpleAccount = this.getAccount(chatJoined.account.username, chatJoined.account.protocol_id, "");
                 if (purpleAccount) {
                     if (purpleAccount._waitingJoinRoomProps) {
                         // tslint:disable-next-line

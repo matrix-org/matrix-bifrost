@@ -47,14 +47,14 @@ export class AutoRegistration {
         } else if (step.type === "implicit") {
             const params = this.generateParameters(step.parameters, mxId);
             await this.store.storeUserAccount(mxId, proto, params.username);
-            return this.purple.getAccount(params.username, protocol)!;
+            return this.purple.getAccount(params.username, protocol, mxId)!;
         } else {
             throw new Error(`This method of registration is unsupported (${step.type})`);
         }
         // XXX: Slight hard-code here.
         this.purple.createPurpleAccount(res.username, proto).createNew(res.extraParams.password);
         log.debug(`Creating purple account for ${protocol} ${res.username}`);
-        const acct = this.purple.getAccount(res.username, protocol)!;
+        const acct = this.purple.getAccount(res.username, protocol, mxId)!;
         log.debug(`Enabling account`);
         acct.setEnabled(true);
         log.debug(`Storing account in bridge store`);

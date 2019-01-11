@@ -249,7 +249,7 @@ export class MatrixRoomHandler {
         }
 
         // Update the user if needed.
-        const account = this.purple.getAccount(data.account.username, data.account.protocol_id)!;
+        const account = this.purple.getAccount(data.account.username, data.account.protocol_id, matrixUser.getId())!;
         await this.profileSync.updateProfile(protocol, data.sender,
             account,
         );

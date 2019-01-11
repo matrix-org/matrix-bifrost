@@ -18,6 +18,7 @@ import { IAccountEvent,
 import { IBasicProtocolMessage, IMessageAttachment } from "../MessageFormatter";
 import { PresenceCache } from "./PresenceCache";
 import { Metrics } from "../Metrics";
+import { ServiceHandler } from "./ServiceHandler";
 
 const xLog = Logging.get("XMPP-conn");
 const log = Logging.get("XmppJsInstance");
@@ -51,14 +52,16 @@ export const XMPP_PROTOCOL = new XmppProtocol();
 
 export class XmppJsInstance extends EventEmitter implements IPurpleInstance {
     public readonly presenceCache: PresenceCache;
+    private serviceHandler: ServiceHandler;
     private xmpp?: any;
-    private myAddress: any;
+    private myAddress!: string;
     private accounts: Map<string, XmppJsAccount>;
     private seenMessages: Set<string>;
     private canWrite: boolean;
     private defaultRes!: string;
     private connectionWasDropped: boolean;
-    private bufferedMessages: Array<{xmlMsg: any, resolve: (res: Promise<any>) => void}>;
+    private bufferedMessages: Array<{xmlMsg: Element, resolve: (res: Promise<void>) => void}>;
+    private intent;
     constructor() {
         super();
         this.canWrite = false;
@@ -66,6 +69,7 @@ export class XmppJsInstance extends EventEmitter implements IPurpleInstance {
         this.bufferedMessages = [];
         this.seenMessages = new Set();
         this.presenceCache = new PresenceCache();
+        this.serviceHandler = new ServiceHandler(this);
         this.connectionWasDropped = false;
     }
 
@@ -74,7 +78,7 @@ export class XmppJsInstance extends EventEmitter implements IPurpleInstance {
     }
 
     public createPurpleAccount(username) {
-        return new XmppJsAccount(username, this.defaultRes, this);
+        return new XmppJsAccount(username, this.defaultRes, this, "");
     }
 
     public xmppWriteToStream(xmlMsg: any) {
@@ -102,7 +106,8 @@ export class XmppJsInstance extends EventEmitter implements IPurpleInstance {
         return undefined;
     }
 
-    public async start(config: IConfigPurple): Promise<void> {
+    public async start(config: IConfigPurple, intent?: any): Promise<void> {
+        this.intent = intent;
         const opts = config.backendOpts as IXJSBackendOpts;
         if (!opts || !opts.service || !opts.domain || !opts.password) {
             throw Error("Missing opts for xmpp: service, domain, password");
@@ -172,11 +177,21 @@ export class XmppJsInstance extends EventEmitter implements IPurpleInstance {
         this.xmpp = xmpp;
     }
 
-    public signInAccounts(usernames: string[]) {
-        usernames.forEach((u) => {this.getAccount(u, XMPP_PROTOCOL.id); });
+    public signInAccounts(mxidUsernames: {[mxid: string]: string}) {
+        Object.keys(mxidUsernames).forEach((mxid) => {
+            this.getAccount(mxidUsernames[mxid], XMPP_PROTOCOL.id, mxid);
+        });
     }
 
-    public getAccount(username: string, protocolId: string): IPurpleAccount|null {
+    public getAccountForJid(aJid: JID): XmppJsAccount|undefined {
+        if (aJid.domain === this.myAddress) {
+            return this.accounts.get(aJid.local);
+        }
+        // TODO: Handle MUC based JIDs?
+        return;
+    }
+
+    public getAccount(username: string, protocolId: string, mxid: string): IPurpleAccount|null {
         const uLower = username.toLowerCase();
         log.debug("Getting account", username);
         if (protocolId !== "xmpp-js") {
@@ -185,7 +200,7 @@ export class XmppJsInstance extends EventEmitter implements IPurpleInstance {
         if (this.accounts.has(uLower)) {
             return this.accounts.get(uLower)!;
         }
-        this.accounts.set(uLower, new XmppJsAccount(username, this.defaultRes, this));
+        this.accounts.set(uLower, new XmppJsAccount(username, this.defaultRes, this, mxid));
         // Components don't "connect", so just emit this once we've created it.
         this.emit("account-signed-on", {
             eventName: "account-signed-on",
@@ -253,8 +268,9 @@ export class XmppJsInstance extends EventEmitter implements IPurpleInstance {
                 this.handleMessageStanza(stanza);
             } else if (stanza.is("presence")) {
                 this.handlePresenceStanza(stanza);
-            }
-            if (stanza.is("iq") &&
+            } else if (stanza.is("iq") && stanza.getAttr("get")) {
+                this.serviceHandler.handleIq(stanza, this.intent);
+            } else if (stanza.is("iq") &&
                 ["result", "error"].includes(stanza.getAttr("type")) &&
                 stanza.attrs.id) {
                 this.emit("iq." + id, stanza);
@@ -455,9 +471,7 @@ export class XmppJsInstance extends EventEmitter implements IPurpleInstance {
         }
 
         if (delta.changed.includes("online")) {
-            if (delta.status && delta.status.ours || delta.isSelf) {
-                // Ensure the account knows it's handle.
-                localAcct.roomHandles.set(convName, from.resource);
+            if (delta.status && delta.isSelf) {
                 // Always emit this.
                 this.emit("chat-joined", {
                     eventName: "chat-joined",
@@ -471,20 +485,19 @@ export class XmppJsInstance extends EventEmitter implements IPurpleInstance {
                 } as IConversationEvent);
                 return;
             }
-            if (this.isOurJid(from)) {
-                return;
+            if (delta.status && !delta.status.ours) {
+                this.emit("chat-user-joined", {
+                    conv: {
+                        name: convName,
+                    },
+                    account: {
+                        protocol_id: localAcct.protocol.id,
+                        username: localAcct.remoteId,
+                    },
+                    sender: stanza.attrs.from,
+                    state: "joined",
+                } as IUserStateChanged);
             }
-            this.emit("chat-user-joined", {
-                conv: {
-                    name: convName,
-                },
-                account: {
-                    protocol_id: localAcct.protocol.id,
-                    username: localAcct.remoteId,
-                },
-                sender: stanza.attrs.from,
-                state: "joined",
-            } as IUserStateChanged);
         }
     }
 }

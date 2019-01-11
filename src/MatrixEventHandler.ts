@@ -204,7 +204,7 @@ export class MatrixEventHandler {
                 const username = remoteUser.get("username");
                 let account: IPurpleAccount|null = null;
                 try {
-                    account = this.purple.getAccount(username, pid);
+                    account = this.purple.getAccount(username, pid, event.sender);
                 } catch (ex) {
                     log.error("Account not found:", ex);
                 }
@@ -231,7 +231,7 @@ return `- ${account.protocol.name} (${username}) [Enabled=${account.isEnabled}] 
             }
         } else if (args[0] === "accounts" && ["enable", "disable"].includes(args[1])) {
             try {
-                await this.handleEnableAccount(args[2], args[3], args[1] === "enable");
+                await this.handleEnableAccount(args[2], args[3], event.sender, args[1] === "enable");
             } catch (err) {
                 await intent.sendMessage(event.room_id, {
                     msgtype: "m.notice",
@@ -408,7 +408,7 @@ Say \`help\` for more commands.
         });
     }
 
-    private async handleEnableAccount(protocolId: string, username: string, enable: boolean) {
+    private async handleEnableAccount(protocolId: string, username: string, mxid: string, enable: boolean) {
         const protocol = this.purple.findProtocol(protocolId);
         if (!protocol) {
             throw Error("Protocol not found");
@@ -416,7 +416,7 @@ Say \`help\` for more commands.
         if (!protocol.canAddExisting) {
             throw Error("Protocol does not let you create new accounts");
         }
-        const acct = this.purple.getAccount(username, protocol.id);
+        const acct = this.purple.getAccount(username, protocol.id, mxid);
         if (acct === null) {
             throw Error("Account not found");
         }
@@ -657,7 +657,7 @@ E.g. \`join xmpp roomname conf.matrix.org password=$ecr£t!\`
             };
         }
         // XXX: We assume the first remote, this needs to be fixed for multiple accounts
-        const acct = this.purple.getAccount(remoteUser.get("username"), roomProtocol);
+        const acct = this.purple.getAccount(remoteUser.get("username"), roomProtocol, event.sender);
         if (!acct) {
             log.error("Account wasn't found in backend, we cannot handle this im!");
             throw new Error("Account not found");

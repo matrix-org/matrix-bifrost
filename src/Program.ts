@@ -132,10 +132,14 @@ class Program {
         log.info("Bridge has started.");
         await this.roomSync.sync(this.bridge.getBot(), this.bridge.getIntent());
         try {
-            await this.purple!.start(this.cfg.purple);
+            if (this.purple instanceof XmppJsInstance) {
+                await this.purple!.start(this.cfg.purple, this.bridge.getIntent());
+            } else {
+                await this.purple!.start(this.cfg.purple);
+            }
             if (this.purple instanceof XmppJsInstance) {
                 this.purple.signInAccounts(
-                    await this.store.getUsernamesForProtocol(this.purple.getProtocols()[0]),
+                    await this.store.getUsernameMxidForProtocol(this.purple.getProtocols()[0]),
                 );
             }
         } catch (ex) {

@@ -32,7 +32,7 @@ export interface IPurpleInstance extends EventEmitter {
     createPurpleAccount(username, protocol: PurpleProtocol): IPurpleAccount;
     getBuddyFromChat(conv: any, buddy: string): any;
     start(config: IConfigPurple): Promise<void>;
-    getAccount(username: string, protocolId: string): IPurpleAccount|null;
+    getAccount(username: string, protocolId: string, mxid?: string): IPurpleAccount|null;
     getProtocol(id: string): PurpleProtocol|undefined;
     getProtocols(): PurpleProtocol[];
     findProtocol(nameOrId: string): PurpleProtocol|undefined;

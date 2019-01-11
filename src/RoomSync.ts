@@ -110,8 +110,12 @@ export class RoomSync {
 
     private async onAccountSignedin(ev: IAccountEvent) {
         log.debug(`${ev.account.username} signed in, checking if we need to reconnect them to some rooms`);
-        const acct = this.purple.getAccount(ev.account.username, ev.account.protocol_id);
         const matrixUser = await this.store.getMatrixUserForAccount(ev.account);
+        const acct = this.purple.getAccount(
+            ev.account.username,
+            ev.account.protocol_id,
+            matrixUser ? matrixUser.getId() : undefined,
+        );
         if (matrixUser === null) {
             log.warn(`${ev.account.username} isn't bound to a matrix account. Disabling`);
             if (acct !== null) {
