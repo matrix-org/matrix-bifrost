@@ -134,12 +134,13 @@ export class XmppJsAccount implements IPurpleAccount {
         return res.online;
     }
 
-    public async selfPing(from: string): Promise<boolean> {
+    public async selfPing(to: string): Promise<boolean> {
         const id = uuid();
         await this.xmpp.xmppWriteToStream(x("iq", {
             xmlns: "jabber:client",
             type: "get",
             from: `${this.remoteId}/${this.resource}`,
+            to,
             id,
         }, x("ping", {
             xmlns: "urn:xmpp:ping",
