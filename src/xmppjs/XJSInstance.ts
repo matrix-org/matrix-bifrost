@@ -242,7 +242,9 @@ export class XmppJsInstance extends EventEmitter implements IPurpleInstance {
             } else if (stanza.is("presence")) {
                 this.handlePresenceStanza(stanza);
             }
-            if (stanza.is("iq") && stanza.getAttr("type") === "result" && stanza.attrs.id) {
+            if (stanza.is("iq") &&
+                ["result", "error"].includes(stanza.getAttr("type")) &&
+                stanza.attrs.id) {
                 this.emit("iq." + id, stanza);
             }
         } catch (ex) {

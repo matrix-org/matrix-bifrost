@@ -146,7 +146,7 @@ export class XmppJsAccount implements IPurpleAccount {
             xmlns: "urn:xmpp:ping",
         })));
         return new Promise((resolve, reject) => {
-            const timeout = setTimeout(() => reject(Error("Timeout")), 1000);
+            const timeout = setTimeout(() => resolve(false), 1000);
             this.xmpp.on("iq." + id, (stanza: Element) => {
                 clearTimeout(timeout);
                 const error = stanza.getChild("error");
