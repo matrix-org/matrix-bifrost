@@ -182,8 +182,11 @@ export class PurpleAccount implements IPurpleAccount {
         this.waitingJoinRoomProperties = undefined;
     }
 
-    public async getAvatarBuffer(iconPath: string): Promise<Buffer> {
-        return fs.readFile(iconPath);
+    public async getAvatarBuffer(iconPath: string): Promise<{type: string, data: Buffer}> {
+        return {
+            type: "image/jpeg",
+            data: await fs.readFile(iconPath),
+        };
     }
 
     // connect() {
