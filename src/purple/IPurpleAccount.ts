@@ -36,5 +36,5 @@ export interface IPurpleAccount {
     getConversation(name: string): any|undefined;
     getChatParamsForProtocol(): IChatJoinOptions[];
     getUserInfo(who: string): Promise<IUserInfo>;
-    getAvatarBuffer(uri: string, senderId: string): Promise<Buffer>;
+    getAvatarBuffer(uri: string, senderId: string): Promise<{type: string, data: Buffer}>;
 }

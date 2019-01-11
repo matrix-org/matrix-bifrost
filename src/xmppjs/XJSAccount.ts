@@ -262,7 +262,7 @@ export class XmppJsAccount implements IPurpleAccount {
         return ui;
     }
 
-    public getAvatarBuffer(iconPath: string, senderId: string): Promise<Buffer> {
+    public getAvatarBuffer(iconPath: string, senderId: string): Promise<{type: string, data: Buffer}> {
         const toJid = jid(senderId);
         const to = `${toJid.local}@${toJid.domain}`;
         const id = uuid();
@@ -287,10 +287,16 @@ export class XmppJsAccount implements IPurpleAccount {
                     if (!photoString) {
                         reject("No vCard given");
                     }
-                    resolve(Buffer.from(
-                        vCard.getChild("PHOTO")!.getChildText("BINVAL")!,
-                        "base64",
-                    ));
+                    const type = photo!.getChildText("TYPE") || "image/jpeg";
+                    resolve(
+                        {
+                            data: Buffer.from(
+                                vCard.getChild("PHOTO")!.getChildText("BINVAL")!,
+                                "base64",
+                            ),
+                            type,
+                        }
+                    );
                 }
                 reject("No vCard given");
             });
