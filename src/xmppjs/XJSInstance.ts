@@ -304,9 +304,6 @@ export class XmppJsInstance extends EventEmitter implements IPurpleInstance {
         }
         const convName = `${from.local}@${from.domain}`;
         const type = stanza.attrs.type;
-            // a room name change at the same time as the subject. The
-            // RoomHandler code shoudln't attempt to change the name unless it is wrong.
-        }
         const chatState = stanza.getChildByAttr("xmlns", "http://jabber.org/protocol/chatstates");
         if (chatState) {
             if (chatState.is("composing") || chatState.is("active") || chatState.is("paused")) {
@@ -396,7 +393,7 @@ export class XmppJsInstance extends EventEmitter implements IPurpleInstance {
                     username: localAcct.remoteId,
                 },
             } as IReceivedImMsg);
-        } else if (type === "chat") {
+        } else if (type === "chat" || type === "normal") {
             if (!localAcct) {
                 log.debug(`Handling a message to ${to}, who does not yet exist.`);
             }
@@ -425,7 +422,6 @@ export class XmppJsInstance extends EventEmitter implements IPurpleInstance {
         if (!delta) {
             return;
         }
-        log.debug("Presence delta:", delta);
 
         if (delta.error) {
             if (delta.error === "conflict") {
