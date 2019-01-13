@@ -6,6 +6,7 @@ import { Logging } from "matrix-appservice-bridge";
 import { Store } from "./Store";
 import { IPurpleInstance } from "./purple/IPurpleInstance";
 import { IPurpleAccount } from "./purple/IPurpleAccount";
+import { PurpleProtocol } from "./purple/PurpleProtocol";
 const log = Logging.get("AutoRegistration");
 
 export interface IAutoRegHttpOpts {
@@ -62,14 +63,59 @@ export class AutoRegistration {
         return acct;
     }
 
+    public async reverseRegisterUser(username: string, protocol: PurpleProtocol): Promise<IPurpleAccount> {
+        // Fundamentally, we want to pull a mxid from the string, and then call registerUser.
+        if (!this.isSupported(protocol.id)) {
+            throw Error("Protocol unsupported");
+        }
+        log.info("Attempting to reverse register", username);
+        const step = this.autoRegConfig.protocolSteps![protocol.id];
+        const usernameFormat = step.parameters.username;
+        if (!usernameFormat) {
+            throw Error("No parameter 'username' on registration step, cannot get mxid");
+        }
+        let mxid;
+        if (usernameFormat.includes("<T_MXID>")) {
+            const discards = username.split("<T_MXID>");
+            mxid = username.replace(discards[0], discards[1]);
+        } else if (usernameFormat.includes("<T_MXID_SANE>")) {
+            const discards = usernameFormat.split("<T_MXID_SANE>");
+            // Replace parts either side of MXID_SANE
+            mxid = username.replace(discards[0], "");
+            mxid = username.replace(discards[1], "");
+            // Replace parts either side of replace the LAST : and add the @
+            mxid = "@" + [...[...mxid].reverse().join("").replace("_", ":")].reverse().join("");
+            // Replace any ^a strings with A.
+            mxid = mxid.replace(/(\^([a-z]))/g, (m, p1, p2) => p2.toUpperCase());
+        } else {
+            throw Error("No T_MXID or T_MXID_SANE on username parameter, cannot get mxid");
+        }
+        if (mxid) {
+            // Check they exist.
+            // XXX: Profiles aren't a surefire way of finding out if someone exists.
+            try {
+                const profile = await this.bridge.getIntent().getProfileInfo(mxid);
+            } catch (ex) {
+                throw Error("User doesn't exist");
+            }
+        }
+        return this.registerUser(protocol.id, mxid);
+    }
+
+    private getSaneMxId(mxId: string) {
+        const sane = mxId.replace(/:/g, "_").replace(/@/g, "");
+        return sane.replace(/([A-Z])/g, "^$1".toLowerCase());
+    }
+
     private generateParameters(parameters: {[key: string]: string}, mxId: string, profile: any = {})
         : {[key: string]: string} {
         const body = {};
         const mxIdParts = mxId.substr(1).split(":");
+        //
         for (const key of Object.keys(parameters)) {
             let val = parameters[key];
             val = val.replace("<T_MXID>", mxId);
-            val = val.replace("<T_MXID_SANE>", mxId.replace(/:/g, "_").replace(/@/g, ""));
+            val = val.replace("<T_MXID_SANE>", this.getSaneMxId(mxId));
             val = val.replace("<T_LOCALPART>", mxIdParts[0]);
             val = val.replace("<T_DISPLAYNAME>", profile.displayname || mxIdParts[0]);
             val = val.replace("<T_GENERATEPWD>", Util.passwordGen(32));

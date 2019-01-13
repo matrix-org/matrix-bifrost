@@ -14,6 +14,7 @@ import { Config, IBridgeBotAccount } from "./Config";
 import { Util } from "./Util";
 import { XmppJsInstance } from "./xmppjs/XJSInstance";
 import { Metrics } from "./Metrics";
+import { AutoRegistration } from "./AutoRegistration";
 
 const log = Logging.get("Program");
 
@@ -126,14 +127,23 @@ class Program {
             this.purple!, this.profileSync, this.store, this.cfg, this.deduplicator,
         );
         this.roomSync = new RoomSync(this.purple!, this.store, this.deduplicator);
-        // TODO: Remove these eventually
-        this.eventHandler.setBridge(this.bridge);
+        let autoReg: AutoRegistration|undefined;
+        if (this.config.autoRegistration.enabled && this.config.autoRegistration.protocolSteps !== undefined) {
+            autoReg = new AutoRegistration(
+                this.config.autoRegistration,
+                this.bridge,
+                this.store,
+                this.purple!
+            );
+        }
+
+        this.eventHandler.setBridge(this.bridge, autoReg || undefined);
         this.roomHandler.setBridge(this.bridge);
         log.info("Bridge has started.");
         await this.roomSync.sync(this.bridge.getBot(), this.bridge.getIntent());
         try {
             if (this.purple instanceof XmppJsInstance) {
-                await this.purple!.start(this.cfg.purple, this.bridge.getIntent());
+                await this.purple!.start(this.cfg.purple, this.bridge.getIntent(), autoReg);
             } else {
                 await this.purple!.start(this.cfg.purple);
             }

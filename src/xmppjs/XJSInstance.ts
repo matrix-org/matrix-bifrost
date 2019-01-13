@@ -19,6 +19,7 @@ import { PresenceCache } from "./PresenceCache";
 import { Metrics } from "../Metrics";
 import { ServiceHandler } from "./ServiceHandler";
 import { XJSConnection } from "./XJSConnection";
+import { AutoRegistration } from "../AutoRegistration";
 
 const xLog = Logging.get("XMPP-conn");
 const log = Logging.get("XmppJsInstance");
@@ -54,14 +55,15 @@ export class XmppJsInstance extends EventEmitter implements IPurpleInstance {
     public readonly presenceCache: PresenceCache;
     private serviceHandler: ServiceHandler;
     private xmpp?: any;
-    private myAddress!: string;
+    private myAddress!: JID;
     private accounts: Map<string, XmppJsAccount>;
     private seenMessages: Set<string>;
     private canWrite: boolean;
     private defaultRes!: string;
     private connectionWasDropped: boolean;
     private bufferedMessages: Array<{xmlMsg: Element, resolve: (res: Promise<void>) => void}>;
-    private intent;
+    private intent!: any;
+    private autoRegister?: AutoRegistration;
     constructor() {
         super();
         this.canWrite = false;
@@ -106,8 +108,9 @@ export class XmppJsInstance extends EventEmitter implements IPurpleInstance {
         return undefined;
     }
 
-    public async start(config: IConfigPurple, intent?: any): Promise<void> {
+    public async start(config: IConfigPurple, intent?: any, autoRegister?: AutoRegistration): Promise<void> {
         this.intent = intent;
+        this.autoRegister = autoRegister;
         const opts = config.backendOpts as IXJSBackendOpts;
         if (!opts || !opts.service || !opts.domain || !opts.password) {
             throw Error("Missing opts for xmpp: service, domain, password");
@@ -184,8 +187,10 @@ export class XmppJsInstance extends EventEmitter implements IPurpleInstance {
     }
 
     public getAccountForJid(aJid: JID): XmppJsAccount|undefined {
-        if (aJid.domain === this.myAddress) {
-            return this.accounts.get(aJid.local);
+        log.debug(aJid);
+        if (aJid.domain === this.myAddress.domain) {
+            log.debug(aJid.local, [...this.accounts.keys()]);
+            return this.accounts.get(aJid.toString());
         }
         // TODO: Handle MUC based JIDs?
         return;
@@ -274,19 +279,19 @@ export class XmppJsInstance extends EventEmitter implements IPurpleInstance {
         }
         const from = stanza.attrs.from ? jid(stanza.attrs.from) : null;
         const to = stanza.attrs.to ? jid(stanza.attrs.to) : null;
-        log.info(`Got from=${from} to=${to}`);
-
+        const isOurs = to !== null && to.domain === this.myAddress.domain && to.resource === "";
+        log.info(`Got from=${from} to=${to} isOurs=${isOurs}`);
         try {
             if (stanza.is("message")) {
                 this.handleMessageStanza(stanza);
-            } else if (stanza.is("presence")) {
+            } else if (stanza.is("presence") && !isOurs) {
                 this.handlePresenceStanza(stanza);
-            } else if (stanza.is("iq") && stanza.getAttr("get")) {
-                this.serviceHandler.handleIq(stanza, this.intent);
             } else if (stanza.is("iq") &&
                 ["result", "error"].includes(stanza.getAttr("type")) &&
                 stanza.attrs.id) {
                 this.emit("iq." + id, stanza);
+            } else if (stanza.is("iq") && stanza.getAttr("type") === "get" && isOurs) {
+                this.serviceHandler.handleIq(stanza, this.intent);
             }
         } catch (ex) {
             log.warn("Failed to handle stanza: ", ex);
@@ -295,10 +300,24 @@ export class XmppJsInstance extends EventEmitter implements IPurpleInstance {
         Metrics.requestOutcome(true, Date.now() - startedAt, "success");
     }
 
-    private handleMessageStanza(stanza: Element) {
+    private async handleMessageStanza(stanza: Element) {
         const from = stanza.attrs.from ? jid(stanza.attrs.from) : null;
         const to = stanza.attrs.to ? jid(stanza.attrs.to) : null;
-        const localAcct = this.accounts.get(`${to!.local}@${to!.domain}`)!;
+        let localAcct = this.accounts.get(`${to!.local}@${to!.domain}`)!;
+        if (!localAcct) {
+            // No local account, attempt to autoregister it?
+            if (this.autoRegister) {
+                try {
+                    const acct = await this.autoRegister.reverseRegisterUser(stanza.attrs.to, XMPP_PROTOCOL)!;
+                    localAcct = this.getAccount(acct.remoteId, XMPP_PROTOCOL.id, "") as XmppJsAccount;
+                } catch (ex) {
+                    log.warn("Failed to autoregister user:", ex);
+                    return;
+                }
+            } else {
+                log.warn("Could not handle message, auto registration is disabled");
+            }
+        }
         if (!from) {
             return;
         }
