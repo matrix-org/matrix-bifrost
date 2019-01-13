@@ -24,7 +24,7 @@ const RETRY_JOIN_MS = 5000;
  */
 export class MatrixEventHandler {
     private bridge: Bridge;
-    private autoReg!: AutoRegistration | null;
+    private autoReg: AutoRegistration | null = null;
     private roomAliases: RoomAliasSet;
     private pendingRoomAliases: Map<string, {protocol: PurpleProtocol, props: IChatJoinProperties}>;
     constructor(
@@ -42,13 +42,9 @@ export class MatrixEventHandler {
      * has been created.
      * @return [description]
      */
-    public setBridge(bridge: Bridge) {
+    public setBridge(bridge: Bridge, autoReg?: AutoRegistration) {
         this.bridge = bridge;
-        if (this.config.autoRegistration.enabled && this.config.autoRegistration.protocolSteps !== undefined) {
-            this.autoReg = new AutoRegistration(this.config.autoRegistration, this.bridge, this.store, this.purple);
-        } else {
-            this.autoReg = null;
-        }
+        this.autoReg = autoReg || null;
     }
 
     public async onAliasQuery(alias: string, aliasLocalpart: string) {
@@ -108,16 +104,31 @@ export class MatrixEventHandler {
         const botUserId = this.bridge.getBot().client.getUserId();
         if (newInvite) {
             log.debug(`Handling invite from ${event.sender}.`);
-            log.info(event.state_key, botUserId);
             if (event.state_key === botUserId) {
                 try {
                     await this.handleInviteForBot(event);
                 } catch (e) {
                     log.error("Failed to handle invite for bot:", e);
                 }
-            } else if (this.bridge.getBot().isRemoteUser(event.state_key)) {
-                // This is a PM, maybe?
+            } else if (event.content.is_direct && this.bridge.getBot().isRemoteUser(event.state_key)) {
                 log.debug("Got request to PM", event.state_key);
+                const {
+                    username,
+                    protocol,
+                } = this.purple.getUsernameFromMxid(event.state_key!, this.config.bridge.userPrefix);
+                log.debug("Mapped username to", username, protocol);
+                const {acct} = await this.getAccountForMxid(context, event, protocol.id);
+                const roomStore = this.bridge.getRoomStore();
+                const remoteData = {
+                    matrixUser: event.sender,
+                    protocol_id: acct.protocol.id,
+                    recipient: username,
+                } as any;
+                const remoteId = Buffer.from(
+                    `${event.sender}:${acct.protocol.id}:${username}`,
+                ).toString("base64");
+                await this.store.storeRoom(event.room_id, MROOM_TYPE_IM, remoteId, remoteData);
+                this.bridge.getIntent(event.state_key).join(event.room_id);
             }
         }
 

@@ -37,6 +37,7 @@ export interface IPurpleInstance extends EventEmitter {
     getProtocols(): PurpleProtocol[];
     findProtocol(nameOrId: string): PurpleProtocol|undefined;
     getNickForChat(conv: any): string;
+    getUsernameFromMxid(mxid: string, prefix: string): {username: string, protocol: PurpleProtocol};
     on(name: string, cb: (ev: IEventBody) => void);
     on(name: "account-connection-error"|"account-signed-on"|"account-signed-off", cb: (ev: IAccountEvent) => void);
     on(name: "chat-joined", cb: (ev: IConversationEvent) => void);

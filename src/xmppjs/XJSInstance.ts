@@ -236,6 +236,19 @@ export class XmppJsInstance extends EventEmitter implements IPurpleInstance {
         return false;
     }
 
+    public getUsernameFromMxid(
+            mxid: string,
+            prefix: string = ""): {username: string, protocol: PurpleProtocol} {
+        let uName = new MatrixUser(mxid, false).localpart;
+        uName = uName.replace(prefix, "");
+        // XXX: Gah, underscore spittling is hard with a resource.
+        uName = uName.replace(/\=3a/g, ":");
+        const splitParts = uName.split("_");
+        const username =
+            `${splitParts.slice(0, splitParts.length - 1 ).join("_")}@${splitParts[splitParts.length - 1]}`;
+        return {username, protocol: XMPP_PROTOCOL};
+    }
+
     private generateIdforMsg(stanza: Element) {
         const body = stanza.getChildText("body");
 

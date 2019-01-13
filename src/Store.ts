@@ -87,20 +87,23 @@ export class Store {
         await this.roomStore.removeEntriesByMatrixRoomId(matrixId);
     }
 
-    public async storeRoom(matrixId: string, type: MROOM_TYPES, remoteId: string, remoteData: {}) {
+    public async storeRoom(matrixId: string, type: MROOM_TYPES, remoteId: string, remoteData: {})
+    : Promise<{remote: RemoteRoom, matrix: MatrixRoom}> {
+        //XXX: If a room with all these identifiers already exists, replace it.
         log.info(`Storing remote room (${type}) ${matrixId}`);
         log.debug("with data ", remoteData);
         const mxRoom = new MatrixRoom(matrixId);
         mxRoom.set("type", type);
+        const remote = new RemoteRoom(
+            remoteId,
+        remoteData);
         try {
             await this.roomStore.setMatrixRoom(mxRoom);
-            await this.roomStore.linkRooms(mxRoom, new RemoteRoom(
-                remoteId,
-            remoteData));
+            await this.roomStore.linkRooms(mxRoom, remote);
         } catch (ex) {
             log.error("Failed to store room:", ex);
             throw ex;
         }
-
+        return {matrix: mxRoom, remote};
     }
 }

@@ -90,6 +90,12 @@ export class PurpleInstance extends EventEmitter implements IPurpleInstance {
         return true;
     }
 
+    public getUsernameFromMxid(
+            mxid: string,
+            prefix: string = ""): {username: string, protocol: PurpleProtocol} {
+        throw Error("Not implemented yet");
+    }
+
     private eventHandler() {
         helper.pollEvents().forEach((evt) => {
             if (!["received-chat-msg"].includes(evt.eventName)) {
