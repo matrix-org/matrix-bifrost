@@ -22,28 +22,64 @@ export class ServiceHandler {
         this.avatarCache = new Map();
     }
 
-    public handleIq(stanza: Element, intent: any) {
-        if (!stanza.getAttr("get")) {
-            return;
-        }
+    public async handleIq(stanza: Element, intent: any): Promise<void> {
         const id = stanza.getAttr("id");
         const from = stanza.getAttr("from");
         const to = stanza.getAttr("to");
 
+        log.info("Handling iq request");
+
         if (stanza.getChildByAttr("xmlns", "jabber:iq:version")) {
-            this.handleVersionRequest(from, to, id);
-            return;
+            return this.handleVersionRequest(from, to, id);
         }
 
         if (stanza.getChildByAttr("xmlns", "vcard-temp")) {
-            this.handleVcard(from, id, intent);
-            return;
+            return this.handleVcard(from, to, id, intent);
         }
 
+        if (stanza.getChildByAttr("xmlns", "http://jabber.org/protocol/disco#info")) {
+            return this.handleRoomDiscovery(to, from, id, intent);
+        }
+
+        return this.xmpp.xmppWriteToStream(x("iq", {
+            type: "error",
+            from: to,
+            to: from,
+            id,
+        }, x("error", {
+                    type: "cancel",
+                    code: "503",
+                },
+                x("service-unavailable", {
+                    xmlns: "urn:ietf:params:xml:ns:xmpp-stanzas",
+                }),
+            ),
+        ));
     }
 
-    private handleVersionRequest(to: string, from: string, id: string) {
+    private notFound(to: string, from: string, id: string, type: string, xmlns: string) {
         this.xmpp.xmppWriteToStream(
+            x("iq", {
+                type: "error",
+                to,
+                from,
+                id,
+            }, x(type, {
+                    xmlns,
+                },
+                x("error", {
+                        type: "cancel",
+                        code: "404",
+                    },
+                    x("item-not-found", {
+                        xmlns: "urn:ietf:params:xml:ns:xmpp-stanzas",
+                    }),
+                ),
+            )));
+    }
+
+    private handleVersionRequest(to: string, from: string, id: string): Promise<void> {
+        return this.xmpp.xmppWriteToStream(
             x("iq", {
                 type: "result",
                 to,
@@ -60,6 +96,60 @@ export class ServiceHandler {
         ));
     }
 
+    private async handleRoomDiscovery(toStr: string, from: string, id: string, intent: any) {
+        const to = jid(toStr);
+        const aliasRaw = /#(.+)#(.+)/g.exec(to.local);
+        if (aliasRaw === null || aliasRaw.length < 3) {
+            return;
+        }
+        try {
+            const alias = `#${aliasRaw[1]}:${aliasRaw[2]}`;
+            log.info(`${from} is trying to discover '${alias}'`);
+            const res = await intent.getClient().getRoomIdForAlias(alias);
+            log.info(`Found ${res.room_id}`);
+            await this.xmpp.xmppWriteToStream(
+                x("iq", {
+                    type: "result",
+                    to: from,
+                    from: to.domain,
+                    id,
+                },
+                    x("query", {
+                        xmlns: "http://jabber.org/protocol/disco#info",
+                    }, [
+                        x("identity", {
+                            category: "conference",
+                            name: alias,
+                            type: "text",
+                        }),
+                        x("feature", {
+                            var: "http://jabber.org/protocol/muc",
+                        }),
+                    ]),
+                ),
+            );
+        } catch (ex) {
+            await this.xmpp.xmppWriteToStream(
+                x("iq", {
+                    type: "error",
+                    to: from,
+                    from: toStr,
+                    id,
+                }, x("query", {
+                        xmlns: "http://jabber.org/protocol/disco#info",
+                    },
+                    x("error", {
+                            type: "cancel",
+                            code: "404",
+                        },
+                        x("item-not-found", {
+                            xmlns: "urn:ietf:params:xml:ns:xmpp-stanzas",
+                        }),
+                    ),
+                )));
+        }
+    }
+
     private async getThumbnailBuffer(avatarUrl: string, intent: any): Promise<{data: Buffer, type: string}|undefined> {
         let avatar = this.avatarCache.get(avatarUrl);
         if (avatar) {
@@ -72,9 +162,13 @@ export class ServiceHandler {
             return undefined;
         }
 
-        const file = (await request.get(thumbUrl, {resolveWithFullResponse: true}).promise())!;
+        const file = (await request.get({
+            uri: thumbUrl,
+            encoding: null, // make response body to Buffer.
+            resolveWithFullResponse: true,
+        }).promise())!;
         avatar = {
-            data: file.buffer,
+            data: Buffer.from(file.body),
             type: file.headers["content-type"],
         };
         this.avatarCache.set(avatarUrl, avatar);
@@ -84,11 +178,12 @@ export class ServiceHandler {
         return avatar;
     }
 
-    private async handleVcard(to: string, id: string, intent: any) {
+    private async handleVcard(from: string, to: string, id: string, intent: any) {
         // Fetch mxid.
         const account = this.xmpp.getAccountForJid(jid(to));
         if (!account) {
-            log.warn("Account fetch failed for ", to);
+            log.warn("Account fetch failed for", to);
+            this.notFound(from, to, id, "vCard", "vcard-temp");
             return;
         }
         let profile: {displayname?: string, avatar_url?: string};
@@ -96,11 +191,12 @@ export class ServiceHandler {
             profile = await intent.getProfileInfo(account.mxId, null);
         } catch (ex) {
             log.warn("Profile fetch failed for ", account.mxId, ex);
+            this.notFound(from, to, id, "vCard", "vcard-temp");
             return;
         }
 
         const vCard: Element[] = [
-            x("URL", undefined, `https://matrix.to/${account.mxId}`),
+            x("URL", undefined, `https://matrix.to/#/${account.mxId}`),
         ];
 
         if (profile.displayname) {
@@ -111,9 +207,11 @@ export class ServiceHandler {
             try {
                 const res = await this.getThumbnailBuffer(profile.avatar_url, intent);
                 if (res) {
+                    const b64 = res.data.toString("base64");
+                    console.log(b64);
                     vCard.push(
                         x("PHOTO", undefined, [
-                            x("BINVAL", undefined, res.data.toString("base64")),
+                            x("BINVAL", undefined, b64),
                             x("TYPE", undefined, res.type),
                         ]),
                     );
@@ -126,7 +224,8 @@ export class ServiceHandler {
         this.xmpp.xmppWriteToStream(
             x("iq", {
                 type: "result",
-                to,
+                to: from,
+                from: to,
                 id,
             }, x("vCard", {
                     xmlns: "vcard-temp",
