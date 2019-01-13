@@ -75,11 +75,9 @@ export class RoomSync {
             const roomId = room.matrix.getId();
             if (!room.remote) {
                 log.warn(`Not syncing ${roomId} because it has no remote links`);
-                log.debug(roomId, "->", room);
                 return;
             }
             const members = await this.getJoinedMembers(bot, roomId);
-            log.debug(`${roomId} has ${Object.keys(members).length} members`);
             const userIds = Object.keys(members);
             for (const userId of userIds) {
                 if (bot.isRemoteUser(userId)) {
@@ -94,10 +92,10 @@ export class RoomSync {
                     continue;
                 }
                 const remoteUser = remotes[0];
-                const acctMemberList = this.accountRoomMemberships.get(remoteUser.getId()) || [];
                 log.info(`${remoteUser.getId()} will join ${room.remote.get("room_name")} on connection`);
                 const props = Util.desanitizeProperties(Object.assign({}, room.remote.get("properties")));
                 await ProtoHacks.addJoinProps(room.remote.get("protocol_id"), props, userId, intent);
+                const acctMemberList = this.accountRoomMemberships.get(remoteUser.getId()) || [];
                 acctMemberList.push({
                     room_name: room.remote.get("room_name"),
                     params: props,
