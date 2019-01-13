@@ -37,9 +37,9 @@ export class ServiceHandler {
             return this.handleVcard(from, to, id, intent);
         }
 
-        if (stanza.getChildByAttr("xmlns", "http://jabber.org/protocol/disco#info")) {
-            return this.handleRoomDiscovery(to, from, id, intent);
-        }
+        // if (stanza.getChildByAttr("xmlns", "http://jabber.org/protocol/disco#info")) {
+        //     return this.handleRoomDiscovery(to, from, id, intent);
+        // }
 
         return this.xmpp.xmppWriteToStream(x("iq", {
             type: "error",
