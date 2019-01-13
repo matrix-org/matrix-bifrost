@@ -204,7 +204,7 @@ export class MatrixRoomHandler {
             log.debug("Created room with id ", roomId);
             return this.store.storeRoom(roomId, MROOM_TYPE_GROUP, remoteId, remoteData);
         });
-        this.roomCreationLock.set(remoteId, createPromise);
+        this.roomCreationLock.set(remoteId, createPromise as Promise<any>);
         await createPromise;
         this.roomCreationLock.delete(remoteId);
         return roomId;
@@ -387,18 +387,18 @@ export class MatrixRoomHandler {
         const intent = this.bridge.getIntent();
         log.info(`Setting topic for ${data.conv.name}: ${data.string}`);
         const roomId = await this.createOrGetGroupChatRoom(data, intent, true);
-        const state = (intent.roomState(roomId) as IEventRequestData[]);
+        const state = await intent.roomState(roomId) as IEventRequestData[];
         const topicEv = state.find((ev) => ev.type === "m.room.topic");
         const nameEv = state.find((ev) => ev.type === "m.room.name");
         const currentName = nameEv ? nameEv.content.name : "";
         const currentTopic = topicEv ? topicEv.content.name : "";
         if (currentTopic !== data.string ? data.string : "") {
-            intent.setRoomTopic(data.string || "").catch((err) => {
+            intent.setRoomTopic(roomId, data.string || "").catch((err) => {
                 log.warn("Failed to set topic of", roomId, err);
             });
         }
         if (currentName !== data.conv.name) {
-            intent.setRoomTopic(data.conv.name).catch((err) => {
+            intent.setRoomName(roomId, data.conv.name).catch((err) => {
                 log.warn("Failed to set name of", roomId, err);
             });
         }
