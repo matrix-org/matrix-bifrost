@@ -3,7 +3,6 @@ import { EventEmitter } from "events";
 import { Logging, MatrixUser } from "matrix-appservice-bridge";
 import { IConfigPurple } from "../Config";
 import { PurpleProtocol } from "../purple/PurpleProtocol";
-import { component } from "@xmpp/component";
 import { Element } from "@xmpp/xml";
 import { jid, JID } from "@xmpp/jid";
 import { IXJSBackendOpts } from "./XJSBackendOpts";
@@ -19,6 +18,7 @@ import { IBasicProtocolMessage, IMessageAttachment } from "../MessageFormatter";
 import { PresenceCache } from "./PresenceCache";
 import { Metrics } from "../Metrics";
 import { ServiceHandler } from "./ServiceHandler";
+import { XJSConnection } from "./XJSConnection";
 
 const xLog = Logging.get("XMPP-conn");
 const log = Logging.get("XmppJsInstance");
@@ -114,7 +114,7 @@ export class XmppJsInstance extends EventEmitter implements IPurpleInstance {
         }
         this.defaultRes = opts.defaultResource ? opts.defaultResource : "matrix-bridge";
         log.info(`Starting new XMPP component instance to ${opts.service} using domain ${opts.domain}`);
-        const xmpp = component({
+        const xmpp = XJSConnection.connect({
             service: opts.service,
             domain: opts.domain,
             password: opts.password,
