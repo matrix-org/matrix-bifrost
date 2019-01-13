@@ -156,7 +156,6 @@ export class XmppJsAccount implements IPurpleAccount {
                 clearTimeout(timeout);
                 const error = stanza.getChild("error");
                 if (error) {
-                    log.warn("Self ping returned: ", error.toString());
                     resolve(false);
                 }
                 resolve(true);
