@@ -11,6 +11,7 @@ export class Config {
     };
 
     public readonly purple: IConfigPurple = {
+        processMode: "monolith",
         backendOpts: undefined,
         backend: "node-purple",
         enableDebug: false,
@@ -67,6 +68,7 @@ export interface IConfigBridge {
 }
 
 export interface IConfigPurple {
+    processMode: "monolith"|"multiprocess";
     backendOpts: {}|IXJSBackendOpts|undefined;
     backend: "node-purple"|"xmpp.js";
     enableDebug: boolean;

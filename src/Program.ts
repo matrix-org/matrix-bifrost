@@ -15,6 +15,7 @@ import { Util } from "./Util";
 import { XmppJsInstance } from "./xmppjs/XJSInstance";
 import { Metrics } from "./Metrics";
 import { AutoRegistration } from "./AutoRegistration";
+import { MultiprocessInstance } from "./multiprocess/MultiprocessInstance";
 
 const log = Logging.get("Program");
 
@@ -83,7 +84,9 @@ class Program {
     private async runBridge(port: number, config: any) {
         log.info("Starting purple bridge on port ", port);
         this.cfg.ApplyConfig(config);
-        if (this.cfg.purple.backend === "node-purple") {
+        if (this.cfg.purple.processMode === "multiprocess") {
+            this.purple = new MultiprocessInstance(this.cfg.purple);
+        } else if (this.cfg.purple.backend === "node-purple") {
             log.info("Selecting node-purple as a backend");
             this.purple = new (require("./purple/PurpleInstance").PurpleInstance)();
         } else if (this.cfg.purple.backend === "xmpp.js") {
