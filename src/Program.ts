@@ -15,6 +15,7 @@ import { Util } from "./Util";
 import { XmppJsInstance } from "./xmppjs/XJSInstance";
 import { Metrics } from "./Metrics";
 import { AutoRegistration } from "./AutoRegistration";
+import { GatewayHandler } from "./GatewayHandler";
 
 const log = Logging.get("Program");
 
@@ -26,6 +27,7 @@ class Program {
     private bridge: Bridge;
     private eventHandler: MatrixEventHandler|undefined;
     private roomHandler: MatrixRoomHandler|undefined;
+    private gatewayHandler!: GatewayHandler;
     private profileSync: ProfileSync|undefined;
     private roomSync: RoomSync|undefined;
     private purple?: IPurpleInstance;
@@ -83,15 +85,6 @@ class Program {
     private async runBridge(port: number, config: any) {
         log.info("Starting purple bridge on port ", port);
         this.cfg.ApplyConfig(config);
-        if (this.cfg.purple.backend === "node-purple") {
-            log.info("Selecting node-purple as a backend");
-            this.purple = new (require("./purple/PurpleInstance").PurpleInstance)();
-        } else if (this.cfg.purple.backend === "xmpp.js") {
-            log.info("Selecting xmpp.js as a backend");
-            this.purple = new (require("./xmppjs/XJSInstance").XmppJsInstance)();
-        } else {
-            throw new Error(`Backend ${this.cfg.purple.backend} not supported`);
-        }
         Logging.configure(this.cfg.logging);
         this.bridge = new Bridge({
           controller: {
@@ -116,24 +109,38 @@ class Program {
           registration: "purple-registration.yaml",
         });
         await this.bridge.run(port, this.cfg);
+
+        if (this.cfg.purple.backend === "node-purple") {
+            log.info("Selecting node-purple as a backend");
+            this.purple = new (require("./purple/PurpleInstance").PurpleInstance)(this.cfg.purple);
+        } else if (this.cfg.purple.backend === "xmpp.js") {
+            log.info("Selecting xmpp.js as a backend");
+            this.purple = new (require("./xmppjs/XJSInstance").XmppJsInstance)(this.cfg);
+        } else {
+            throw new Error(`Backend ${this.cfg.purple.backend} not supported`);
+        }
+
+        const purple = this.purple!;
+        
         if (this.cfg.metrics.enable) {
             log.info("Enabling metrics");
             Metrics.init(this.bridge);
         }
         this.store = new Store(this.bridge);
         this.profileSync = new ProfileSync(this.bridge, this.cfg);
-        this.eventHandler = new MatrixEventHandler(this.purple!, this.store, this.deduplicator, this.config);
+        this.eventHandler = new MatrixEventHandler(purple, this.store, this.deduplicator, this.config);
         this.roomHandler = new MatrixRoomHandler(
             this.purple!, this.profileSync, this.store, this.cfg, this.deduplicator,
         );
-        this.roomSync = new RoomSync(this.purple!, this.store, this.deduplicator);
+        this.roomSync = new RoomSync(purple, this.store, this.deduplicator);
+        this.gatewayHandler = new GatewayHandler(purple, this.bridge);
         let autoReg: AutoRegistration|undefined;
         if (this.config.autoRegistration.enabled && this.config.autoRegistration.protocolSteps !== undefined) {
             autoReg = new AutoRegistration(
                 this.config.autoRegistration,
                 this.bridge,
                 this.store,
-                this.purple!
+                purple,
             );
         }
 
@@ -142,14 +149,13 @@ class Program {
         log.info("Bridge has started.");
         await this.roomSync.sync(this.bridge.getBot(), this.bridge.getIntent());
         try {
-            if (this.purple instanceof XmppJsInstance) {
-                await this.purple!.start(this.cfg.purple, this.bridge.getIntent(), autoReg);
-            } else {
-                await this.purple!.start(this.cfg.purple);
+            if (purple instanceof XmppJsInstance) {
+                purple.preStart(this.bridge, autoReg);
             }
-            if (this.purple instanceof XmppJsInstance) {
-                this.purple.signInAccounts(
-                    await this.store.getUsernameMxidForProtocol(this.purple.getProtocols()[0]),
+            await purple.start();
+            if (purple instanceof XmppJsInstance) {
+                purple.signInAccounts(
+                    await this.store.getUsernameMxidForProtocol(purple.getProtocols()[0]),
                 );
             }
         } catch (ex) {
