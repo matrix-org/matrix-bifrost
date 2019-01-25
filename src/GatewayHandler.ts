@@ -20,17 +20,24 @@ export interface IGatewayRoom {
 }
 
 /**
- * Responsible for handling querys on behalf of a gateway style bridge.
+ * Responsible for handling querys & events on behalf of a gateway style bridge.
  * The gateway system in the bridge is complex, so pull up a a pew and let's dig in.
  *
  * Backends may query whether a room exists by emitting "gateway-queryroom", which
  * has a callback that this handler must fulfil. The backend is expected to translate
- * whatever string they are handling into an alias.
+ * whatever string they are handling into an alias (or room id).
  *
  * The backend may also get a join request, which should be sent to "gateway-joinroom".
  * This should NOT be handled by "chat-user-joined". The handler will verify that the
- * remote user can join the room (is public/invited), and will respond with a selection
- * of the rooms state, so that the remote can then
+ * remote user can join the room (is public/invited), and will call onRemoteJoin
+ * with IGatewayRoom (containing bridge state).
+ *
+ * Messages from Matrix will avoid IAccount entirely and use sendMatrixMessage
+ * (which in turn calls IGateway).
+ *
+ * Messages from a remote should be handled inside MatrixRoomHandler as-is, although
+ * be careful to handle things like echoes in your backend (for example, this is required
+ * for XMPP.js).
  */
 export class GatewayHandler {
     private aliasCache: Map<string, IGatewayRoom>;
