@@ -1,15 +1,18 @@
 import { Bridge, MatrixRoom, RemoteRoom, RemoteUser,
     MatrixUser, UserStore, RoomStore, Logging } from "matrix-appservice-bridge";
 import { Util } from "./Util";
-import { MROOM_TYPES, IRoomEntry } from "./StoreTypes";
+import { MROOM_TYPES, IRoomEntry, IRemoteRoomData, IRemoteGroupData } from "./StoreTypes";
 import { PurpleProtocol } from "./purple/PurpleProtocol";
 import { IAccountMinimal } from "./purple/PurpleEvents";
 
 const log = Logging.get("Store");
 
+// XXX: Gateways can have multiple remotes to one room_id, so we need to provision for it.
+
 export class Store {
     private roomStore: RoomStore;
     private userStore: UserStore;
+
     constructor(private bridge: Bridge) {
         this.roomStore = bridge.getRoomStore();
         this.userStore = bridge.getUserStore();
@@ -40,7 +43,7 @@ export class Store {
         );
     }
 
-    public async getRoomByRemoteData(remoteData: any, type: MROOM_TYPES|undefined) {
+    public async getRoomByRemoteData(remoteData: IRemoteRoomData|IRemoteGroupData) {
         const remoteEntries = await this.roomStore.getEntriesByRemoteRoomData(remoteData);
         if (remoteEntries !== null && remoteEntries.length > 0) {
             if (remoteEntries.length > 1) {
@@ -87,9 +90,9 @@ export class Store {
         await this.roomStore.removeEntriesByMatrixRoomId(matrixId);
     }
 
-    public async storeRoom(matrixId: string, type: MROOM_TYPES, remoteId: string, remoteData: {})
+    public async storeRoom(matrixId: string, type: MROOM_TYPES, remoteId: string, remoteData: IRemoteRoomData)
     : Promise<{remote: RemoteRoom, matrix: MatrixRoom}> {
-        //XXX: If a room with all these identifiers already exists, replace it.
+        // XXX: If a room with all these identifiers already exists, replace it.
         log.info(`Storing remote room (${type}) ${matrixId}`);
         log.debug("with data ", remoteData);
         const mxRoom = new MatrixRoom(matrixId);

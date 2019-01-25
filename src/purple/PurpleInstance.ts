@@ -8,13 +8,15 @@ import * as path from "path";
 import { IConfigPurple } from "../Config";
 import { IUserInfo, IConversationEvent, IReceivedImMsg } from "./PurpleEvents";
 import { PurpleProtocol } from "./PurpleProtocol";
+import { IEventRequestData } from "../MatrixTypes";
+import { IGateway } from "./IGateway";
 const log = Logging.get("PurpleInstance");
 
 export class PurpleInstance extends EventEmitter implements IPurpleInstance {
     private protocols: PurpleProtocol[];
     private accounts: Map<string, PurpleAccount>;
     private interval?: NodeJS.Timeout;
-    constructor() {
+    constructor(private config: IConfigPurple) {
         super();
         this.protocols = [];
         this.accounts = new Map();
@@ -24,12 +26,16 @@ export class PurpleInstance extends EventEmitter implements IPurpleInstance {
         return new PurpleAccount(username, protocol);
     }
 
-    public async start(config: IConfigPurple) {
+    public get gateway(): null {
+        return null; // Not supported.
+    }
+
+    public async start() {
         log.info("Starting purple instance");
-        const pluginDir = path.resolve(config.pluginDir);
+        const pluginDir = path.resolve(this.config.pluginDir);
         log.info("Plugin search path is set to ", pluginDir);
         helper.setupPurple({
-            debugEnabled: config.enableDebug ? 1 : 0,
+            debugEnabled: this.config.enableDebug ? 1 : 0,
             pluginDir,
             userDir: undefined,
         });
@@ -94,6 +100,10 @@ export class PurpleInstance extends EventEmitter implements IPurpleInstance {
             mxid: string,
             prefix: string = ""): {username: string, protocol: PurpleProtocol} {
         throw Error("Not implemented yet");
+    }
+
+    public pushEvent(ev: IEventRequestData) {
+        // This is for gateways, and we aren't a gateway yet.
     }
 
     private eventHandler() {

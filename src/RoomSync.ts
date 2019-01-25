@@ -55,6 +55,9 @@ export class RoomSync {
             try {
                 members = await bot.getJoinedMembers(roomId);
             } catch (ex) {
+                if (ex.errcode === "M_FORBIDDEN") {
+                    throw Error("Got M_FORBIDDEN while trying to sync members for room.");
+                }
                 log.warn(`Failed to get joined members for ${roomId}, retrying in ${SYNC_RETRY_MS}`, ex);
                 await new Promise((resolve) => setTimeout(resolve, SYNC_RETRY_MS));
             }
@@ -72,12 +75,26 @@ export class RoomSync {
         const rooms = await this.store.getRoomsOfType(MROOM_TYPE_GROUP);
         log.info(`Got ${rooms.length} group rooms`);
         await Promise.all(rooms.map(async (room: IRoomEntry) => {
+            if (!room.matrix) {
+                log.warn(`Not syncing entry because it has no matrix component`);
+                return;
+            }
             const roomId = room.matrix.getId();
             if (!room.remote) {
                 log.warn(`Not syncing ${roomId} because it has no remote links`);
                 return;
             }
-            const members = await this.getJoinedMembers(bot, roomId);
+            if (room.remote.get("gateway")) {
+                log.debug(`Not syncing ${roomId} because it is a gateway`);
+                // Don't need to sync gateway users.
+            }
+            let members;
+            try {
+                 members = await this.getJoinedMembers(bot, roomId);
+            } catch (ex) {
+                log.warn(`Not syncing ${roomId} because we could not get room members: ${ex}`);
+                return;
+            }
             const userIds = Object.keys(members);
             for (const userId of userIds) {
                 if (bot.isRemoteUser(userId)) {

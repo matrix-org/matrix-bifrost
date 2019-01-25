@@ -13,6 +13,8 @@ import * as uuid from "uuid/v4";
 
 const IDPREFIX = "pbridge";
 const CONFLICT_SUFFIX = "[m]";
+const LASTSTANZA_CHECK_MS = 2 * 60000;
+const LASTSTANZA_MAXDURATION = 10 * 60000;
 const log = Logging.get("XmppJsAccount");
 
 export class XmppJsAccount implements IPurpleAccount {
@@ -33,6 +35,7 @@ export class XmppJsAccount implements IPurpleAccount {
     public readonly connected = true;
 
     public readonly roomHandles: Map<string, string>;
+    private lastStanzaTs: Map<string, number>;
     constructor(
         public readonly remoteId: string,
         public readonly resource: string,
@@ -41,10 +44,31 @@ export class XmppJsAccount implements IPurpleAccount {
     ) {
         this.roomHandles = new Map();
         this.waitingToJoin = new Set();
+        this.lastStanzaTs = new Map();
+        setInterval(() => {
+            this.lastStanzaTs.forEach((ts, roomName) => {
+                if (Date.now() - ts > LASTSTANZA_MAXDURATION) {
+                    this.selfPing(roomName).then((isInRoom) => {
+                        if (isInRoom) {
+                            this.lastStanzaTs.set(roomName, Date.now());
+                            return;
+                        }
+                        this.joinChat({
+                            fullRoomName: roomName,
+                            handle: this.roomHandles.get(roomName)!,
+                        })
+                    });
+                }
+            });
+        }, LASTSTANZA_CHECK_MS);
     }
 
     public findAccount() {
         // TODO: What do we actually need to find.
+    }
+
+    public xmppBumpLastStanzaTs(roomName: string) {
+        this.lastStanzaTs.set(roomName, Date.now());
     }
 
     public createNew(password?: string) {
@@ -128,7 +152,6 @@ export class XmppJsAccount implements IPurpleAccount {
     public isInRoom(roomName: string): boolean {
         const handle = this.roomHandles.get(roomName);
         if (!handle) {
-            log.debug("isInRoom: no handle set for ", this.remoteId);
             return false;
         }
         const res = this.xmpp.presenceCache.getStatus(roomName + "/" + handle);
@@ -239,6 +262,7 @@ export class XmppJsAccount implements IPurpleAccount {
                         if (data.conv.name === roomName &&
                             data.account.username === this.remoteId) {
                             this.roomHandles.set(roomName, components.handle);
+                            this.waitingToJoin.delete(roomName);
                             clearTimeout(timer);
                             this.xmpp.removeListener("chat-joined", cb);
                             resolve(data);

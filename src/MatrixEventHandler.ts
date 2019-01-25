@@ -1,6 +1,6 @@
 import { Bridge, MatrixRoom, RemoteUser, MatrixUser, RemoteRoom } from "matrix-appservice-bridge";
 import { IEventRequest, IBridgeContext, IEventRequestData } from "./MatrixTypes";
-import { MROOM_TYPE_UADMIN, MROOM_TYPE_IM, MROOM_TYPE_GROUP } from "./StoreTypes";
+import { MROOM_TYPE_UADMIN, MROOM_TYPE_IM, MROOM_TYPE_GROUP, IRemoteGroupData } from "./StoreTypes";
 import { PurpleProtocol } from "./purple/PurpleProtocol";
 import { IPurpleInstance } from "./purple/IPurpleInstance";
 import * as marked from "marked";
@@ -15,6 +15,7 @@ import { IAccountEvent, IChatJoinProperties, IChatJoined, IConversationEvent } f
 import { ProtoHacks } from "./ProtoHacks";
 import { RoomAliasSet } from "./RoomAliasSet";
 import { MessageFormatter } from "./MessageFormatter";
+import { GatewayHandler } from "./GatewayHandler";
 const log = Logging.get("MatrixEventHandler");
 
 const RETRY_JOIN_MS = 5000;
@@ -32,6 +33,7 @@ export class MatrixEventHandler {
         private store: Store,
         private deduplicator: Deduplicator,
         private config: Config,
+        private gatewayHandler: GatewayHandler,
     ) {
         this.roomAliases = new RoomAliasSet(this.config.portals, this.purple);
         this.pendingRoomAliases = new Map();
@@ -54,12 +56,14 @@ export class MatrixEventHandler {
             log.warn(`..but there is no protocol configured to handle it.`);
             return;
         }
-        const {protocol, properties} = res;
+        const protocol = res.protocol;
         // XXX: Check if this chat already has a portal and refuse to bridge it.
+        const properties = Util.sanitizeProperties(res.properties);
         if (await this.store.getRoomByRemoteData({
-            properties: Util.sanitizeProperties(properties), // for joining
+            properties, // for joining
             protocol_id: protocol.id,
-        }, "group")) {
+            type: "group",
+        })) {
             log.warn("Room for", properties, "already exists, not allowing alias.");
             return null;
         }
@@ -157,7 +161,7 @@ export class MatrixEventHandler {
         // Validate room entries
         const roomProtocol = roomType ? context.rooms.remote.get("protocol_id") : null;
         if (roomProtocol == null) {
-            log.error("Room protocol was null, we cannot handle this event!");
+            log.debug("Room protocol was null, we cannot handle this event!");
             return;
         }
 
@@ -451,10 +455,16 @@ Say \`help\` for more commands.
     private async handleGroupMessage(context: IBridgeContext, event: IEventRequestData) {
         log.info(`Handling group message for ${event.room_id}`);
         const roomProtocol = context.rooms.remote.get("protocol_id");
+        const isGateway = context.rooms.remote.get("gateway");
+        const name = context.rooms.remote.get("room_name");
+        if (isGateway) {
+            const msg = MessageFormatter.matrixEventToBody(event, this.config.bridge);
+            this.gatewayHandler.sendMatrixMessage(name, event.sender, msg, context);
+            return;
+        }
         try {
             const {acct, newAcct} = await this.getAccountForMxid(context, event);
             log.info(`Got ${acct.name} for ${event.sender}`);
-            const name = context.rooms.remote.get("room_name");
             if (!acct.isInRoom(name)) {
                 log.debug(`${event.sender} talked in ${name}, joining them.`);
                 const props = Util.desanitizeProperties(
@@ -500,6 +510,17 @@ Say \`help\` for more commands.
         const membership = event.content.membership;
         log.info(`Handling group ${event.sender} ${membership}`);
         let acct: IPurpleAccount;
+        const isGateway = context.rooms.remote.get("gateway");
+        const name = context.rooms.remote.get("room_name");
+        if (isGateway) {
+            const displayname = event.content.displayname ||
+                (await this.bridge.getIntent().getProfileInfo(event.sender)).displayname;
+            this.gatewayHandler.sendMatrixMembership(
+                name, event.sender, displayname, membership, context,
+            );
+            return;
+        }
+
         try {
             acct = (await this.getAccountForMxid(context, event)).acct;
         } catch (ex) {
@@ -512,7 +533,6 @@ Say \`help\` for more commands.
             }
             return;
         }
-        const name = context.rooms.remote.get("room_name");
         const props = Util.desanitizeProperties(Object.assign({}, context.rooms.remote.get("properties")));
         log.info(`Sending ${membership} to`, props);
         if (membership === "join") {

@@ -53,6 +53,10 @@ export class PresenceCache {
         }
     }
 
+    public modifyStatus(userJid: string, status: IPresenceStatus) {
+        this.presence.set(userJid, status);
+    }
+
     public add(stanza: xml.Element): IPresenceDelta|undefined {
         return this._add(stanza);
     }

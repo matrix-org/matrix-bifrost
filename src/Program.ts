@@ -121,19 +121,21 @@ class Program {
         }
 
         const purple = this.purple!;
-        
+
         if (this.cfg.metrics.enable) {
             log.info("Enabling metrics");
             Metrics.init(this.bridge);
         }
         this.store = new Store(this.bridge);
         this.profileSync = new ProfileSync(this.bridge, this.cfg);
-        this.eventHandler = new MatrixEventHandler(purple, this.store, this.deduplicator, this.config);
         this.roomHandler = new MatrixRoomHandler(
             this.purple!, this.profileSync, this.store, this.cfg, this.deduplicator,
         );
         this.roomSync = new RoomSync(purple, this.store, this.deduplicator);
-        this.gatewayHandler = new GatewayHandler(purple, this.bridge);
+        this.gatewayHandler = new GatewayHandler(purple, this.bridge, this.cfg.bridge, this.store, this.profileSync);
+        this.eventHandler = new MatrixEventHandler(
+            purple, this.store, this.deduplicator, this.config, this.gatewayHandler,
+        );
         let autoReg: AutoRegistration|undefined;
         if (this.config.autoRegistration.enabled && this.config.autoRegistration.protocolSteps !== undefined) {
             autoReg = new AutoRegistration(

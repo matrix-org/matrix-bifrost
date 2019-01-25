@@ -4,6 +4,7 @@
 
 import { IPurpleAccount } from "./IPurpleAccount";
 import { IBasicProtocolMessage } from "../MessageFormatter";
+import { IGatewayRoom } from "../GatewayHandler";
 
 export interface IChatJoinProperties {[key: string]: string; }
 
@@ -51,6 +52,8 @@ export interface IUserStateChanged extends IConversationEvent {
     state: "joined"|"left";
     kicker: string|undefined;
     reason?: string;
+    gatewayAlias: string|null;
+    id: string;
 }
 
 export interface IChatStringState extends IConversationEvent {
@@ -66,4 +69,22 @@ export interface IUserInfo extends IAccountEvent {
 export interface IChatTyping extends IConversationEvent {
     sender: string;
     typing: boolean;
+}
+
+export interface IGatewayRequest {
+    roomAlias: string;
+    result: (err: Error|null, res?: any) => void;
+}
+
+export interface IGatewayRoomQuery extends IGatewayRequest {
+    onlyCheck: boolean;
+    result: (err: Error|null, res?: string|IGatewayRoom) => void;
+}
+
+export interface IGatewayJoin {
+    sender: string;
+    protocol_id: string;
+    join_id: string;
+    roomAlias: string;
+    room_name: string;
 }

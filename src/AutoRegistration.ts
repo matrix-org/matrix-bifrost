@@ -1,5 +1,5 @@
 import { IConfigAutoReg } from "./Config";
-import { Bridge } from "matrix-appservice-bridge";
+import { Bridge, MatrixUser } from "matrix-appservice-bridge";
 import * as request from "request-promise-native";
 import { Util } from "./Util";
 import { Logging } from "matrix-appservice-bridge";
@@ -102,27 +102,37 @@ export class AutoRegistration {
         return this.registerUser(protocol.id, mxid);
     }
 
-    private getSaneMxId(mxId: string) {
-        const sane = mxId.replace(/:/g, "_").replace(/@/g, "");
-        return sane.replace(/([A-Z])/g, "^$1".toLowerCase());
+    public generateParametersFor(protocol: string, mxId: string) {
+            if (!this.isSupported(protocol)) {
+                throw new Error("Protocol unsupported");
+            }
+            // We assume the caller has already validated this.
+            const proto = this.purple.getProtocol(protocol)!;
+            const step = this.autoRegConfig.protocolSteps![protocol];
+            return this.generateParameters(step.parameters, mxId);
     }
 
-    private generateParameters(parameters: {[key: string]: string}, mxId: string, profile: any = {})
+    public generateParameters(parameters: {[key: string]: string}, mxId: string, profile: any = {})
         : {[key: string]: string} {
         const body = {};
-        const mxIdParts = mxId.substr(1).split(":");
-        //
+        const mxUser = new MatrixUser(mxId);
         for (const key of Object.keys(parameters)) {
             let val = parameters[key];
             val = val.replace("<T_MXID>", mxId);
             val = val.replace("<T_MXID_SANE>", this.getSaneMxId(mxId));
-            val = val.replace("<T_LOCALPART>", mxIdParts[0]);
-            val = val.replace("<T_DISPLAYNAME>", profile.displayname || mxIdParts[0]);
+            val = val.replace("<T_LOCALPART>", mxUser.localpart);
+            val = val.replace("<T_DOMAIN>", mxUser.host);
+            val = val.replace("<T_DISPLAYNAME>", profile.displayname || mxUser.localpart);
             val = val.replace("<T_GENERATEPWD>", Util.passwordGen(32));
             val = val.replace("<T_AVATAR>", profile.avatar_url || "");
             body[key] = val;
         }
         return body;
+    }
+
+    private getSaneMxId(mxId: string) {
+        const sane = mxId.replace(/:/g, "_").replace(/@/g, "");
+        return sane.replace(/([A-Z])/g, "^$1".toLowerCase());
     }
 
     private async handleHttpRegistration(mxId: string, step: IAutoRegStep) {

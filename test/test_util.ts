@@ -36,18 +36,18 @@ describe("Util", () => {
             ).to.equal("@_purple_protocol_=40fred=3abanana.com:example.com");
         });
         it("should create a sensible userId for an xmpp jid", () => {
-            const mxUser =  XMPP_PROTOCOL.getMxIdForProtocol("frogman@frogplanet.com", "example.com", "_xmpp_");
+            const mxUser = XMPP_PROTOCOL.getMxIdForProtocol("frogman@frogplanet.com", "example.com", "_xmpp_");
             expect(
                 mxUser.getId(),
-            ).to.equal("@_xmpp_frogman_frogplanet.com:example.com");
+            ).to.equal("@_xmpp_frogman=40frogplanet.com:example.com");
         });
-        it("should create a sensible userId for an xmpp jid", () => {
-            const mxUser =  XMPP_PROTOCOL.getMxIdForProtocol(
+        it("should create a sensible userId for an xmpp jid with a resource", () => {
+            const mxUser = XMPP_PROTOCOL.getMxIdForProtocol(
                 "frogman@frogplanet.com/frogdevice", "example.com", "_xmpp_",
             );
             expect(
                 mxUser.getId(),
-            ).to.equal("@_xmpp_frogdevice_frogman_frogplanet.com:example.com");
+            ).to.equal("@_xmpp_frogdevice=2ffrogman=40frogplanet.com:example.com");
         });
     });
     describe("passwordGen", () => {

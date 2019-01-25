@@ -9,29 +9,19 @@ import { IEventBody,
     IChatInvite,
     IReceivedImMsg,
     IChatTyping,
+    IGatewayJoin,
+    IGatewayRoomQuery,
 } from "./PurpleEvents";
 import { IConfigPurple } from "../Config";
 import { EventEmitter } from "events";
-
-export interface IPCMessageIncoming {
-    i: number;
-    module: string;
-    function: string;
-    args: any[];
-}
-
-export interface IPCMessageResult {
-    i: number;
-    module: string;
-    function: string;
-    thrown: string|null;
-    result: any;
-}
+import { IEventRequestData } from "../MatrixTypes";
+import { IGateway } from "./IGateway";
 
 export interface IPurpleInstance extends EventEmitter {
+    gateway: IGateway|null;
     createPurpleAccount(username, protocol: PurpleProtocol): IPurpleAccount;
     getBuddyFromChat(conv: any, buddy: string): any;
-    start(config: IConfigPurple): Promise<void>;
+    start(): Promise<void>;
     getAccount(username: string, protocolId: string, mxid?: string): IPurpleAccount|null;
     getProtocol(id: string): PurpleProtocol|undefined;
     getProtocols(): PurpleProtocol[];
@@ -45,8 +35,10 @@ export interface IPurpleInstance extends EventEmitter {
     on(name: "chat-user-joined"|"chat-user-left", cb: (ev: IUserStateChanged) => void);
     on(name: "chat-topic", cb: (ev: IChatStringState) => void);
     on(name: "chat-invite", cb: (ev: IChatInvite) => void);
-    on(name: "received-im-msg"|"received-chat-msg", cb: (ev: IReceivedImMsg) => void);
+    on(name: "gateway-queryroom", cb: (ev: IGatewayRoomQuery) => void);
+    on(name: "gateway-joinroom", cb: (ev: IGatewayJoin) => void);
     on(name: "chat-typing"|"im-typing", cb: (ev: IChatTyping) => void);
+    on(name: "received-im-msg"|"received-chat-msg", cb: (ev: IReceivedImMsg) => void);
 
     needsDedupe(): boolean;
     needsAccountLock(): boolean;

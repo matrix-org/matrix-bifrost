@@ -1,6 +1,6 @@
 import { Bridge, MatrixUser, Intent, Logging} from "matrix-appservice-bridge";
 import { IPurpleInstance } from "./purple/IPurpleInstance";
-import { MROOM_TYPE_GROUP, MROOM_TYPE_IM } from "./StoreTypes";
+import { MROOM_TYPE_GROUP, MROOM_TYPE_IM, IRemoteGroupData } from "./StoreTypes";
 import {
     IReceivedImMsg,
     IChatInvite,
@@ -136,7 +136,7 @@ export class MatrixRoomHandler {
     }
 
     private async createOrGetGroupChatRoom(
-        data: IConversationEvent|IChatInvite|IChatJoined,
+        data: IConversationEvent|IChatInvite|IChatJoined|IUserStateChanged,
         intent: Intent,
         getOnly: boolean = false,
     ) {
@@ -157,28 +157,39 @@ export class MatrixRoomHandler {
             log.info("room was created, no longer waiting");
         }
 
-        // Check to see if we have a room for this IM.
-        const roomStore = this.bridge.getRoomStore();
-
         // XXX: This is potentially fragile as we are basically doing a lookup via
         // a set of properties we hope will be unique.
         if (props) {
             ProtoHacks.removeSensitiveJoinProps(data.account.protocol_id, props);
         }
-        let remoteData = {
+        let remoteData: IRemoteGroupData = {
             protocol_id: data.account.protocol_id,
             room_name: roomName,
         };
         log.debug("Searching for existing remote room:", remoteData);
         // For some reason the following function wites to remoteData, so recreate it later
-        const remoteEntries = await roomStore.getEntriesByRemoteRoomData(remoteData);
-        if (remoteEntries !== null && remoteEntries.length > 0) {
-            if (remoteEntries.length > 1) {
-                throw Error(`Have multiple matrix rooms assigned for chat. Bailing`);
-            }
-            return remoteEntries[0].matrix.getId();
+        const remoteEntry = await this.store.getRoomByRemoteData(remoteData);
+        if (remoteEntry) {
+            return remoteEntry.matrix.getId();
         }
         let roomId;
+
+        // This could be that this is the first user to join a gateway room
+        // so we should try to create an entry for it ahead of time.
+        if ((data as any).gatewayAlias) {
+            const alias = ((data as any).gatewayAlias);
+            log.info("Request was a gateway request, so attempting to find room and create an entry");
+            try {
+                roomId = (await this.bridge.getIntent().getClient().getRoomIdForAlias(alias)).room_id;
+                remoteData.gateway = true;
+                await this.store.storeRoom(roomId, MROOM_TYPE_GROUP, remoteId, remoteData);
+            } catch (ex) {
+                log.warn("Room was not found", ex);
+                throw Error("Room doesn't exist, refusing to make room");
+            }
+            log.info(`Found ${roomId} for ${alias}`);
+            return roomId;
+        }
 
         if (getOnly) {
             throw new Error("Room doesn't exist, refusing to make room");
@@ -369,6 +380,10 @@ export class MatrixRoomHandler {
         try {
             if (data.state === "joined") {
                 await intent.join(roomId);
+                // If this is a gateway join, we need to report back to the user.
+                if (data.gatewayAlias) {
+                    this
+                }
                 const account = this.purple.getAccount(data.account.username, data.account.protocol_id)!;
                 await this.profileSync.updateProfile(
                     protocol,

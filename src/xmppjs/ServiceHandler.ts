@@ -1,15 +1,17 @@
 import { Element, x } from "@xmpp/xml";
 import { XmppJsInstance } from "./XJSInstance";
-import { jid } from "@xmpp/jid";
+import { jid, JID } from "@xmpp/jid";
 import { Logging } from "matrix-appservice-bridge";
 import * as request from "request-promise-native";
+import { IGatewayRoom } from "../GatewayHandler";
+import { IGatewayRoomQuery } from "../purple/PurpleEvents";
 
 const log = Logging.get("ServiceHandler");
 
 let version = "Unknown";
 try {
     // tslint:disable-next-line: no-var-requires
-    version = require("../../package.json").version;
+    version = require("../../../package.json").version;
 } catch (ex) {
     // This might not exist.
 }
@@ -20,6 +22,14 @@ export class ServiceHandler {
     private avatarCache: Map<string, {data: Buffer, type: string}>;
     constructor(private xmpp: XmppJsInstance) {
         this.avatarCache = new Map();
+    }
+
+    public parseAliasFromJID(to: JID): string|null {
+        const aliasRaw = /#(.+)#(.+)/g.exec(to.local);
+        if (!aliasRaw || aliasRaw.length < 3) {
+            return null;
+        }
+        return `#${aliasRaw[1]}:${aliasRaw[2]}`;
     }
 
     public async handleIq(stanza: Element, intent: any): Promise<void> {
@@ -37,9 +47,9 @@ export class ServiceHandler {
             return this.handleVcard(from, to, id, intent);
         }
 
-        // if (stanza.getChildByAttr("xmlns", "http://jabber.org/protocol/disco#info")) {
-        //     return this.handleRoomDiscovery(to, from, id, intent);
-        // }
+        if (stanza.getChildByAttr("xmlns", "http://jabber.org/protocol/disco#info")) {
+             return this.handleRoomDiscovery(to, from, id);
+        }
 
         return this.xmpp.xmppWriteToStream(x("iq", {
             type: "error",
@@ -96,22 +106,35 @@ export class ServiceHandler {
         ));
     }
 
-    private async handleRoomDiscovery(toStr: string, from: string, id: string, intent: any) {
+    private queryRoom(roomAlias: string, onlyCheck: boolean = false): Promise<string|IGatewayRoom> {
+        return new Promise((resolve, reject) => {
+            this.xmpp.emit("gateway-queryroom", {
+                roomAlias,
+                onlyCheck,
+                result: (err, res) => {
+                    if (err) {
+                        reject(err);
+                    }
+                    resolve(res);
+                },
+            } as IGatewayRoomQuery);
+        });
+    }
+
+    private async handleRoomDiscovery(toStr: string, from: string, id: string) {
         const to = jid(toStr);
-        const aliasRaw = /#(.+)#(.+)/g.exec(to.local);
-        if (aliasRaw === null || aliasRaw.length < 3) {
-            return;
-        }
+        const alias = this.parseAliasFromJID(to);
         try {
-            const alias = `#${aliasRaw[1]}:${aliasRaw[2]}`;
-            log.info(`${from} is trying to discover '${alias}'`);
-            const res = await intent.getClient().getRoomIdForAlias(alias);
-            log.info(`Found ${res.room_id}`);
+            if (!alias) {
+                throw Error("Not a valid alias");
+            }
+            const roomId = await this.queryRoom(alias, true);
+            log.info(`Response for alias request ${toStr} -> ${roomId}`);
             await this.xmpp.xmppWriteToStream(
                 x("iq", {
                     type: "result",
                     to: from,
-                    from: to.domain,
+                    from: toStr,
                     id,
                 },
                     x("query", {
@@ -188,6 +211,7 @@ export class ServiceHandler {
         }
         let profile: {displayname?: string, avatar_url?: string};
         try {
+            // TODO: Move this to a gateway-profilelookup or something.
             profile = await intent.getProfileInfo(account.mxId, null);
         } catch (ex) {
             log.warn("Profile fetch failed for ", account.mxId, ex);
@@ -208,7 +232,6 @@ export class ServiceHandler {
                 const res = await this.getThumbnailBuffer(profile.avatar_url, intent);
                 if (res) {
                     const b64 = res.data.toString("base64");
-                    console.log(b64);
                     vCard.push(
                         x("PHOTO", undefined, [
                             x("BINVAL", undefined, b64),

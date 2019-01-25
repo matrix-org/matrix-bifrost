@@ -12,19 +12,6 @@ export class Util {
         return `${protocol}://${id}`;
     }
 
-    public static getMxIdForProtocol(
-        protocol: PurpleProtocol,
-        senderId: string,
-        domain: string,
-        prefix: string = "",
-        isGroupChat: boolean = false): MatrixUser {
-        // This is a little bad, but we drop the prpl- because it's a bit ugly.
-        const protocolName = protocol.id.startsWith("prpl-") ? protocol.id.substr("prpl-".length) : protocol.id;
-        // senderId containing : can mess things up
-        senderId = senderId.replace(/\:/g, "=3a");
-        return new MatrixUser(`@${prefix}${protocolName}_${senderId}:${domain}`);
-    }
-
     public static passwordGen(minLength: number = 32): string {
         let password = "";
         while (password.length < minLength) {
@@ -38,7 +25,7 @@ export class Util {
         return password;
     }
 
-    public static sanitizeProperties(props: IChatJoinProperties) {
+    public static sanitizeProperties(props: IChatJoinProperties): IChatJoinProperties {
         for (const k of Object.keys(props)) {
             const value = props[k];
             const newkey = k.replace(/\./g, "·");

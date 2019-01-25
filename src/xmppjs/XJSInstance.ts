@@ -1,10 +1,10 @@
-import { IPurpleInstance } from "../purple/IPurpleInstance";
 import { EventEmitter } from "events";
-import { Logging, MatrixUser } from "matrix-appservice-bridge";
-import { IConfigPurple } from "../Config";
-import { PurpleProtocol } from "../purple/PurpleProtocol";
+import { Logging, MatrixUser, Bridge } from "matrix-appservice-bridge";
 import { Element } from "@xmpp/xml";
 import { jid, JID } from "@xmpp/jid";
+import { IPurpleInstance } from "../purple/IPurpleInstance";
+import { Config } from "../Config";
+import { PurpleProtocol } from "../purple/PurpleProtocol";
 import { IXJSBackendOpts } from "./XJSBackendOpts";
 import { XmppJsAccount } from "./XJSAccount";
 import { IPurpleAccount } from "../purple/IPurpleAccount";
@@ -13,13 +13,16 @@ import { IAccountEvent,
     IReceivedImMsg,
     IConversationEvent,
     IUserStateChanged,
-    IChatTyping} from "../purple/PurpleEvents";
+    IChatTyping,
+    IGatewayJoin} from "../purple/PurpleEvents";
 import { IBasicProtocolMessage, IMessageAttachment } from "../MessageFormatter";
 import { PresenceCache } from "./PresenceCache";
 import { Metrics } from "../Metrics";
 import { ServiceHandler } from "./ServiceHandler";
 import { XJSConnection } from "./XJSConnection";
 import { AutoRegistration } from "../AutoRegistration";
+import { XmppJsGateway } from "./XJSGateway";
+import { IEventRequestData } from "../MatrixTypes";
 
 const xLog = Logging.get("XMPP-conn");
 const log = Logging.get("XmppJsInstance");
@@ -39,13 +42,13 @@ class XmppProtocol extends PurpleProtocol {
             domain: string,
             prefix: string = "",
             isGroupChat: boolean = false) {
-        // This is a little bad, but we drop the prpl- because it's a bit ugly.
-        const protocolName = this.id.startsWith("prpl-") ? this.id.substr("prpl-".length) : this.id;
-        // senderId containing : can mess things up
-        senderId = senderId.replace(/\:/g, "=3a");
         const j = jid(senderId);
-        const resource = j.resource ? j.resource + "_" : "";
-        return new MatrixUser(`@${prefix}${resource}${j.local}_${j.domain}:${domain}`);
+        /* is not allowed in a JID localpart so it is used as a seperator.
+           =2F is /, =40 is @
+           We also show the resource first if given, because it's usually the nick
+           of a user which is more important than the localpart. */
+        const resource = j.resource ? j.resource + "=2f" : "";
+        return new MatrixUser(`@${prefix}${resource}${j.local}=40${j.domain}:${domain}`);
     }
 }
 
@@ -62,9 +65,10 @@ export class XmppJsInstance extends EventEmitter implements IPurpleInstance {
     private defaultRes!: string;
     private connectionWasDropped: boolean;
     private bufferedMessages: Array<{xmlMsg: Element, resolve: (res: Promise<void>) => void}>;
-    private intent!: any;
     private autoRegister?: AutoRegistration;
-    constructor() {
+    private bridge!: Bridge;
+    private xmppGateway: XmppJsGateway;
+    constructor(private config: Config) {
         super();
         this.canWrite = false;
         this.accounts = new Map();
@@ -72,11 +76,25 @@ export class XmppJsInstance extends EventEmitter implements IPurpleInstance {
         this.seenMessages = new Set();
         this.presenceCache = new PresenceCache();
         this.serviceHandler = new ServiceHandler(this);
+        this.xmppGateway = new XmppJsGateway(this, config.bridge);
         this.connectionWasDropped = false;
+    }
+
+    get gateway() {
+        return this.xmppGateway;
     }
 
     get defaultResource(): string {
         return this.defaultRes;
+    }
+
+    get xmppAddress(): JID {
+        return this.myAddress;
+    }
+
+    public preStart(bridge: Bridge, autoRegister?: AutoRegistration) {
+        this.autoRegister = autoRegister;
+        this.bridge = bridge;
     }
 
     public createPurpleAccount(username) {
@@ -95,22 +113,21 @@ export class XmppJsInstance extends EventEmitter implements IPurpleInstance {
 
     public xmppAddSentMessage(id: string) { this.seenMessages.add(id); }
 
-    public isOurJid(j: JID): boolean {
+    public isWaitingToJoin(j: JID): string|undefined {
         for (const acct of this.accounts.values()) {
-            if (acct.roomHandles.get(`${j.local}@${j.domain}`) === j.resource) {
-                return true;
+            if (acct.waitingToJoin.has(`${j.local}@${j.domain}`)) {
+                return acct.remoteId + "/" + acct.resource;
             }
         }
-        return false;
+        return;
     }
 
     public getBuddyFromChat(conv: any, buddy: string): any {
         return undefined;
     }
 
-    public async start(config: IConfigPurple, intent?: any, autoRegister?: AutoRegistration): Promise<void> {
-        this.intent = intent;
-        this.autoRegister = autoRegister;
+    public async start(): Promise<void> {
+        const config = this.config.purple;
         const opts = config.backendOpts as IXJSBackendOpts;
         if (!opts || !opts.service || !opts.domain || !opts.password) {
             throw Error("Missing opts for xmpp: service, domain, password");
@@ -244,7 +261,15 @@ export class XmppJsInstance extends EventEmitter implements IPurpleInstance {
     public getUsernameFromMxid(
             mxid: string,
             prefix: string = ""): {username: string, protocol: PurpleProtocol} {
+        // This is for GHOST accts
         let uName = new MatrixUser(mxid, false).localpart;
+        const match = /@(.+.+=2f)?(.+=40)(.+)/.exec(uName);
+        if (!match) {
+            throw Error("Username didn't match");
+        }
+        const resource = match[1].substr(prefix.length, match[0].length - (prefix.length + "=2f".length));
+        const localpart = match[2].substr(0, match[1].length - "=40".length);
+        const domain = match[3];
         uName = uName.replace(prefix, "");
         // XXX: Gah, underscore spittling is hard with a resource.
         uName = uName.replace(/\=3a/g, ":");
@@ -264,34 +289,44 @@ export class XmppJsInstance extends EventEmitter implements IPurpleInstance {
         return Buffer.from(stanza.children.map((c) => c.toString()).join("")).toString("base64");
     }
 
-    private onStanza(stanza: Element) {
+    private async onStanza(stanza: Element) {
         const startedAt = Date.now();
-        const id = stanza.attrs.id || this.generateIdforMsg(stanza);
+        const id = stanza.attrs.id = stanza.attrs.id || this.generateIdforMsg(stanza);
         if (this.seenMessages.has(id)) {
             return;
         }
         this.seenMessages.add(id);
         log.debug("Stanza:", stanza.toJSON());
-        const error: any = stanza.getChild("error") || null;
-
-        if (error) {
-            log.error("Stanza had error:", error.children);
-        }
         const from = stanza.attrs.from ? jid(stanza.attrs.from) : null;
         const to = stanza.attrs.to ? jid(stanza.attrs.to) : null;
-        const isOurs = to !== null && to.domain === this.myAddress.domain && to.resource === "";
+
+        const isOurs = to !== null && to.domain === this.myAddress.domain;
         log.info(`Got from=${from} to=${to} isOurs=${isOurs}`);
+        const alias = isOurs && to!.local.startsWith("#") && this.serviceHandler.parseAliasFromJID(to!) || null;
         try {
+            if (isOurs) {
+                if (stanza.is("iq") && stanza.getAttr("type") === "get") {
+                    await this.serviceHandler.handleIq(stanza, this.bridge.getIntent());
+                    return;
+                }
+                // If it wasn't an IQ or a room, then it's probably a PM.
+            }
+
+            if (alias && stanza.is("presence")) {
+                this.gateway.handleStanza(stanza, alias);
+                return;
+            }
+
             if (stanza.is("message")) {
-                this.handleMessageStanza(stanza);
-            } else if (stanza.is("presence") && !isOurs) {
-                this.handlePresenceStanza(stanza);
+                this.handleMessageStanza(stanza, alias);
+            } else if (stanza.is("presence")) {
+                this.handlePresenceStanza(stanza, alias);
             } else if (stanza.is("iq") &&
                 ["result", "error"].includes(stanza.getAttr("type")) &&
                 stanza.attrs.id) {
                 this.emit("iq." + id, stanza);
             } else if (stanza.is("iq") && stanza.getAttr("type") === "get" && isOurs) {
-                this.serviceHandler.handleIq(stanza, this.intent);
+                this.serviceHandler.handleIq(stanza, this.bridge.getIntent());
             }
         } catch (ex) {
             log.warn("Failed to handle stanza: ", ex);
@@ -300,11 +335,26 @@ export class XmppJsInstance extends EventEmitter implements IPurpleInstance {
         Metrics.requestOutcome(true, Date.now() - startedAt, "success");
     }
 
-    private async handleMessageStanza(stanza: Element) {
-        const from = stanza.attrs.from ? jid(stanza.attrs.from) : null;
-        const to = stanza.attrs.to ? jid(stanza.attrs.to) : null;
+    private async handleMessageStanza(stanza: Element, alias: string|null) {
+        if (!stanza.attrs.from || !stanza.attrs.to) {
+            return;
+        }
+        const to = jid(stanza.attrs.to)!;
         let localAcct = this.accounts.get(`${to!.local}@${to!.domain}`)!;
-        if (!localAcct) {
+        let from = jid(stanza.attrs.from);
+        let convName = `${from.local}@${from.domain}`;
+        if (alias) {
+            log.debug("This is an alias room, seeing if the user has a handle jid");
+            convName = `${to.local}@${to.domain}`;
+            stanza.attrs.from = this.gateway.getRoomJidForRealJid(convName, stanza.attrs.from) || stanza.attrs.from;
+            log.debug(stanza.attrs.from);
+            from = jid(stanza.attrs.from) ;
+            this.gateway.reflectXMPPMessage(stanza);
+        }
+        const type = stanza.attrs.type;
+        const chatState = stanza.getChildByAttr("xmlns", "http://jabber.org/protocol/chatstates");
+
+        if (!localAcct && !alias) {
             // No local account, attempt to autoregister it?
             if (this.autoRegister) {
                 try {
@@ -317,13 +367,14 @@ export class XmppJsInstance extends EventEmitter implements IPurpleInstance {
             } else {
                 log.warn("Could not handle message, auto registration is disabled");
             }
+        } else if (alias) {
+            // This is a gateway, so setup a fake account.
+            localAcct = {
+                remoteId: `${to!.local}@${to!.domain}`,
+            } as any;
+        } else {
+            localAcct.xmppBumpLastStanzaTs(convName);
         }
-        if (!from) {
-            return;
-        }
-        const convName = `${from.local}@${from.domain}`;
-        const type = stanza.attrs.type;
-        const chatState = stanza.getChildByAttr("xmlns", "http://jabber.org/protocol/chatstates");
         if (chatState) {
             if (chatState.is("composing") || chatState.is("active") || chatState.is("paused")) {
                 const eventName = type === "groupchat" ? "chat-typing" : "im-typing";
@@ -359,6 +410,7 @@ export class XmppJsInstance extends EventEmitter implements IPurpleInstance {
                 },
                 sender: stanza.attrs.from,
                 string: subject,
+                isGateway: false,
             });
         }
 
@@ -411,10 +463,11 @@ export class XmppJsInstance extends EventEmitter implements IPurpleInstance {
                     protocol_id: XMPP_PROTOCOL.id,
                     username: localAcct.remoteId,
                 },
+                isGateway: false,
             } as IReceivedImMsg);
         } else if (type === "chat" || type === "normal") {
             if (!localAcct) {
-                log.debug(`Handling a message to ${to}, who does not yet exist.`);
+                log.debug(`Handling a message to ${convName}, who does not yet exist.`);
             }
             log.debug("Emitting chat message", message);
             const isMucPm = stanza.getChildByAttr("xmlns", "http://jabber.org/protocol/muc#user");
@@ -430,10 +483,10 @@ export class XmppJsInstance extends EventEmitter implements IPurpleInstance {
         }
     }
 
-    private handlePresenceStanza(stanza: Element) {
+    private handlePresenceStanza(stanza: Element, gatewayAlias: string|null) {
         const to = jid(stanza.getAttr("to"));
         // XMPP is case insensitive.
-        const localAcct = this.accounts.get(`${to.local}@${to.domain}`)!;
+        const localAcct = this.accounts.get(`${to.local}@${to.domain}`);
         const from = jid(stanza.getAttr("from"));
         const convName = `${from.local}@${from.domain}`;
 
@@ -442,7 +495,7 @@ export class XmppJsInstance extends EventEmitter implements IPurpleInstance {
             return;
         }
 
-        if (delta.error) {
+        if (delta.error && localAcct) {
             if (delta.error === "conflict") {
                 log.info(`${from.toString()} conflicted with another user, attempting to fix`);
                 localAcct.xmppRetryJoin(from).catch((err) => {
@@ -453,8 +506,10 @@ export class XmppJsInstance extends EventEmitter implements IPurpleInstance {
             log.error(`Failed to join ${from} ${to} :`, delta.errorMsg);
         }
 
+        const username = localAcct ? localAcct.remoteId : to.toString();
+
         // emit a chat-joined-new if an account was joining this room.
-        if (delta.isSelf && localAcct.waitingToJoin.has(convName)) {
+        if (delta.isSelf && localAcct && localAcct.waitingToJoin.has(convName)) {
             localAcct.waitingToJoin.delete(convName);
             this.emit(`chat-joined-new`, {
                 eventName: "chat-joined-new",
@@ -463,8 +518,8 @@ export class XmppJsInstance extends EventEmitter implements IPurpleInstance {
                     name: convName,
                 },
                 account: {
-                    protocol_id: localAcct.protocol.id,
-                    username: localAcct.remoteId,
+                    protocol_id: XMPP_PROTOCOL.id,
+                    username,
                 },
                 join_properties: {
                     room: from.local,
@@ -490,19 +545,20 @@ export class XmppJsInstance extends EventEmitter implements IPurpleInstance {
                     name: convName,
                 },
                 account: {
-                    protocol_id: localAcct!.protocol.id,
-                    username: localAcct!.remoteId,
+                    protocol_id: XMPP_PROTOCOL.id,
+                    username,
                 },
                 sender: stanza.attrs.from,
                 state: "left",
                 kicker,
                 reason: wasKicked ? wasKicked.reason : delta.status!.status,
+                gatewayAlias,
             } as IUserStateChanged);
             return;
         }
 
         if (delta.changed.includes("online")) {
-            if (delta.status && delta.isSelf) {
+            if (delta.status && delta.isSelf && localAcct) {
                 // Always emit this.
                 this.emit("chat-joined", {
                     eventName: "chat-joined",
@@ -510,23 +566,28 @@ export class XmppJsInstance extends EventEmitter implements IPurpleInstance {
                         name: convName,
                     },
                     account: {
-                        protocol_id: localAcct.protocol.id,
-                        username: localAcct.remoteId,
+                        protocol_id: XMPP_PROTOCOL.id,
+                        username,
                     },
                 } as IConversationEvent);
                 return;
             }
             if (delta.status && !delta.status.ours) {
+                if (this.isWaitingToJoin(to) === from.toString()) {
+                    // An account is waiting to join this room, so hold off on the
+                    return;
+                }
                 this.emit("chat-user-joined", {
                     conv: {
                         name: convName,
                     },
                     account: {
-                        protocol_id: localAcct.protocol.id,
-                        username: localAcct.remoteId,
+                        protocol_id: XMPP_PROTOCOL.id,
+                        username,
                     },
                     sender: stanza.attrs.from,
                     state: "joined",
+                    gatewayAlias,
                 } as IUserStateChanged);
             }
         }
