@@ -5,6 +5,7 @@
 import { IPurpleAccount } from "./IPurpleAccount";
 import { IBasicProtocolMessage } from "../MessageFormatter";
 import { IGatewayRoom } from "../GatewayHandler";
+import { IRemoteUserAccountRemote } from "../StoreTypes";
 
 export interface IChatJoinProperties {[key: string]: string; }
 
@@ -87,4 +88,11 @@ export interface IGatewayJoin {
     join_id: string;
     roomAlias: string;
     room_name: string;
+}
+
+export interface IStoreRemoteUser {
+    mxId: string;
+    remoteId: string;
+    protocol_id: string;
+    data?: any;
 }

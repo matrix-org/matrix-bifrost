@@ -7,6 +7,7 @@ import { Store } from "./Store";
 import { IPurpleInstance } from "./purple/IPurpleInstance";
 import { IPurpleAccount } from "./purple/IPurpleAccount";
 import { PurpleProtocol } from "./purple/PurpleProtocol";
+import { MUSER_TYPE_ACCOUNT } from "./StoreTypes";
 const log = Logging.get("AutoRegistration");
 
 export interface IAutoRegHttpOpts {
@@ -47,7 +48,7 @@ export class AutoRegistration {
             res = await this.handleHttpRegistration(mxId, step);
         } else if (step.type === "implicit") {
             const params = this.generateParameters(step.parameters, mxId);
-            await this.store.storeUserAccount(mxId, proto, params.username);
+            await this.store.storeUser(mxId, proto, params.username, MUSER_TYPE_ACCOUNT);
             return this.purple.getAccount(params.username, protocol, mxId)!;
         } else {
             throw new Error(`This method of registration is unsupported (${step.type})`);
@@ -59,7 +60,7 @@ export class AutoRegistration {
         log.debug(`Enabling account`);
         acct.setEnabled(true);
         log.debug(`Storing account in bridge store`);
-        await this.store.storeUserAccount(mxId, proto, res.username);
+        await this.store.storeUser(mxId, proto, res.username, MUSER_TYPE_ACCOUNT);
         return acct;
     }
 

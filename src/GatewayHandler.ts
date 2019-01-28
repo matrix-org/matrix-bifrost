@@ -65,7 +65,10 @@ export class GatewayHandler {
         const state = await intent.roomState(roomId, true);
         const nameEv = state.find((e) => e.type === "m.room.name");
         const topicEv = state.find((e) => e.type === "m.room.topic");
-        const membership = state.filter((e) => e.type === "m.room.member");
+        const bot = this.bridge.getBot();
+        const membership = state.filter((e) => e.type === "m.room.member").map((e) => {
+            return { isRemote: bot.isRemoteUser(e.sender), ...e };
+        });
         room = {
             name: nameEv ? nameEv.content.name : "",
             topic: topicEv ? topicEv.content.topic : "",
@@ -107,6 +110,17 @@ export class GatewayHandler {
         }
         log.info(`Updating membership for ${sender} in ${chatName}`);
         this.purple.gateway!.sendMatrixMembership(chatName, sender, displayname, membership, room, chatName);
+    }
+
+    public async rejoinRemoteUser(mxid: string, roomid: string) {
+        const intent = this.bridge.getIntent(mxid);
+        log.info(`Reconnecting ${mxid} to ${roomid}`);
+        const user = (await this.store.getRemoteUsersFromMxId(mxid))[0];
+        if (!user) {
+            log.warn("Cannot reconnect a user without a remote user stored");
+            return;
+        }
+        this.purple.gateway!.reconnectRemoteUser(user);
     }
 
     private async handleRoomJoin(data: IGatewayJoin) {
@@ -153,9 +167,6 @@ export class GatewayHandler {
             log.warn("Failed to join room:", ex.message);
             this.purple.gateway!.onRemoteJoin("Failed to join", data.join_id, undefined, undefined);
         }
-        // const roomId = await this.createOrGetGroupChatRoom(data, intent, true);
-
-        // Create the room mapping
     }
 
     private async handleRoomQuery(ev: IGatewayRoomQuery) {

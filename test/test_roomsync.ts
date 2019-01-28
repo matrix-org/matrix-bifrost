@@ -38,6 +38,7 @@ function createRoomSync(rooms: IRoomEntry[] = []) {
         on: (ev: string, func: () => void) => {
             // No-op
         },
+        getProtocol: () => true,
     };
 
     const store = {
@@ -58,7 +59,7 @@ function createRoomSync(rooms: IRoomEntry[] = []) {
         },
     };
 
-    return new RoomSync(purple as any, store as any, new Deduplicator());
+    return new RoomSync(purple as any, store as any, new Deduplicator(), {} as any);
 }
 
 describe("RoomSync", () => {

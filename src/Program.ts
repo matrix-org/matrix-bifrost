@@ -131,8 +131,8 @@ class Program {
         this.roomHandler = new MatrixRoomHandler(
             this.purple!, this.profileSync, this.store, this.cfg, this.deduplicator,
         );
-        this.roomSync = new RoomSync(purple, this.store, this.deduplicator);
         this.gatewayHandler = new GatewayHandler(purple, this.bridge, this.cfg.bridge, this.store, this.profileSync);
+        this.roomSync = new RoomSync(purple, this.store, this.deduplicator, this.gatewayHandler);
         this.eventHandler = new MatrixEventHandler(
             purple, this.store, this.deduplicator, this.config, this.gatewayHandler,
         );
@@ -176,6 +176,7 @@ class Program {
                 Util.createRemoteId(ev.account.protocol_id, ev.account.username),
             );
         });
+        log.info("Initiation of bridge complete");
         // await this.runBotAccounts(this.cfg.bridgeBot.accounts);
     }
 

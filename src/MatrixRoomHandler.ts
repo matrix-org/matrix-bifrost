@@ -1,6 +1,6 @@
 import { Bridge, MatrixUser, Intent, Logging} from "matrix-appservice-bridge";
 import { IPurpleInstance } from "./purple/IPurpleInstance";
-import { MROOM_TYPE_GROUP, MROOM_TYPE_IM, IRemoteGroupData } from "./StoreTypes";
+import { MROOM_TYPE_GROUP, MROOM_TYPE_IM, IRemoteGroupData, MUSER_TYPE_GHOST } from "./StoreTypes";
 import {
     IReceivedImMsg,
     IChatInvite,
@@ -9,6 +9,7 @@ import {
     IUserStateChanged,
     IChatStringState,
     IChatTyping,
+    IStoreRemoteUser,
 } from "./purple/PurpleEvents";
 import { ProfileSync } from "./ProfileSync";
 import { Util } from "./Util";
@@ -39,7 +40,9 @@ export class MatrixRoomHandler {
     ) {
         this.accountRoomLock = new Set();
         this.roomCreationLock = new Map();
-        purple.on("chat-joined", this.onChatJoined.bind(this));
+        if (this.purple.needsDedupe() || this.purple.needsAccountLock()) {
+            purple.on("chat-joined", this.onChatJoined.bind(this));
+        }
         purple.on("chat-joined-new", async (ev: IChatJoined) => {
             log.info("Handling joining of new chat", ev.account.username, ev.conv, ev.join_properties);
             const matrixUser = await this.store.getMatrixUserForAccount(ev.account);
@@ -63,6 +66,16 @@ export class MatrixRoomHandler {
         /* This also handles chat names, which are just set as the conv.name */
         purple.on("chat-topic", this.handleTopic.bind(this));
         purple.on("chat-typing", this.handleTyping.bind(this));
+        purple.on("store-remote-user", (storeUser: IStoreRemoteUser) => {
+            log.info(`Storing remote ghost for ${storeUser.mxId} -> ${storeUser.remoteId}`);
+            this.store.storeUser(
+                storeUser.mxId,
+                this.purple.getProtocol(storeUser.protocol_id)!,
+                storeUser.remoteId,
+                MUSER_TYPE_GHOST,
+                storeUser.data,
+            );
+        });
     }
 
     /**
@@ -361,8 +374,12 @@ export class MatrixRoomHandler {
     }
 
     private async handleRemoteUserState(data: IUserStateChanged) {
-        log.info(data.state === "joined" ? "Joining" : "Leaving", data.sender, "from", data.conv.name);
         const protocol = this.purple.getProtocol(data.account.protocol_id)!;
+        const remoteUser = await this.store.getRemoteUserBySender(data.sender, protocol);
+        if (remoteUser && !remoteUser.isRemote) {
+            return; // Do NOT handle state changes from our own users.
+        }
+        log.info(data.state === "joined" ? "Joining" : "Leaving", data.sender, "from", data.conv.name);
         const senderMatrixUser = protocol.getMxIdForProtocol(
             data.sender,
             this.config.bridge.domain,

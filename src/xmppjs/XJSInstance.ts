@@ -14,7 +14,8 @@ import { IAccountEvent,
     IConversationEvent,
     IUserStateChanged,
     IChatTyping,
-    IGatewayJoin} from "../purple/PurpleEvents";
+    IGatewayJoin,
+    IStoreRemoteUser} from "../purple/PurpleEvents";
 import { IBasicProtocolMessage, IMessageAttachment } from "../MessageFormatter";
 import { PresenceCache } from "./PresenceCache";
 import { Metrics } from "../Metrics";
@@ -153,7 +154,7 @@ export class XmppJsInstance extends EventEmitter implements IPurpleInstance {
             }
         });
 
-        xmpp.on("online", async (address) => {
+        xmpp.on("online", (address) => {
             xLog.info("gone online as " + address);
             this.myAddress = address;
             this.canWrite = true;
@@ -179,7 +180,8 @@ export class XmppJsInstance extends EventEmitter implements IPurpleInstance {
           if (status === "disconnecting" || status === "disconnected") {
               this.canWrite = false;
           }
-          if (status === "close") {
+          if (status === "disconnect") {
+              log.error("Connection to XMPP server was lost..");
               this.connectionWasDropped = true;
           }
           xLog.debug("status:", status);
@@ -511,6 +513,11 @@ export class XmppJsInstance extends EventEmitter implements IPurpleInstance {
         // emit a chat-joined-new if an account was joining this room.
         if (delta.isSelf && localAcct && localAcct.waitingToJoin.has(convName)) {
             localAcct.waitingToJoin.delete(convName);
+            this.emit("store-remote-user", {
+                mxId: localAcct.mxId,
+                remoteId: `${convName}/${localAcct.roomHandles.get(convName)}`,
+                protocol_id: XMPP_PROTOCOL.id,
+            } as IStoreRemoteUser);
             this.emit(`chat-joined-new`, {
                 eventName: "chat-joined-new",
                 purpleAccount: localAcct,

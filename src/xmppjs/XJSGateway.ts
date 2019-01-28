@@ -6,25 +6,33 @@ import { IEventRequestData, IBridgeContext } from "../MatrixTypes";
 import { IConfigBridge } from "../Config";
 import { MessageFormatter, IBasicProtocolMessage } from "..//MessageFormatter";
 import { Metrics } from "../Metrics";
-import { IGatewayRoomQuery, IGatewayJoin, IUserStateChanged } from "../purple/PurpleEvents";
+import { IGatewayRoomQuery, IGatewayJoin, IUserStateChanged, IStoreRemoteUser } from "../purple/PurpleEvents";
 import { IGatewayRoom } from "../GatewayHandler";
 import { PresenceCache } from "./PresenceCache";
 import { IRemoteGroupData } from "../StoreTypes";
+import { XHTMLIM } from "./XHTMLIM";
+import { BifrostRemoteUser } from "../Store";
 
 const log = Logging.get("XmppJsGateway");
 
 const MAX_HISTORY = 100;
 
+/**
+ * This class effectively implements a MUC that sits in between the gateway interface
+ * and XMPP.
+ */
+
 export class XmppJsGateway {
+    // For storing room history, should be clipped at MAX_HISTORY per room.
     private roomHistory: Map<string, [Element]>;
+    // For storing requests to be responded to, like joins
     private stanzaCache: Map<string, Element>; // id -> stanza
     private presenceCache: PresenceCache;
-    private remoteUsers: Map<string, Set<string>>; // room_id -> [real jids]
-    private roomUsers: Map<string, {[realJid: string]: string}>; // "room_name" -> roomJid
+    // Storing every XMPP user and their anonymous.
+    private roomUsers: Map<string, {[realJid: string]: string}>; // "room_name" -> {realJid: anonJid}
     constructor(private xmpp: XmppJsInstance, private config: IConfigBridge) {
         this.roomHistory = new Map();
         this.stanzaCache = new Map();
-        this.remoteUsers = new Map();
         this.roomUsers = new Map();
         this.presenceCache = new PresenceCache();
     }
@@ -51,10 +59,6 @@ export class XmppJsGateway {
         }
 
         if (delta.changed.includes("offline")) {
-            if (delta.isSelf) {
-                // XXX: Should we attempt to reconnect/kick the user?
-                return;
-            }
             const wasKicked = delta.status!.kick;
             let kicker;
             if (wasKicked && wasKicked.kicker) {
@@ -75,12 +79,12 @@ export class XmppJsGateway {
                 reason: wasKicked ? wasKicked.reason : delta.status!.status,
                 gatewayAlias,
             } as IUserStateChanged);
-            return;
+
+            // XXX: Emit to other XMPP users.
         }
     }
 
     public getRoomJidForRealJid(roomName: string, j: string) {
-        console.log(roomName, j, [...this.roomUsers.entries()])
         return (this.roomUsers.get(`${roomName}`) || {})[j];
     }
 
@@ -91,7 +95,7 @@ export class XmppJsGateway {
 
     public sendMatrixMessage(
         chatName: string, sender: string, msg: IBasicProtocolMessage, room: IGatewayRoom, roomname: string) {
-        log.info(`Sending ${msg.id} to ${room.roomId}`);
+        log.info(`Sending ${msg.id} to ${chatName}`);
         const id = msg.id!;
         const contents: any[] = [];
         const htmlMsg = (msg.formatted || []).find((f) => f.type === "html");
@@ -119,9 +123,8 @@ export class XmppJsGateway {
             return;
         }
         this.xmpp.xmppAddSentMessage(id);
-        const users = (this.remoteUsers.get(room.roomId) || new Set());
-        users.forEach((remoteJid) => {
-            // XXX: This is a particularly awful way of determining who wants the event.
+        const users = (this.roomUsers.get(chatName) || {});
+        Object.keys(users).forEach((remoteJid) => {
             let message: string = x(
                 "message",
                 {
@@ -152,12 +155,10 @@ export class XmppJsGateway {
     ) {
         // Iterate around each joined member and add the new presence step.
         const from = `${chatName}/` + (displayname || sender);
-        const users = (this.remoteUsers.get(room.roomId) || new Set());
+        const users = Object.keys(this.roomUsers.get(room.roomId) || {});
         users.forEach((remoteJid) => {
             const participant = membership === "leave" ?
-`
-
-<item affiliation='member'
+`<item affiliation='member'
           jid='${from}'
           role='none'/>
 
@@ -254,10 +255,35 @@ export class XmppJsGateway {
 `<message from='${stanza.attrs.to}' to='${stanza.attrs.from}' id='${stanza.attrs.id}' type="groupchat">
 <subject>${room.name || ""} ${room.topic ? "| " + room.topic : ""}</subject>
 </message>`);
-        // 5. Go nuts
-        this.remoteUsers.set(room.roomId, (this.remoteUsers.get(room.roomId) || new Set()).add(stanza.attrs.from));
-        const rUsers = (this.roomUsers.get(`${to.local}@${to.domain}`) || {});
-        rUsers[stanza.attrs.from] = stanza.attrs.to;
-        this.roomUsers.set(`${to.local}@${to.domain}`, rUsers);
+        // All done, now for some house cleaning.
+        // Store this user so we can reconnect them on restart.
+        this.xmpp.emit("store-remote-user", {
+            mxId: ownMxid,
+            remoteId: stanza.attrs.to,
+            protocol_id: XMPP_PROTOCOL.id,
+            data: {
+                handle: stanza.attrs.to,
+                real_jid: stanza.attrs.from,
+                room_name: `${to.local}@${to.domain}`,
+            },
+        } as IStoreRemoteUser);
+        this.addUserToRoomUsers(`${to.local}@${to.domain}`, stanza.attrs.to, stanza.attrs.from);
+    }
+
+    public reconnectRemoteUser(user: BifrostRemoteUser) {
+        log.info("I have been called upon to resurrect " + user.id);
+        console.log(user);
+        this.addUserToRoomUsers(
+            user.extraData.room_name,
+            user.extraData.handle,
+            user.extraData.real_jid,
+        );
+        console.log(this.roomUsers);
+    }
+
+    private addUserToRoomUsers(roomName: string, roomJid: string, realJid: string) {
+        const rUsers = (this.roomUsers.get(roomName) || {});
+        rUsers[realJid] = roomJid;
+        this.roomUsers.set(roomName, rUsers);
     }
 }

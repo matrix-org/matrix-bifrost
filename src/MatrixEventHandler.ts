@@ -1,6 +1,6 @@
 import { Bridge, MatrixRoom, RemoteUser, MatrixUser, RemoteRoom } from "matrix-appservice-bridge";
 import { IEventRequest, IBridgeContext, IEventRequestData } from "./MatrixTypes";
-import { MROOM_TYPE_UADMIN, MROOM_TYPE_IM, MROOM_TYPE_GROUP, IRemoteGroupData } from "./StoreTypes";
+import { MROOM_TYPE_UADMIN, MROOM_TYPE_IM, MROOM_TYPE_GROUP, IRemoteGroupData, MUSER_TYPE_ACCOUNT } from "./StoreTypes";
 import { PurpleProtocol } from "./purple/PurpleProtocol";
 import { IPurpleInstance } from "./purple/IPurpleInstance";
 import * as marked from "marked";
@@ -397,7 +397,7 @@ Say \`help\` for more commands.
         }
         const account = this.purple.createPurpleAccount(args[0], protocol);
         account.createNew(args[1]);
-        await this.store.storeUserAccount(event.sender, protocol, args[0]);
+        await this.store.storeUser(event.sender, protocol, args[0], MUSER_TYPE_ACCOUNT);
         await this.bridge.getIntent().sendMessage(event.room_id, {
             msgtype: "m.notice",
             body: "Created new account",
@@ -416,7 +416,7 @@ Say \`help\` for more commands.
         if (protocol === undefined) {
             throw Error("Protocol was not found");
         }
-        await this.store.storeUserAccount(event.sender, protocol, name);
+        await this.store.storeUser(event.sender, protocol, name, MUSER_TYPE_ACCOUNT);
         await this.bridge.getIntent().sendMessage(event.room_id, {
             msgtype: "m.notice",
             body: "Linked existing account",
@@ -673,7 +673,9 @@ E.g. \`join xmpp roomname conf.matrix.org password=$ecr£t!\`
         context: IBridgeContext, event: IEventRequestData, protocol?: string,
     ): Promise<{acct: IPurpleAccount, newAcct: boolean}> {
         const roomProtocol = protocol || context.rooms.remote.get("protocol_id");
-        const remoteUser = context.senders.remotes.find((remote) => remote.get("protocolId") === roomProtocol);
+        const remoteUser = context.senders.remotes.find(
+            (remote) => (remote.get("protocol_id") || remote.get("protocolId") === roomProtocol)
+             && remote.get("type") === "account");
         if (remoteUser == null) {
             log.info(`Account not found for ${event.sender}`);
             if (!this.autoReg) {

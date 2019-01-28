@@ -1,6 +1,7 @@
 import { IBasicProtocolMessage } from "../MessageFormatter";
 import { IGatewayRoom } from "../GatewayHandler";
 import { IBridgeContext } from "../MatrixTypes";
+import { BifrostRemoteUser } from "../Store";
 
 export interface IGateway {
     sendMatrixMessage(
@@ -13,4 +14,5 @@ export interface IGateway {
         roomname: string,
     );
     onRemoteJoin(err: string|null, joinId: string, room: IGatewayRoom|undefined, ownMxid: string|undefined);
+    reconnectRemoteUser(user: BifrostRemoteUser);
 }

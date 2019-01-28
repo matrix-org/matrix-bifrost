@@ -11,6 +11,7 @@ import { IEventBody,
     IChatTyping,
     IGatewayJoin,
     IGatewayRoomQuery,
+    IStoreRemoteUser,
 } from "./PurpleEvents";
 import { IConfigPurple } from "../Config";
 import { EventEmitter } from "events";
@@ -39,6 +40,7 @@ export interface IPurpleInstance extends EventEmitter {
     on(name: "gateway-joinroom", cb: (ev: IGatewayJoin) => void);
     on(name: "chat-typing"|"im-typing", cb: (ev: IChatTyping) => void);
     on(name: "received-im-msg"|"received-chat-msg", cb: (ev: IReceivedImMsg) => void);
+    on(name: "store-remote-user", cb: (ev: IStoreRemoteUser) => void);
 
     needsDedupe(): boolean;
     needsAccountLock(): boolean;

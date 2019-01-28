@@ -57,7 +57,7 @@ export class XmppJsAccount implements IPurpleAccount {
                         this.joinChat({
                             fullRoomName: roomName,
                             handle: this.roomHandles.get(roomName)!,
-                        })
+                        });
                     });
                 }
             });
@@ -211,7 +211,12 @@ export class XmppJsAccount implements IPurpleAccount {
         : Promise<IConversationEvent|void> {
             const roomName = components.fullRoomName || `${components.room}@${components.server}`;
             const to = `${roomName}/${components.handle}`;
+            if (!components.room || !components.server || !components.handle) {
+                throw Error("Missing room, server or handle");
+            }
+            log.debug(`joinChat:`, this.remoteId, components);
             if (this.isInRoom(roomName)) {
+                log.debug("Didn't join, already joined");
                 return {
                     eventName: "already-joined",
                     account: {
@@ -224,6 +229,7 @@ export class XmppJsAccount implements IPurpleAccount {
                 };
             }
             if (await this.selfPing(to)) {
+                log.debug("Didn't join, self ping says we are joined");
                 this.roomHandles.set(roomName, components.handle);
                 return {
                     eventName: "already-joined",
@@ -252,6 +258,7 @@ export class XmppJsAccount implements IPurpleAccount {
                     maxchars: "0", // No history
                 })),
             );
+            this.roomHandles.set(roomName, components.handle);
             if (setWaiting) {
                 this.waitingToJoin.add(roomName);
             }
@@ -262,7 +269,6 @@ export class XmppJsAccount implements IPurpleAccount {
                     const cb = (data: IChatJoined) => {
                         if (data.conv.name === roomName &&
                             data.account.username === this.remoteId) {
-                            this.roomHandles.set(roomName, components.handle);
                             this.waitingToJoin.delete(roomName);
                             clearTimeout(timer);
                             this.xmpp.removeListener("chat-joined", cb);

@@ -1,21 +1,52 @@
 import { Bridge, MatrixRoom, RemoteRoom, RemoteUser,
-    MatrixUser, UserStore, RoomStore, Logging } from "matrix-appservice-bridge";
+    MatrixUser, UserStore, RoomStore, Logging, AsBot } from "matrix-appservice-bridge";
 import { Util } from "./Util";
-import { MROOM_TYPES, IRoomEntry, IRemoteRoomData, IRemoteGroupData } from "./StoreTypes";
+import { MROOM_TYPES, IRoomEntry, IRemoteRoomData, IRemoteGroupData,
+    MUSER_TYPE_ACCOUNT, MUSER_TYPE_GHOST, MUSER_TYPES } from "./StoreTypes";
 import { PurpleProtocol } from "./purple/PurpleProtocol";
 import { IAccountMinimal } from "./purple/PurpleEvents";
 
 const log = Logging.get("Store");
 
-// XXX: Gateways can have multiple remotes to one room_id, so we need to provision for it.
+export class BifrostRemoteUser {
+    constructor(private remoteUser: RemoteUser, private userIds: string, public readonly isRemote: boolean) {
+
+    }
+
+    public get extraData() {
+        return this.remoteUser.data;
+    }
+
+    public get id() {
+        return this.remoteUser.getId();
+    }
+
+    public get username() {
+        return this.remoteUser.get("username");
+    }
+
+    public get protocolId() {
+        return this.remoteUser.get("protocol_id") || this.remoteUser.get("protocolId");
+    }
+
+    public get isAccount() {
+        return this.remoteUser.get("type") === MUSER_TYPE_ACCOUNT;
+    }
+
+    public get isGhost() {
+        return this.remoteUser.get("type") === MUSER_TYPE_GHOST;
+    }
+}
 
 export class Store {
     private roomStore: RoomStore;
     private userStore: UserStore;
+    private asBot: AsBot;
 
     constructor(private bridge: Bridge) {
         this.roomStore = bridge.getRoomStore();
         this.userStore = bridge.getUserStore();
+        this.asBot = bridge.getBot();
     }
 
     public async getMatrixUserForAccount(account: IAccountMinimal): Promise<MatrixUser|null> {
@@ -37,10 +68,23 @@ export class Store {
         return matrixUsers[0];
     }
 
-    public getRemoteUsersFromMxId(userId: string): Promise<RemoteUser[]> {
-        return this.bridge.getUserStore().getRemoteUsersFromMatrixId(
-            userId,
+    public async getRemoteUserBySender(sender: string, protocol: PurpleProtocol): Promise<BifrostRemoteUser> {
+        const remoteId = Util.createRemoteId(protocol.id, sender);
+        const remote = this.bridge.getUserStore().getRemoteUser(
+            remoteId,
         );
+        const userIds = await this.bridge.getUserStore().getMatrixLinks(remoteId);
+        const realUserIds = userIds.filter(
+            (uId) => this.asBot.isRemoteUser(uId)
+        );
+        const userId = realUserIds[0] || userIds[0];
+        return new BifrostRemoteUser(await remote, userId, this.asBot.isRemoteUser(userId));
+    }
+
+    public async getRemoteUsersFromMxId(userId: string): Promise<BifrostRemoteUser[]> {
+        return (await this.bridge.getUserStore().getRemoteUsersFromMatrixId(
+            userId,
+        )).map((u) => new BifrostRemoteUser(u, userId, this.asBot.isRemoteUser(userId)));
     }
 
     public async getRoomByRemoteData(remoteData: IRemoteRoomData|IRemoteGroupData) {
@@ -55,7 +99,8 @@ export class Store {
 
     public async getUsernameMxidForProtocol(protocol: PurpleProtocol): Promise<{[mxid: string]: string}> {
         const set = {};
-        const users = (await this.userStore.getByRemoteData({protocolId: protocol.id})).filter(
+        const users = (await this.userStore.getByRemoteData({protocol_id: protocol.id, type: MUSER_TYPE_ACCOUNT})
+        ).concat(await this.userStore.getByRemoteData({protocol_id: protocol.id, type: MUSER_TYPE_ACCOUNT})).filter(
             (u) => u.data.isRemoteUser !== true,
         );
         for (const remoteUser of users) {
@@ -73,13 +118,25 @@ export class Store {
         return this.roomStore.getEntriesByMatrixRoomData({type});
     }
 
-    public async storeUserAccount(userId: string, protocol: PurpleProtocol, username: string) {
+    public async storeUser(userId: string, protocol: PurpleProtocol,
+                           username: string, type: MUSER_TYPES, extraData: any = {}) {
         const mxUser = new MatrixUser(userId);
-        const remoteUser = new RemoteUser(Util.createRemoteId(protocol.id, username));
-        remoteUser.set("protocolId", protocol.id);
-        remoteUser.set("username", username);
-        await this.userStore.linkUsers(mxUser, remoteUser);
-        log.info("Linked new account:", userId, remoteUser);
+        const id = Util.createRemoteId(protocol.id, username);
+        const existing = await this.userStore.getRemoteUser(id);
+        if (!existing) {
+            const remoteUser = new RemoteUser(Util.createRemoteId(protocol.id, username), extraData);
+            remoteUser.set("protocol_id", protocol.id);
+            remoteUser.set("username", username);
+            remoteUser.set("type", type);
+            await this.userStore.linkUsers(mxUser, remoteUser);
+            log.info(`Linked new ${type} ${userId} -> ${id}`);
+        } else {
+            log.debug(`Updated existing ${type} ${userId} -> ${id}`);
+            Object.keys(extraData).forEach((key) => {
+                existing.set(key, extraData[key]);
+            });
+            await this.userStore.setRemoteUser(existing);
+        }
     }
 
     public async removeRoomByRoomId(matrixId: string) {
