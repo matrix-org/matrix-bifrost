@@ -50,25 +50,23 @@ export class XHTMLIM {
     public static HTMLToXHTML(html: string) {
         let xhtml = "";
         const parser = new Parser({
-            onopentag: (name, attribs) => {
-                name = name.toLowerCase();
-
+            onopentag: (tagname, attribs) => {
                 // Filter out any elements or attributes we cannot support.
-                if (VALID_ELEMENT_ATTRIBUTES[name] === undefined) {
+                if (VALID_ELEMENT_ATTRIBUTES[tagname] === undefined) {
                     return;
                 }
                 Object.keys(attribs).filter(
-                    (a) => !VALID_ELEMENT_ATTRIBUTES[name].includes(a.toLowerCase()),
+                    (a) => !VALID_ELEMENT_ATTRIBUTES[tagname].includes(a.toLowerCase()),
                 ).forEach((a) => {
                     delete attribs[a];
                 });
-                if (xhtml === "" && name !== "html") {
+                if (xhtml === "" && tagname !== "html") {
                     // Prepend a body.
                     xhtml += `<html xmlns='${XMLNS}'>`;
-                } else if (xhtml === "" && name === "html" && attribs.xmlns !== "XMLNS") {
+                } else if (xhtml === "" && tagname === "html" && attribs.xmlns !== "XMLNS") {
                     attribs.xmlns = XMLNS;
                 }
-                xhtml += `<${name}${Object.keys(attribs).map((k) => ` ${k}='${attribs[k]}'`)}>`;
+                xhtml += `<${tagname}${Object.keys(attribs).map((k) => ` ${k}='${attribs[k]}'`)}>`;
             },
             ontext: (text) => {
                 xhtml += `${text}`;
@@ -79,7 +77,12 @@ export class XHTMLIM {
                 }
                 xhtml += `</${tagname}>`;
             },
-        }, {decodeEntities: true});
+        }, {
+            decodeEntities: true,
+            xmlMode: true,
+            lowerCaseTags: true,
+            lowerCaseAttributeNames: true,
+        });
         parser.write(html);
         parser.end();
         if (!xhtml.toLowerCase().endsWith("<html>")) {
