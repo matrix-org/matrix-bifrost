@@ -133,7 +133,7 @@ export class XmppJsGateway {
                 contents,
             ).toString();
             if (htmlMsg) {
-                message = message.replace(htmlAnchor, htmlMsg.body);
+                message = message.replace(htmlAnchor, XHTMLIM.HTMLToXHTML(htmlMsg.body));
             }
             this.xmpp.xmppWriteToStream(message);
         });

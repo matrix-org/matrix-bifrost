@@ -10,6 +10,7 @@ import { IBasicProtocolMessage } from "../MessageFormatter";
 import { Metrics } from "../Metrics";
 import { Logging } from "matrix-appservice-bridge";
 import * as uuid from "uuid/v4";
+import { XHTMLIM } from "./XHTMLIM";
 
 const IDPREFIX = "pbridge";
 const CONFLICT_SUFFIX = "[m]";
@@ -128,7 +129,7 @@ export class XmppJsAccount implements IPurpleAccount {
             contents,
         ).toString();
         if (htmlMsg) {
-            message = message.replace(htmlAnchor, htmlMsg.body);
+            message = message.replace(htmlAnchor, XHTMLIM.HTMLToXHTML(htmlMsg.body));
         }
         this.xmpp.xmppAddSentMessage(id);
         this.xmpp.xmppWriteToStream(message);
