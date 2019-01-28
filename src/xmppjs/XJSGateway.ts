@@ -272,13 +272,11 @@ export class XmppJsGateway {
 
     public reconnectRemoteUser(user: BifrostRemoteUser) {
         log.info("I have been called upon to resurrect " + user.id);
-        console.log(user);
         this.addUserToRoomUsers(
             user.extraData.room_name,
             user.extraData.handle,
             user.extraData.real_jid,
         );
-        console.log(this.roomUsers);
     }
 
     private addUserToRoomUsers(roomName: string, roomJid: string, realJid: string) {
