@@ -154,12 +154,6 @@ export class GatewayHandler {
             }
             const vroom = await this.getVirtualRoom(roomId!, intent);
             this.purple.gateway!.onRemoteJoin(null, data.join_id, vroom, intentUser.userId);
-            await this.profileSync.updateProfile(
-                protocol,
-                data.sender,
-                // XXX: This works for xmpp-js, but what about others?
-                this.purple.getAccount("bot", data.protocol_id, undefined)!,
-            );
         } catch (ex) {
             if (roomId) {
                 intent.leave(roomId);
