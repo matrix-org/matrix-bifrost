@@ -1,19 +1,79 @@
 import * as Chai from "chai";
-import { PresenceCache } from "../../src/xmppjs/PresenceCache";
-import { jid } from "@xmpp/component";
-import { x } from "@xmpp/xml";
-import {  StzaPresenceItem } from "../../src/xmppjs/Stanzas";
+import { StzaPresenceItem, StzaPresenceError, StzaMessageSubject, StzaMessage } from "../../src/xmppjs/Stanzas";
+import * as parser from "fast-xml-parser";
 const expect = Chai.expect;
 
+function assertXML(xml) {
+    const err = parser.validate(xml);
+    if (err !== true) {
+        console.error(xml);
+        throw new Chai.AssertionError(err.err.code + ": " + err.err.msg);
+    }
+}
+
 describe("Stanzas", () => {
-    describe("StzaPresence", () => {
-        it("should create a valid <presence> stanza", () => {
-            expect(new StzaPresenceItem("foo@bar", "baz@bar", "someid").xml).to.equal(
-`<presence from='foo@bar' to='baz@bar' id='someid' >
-     <x xmlns='http://jabber.org/protocol/muc'/>
-     <item affiliation='member' role='participant'/>
-</presence>`,
-);
+    describe("StzaPresenceItem", () => {
+        it("should create a valid stanza", () => {
+            const xml = new StzaPresenceItem("foo@bar", "baz@bar", "someid").xml;
+            assertXML(xml);
+            expect(xml).to.equal(
+                "<presence from='foo@bar' to='baz@bar' id='someid'><x xmlns='http://jabber.org/protocol/muc'/>"
+                + "<item affiliation='member' role='participant'/></presence>",
+            );
+        });
+    });
+    describe("StzaPresenceError", () => {
+        it("should create a valid stanza", () => {
+            const xml = new StzaPresenceError("foo@bar", "baz@bar", "someid", "baz2@bar", "cancel", "inner-error").xml;
+            assertXML(xml);
+            expect(xml).to.equal(
+                "<presence from='foo@bar' to='baz@bar' id='someid' type='error'><x"
+                + " xmlns='http://jabber.org/protocol/muc'/><error type='cancel' by='baz2@bar'>"
+                + "<inner-error xmlns='urn:ietf:params:xml:ns:xmpp-stanzas'/></error></presence>",
+            );
+        });
+    });
+    describe("StzaMessage", () => {
+        it("should create a valid stanza", () => {
+            const xml = new StzaMessageSubject("foo@bar", "baz@bar", "someid", "This is a subject").xml;
+            assertXML(xml);
+            expect(xml).to.equal(
+                "<message from='foo@bar' to='baz@bar' id='someid' type='groupchat'>"
+                + "<subject>This is a subject</subject></message>",
+            );
+        });
+    });
+    describe("StzaMessageSubject", () => {
+        it("should create a valid stanza for a simple plain message", () => {
+            const stanza = new StzaMessage("foo@bar", "baz@bar", "someid", "groupchat");
+            stanza.body = "Viva la matrix̭";
+            assertXML(stanza.xml);
+            expect(stanza.xml).to.equal(
+                "<message from='foo@bar' to='baz@bar' id='someid' type='groupchat'>"
+                + "<body>Viva la matrix&#x32D;</body></message>",
+            );
+        });
+        it("should create a valid stanza for a html message", () => {
+            const stanza = new StzaMessage("foo@bar", "baz@bar", "someid", "groupchat");
+            stanza.body = "Viva la matrix̭";
+            stanza.html = "<html><p><strong>Viva la</strong> matrix&#x32D;</p></html>";
+            assertXML(stanza.xml);
+            expect(stanza.xml).to.equal(
+                "<message from='foo@bar' to='baz@bar' id='someid' type='groupchat'><html><p>"
+                + "<strong>Viva la</strong> matrix&#x32D;</p></html><body>Viva la matrix&#x32D;</body></message>",
+            );
+        });
+        it("should create a valid stanza for a message with attachments", () => {
+            const stanza = new StzaMessage("foo@bar", "baz@bar", "someid", "groupchat");
+            stanza.body = "Viva la matrix̭";
+            stanza.html = "<html><p><strong>Viva la</strong> matrix&#x32D;</p></html>";
+            stanza.attachments = ["http://matrix.org"];
+            assertXML(stanza.xml);
+            expect(stanza.xml).to.equal(
+                "<message from='foo@bar' to='baz@bar' id='someid' type='groupchat'><html><p>"
+                + "<strong>Viva la</strong> matrix&#x32D;</p></html><body>Viva la matrix&#x32D;</body>"
+                + "<x xmlns='jabber:x:oob'><url>http://matrix.org</url></x></message>",
+            );
         });
     });
 });

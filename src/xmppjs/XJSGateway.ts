@@ -12,7 +12,7 @@ import { PresenceCache } from "./PresenceCache";
 import { IRemoteGroupData } from "../StoreTypes";
 import { XHTMLIM } from "./XHTMLIM";
 import { BifrostRemoteUser } from "../Store";
-import { StzaPresenceItem } from "./Stanzas";
+import { StzaPresenceItem, StzaMessage, StzaMessageSubject, StzaPresenceError } from "./Stanzas";
 
 const log = Logging.get("XmppJsGateway");
 
@@ -98,48 +98,25 @@ export class XmppJsGateway {
         chatName: string, sender: string, msg: IBasicProtocolMessage, room: IGatewayRoom, roomname: string) {
         log.info(`Sending ${msg.id} to ${chatName}`);
         const id = msg.id!;
-        const contents: any[] = [];
         const htmlMsg = (msg.formatted || []).find((f) => f.type === "html");
-        let htmlAnchor;
+        let attachments: string[];
         if (msg.opts && msg.opts.attachments) {
-            msg.opts.attachments.forEach((a) => {
-                contents.push(
-                    x("x", {
-                        xmlns: "jabber:x:oob",
-                    }, x("url", undefined, a.uri)));
-                // *some* XMPP clients expect the URL to be in the body, silly clients...
-                msg.body = a.uri;
-            });
-        } else if (htmlMsg) {
-            htmlAnchor = Buffer.from(htmlMsg.body).toString("base64").replace(/\W/g, "a");
-            contents.push(x("html", {
-                xmlns: "http://jabber.org/protocol/xhtml-im",
-            }), htmlAnchor);
+            attachments = msg.opts.attachments.map((a) => a.uri );
         }
-        contents.push(x("body", undefined, msg.body));
         const xMembers = this.getMemberJidSet(room, chatName);
         const from = xMembers[sender];
         if (!from) {
             log.error(`Cannot send ${msg.id}: No member cached.`);
             return;
         }
-        this.xmpp.xmppAddSentMessage(id);
         const users = (this.roomUsers.get(chatName) || {});
+        this.xmpp.xmppAddSentMessage(id);
         Object.keys(users).forEach((remoteJid) => {
-            let message: string = x(
-                "message",
-                {
-                    id,
-                    from,
-                    to: remoteJid,
-                    type: "groupchat",
-                },
-                contents,
-            ).toString();
-            if (htmlMsg) {
-                message = message.replace(htmlAnchor, XHTMLIM.HTMLToXHTML(htmlMsg.body));
-            }
-            this.xmpp.xmppWriteToStream(message);
+            const stanza = new StzaMessage(from, remoteJid, id, "groupchat");
+            stanza.html = htmlMsg ? XHTMLIM.HTMLToXHTML(htmlMsg.body) : "";
+            stanza.body = msg.body;
+            stanza.attachments = attachments;
+            this.xmpp.xmppSend(stanza);
         });
     }
 
@@ -158,15 +135,9 @@ export class XmppJsGateway {
         const from = `${chatName}/` + (displayname || sender);
         const users = Object.keys(this.roomUsers.get(room.roomId) || {});
         users.forEach((remoteJid) => {
-            const participant = membership === "leave" ?
-`<item affiliation='member'
-          jid='${from}'
-          role='none'/>
-
-` : `<item affiliation='member' role='participant'/>`;
-            this.xmpp.xmppWriteToStream(
-`<presence from='${from}' to='${remoteJid}' ${membership === "leave" ? "type='unavailable'" : ""}>
-<x xmlns='http://jabber.org/protocol/muc#user'>${participant}</x></presence>`);
+            const role = membership === "join" ? "participant" : "none";
+            const type = membership === "join" ? "" : "unavailable";
+            this.xmpp.xmppSend(new StzaPresenceItem(from, remoteJid, undefined, role, "none", false, from, type));
         });
     }
 
@@ -196,13 +167,10 @@ export class XmppJsGateway {
             }
             log.warn("Responding with an error to remote join:", err);
             // XXX: Specify the actual failure reason.
-            this.xmpp.xmppWriteToStream(
-`<presence from='${stanza.attrs.to}' to='${stanza.attrs.from}' id='${stanza.attrs.id}' type='error'>
-     <x xmlns='http://jabber.org/protocol/muc'/>
-     <error by='${to.local}@${to.domain}' type='cancel'>
-        <service-unavailable xmlns='urn:ietf:params:xml:ns:xmpp-stanzas'/>
-     </error>
-</presence>`);
+            this.xmpp.xmppSend(new StzaPresenceError(
+                stanza.attrs.to, stanza.attrs.from, stanza.attrs.id,
+                `${to.local}@${to.domain}`, "cancel", "service-unavailable",
+            ));
         }
         room = room!;
 
@@ -222,13 +190,8 @@ export class XmppJsGateway {
         });
         log.debug("Emitting membership of self");
         // 2. self presence
-        this.xmpp.xmppWriteToStream(
-`<presence from='${stanza.attrs.to}' to='${stanza.attrs.from}' id='${stanza.attrs.id}'>
- <x xmlns='http://jabber.org/protocol/muc#user'>
-     <item affiliation='member' role='participant'/>
-     <status code='110'/>
- </x>
-</presence>`);
+        this.xmpp.xmppSend(
+            new StzaPresenceItem(stanza.attrs.to, stanza.attrs.from, undefined, undefined, undefined, true));
         this.reflectXMPPMessage(x("presence", {
                 from: stanza.attrs.to,
                 to: null,
@@ -237,7 +200,6 @@ export class XmppJsGateway {
                     xmlns: "http://jabber.org/protocol/muc#user",
                 }, [
                     x("item", {affiliation: "member", role: "participant"}),
-                    x("status", {code: "110"}),
                 ]),
         ));
         // 3. Room history
@@ -249,10 +211,9 @@ export class XmppJsGateway {
             this.xmpp.xmppWriteToStream(e);
         });
         // 4. The room subject
-        this.xmpp.xmppWriteToStream(
-`<message from='${stanza.attrs.to}' to='${stanza.attrs.from}' id='${stanza.attrs.id}' type="groupchat">
-<subject>${room.name || ""} ${room.topic ? "| " + room.topic : ""}</subject>
-</message>`);
+        this.xmpp.xmppSend(new StzaMessageSubject(stanza.attrs.to, stanza.attrs.from, undefined,
+            `${room.name || ""} ${room.topic ? "| " + room.topic : ""}`,
+        ));
         // All done, now for some house cleaning.
         // Store this user so we can reconnect them on restart.
         this.xmpp.emit("store-remote-user", {
