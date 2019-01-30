@@ -74,7 +74,7 @@ export class RoomSync {
      * if the libpurple side needs to "reconnect" to the rooms.
      * @return [description]
      */
-    private async syncAccountsToGroupRooms(bot: any, intent: any) {
+    private async syncAccountsToGroupRooms(bot: any, intent: any): Promise<void> {
         const rooms = await this.store.getRoomsOfType(MROOM_TYPE_GROUP);
         log.info(`Got ${rooms.length} group rooms`);
         await Promise.all(rooms.map(async (room: IRoomEntry) => {
@@ -170,7 +170,6 @@ export class RoomSync {
                 log.warn(`Failed to ${membership.membership} ${remoteId} to ${membership.room_name}:`, ex);
                 // XXX: Retry behaviour?
             }
-
             membership = reconnectStack.pop();
         }
         this.accountRoomMemberships.delete(remoteId);
