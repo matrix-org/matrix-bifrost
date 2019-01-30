@@ -20,25 +20,24 @@ The following are supported:
 * `node-purple`
     Uses libpurple to bridge to a number of networks supported by libpurple2. Good for simple bridges for a small number of users, or for bridging to less available protocols.
     * **WARNING**: If using `node-purple` then you MUST install the dependency: `npm i node-purple`
-## Installing
 
-### Docker
+## Docker
 
-If you wish to use the `xmpp.js` backend, you can go straight ahead and use the provided Dockerfile to build the bridge.
-
-You can build the docker image with: `docker build -t bifrost:latest`
-
-And then run the image with: `docker run -v /your/path/to/data:/data bifrost:latest -p 5000:9555`
+If you wish to use the `xmpp.js` backend, you can go straight ahead and use the provided Dockerfile
+to build the bridge. You can build the docker image with `docker build -t bifrost:latest` and then
+run the image with: `docker run -v /your/path/to/data:/data bifrost:latest -p 5000:9555`.
 
 An image will be published to Dockerhub soon..
 
-#### Things to note
+### Things to note
 
 - Make sure you store your `config.yaml`, `registration.yaml` inside /data.
 - You should configure your `config.yaml`'s `userStoreFile` and `roomStoreFile` to point to files inside `/data`
 - The intenal port for the bridge is `5000`, you should map this to an external port in docker.
 - Be careful not to leave any config options pointing to `127.0.0.1` / `localhost` as they will not resolve inside docker.
  - The exception to this rule is `bridge.domain`, which MUST be your homeserver's URL.
+
+## Installing (non-docker)
 
 ### Dependencies
 
