@@ -1,4 +1,5 @@
 import { Parser } from "htmlparser2";
+import * as he from "he";
 
 const XMLNS = "http://jabber.org/protocol/xhtml-im";
 
@@ -50,26 +51,27 @@ export class XHTMLIM {
     public static HTMLToXHTML(html: string) {
         let xhtml = "";
         const parser = new Parser({
-            onopentag: (tagname, attribs) => {
+            onopentag: (tagname, rawAttribs) => {
                 // Filter out any elements or attributes we cannot support.
                 if (VALID_ELEMENT_ATTRIBUTES[tagname] === undefined) {
                     return;
                 }
-                Object.keys(attribs).filter(
-                    (a) => !VALID_ELEMENT_ATTRIBUTES[tagname].includes(a.toLowerCase()),
+                const attribs: {[key: string]: string } = {};
+                Object.keys(rawAttribs).filter(
+                    (a) => VALID_ELEMENT_ATTRIBUTES[tagname].includes(a.toLowerCase()),
                 ).forEach((a) => {
-                    delete attribs[a];
+                    attribs[a] = he.encode(rawAttribs[a]);
                 });
                 if (xhtml === "" && tagname !== "html") {
                     // Prepend a body.
                     xhtml += `<html xmlns='${XMLNS}'>`;
-                } else if (xhtml === "" && tagname === "html" && attribs.xmlns !== "XMLNS") {
+                } else if (xhtml === "" && tagname === "html") {
                     attribs.xmlns = XMLNS;
                 }
                 xhtml += `<${tagname}${Object.keys(attribs).map((k) => ` ${k}='${attribs[k]}'`)}>`;
             },
             ontext: (text) => {
-                xhtml += `${text}`;
+                xhtml += `${he.encode(text)}`;
             },
             onclosetag: (tagname) => {
                 if (VALID_ELEMENT_ATTRIBUTES[tagname] === undefined) {
