@@ -12,6 +12,7 @@ import { PresenceCache } from "./PresenceCache";
 import { IRemoteGroupData } from "../StoreTypes";
 import { XHTMLIM } from "./XHTMLIM";
 import { BifrostRemoteUser } from "../Store";
+import { StzaPresenceItem } from "./Stanzas";
 
 const log = Logging.get("XmppJsGateway");
 
@@ -215,12 +216,9 @@ export class XmppJsGateway {
                 return;
             }
             const from = xMembers[sender];
-            this.xmpp.xmppWriteToStream(
-`<presence from='${from}' to='${stanza.attrs.from}'>
-    <x xmlns='http://jabber.org/protocol/muc#user'>
-        <item affiliation='member' role='participant'/>
-    </x>
-</presence>`);
+            this.xmpp.xmppSend(
+                new StzaPresenceItem(from, stanza.attrs.from),
+            );
         });
         log.debug("Emitting membership of self");
         // 2. self presence

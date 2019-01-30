@@ -34,11 +34,11 @@ describe("XHTMLIM", () => {
                 + "And this is a reply",
             ),
         ).to.equal(
-            "<html xmlns='http://jabber.org/protocol/xhtml-im'><blockquote><a href='"
-            + "https://matrix.to/#/!ruaviCwHdJSWfKcBam:half-shot.uk/$1548685877554RlePg:half-shot.uk?"
-            + "via=half-shot.uk&via=matrix.org&via=t2bot.io'>In reply to</a><a href='https://matrix.to"
-            + "/#/@Half-Shot:half-shot.uk'>@Half-Shot:half-shot.uk</a><br></br>This is the first message"
-            + "</blockquote>And this is a reply</html>",
+            "<html xmlns='http://jabber.org/protocol/xhtml-im'><blockquote><a href='https://matrix.to"
+            + "/#/!ruaviCwHdJSWfKcBam:half-shot.uk/$1548685877554RlePg:half-shot.uk?via=half-shot.uk&#x26"
+            + ";via=matrix.org&#x26;via=t2bot.io'>In reply to</a><a href='https://matrix.to/#/@Half-Shot:"
+            + "half-shot.uk'>@Half-Shot:half-shot.uk</a><br>This is the first message</br></blockquote>And"
+            + " this is a reply</html>",
         );
     });
 });

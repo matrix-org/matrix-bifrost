@@ -24,6 +24,7 @@ import { XJSConnection } from "./XJSConnection";
 import { AutoRegistration } from "../AutoRegistration";
 import { XmppJsGateway } from "./XJSGateway";
 import { IEventRequestData } from "../MatrixTypes";
+import { IStza } from "./Stanzas";
 
 const xLog = Logging.get("XMPP-conn");
 const log = Logging.get("XmppJsInstance");
@@ -65,7 +66,7 @@ export class XmppJsInstance extends EventEmitter implements IPurpleInstance {
     private canWrite: boolean;
     private defaultRes!: string;
     private connectionWasDropped: boolean;
-    private bufferedMessages: Array<{xmlMsg: Element, resolve: (res: Promise<void>) => void}>;
+    private bufferedMessages: Array<{xmlMsg: Element|string, resolve: (res: Promise<void>) => void}>;
     private autoRegister?: AutoRegistration;
     private bridge!: Bridge;
     private xmppGateway: XmppJsGateway;
@@ -109,6 +110,17 @@ export class XmppJsInstance extends EventEmitter implements IPurpleInstance {
         const p = new Promise((resolve) => {
             this.bufferedMessages.push({xmlMsg, resolve});
         });
+        return p;
+    }
+
+    public xmppSend(xmlMsg: IStza) {
+        if (this.canWrite) {
+            return this.xmpp.write(xmlMsg.xml);
+        }
+        const p = new Promise((resolve) => {
+            this.bufferedMessages.push({xmlMsg: xmlMsg.xml, resolve});
+        });
+        Metrics.remoteCall(`xmpp.${xmlMsg.type}`);
         return p;
     }
 
