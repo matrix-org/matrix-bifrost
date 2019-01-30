@@ -22,6 +22,24 @@ The following are supported:
     * **WARNING**: If using `node-purple` then you MUST install the dependency: `npm i node-purple`
 ## Installing
 
+### Docker
+
+If you wish to use the `xmpp.js` backend, you can go straight ahead and use the provided Dockerfile to build the bridge.
+
+You can build the docker image with: `docker build -t bifrost:latest`
+
+And then run the image with: `docker run -v /your/path/to/data:/data bifrost:latest -p 5000:9555`
+
+An image will be published to Dockerhub soon..
+
+#### Things to note
+
+- Make sure you store your `config.yaml`, `registration.yaml` inside /data.
+- You should configure your `config.yaml`'s `userStoreFile` and `roomStoreFile` to point to files inside `/data`
+- The intenal port for the bridge is `5000`, you should map this to an external port in docker.
+- Be careful not to leave any config options pointing to `127.0.0.1` / `localhost` as they will not resolve inside docker.
+ - The exception to this rule is `bridge.domain`, which MUST be your homeserver's URL.
+
 ### Dependencies
 
 For `node-purple` to compile correctly, you will need (for Debian):
@@ -64,7 +82,7 @@ After completing all the above, you should do the following:
 
 ### Starting
 
-The `start.sh` script will auto preload the build libpurple library and offers a better experience than the system libraries in most cases. Pleas remember to modify the port in the script if you are using a different port. 
+The `start.sh` script will auto preload the build libpurple library and offers a better experience than the system libraries in most cases. Pleas remember to modify the port in the script if you are using a different port.
 
 If you are not using the `node-purple` backend, you can just start the service with:
 
@@ -80,7 +98,7 @@ The bridge won't do much unless it has accounts to bind. Due to the infancy of t
 for the location of all the accounts. Our advice is to create the accounts you want to use on your local machine with Pidgin, and
 then copy the `accounts.xml` file to the bridge (where you should be copying the file to `/$BRIDGE_USER/.purple/accounts.xml`).
 
-Once you have started the bridge, you can instruct it to bind by starting a conversation with the bridge user and 
+Once you have started the bridge, you can instruct it to bind by starting a conversation with the bridge user and
 sending `accounts add-existing $PROTOCOL $USERNAME` where the protocol and username are given in the `accounts.xml` file.
 
 You should also run `accounts enable $PROTOCOL $USERNAME` to enable the account for the bridge, and then it should connect automatically.

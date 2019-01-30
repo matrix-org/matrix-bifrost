@@ -106,7 +106,7 @@ class Program {
           },
           domain: this.cfg.bridge.domain,
           homeserverUrl: this.cfg.bridge.homeserverUrl,
-          registration: "purple-registration.yaml",
+          registration: this.cli.getRegistrationFilePath(),
         });
         await this.bridge.run(port, this.cfg);
 
@@ -161,7 +161,7 @@ class Program {
                 );
             }
         } catch (ex) {
-            log.error("Encountered an error starting the purple backend:", ex);
+            log.error("Encountered an error starting the backend:", ex);
             process.exit(1);
         }
         this.purple!.on("account-signed-on", (ev: IAccountEvent) => {

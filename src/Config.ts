@@ -8,6 +8,8 @@ export class Config {
         homeserverUrl: "",
         mediaserverUrl: undefined,
         userPrefix: "_purple_",
+        userStoreFile: "user-store.db",
+        roomStoreFile: "room-store.db",
     };
 
     public readonly purple: IConfigPurple = {
@@ -64,6 +66,8 @@ export interface IConfigBridge {
     homeserverUrl: string;
     mediaserverUrl?: string;
     userPrefix: string;
+    userStoreFile: string;
+    roomStoreFile: string;
 }
 
 export interface IConfigPurple {

@@ -7,10 +7,13 @@ bridge:
   userPrefix: "_purple_"
   # If homeserverUrl is not reachable publically, the public address that media can be reached on.
   # mediaserverUrl: "http://example.com:8008"
+  # Location of the user and room database files, by default will be stored in the working directory.
+  userStoreFile: "user-store.db"
+  roomStoreFile: "room-store.db"
 
 purple:
   # For selecting a specific backend. One of "node-purple", "xmpp.js". Defaults to "node-purple"
-  backend: "node-purple" 
+  backend: "node-purple"
   # For node-purple, whether to debug to stdout. Usually not needed.
   enableDebug: false
   # For node-purple, a directory containing plugins to load.
@@ -24,7 +27,7 @@ purple:
      # password needed by the component.
 #    password: "jam"
 
-# Matrix forwards room aliases join requests matching a regex in the 
+# Matrix forwards room aliases join requests matching a regex in the
 # registration file to the owner's bridge, if the room doesn't exist.
 # The following options allow you to configure how the purple bridge may
 # match those aliases to remote rooms.
@@ -52,7 +55,7 @@ autoRegistration:
 #     type: "implicit"
 #     parameters:
 #       username: "<T_LOCALPART>@matrix.localhost"
- 
+
 # Available subsitution variables for parameters:
 # <T_MXID> - The users mxid.
 # <T_MXID_SANE> - The users mxid, with @ an : replaced with _.
@@ -95,4 +98,3 @@ logging:
 #    "./error.log": "error"
 #    "./warn.log": "warn"
 #    "./debug.log": "debug"
-
