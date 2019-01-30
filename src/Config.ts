@@ -66,8 +66,8 @@ export interface IConfigBridge {
     homeserverUrl: string;
     mediaserverUrl?: string;
     userPrefix: string;
-    userStoreFile: string;
-    roomStoreFile: string;
+    userStoreFile?: string;
+    roomStoreFile?: string;
 }
 
 export interface IConfigPurple {
