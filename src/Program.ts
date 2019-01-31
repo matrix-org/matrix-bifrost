@@ -83,7 +83,7 @@ class Program {
     }
 
     private async runBridge(port: number, config: any) {
-        log.info("Starting purple bridge on port ", port);
+        log.info("Starting purple bridge on port", port);
         this.cfg.ApplyConfig(config);
         Logging.configure(this.cfg.logging);
         this.bridge = new Bridge({

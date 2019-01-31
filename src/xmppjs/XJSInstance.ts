@@ -272,24 +272,24 @@ export class XmppJsInstance extends EventEmitter implements IPurpleInstance {
         return false;
     }
 
+    //`@${prefix}${resource}${j.local}=40${j.domain}:${domain}`
+
     public getUsernameFromMxid(
             mxid: string,
             prefix: string = ""): {username: string, protocol: PurpleProtocol} {
         // This is for GHOST accts
         let uName = new MatrixUser(mxid, false).localpart;
-        const match = /@(.+.+=2f)?(.+=40)(.+)/.exec(uName);
+        const rPrefix = prefix ? `(${prefix})` : "";
+        const regex =  new RegExp(`${rPrefix}(.+=2f)?(.+)=40(.+)`);
+        const match = regex.exec(uName);
         if (!match) {
             throw Error("Username didn't match");
         }
-        const resource = match[1].substr(prefix.length, match[0].length - (prefix.length + "=2f".length));
-        const localpart = match[2].substr(0, match[1].length - "=40".length);
-        const domain = match[3];
-        uName = uName.replace(prefix, "");
-        // XXX: Gah, underscore spittling is hard with a resource.
-        uName = uName.replace(/\=3a/g, ":");
-        const splitParts = uName.split("_");
-        const username =
-            `${splitParts.slice(0, splitParts.length - 1 ).join("_")}@${splitParts[splitParts.length - 1]}`;
+        const resource = match[2] ? match[2].substr(
+            0, match[2].length - "=2f".length) : "";
+        const localpart = match[3];
+        const domain = match[4];
+        const username = `${localpart}@${domain}${resource ? "/" + resource : ""}`;
         return {username, protocol: XMPP_PROTOCOL};
     }
 
