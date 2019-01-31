@@ -132,7 +132,12 @@ export class MatrixEventHandler {
                     `${event.sender}:${acct.protocol.id}:${username}`,
                 ).toString("base64");
                 await this.store.storeRoom(event.room_id, MROOM_TYPE_IM, remoteId, remoteData);
-                this.bridge.getIntent(event.state_key).join(event.room_id);
+                const ghostIntent = this.bridge.getIntent(event.state_key);
+                // XXX: See https://github.com/matrix-org/matrix-appservice-bridge/issues/96
+                ghostIntent.opts.registered = false;
+                 // If the join fails to join because it's not registered, it tries to get invited which will fail.
+                log.debug(`Joining ${event.state_key} to ${event.room_id}.`);
+                await ghostIntent.join(event.room_id);
             }
         }
 
