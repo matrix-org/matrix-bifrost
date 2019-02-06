@@ -146,8 +146,10 @@ export class MatrixEventHandler {
             event.content.msgtype === "m.text" &&
             event.content.body.startsWith("!purple")) {
             // It's probably a room waiting to be given commands.
-            const args = event.content.body.split(" ");
-            await this.handlePlumbingCommand(args, context, event);
+            if (this.config.provisioning.enablePlumbing) {
+                const args = event.content.body.split(" ");
+                await this.handlePlumbingCommand(args, context, event);
+            }
             return;
         }
 
@@ -304,8 +306,17 @@ return `- ${account.protocol.name} (${username}) [Enabled=${account.isEnabled}] 
 
     private async handlePlumbingCommand(args: string[], context: IBridgeContext, event: IEventRequestData) {
         log.debug(`Handling plumbing command ${args} for ${event.room_id}`);
-        const intent = this.bridge.getIntent();
+        // Check permissions
         if (args[0] !== "!purple") {
+            return;
+        }
+        const requiredPl = this.config.provisioning.requiredUserPL;
+        const intent = this.bridge.getIntent();
+        const powerLevels = await intent.getClient().getStateEvent(event.room_id, "m.room.power_levels");
+        const userPl = powerLevels.users[event.sender] === undefined ? powerLevels.users_default :
+            powerLevels.users[event.sender];
+        if (userPl < requiredPl) {
+            log.warn(`${event.sender}'s PL is too low to run a plumbing command ${userPl} < ${requiredPl}`);
             return;
         }
         try {
@@ -362,6 +373,10 @@ return `- ${account.protocol.name} (${username}) [Enabled=${account.isEnabled}] 
         const members = await this.bridge.getBot().getJoinedMembers(event.room_id);
         if (members.length > 2) {
             log.info("Room is not a 1 to 1 room: Treating as a potential plumbable room.");
+            if (this.config.provisioning.enablePlumbing) {
+                // We don't need to be in the room.
+                intent.leave(event.room_id);
+            }
             // This is not a 1 to 1 room, so just keep us joined for now. We might want it later.
             return;
         }

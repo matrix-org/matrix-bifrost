@@ -44,6 +44,11 @@ export class Config {
     public readonly metrics: IConfigMetrics = {
         enable: false,
     };
+
+    public readonly provisioning: IConfigProvisioning = {
+        enablePlumbing: true,
+        requiredUserPL: 100,
+    };
   /**
    * Apply a set of keys and values over the default config.
    * @param newConfig Config keys
@@ -97,6 +102,11 @@ export interface IConfigProfile {
 
 export interface IConfigPortals {
     aliases: {[regex: string]: IRoomAlias} | undefined;
+}
+
+export interface IConfigProvisioning {
+    enablePlumbing: boolean;
+    requiredUserPL: number;
 }
 
 interface IConfigMetrics {
