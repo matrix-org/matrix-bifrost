@@ -88,6 +88,12 @@ autoRegistration:
 metrics:
   enabled: false
 
+provisioning:
+  # Can users use ""!purple" in a room to bridge it to a group
+  enablePlumbing: true
+  # Required power level to bridge a room into a group.
+  requiredUserPL: 100
+
 logging:
   # Set the logging level for stdout.
   # Lower levels are inclusive of higher levels e.g. info will contain warn and error logging.
