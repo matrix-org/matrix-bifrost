@@ -72,6 +72,23 @@ export class StzaPresenceError extends StzaPresence {
     }
 }
 
+export class StzaPresenceJoin extends StzaPresence {
+    constructor(
+        public from: string,
+        public to: string,
+        public id?: string,
+        public presenceType?: string,
+    ) {
+        super(from, to, id);
+    }
+
+    public get presenceContent() {
+        // No history.
+        // TODO: I'm sure we want to be able to configure this.
+        return `<history maxchars='0'>`;
+    }
+}
+
 export class StzaMessage implements IStza {
     public html: string = "";
     public body: string = "";
@@ -133,5 +150,25 @@ export class StzaMessageSubject implements IStza {
     get xml(): string {
         return `<message from='${this.from}' to='${this.to}' id='${this.id}' type='groupchat'>`
              + `<subject>${this.subject}</subject></message>`;
+    }
+}
+
+export class StzaIqPing implements IStza {
+    constructor(
+        public from: string,
+        public to: string,
+        public id: string,
+    ) {
+        this.id = this.id || uuid();
+    }
+
+    get type(): string {
+        return "iq";
+    }
+
+    get xml(): string {
+        return `<iq xmlns='jabber:client' from='${this.from}' to='${this.to}' id='${this.id}' type='get'>
+    <ping xmlns='urn:xmpp:ping'></ping>
+</iq>`;
     }
 }
