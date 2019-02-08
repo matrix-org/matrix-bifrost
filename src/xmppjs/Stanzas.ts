@@ -1,5 +1,6 @@
 import * as uuid from "uuid/v4";
 import * as he from "he";
+import { IBasicProtocolMessage } from "../MessageFormatter";
 
 export interface IStza {
     type: string;
@@ -75,13 +76,28 @@ export class StzaMessage implements IStza {
     public html: string = "";
     public body: string = "";
     public attachments: string[] = [];
+    public id;
     constructor(
         public from: string,
         public to: string,
-        public id?: string,
+        idOrMsg?: string|IBasicProtocolMessage,
         public messageType?: string,
     ) {
-        this.id = this.id || uuid();
+        if (!idOrMsg) {
+            this.id = this.id || uuid();
+        } else if (idOrMsg.hasOwnProperty("body")) {
+            idOrMsg = idOrMsg as IBasicProtocolMessage;
+            this.body = idOrMsg.body;
+            if (idOrMsg.formatted) {
+                const html = idOrMsg.formatted.find((f) => f.type === "html");
+                this.html = html ? html.body : "";
+            }
+            if (idOrMsg.opts) {
+                this.attachments = (idOrMsg.opts.attachments || []).map((a) => a.uri);
+            }
+        } else {
+            this.id = idOrMsg;
+        }
     }
 
     get type(): string {
@@ -90,7 +106,6 @@ export class StzaMessage implements IStza {
 
     get xml(): string {
         const type = this.messageType ? `type='${this.messageType}'` : "";
-        const html = "";
         const attachments = this.attachments.map((a) =>
             `<x xmlns='jabber:x:oob'><url>${he.encode(a)}</url></x>`,
         );
