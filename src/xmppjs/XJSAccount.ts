@@ -11,6 +11,7 @@ import { Metrics } from "../Metrics";
 import { Logging } from "matrix-appservice-bridge";
 import * as uuid from "uuid/v4";
 import { XHTMLIM } from "./XHTMLIM";
+import { StzaPresence } from "./Stanzas";
 
 const IDPREFIX = "pbridge";
 const CONFLICT_SUFFIX = "[m]";
@@ -297,15 +298,18 @@ export class XmppJsAccount implements IPurpleAccount {
     }
 
     public async rejectChat(components: IChatJoinProperties) {
-        const message = x(
-            "presence",
-            {
-                to: `${components.room}@${components.server}/${components.handle}`,
-                from: `${this.remoteId}/${this.resource}`,
-                type: "unavailable",
-            },
-        );
-        await this.xmpp.xmppWriteToStream(message);
+        /** This also handles leaving */
+        const room = `${components.room}@${components.server}`;
+        components.handle = this.roomHandles.get(room)!;
+        log.info(`${this.remoteId} (${components.handle}) is leaving ${room}`);
+
+        await this.xmpp.xmppSend(new StzaPresence(
+            `${this.remoteId}/${this.resource}`,
+            `${components.room}@${components.server}/${components.handle}`,
+            undefined,
+            "unavailable",
+        ));
+        this.roomHandles.delete(room);
         Metrics.remoteCall("xmpp.presence.left");
     }
 
