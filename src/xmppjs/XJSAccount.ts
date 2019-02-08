@@ -167,6 +167,7 @@ export class XmppJsAccount implements IPurpleAccount {
 
     public async selfPing(to: string): Promise<boolean> {
         const id = uuid();
+        log.debug(`Self-pinging ${to}`);
         await this.xmpp.xmppSend(new StzaIqPing(
             `${this.remoteId}/${this.resource}`,
             to,
@@ -178,6 +179,7 @@ export class XmppJsAccount implements IPurpleAccount {
                 clearTimeout(timeout);
                 const error = stanza.getChild("error");
                 if (error) {
+                    log.debug(`Error when calling self-ping, not in ${to}`);
                     resolve(false);
                 }
                 resolve(true);
