@@ -11,11 +11,35 @@ const aliceJoin = x("presence", {
 });
 
 const aliceLeave = x("presence", {
-    xmlns: "jabber:client",
     to: "bob@xmpp.matrix.org/fakedevice",
     from: "aroom@conf.xmpp.matrix.org/alice",
     type: "unavailable",
-});
+}, [
+    x("x", {xmlns: "http://jabber.org/protocol/muc#user"}, [
+        x("item", {affiliation: "none", role: "none"}),
+    ])
+]);
+
+const bobJoin = x("presence", {
+    to: "bob@xmpp.matrix.org/fakedevice",
+    from: "aroom@conf.xmpp.matrix.org/bob",
+}, [
+    x("x", {xmlns: "http://jabber.org/protocol/muc#user"}, [
+        x("item", {affiliation: "member", role: "participant"}),
+        x("status", {code: "110"}),
+    ])
+]);
+
+const bobLeave = x("presence", {
+    to: "bob@xmpp.matrix.org/fakedevice",
+    from: "aroom@conf.xmpp.matrix.org/bob",
+    type: "unavailable",
+}, [
+    x("x", {xmlns: "http://jabber.org/protocol/muc#user"}, [
+        x("item", {affiliation: "none", role: "none"}),
+        x("status", {code: "110"}),
+    ])
+]);
 
 const aliceKick = x("presence", {
         xmlns: "jabber:client",
@@ -70,6 +94,29 @@ describe("PresenceCache", () => {
         expect(status!.online).to.be.false;
         expect(status!.ours).to.be.false;
         expect(status!.resource).to.eq("alice");
+    });
+
+    it("should parse own join and leave", () => {
+        const p = new PresenceCache();
+        let delta;
+        delta = p.add(bobJoin)!;
+        expect(delta).to.not.be.undefined;
+        expect(delta.changed).to.contain("online");
+        expect(delta.changed).to.contain("new");
+        expect(delta.error).to.be.null;
+        expect(delta.isSelf).to.be.true;
+        expect(delta.status!.resource).to.eq("bob");
+        delta = p.add(bobLeave)!;
+        expect(delta).to.not.be.undefined;
+        expect(delta.changed).to.contain("offline");
+        expect(delta.error).to.be.null;
+        expect(delta.isSelf).to.be.true;
+        expect(delta.status!.resource).to.eq("bob");
+        const status = p.getStatus("aroom@conf.xmpp.matrix.org/bob");
+        expect(status).to.not.be.undefined;
+        expect(status!.online).to.be.false;
+        expect(status!.ours).to.be.true;
+        expect(status!.resource).to.eq("bob");
     });
 
     it("should parse a kick message", () => {
