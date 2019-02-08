@@ -331,10 +331,10 @@ return `- ${account.protocol.name} (${username}) [Enabled=${account.isEnabled}] 
                     throw new Error("Protocol not found");
                 }
                 const {acct} = await this.getAccountForMxid(context, event, protocol.id);
-                const paramSet = await this.getJoinParametersForCommand(acct, cmdArgs, event.room_id);
-                await ProtoHacks.addJoinProps(protocol.id, paramSet, event.sender, this.bridge.getIntent());
+                const paramSet = await this.getJoinParametersForCommand(acct, cmdArgs, event.room_id, "!purple bridge");
                 log.debug("Got appropriate param set", paramSet);
                 if (paramSet != null) {
+                    await ProtoHacks.addJoinProps(protocol.id, paramSet, event.sender, this.bridge.getIntent());
                     // We want to join the room to make sure it works.
                     let res: IConversationEvent;
                     try {
@@ -580,7 +580,7 @@ Say \`help\` for more commands.
         let acct;
         try {
             acct = await this.getAccountForMxid(context, event, protocol.id);
-            paramSet = await this.getJoinParametersForCommand(acct.acct, args, event.room_id);
+            paramSet = await this.getJoinParametersForCommand(acct.acct, args, event.room_id, "join");
             await ProtoHacks.addJoinProps(protocol.id, paramSet, event.sender, this.bridge.getIntent());
         } catch (ex) {
             log.error("Failed to get account:", ex);
@@ -592,12 +592,12 @@ Say \`help\` for more commands.
         }
     }
 
-    private async getJoinParametersForCommand(acct: IPurpleAccount, args: string[], roomId: string)
+    private async getJoinParametersForCommand(acct: IPurpleAccount, args: string[], roomId: string, command: string)
     : Promise<IChatJoinProperties|null> {
         const params = acct.getChatParamsForProtocol();
         if (args.length === 1) {
-            let optional = "";
-            let required = "";
+            const optional: string[] = [];
+            const required: string[] = [];
             params.forEach((param) => {
                 if (param.label.startsWith("_")) {
                     param.label = param.label.substr(1);
@@ -606,9 +606,9 @@ Say \`help\` for more commands.
                     param.label = param.label.substr(0, param.label.length - 1);
                 }
                 if (param.required) {
-                    required += `- \`${param.label}\`\n`;
+                    required.push(`\`${param.label}\``);
                 } else {
-                    optional += `- \`${param.identifier}=value\` (${param.label})\n`;
+                    optional.push(`\`${param.identifier}=value\``);
                 }
             });
             const body =
@@ -616,11 +616,11 @@ Say \`help\` for more commands.
 Optional parameters must be in the form of name=value *after* the required options.
 The parameters ARE case sensitive.
 
-E.g. \`join xmpp roomname conf.matrix.org password=$ecr£t!\`
+E.g. \`${command} ${acct.protocol.id}\` ${required.join(" ")} ${optional.join(" ")}
 
-**required**:\n\n${required}
+**required**:\n\n - ${required.join("\n - ")}
 
-**optional**:\n\n${optional}
+**optional**:\n\n - ${optional.join("\n")}
 `;
             await this.bridge.getIntent().sendMessage(roomId, {
                 msgtype: "m.notice",
