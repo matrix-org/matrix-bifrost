@@ -68,17 +68,20 @@ export class Store {
         return matrixUsers[0];
     }
 
-    public async getRemoteUserBySender(sender: string, protocol: PurpleProtocol): Promise<BifrostRemoteUser> {
+    public async getRemoteUserBySender(sender: string, protocol: PurpleProtocol): Promise<BifrostRemoteUser|null> {
         const remoteId = Util.createRemoteId(protocol.id, sender);
-        const remote = this.bridge.getUserStore().getRemoteUser(
+        const remote = await this.bridge.getUserStore().getRemoteUser(
             remoteId,
         );
+        if (!remote) {
+            return null;
+        }
         const userIds = await this.bridge.getUserStore().getMatrixLinks(remoteId);
         const realUserIds = userIds.filter(
             (uId) => this.asBot.isRemoteUser(uId)
         );
         const userId = realUserIds[0] || userIds[0];
-        return new BifrostRemoteUser(await remote, userId, this.asBot.isRemoteUser(userId));
+        return new BifrostRemoteUser(remote, userId, this.asBot.isRemoteUser(userId));
     }
 
     public async getRemoteUsersFromMxId(userId: string): Promise<BifrostRemoteUser[]> {
