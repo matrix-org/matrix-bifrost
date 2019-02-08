@@ -97,12 +97,6 @@ export class XmppJsGateway {
     public sendMatrixMessage(
         chatName: string, sender: string, msg: IBasicProtocolMessage, room: IGatewayRoom, roomname: string) {
         log.info(`Sending ${msg.id} to ${chatName}`);
-        const id = msg.id!;
-        const htmlMsg = (msg.formatted || []).find((f) => f.type === "html");
-        let attachments: string[];
-        if (msg.opts && msg.opts.attachments) {
-            attachments = msg.opts.attachments.map((a) => a.uri );
-        }
         const xMembers = this.getMemberJidSet(room, chatName);
         const from = xMembers[sender];
         if (!from) {
@@ -110,13 +104,19 @@ export class XmppJsGateway {
             return;
         }
         const users = (this.roomUsers.get(chatName) || {});
-        this.xmpp.xmppAddSentMessage(id);
+        this.xmpp.xmppAddSentMessage(msg.id!);
+
+        // Ensure that the html portion is XHTMLIM
+        if (msg.formatted) {
+            msg.formatted!.forEach((fmt) => {
+                if (fmt.type === "html") {
+                    fmt.body = XHTMLIM.HTMLToXHTML(fmt.body);
+                }
+            });
+        }
+
         Object.keys(users).forEach((remoteJid) => {
-            const stanza = new StzaMessage(from, remoteJid, id, "groupchat");
-            stanza.html = htmlMsg ? XHTMLIM.HTMLToXHTML(htmlMsg.body) : "";
-            stanza.body = msg.body;
-            stanza.attachments = attachments;
-            this.xmpp.xmppSend(stanza);
+            this.xmpp.xmppSend(new StzaMessage(from, remoteJid, msg, "groupchat"));
         });
     }
 
@@ -131,9 +131,13 @@ export class XmppJsGateway {
         chatName: string, sender: string, displayname: string, membership: "join"|"leave", room: IGatewayRoom,
         roomname: string,
     ) {
+        log.info(`Got new ${membership} for ${sender} in ${roomname}`);
         // Iterate around each joined member and add the new presence step.
         const from = `${chatName}/` + (displayname || sender);
-        const users = Object.keys(this.roomUsers.get(room.roomId) || {});
+        const users = Object.keys(this.roomUsers.get(roomname) || {});
+        if (users.length === 0) {
+            log.warn("No users found for gateway room!");
+        }
         users.forEach((remoteJid) => {
             const role = membership === "join" ? "participant" : "none";
             const type = membership === "join" ? "" : "unavailable";
@@ -185,7 +189,7 @@ export class XmppJsGateway {
             }
             const from = xMembers[sender];
             this.xmpp.xmppSend(
-                new StzaPresenceItem(from, stanza.attrs.from),
+                new StzaPresenceItem(from, stanza.attrs.from, undefined, "member", "participant"),
             );
         });
         log.debug("Emitting membership of self");

@@ -17,6 +17,10 @@ export class StzaPresence implements IStza {
         this.id = this.id || uuid();
     }
 
+    get xContent(): string { return ""; }
+
+    get xProtocol(): string { return "muc"; }
+
     get presenceContent(): string { return ""; }
 
     get type(): string {
@@ -26,8 +30,9 @@ export class StzaPresence implements IStza {
     get xml(): string {
         const type = this.presenceType ? ` type='${this.presenceType}'` : "";
         const id = this.id ? ` id='${this.id}'` : "";
-        return `<presence from='${this.from}' to='${this.to}'${id}${type}>`
-             + `<x xmlns='http://jabber.org/protocol/muc'/>${this.presenceContent}</presence>`;
+        const content = this.xContent ? `<x xmlns='http://jabber.org/protocol/${this.xProtocol}'>${this.xContent}</x>` :
+            "<x xmlns='http://jabber.org/protocol/muc'/>";
+        return `<presence from='${this.from}' to='${this.to}'${id}${type}>${content}${this.presenceContent}</presence>`;
     }
 }
 
@@ -42,14 +47,15 @@ export class StzaPresenceItem extends StzaPresence {
         public jid: string = "",
         public itemType: string = "",
     ) {
-        super(from, to, id, undefined);
+        super(from, to, id, itemType);
     }
 
-    public get presenceContent() {
+    get xProtocol(): string { return "muc#user"; }
+
+    public get xContent() {
         const statusCode = this.self ? "<status code='110'/>" : "";
         const jid = this.jid ? ` jid='${this.jid}'` : "";
-        const type = this.itemType ? ` type='${this.itemType}'` : "";
-        return `<item affiliation='${this.affiliation}'${jid}${type} role='${this.role}'/>${statusCode}`;
+        return `<item affiliation='${this.affiliation}'${jid} role='${this.role}'/>${statusCode}`;
     }
 }
 
@@ -82,10 +88,10 @@ export class StzaPresenceJoin extends StzaPresence {
         super(from, to, id);
     }
 
-    public get presenceContent() {
+    public get xContent() {
         // No history.
         // TODO: I'm sure we want to be able to configure this.
-        return `<history maxchars='0'>`;
+        return `<history maxchars='0'/>`;
     }
 }
 
@@ -167,8 +173,8 @@ export class StzaIqPing implements IStza {
     }
 
     get xml(): string {
-        return `<iq xmlns='jabber:client' from='${this.from}' to='${this.to}' id='${this.id}' type='get'>
-    <ping xmlns='urn:xmpp:ping'></ping>
+        return `<iq from='${this.from}' to='${this.to}' id='${this.id}' type='get'>
+    <ping xmlns='urn:xmpp:ping'/>
 </iq>`;
     }
 }
