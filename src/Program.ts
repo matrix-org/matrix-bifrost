@@ -107,6 +107,8 @@ class Program {
           domain: this.cfg.bridge.domain,
           homeserverUrl: this.cfg.bridge.homeserverUrl,
           registration: this.cli.getRegistrationFilePath(),
+          roomStore: this.cfg.bridge.roomStoreFile,
+          userStore: this.cfg.bridge.userStoreFile,
         });
         await this.bridge.run(port, this.cfg);
 
