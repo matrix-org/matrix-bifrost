@@ -139,9 +139,10 @@ export class XmppJsGateway {
             log.warn("No users found for gateway room!");
         }
         users.forEach((remoteJid) => {
+            const affiliation = membership === "join" ? "member" : "none";
             const role = membership === "join" ? "participant" : "none";
             const type = membership === "join" ? "" : "unavailable";
-            this.xmpp.xmppSend(new StzaPresenceItem(from, remoteJid, undefined, role, "none", false, from, type));
+            this.xmpp.xmppSend(new StzaPresenceItem(from, remoteJid, undefined, affiliation, role, false, type));
         });
     }
 
