@@ -92,6 +92,6 @@
     "all": true,
     "instrument": true,
     "sourceMap": true,
-    "report-dir": "./.nyc"
+    "report-dir": "./coverage"
   }
 }

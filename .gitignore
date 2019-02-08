@@ -1,6 +1,5 @@
 node_modules/
-.nyc/
-.nyc_output/
+coverage/
 build/
 *.db
 config.yaml
