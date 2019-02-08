@@ -11,7 +11,7 @@ import { Metrics } from "../Metrics";
 import { Logging } from "matrix-appservice-bridge";
 import * as uuid from "uuid/v4";
 import { XHTMLIM } from "./XHTMLIM";
-import { StzaPresence } from "./Stanzas";
+import { StzaPresence, StzaMessage, StzaIqPing, StzaPresenceJoin } from "./Stanzas";
 
 const IDPREFIX = "pbridge";
 const CONFLICT_SUFFIX = "[m]";
@@ -82,20 +82,16 @@ export class XmppJsAccount implements IPurpleAccount {
     }
 
     public sendIM(recipient: string, msg: IBasicProtocolMessage) {
-        const id = IDPREFIX + Date.now().toString();
-        const message = x(
-            "message",
-            {
-                to: recipient,
-                id,
-                from: `${this.remoteId}/${this.resource}`,
-                type: "chat",
-            },
-            x("body", undefined, msg.body),
+        msg.id = msg.id || IDPREFIX + Date.now().toString();
+        const message = new StzaMessage(
+            `${this.remoteId}/${this.resource}`,
+            recipient,
+            msg,
+            "chat",
         );
-        this.xmpp.xmppAddSentMessage(id);
-        this.xmpp.xmppWriteToStream(message);
-        Metrics.remoteCall("xmpp.message.im");
+        this.xmpp.xmppAddSentMessage(msg.id);
+        this.xmpp.xmppSend(message);
+        Metrics.remoteCall("xmpp.message.chat");
     }
 
     public sendChat(chatName: string, msg: IBasicProtocolMessage) {
@@ -166,15 +162,11 @@ export class XmppJsAccount implements IPurpleAccount {
 
     public async selfPing(to: string): Promise<boolean> {
         const id = uuid();
-        await this.xmpp.xmppWriteToStream(x("iq", {
-            xmlns: "jabber:client",
-            type: "get",
-            from: `${this.remoteId}/${this.resource}`,
+        await this.xmpp.xmppSend(new StzaIqPing(
+            `${this.remoteId}/${this.resource}`,
             to,
             id,
-        }, x("ping", {
-            xmlns: "urn:xmpp:ping",
-        })));
+        ));
         return new Promise((resolve, reject) => {
             const timeout = setTimeout(() => resolve(false), 1000);
             this.xmpp.on("iq." + id, (stanza: Element) => {
@@ -246,18 +238,10 @@ export class XmppJsAccount implements IPurpleAccount {
             const from = `${this.remoteId}/${this.resource}`;
             const id = uuid();
             log.info(`Joining to=${to} from=${from}`);
-            const message = x(
-                "presence",
-                {
-                    to,
-                    from,
-                    id,
-                },
-                x ("x", {
-                    xmlns: "http://jabber.org/protocol/muc",
-                }, x ("history", {
-                    maxchars: "0", // No history
-                })),
+            const message = new StzaPresenceJoin(
+                from,
+                to,
+                id,
             );
             this.roomHandles.set(roomName, components.handle);
             if (setWaiting) {
@@ -279,7 +263,7 @@ export class XmppJsAccount implements IPurpleAccount {
                     this.xmpp.on("chat-joined", cb);
                 });
             }
-            await this.xmpp.xmppWriteToStream(message);
+            await this.xmpp.xmppSend(message);
             Metrics.remoteCall("xmpp.presence.join");
             return p;
     }
