@@ -38,6 +38,7 @@ export class XmppJsAccount implements IPurpleAccount {
 
     public readonly roomHandles: Map<string, string>;
     private lastStanzaTs: Map<string, number>;
+    private checkInterval: NodeJS.Timeout;
     constructor(
         public readonly remoteId: string,
         public readonly resource: string,
@@ -47,7 +48,7 @@ export class XmppJsAccount implements IPurpleAccount {
         this.roomHandles = new Map();
         this.waitingToJoin = new Set();
         this.lastStanzaTs = new Map();
-        setInterval(() => {
+        this.checkInterval = setInterval(() => {
             this.lastStanzaTs.forEach((ts, roomName) => {
                 if (Date.now() - ts > LASTSTANZA_MAXDURATION) {
                     this.selfPing(roomName).then((isInRoom) => {
@@ -63,6 +64,10 @@ export class XmppJsAccount implements IPurpleAccount {
                 }
             });
         }, LASTSTANZA_CHECK_MS);
+    }
+
+    public stop() {
+        clearInterval(this.checkInterval);
     }
 
     public findAccount() {
@@ -194,6 +199,22 @@ export class XmppJsAccount implements IPurpleAccount {
                 log.warn(`Failed to rejoin ${fullRoomName}`, ex);
             }
         });
+    }
+
+    public async rejoinChat(fullRoomName: string) {
+        log.info(`Rejoining ${fullRoomName} for ${this.remoteId}`);
+        try {
+            const handle = this.roomHandles.get(fullRoomName);
+            if (!handle) {
+                throw new Error("User has no assigned handle for this room, we cannot rejoin!");
+            }
+            await this.joinChat({
+                handle,
+                fullRoomName,
+            });
+        } catch (ex) {
+            log.warn(`Failed to rejoin ${fullRoomName}`, ex);
+        }
     }
 
     public async joinChat(
