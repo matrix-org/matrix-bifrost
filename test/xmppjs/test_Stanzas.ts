@@ -17,8 +17,8 @@ describe("Stanzas", () => {
             const xml = new StzaPresenceItem("foo@bar", "baz@bar", "someid").xml;
             assertXML(xml);
             expect(xml).to.equal(
-                "<presence from='foo@bar' to='baz@bar' id='someid'><x xmlns='http://jabber.org/protocol/muc'/>"
-                + "<item affiliation='member' role='participant'/></presence>",
+                "<presence from='foo@bar' to='baz@bar' id='someid'><x xmlns='http://jabber.org/protocol/muc#user'>"
+                + "<item affiliation='member' role='participant'/></x></presence>",
             );
         });
     });
