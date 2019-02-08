@@ -22,7 +22,7 @@ export class ProtoHacks {
             try {
                 props.handle = (await intent.getProfileInfo(userId)).displayname;
             } catch (ex) {
-                log.warn("Failed to get profile for", userId, ex);
+                log.warn("Failed to get profile for", userId);
                 props.handle = userId;
             }
         }
