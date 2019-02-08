@@ -6,7 +6,7 @@ export interface IStza {
     xml: string;
 }
 
-export abstract class StzaPresence implements IStza {
+export class StzaPresence implements IStza {
     constructor(
         public from: string,
         public to: string,
@@ -24,7 +24,8 @@ export abstract class StzaPresence implements IStza {
 
     get xml(): string {
         const type = this.presenceType ? ` type='${this.presenceType}'` : "";
-        return `<presence from='${this.from}' to='${this.to}' id='${this.id}'${type}>`
+        const id = this.id ? ` id='${this.id}'` : "";
+        return `<presence from='${this.from}' to='${this.to}'${id}${type}>`
              + `<x xmlns='http://jabber.org/protocol/muc'/>${this.presenceContent}</presence>`;
     }
 }
