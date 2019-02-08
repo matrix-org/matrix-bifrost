@@ -357,6 +357,7 @@ export class XmppJsInstance extends EventEmitter implements IPurpleInstance {
         let localAcct = this.accounts.get(`${to!.local}@${to!.domain}`)!;
         let from = jid(stanza.attrs.from);
         let convName = `${from.local}@${from.domain}`;
+
         if (alias) {
             log.debug("This is an alias room, seeing if the user has a handle jid");
             convName = `${to.local}@${to.domain}`;
@@ -365,8 +366,20 @@ export class XmppJsInstance extends EventEmitter implements IPurpleInstance {
             from = jid(stanza.attrs.from) ;
             this.gateway.reflectXMPPMessage(stanza);
         }
-        const type = stanza.attrs.type;
         const chatState = stanza.getChildByAttr("xmlns", "http://jabber.org/protocol/chatstates");
+
+        if (stanza.attrs.type === "error") {
+            // We got an error back from sending a message, let's handle it.
+            const error = stanza.getChild("error")!;
+            log.warn(`Message ${stanza.attrs.id} returned an error: `, error.toString());
+            if (error.attrs.code === "406" && error.getChild("not-acceptable") && localAcct) {
+                log.warn("Got 406/not-acceptable, rejoining room..");
+                // https://xmpp.org/extensions/xep-0045.html#message says we should treat this as the user not being joined.
+                await localAcct.rejoinChat(convName);
+                // TODO: Resend the message?
+            }
+        }
+        const type = stanza.attrs.type;
 
         if (!localAcct && !alias) {
             // No local account, attempt to autoregister it?
@@ -588,7 +601,7 @@ export class XmppJsInstance extends EventEmitter implements IPurpleInstance {
                         protocol_id: XMPP_PROTOCOL.id,
                         username,
                     },
-                } as IConversationEvent);
+                } as IChatJoined);
                 return;
             }
             if (delta.status && !delta.status.ours) {
