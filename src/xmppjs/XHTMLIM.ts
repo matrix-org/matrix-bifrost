@@ -62,16 +62,13 @@ export class XHTMLIM {
                 ).forEach((a) => {
                     attribs[a] = he.encode(rawAttribs[a]);
                 });
-                if (xhtml === "" && tagname !== "html") {
-                    // Prepend a body.
-                    xhtml += `<html xmlns='${XMLNS}'>`;
-                } else if (xhtml === "" && tagname === "html") {
+                if (tagname === "html") {
                     attribs.xmlns = XMLNS;
                 }
                 xhtml += `<${tagname}${Object.keys(attribs).map((k) => ` ${k}='${attribs[k]}'`)}>`;
             },
             ontext: (text) => {
-                xhtml += `${he.encode(text)}`;
+                xhtml += `${he.escape(text)}`;
             },
             onclosetag: (tagname) => {
                 if (VALID_ELEMENT_ATTRIBUTES[tagname] === undefined) {
@@ -85,11 +82,14 @@ export class XHTMLIM {
             lowerCaseTags: true,
             lowerCaseAttributeNames: true,
         });
+        if (!html.startsWith("<html")) {
+            html = `<html xmlns='${XMLNS}'>${html}`;
+        }
+        if (!html.toLowerCase().endsWith("</html>")) {
+            html += "</html>";
+        }
         parser.write(html);
         parser.end();
-        if (!xhtml.toLowerCase().endsWith("<html>")) {
-            xhtml += "</html>";
-        }
         return xhtml;
     }
 }

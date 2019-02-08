@@ -43,6 +43,7 @@ describe("XJSAccount", () => {
                 from: "bob@matrix.localhost/matrix-bridge",
                 to: "alice@remote.server",
                 messageType: "chat",
+                id: "12345",
                 html: "",
                 body: "Hello!",
                 attachments: [],

@@ -106,9 +106,7 @@ export class StzaMessage implements IStza {
         idOrMsg?: string|IBasicProtocolMessage,
         public messageType?: string,
     ) {
-        if (!idOrMsg) {
-            this.id = this.id || uuid();
-        } else if (idOrMsg.hasOwnProperty("body")) {
+        if (idOrMsg && idOrMsg.hasOwnProperty("body")) {
             idOrMsg = idOrMsg as IBasicProtocolMessage;
             this.body = idOrMsg.body;
             if (idOrMsg.formatted) {
@@ -118,9 +116,11 @@ export class StzaMessage implements IStza {
             if (idOrMsg.opts) {
                 this.attachments = (idOrMsg.opts.attachments || []).map((a) => a.uri);
             }
-        } else {
+            this.id = idOrMsg.id;
+        } else if (idOrMsg) {
             this.id = idOrMsg;
         }
+        this.id = this.id || uuid();
     }
 
     get type(): string {

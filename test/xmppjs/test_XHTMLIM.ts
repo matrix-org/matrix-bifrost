@@ -1,27 +1,35 @@
 import * as Chai from "chai";
 import { XHTMLIM } from "../../src/xmppjs/XHTMLIM";
-import * as mockRequire from "mock-require";
 
 const expect = Chai.expect;
 
 describe("XHTMLIM", () => {
-    it("should transform a message", () => {
+    it("should not change compliant messages", () => {
         expect(
             XHTMLIM.HTMLToXHTML(
                 "<html xmlns='http://jabber.org/protocol/xhtml-im'><p>Hello world</p></html>",
             ),
         ).to.equal(
-            "<html xmlns='http://jabber.org/protocol/xhtml-im'><p>Hello world</p></html></html>",
+            "<html xmlns='http://jabber.org/protocol/xhtml-im'><p>Hello world</p></html>",
         );
     });
+    it("should transform a simple text message", () => {
+        expect(
+            XHTMLIM.HTMLToXHTML(
+                "o/",
+            ),
+        ).to.equal(
+            "<html xmlns='http://jabber.org/protocol/xhtml-im'>o/</html>",
+        );
+    })
     it("should transform a message with a link", () => {
         expect(
             XHTMLIM.HTMLToXHTML(
-                "<a href=\"https://matrix.to/#/@benpa:matrix.org\">benpa</a>: Will be there in spirit!",
+                "<a href=\"https://matrix.to/#/@bob:matrix.org\">bob</a>: Huzzah!",
             ),
         ).to.equal(
-            "<html xmlns=\'http://jabber.org/protocol/xhtml-im\'><a href=\'https://matrix.to/#/@benpa:matrix.org\'>"
-            + "benpa</a>: Will be there in spirit!</html>",
+            "<html xmlns=\'http://jabber.org/protocol/xhtml-im\'><a href=\'https://matrix.to/#/@bob:matrix.org\'>"
+            + "bob</a>: Huzzah!</html>",
         );
     });
     it("should transform a message with a reply", () => {
