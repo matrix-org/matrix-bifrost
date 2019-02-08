@@ -1,5 +1,5 @@
 import * as Chai from "chai";
-import { StzaPresenceItem, StzaPresenceError, StzaMessageSubject, StzaMessage } from "../../src/xmppjs/Stanzas";
+import { StzaPresenceItem, StzaPresenceError, StzaMessageSubject, StzaMessage, StzaPresencePart } from "../../src/xmppjs/Stanzas";
 import * as parser from "fast-xml-parser";
 const expect = Chai.expect;
 
@@ -30,6 +30,15 @@ describe("Stanzas", () => {
                 "<presence from='foo@bar' to='baz@bar' id='someid' type='error'><x"
                 + " xmlns='http://jabber.org/protocol/muc'/><error type='cancel' by='baz2@bar'>"
                 + "<inner-error xmlns='urn:ietf:params:xml:ns:xmpp-stanzas'/></error></presence>",
+            );
+        });
+    });
+    describe("StzaPresencePart", () => {
+        it("should create a valid stanza", () => {
+            const xml = new StzaPresencePart("foo@bar", "baz@bar").xml;
+            assertXML(xml);
+            expect(xml).to.equal(
+                "<presence from='foo@bar' to='baz@bar' type='unavailable'></presence>",
             );
         });
     });

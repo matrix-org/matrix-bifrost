@@ -8,6 +8,7 @@ export interface IStza {
 }
 
 export class StzaPresence implements IStza {
+    protected includeXContent: boolean = true;
     constructor(
         public from: string,
         public to: string,
@@ -30,8 +31,11 @@ export class StzaPresence implements IStza {
     get xml(): string {
         const type = this.presenceType ? ` type='${this.presenceType}'` : "";
         const id = this.id ? ` id='${this.id}'` : "";
-        const content = this.xContent ? `<x xmlns='http://jabber.org/protocol/${this.xProtocol}'>${this.xContent}</x>` :
-            "<x xmlns='http://jabber.org/protocol/muc'/>";
+        let content = "";
+        if (this.includeXContent) {
+            content = this.xContent ? `<x xmlns='http://jabber.org/protocol/${this.xProtocol}'>${this.xContent}</x>` :
+                "<x xmlns='http://jabber.org/protocol/muc'/>";
+        }
         return `<presence from='${this.from}' to='${this.to}'${id}${type}>${content}${this.presenceContent}</presence>`;
     }
 }
@@ -92,6 +96,17 @@ export class StzaPresenceJoin extends StzaPresence {
         // No history.
         // TODO: I'm sure we want to be able to configure this.
         return `<history maxchars='0'/>`;
+    }
+}
+
+export class StzaPresencePart extends StzaPresence {
+    constructor(
+        from: string,
+        to: string,
+    ) {
+        super(from, to, undefined, "unavailable");
+        this.includeXContent = false;
+        this.id = undefined;
     }
 }
 

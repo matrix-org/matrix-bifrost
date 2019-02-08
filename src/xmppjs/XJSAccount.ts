@@ -11,7 +11,7 @@ import { Metrics } from "../Metrics";
 import { Logging } from "matrix-appservice-bridge";
 import * as uuid from "uuid/v4";
 import { XHTMLIM } from "./XHTMLIM";
-import { StzaPresence, StzaMessage, StzaIqPing, StzaPresenceJoin } from "./Stanzas";
+import { StzaPresence, StzaMessage, StzaIqPing, StzaPresenceJoin, StzaPresencePart } from "./Stanzas";
 
 const IDPREFIX = "pbridge";
 const CONFLICT_SUFFIX = "[m]";
@@ -308,11 +308,9 @@ export class XmppJsAccount implements IPurpleAccount {
         components.handle = this.roomHandles.get(room)!;
         log.info(`${this.remoteId} (${components.handle}) is leaving ${room}`);
 
-        await this.xmpp.xmppSend(new StzaPresence(
+        await this.xmpp.xmppSend(new StzaPresencePart(
             `${this.remoteId}/${this.resource}`,
             `${components.room}@${components.server}/${components.handle}`,
-            undefined,
-            "unavailable",
         ));
         this.roomHandles.delete(room);
         Metrics.remoteCall("xmpp.presence.left");
