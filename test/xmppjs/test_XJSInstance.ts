@@ -1,8 +1,4 @@
 import * as Chai from "chai";
-import { PresenceCache } from "../../src/xmppjs/PresenceCache";
-import { jid } from "@xmpp/component";
-import { x } from "@xmpp/xml";
-import * as mockRequire from "mock-require";
 import { XmppJsInstance, XMPP_PROTOCOL } from "../../src/xmppjs/XJSInstance";
 
 const expect = Chai.expect;
