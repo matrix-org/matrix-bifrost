@@ -129,7 +129,7 @@ class Program {
             Metrics.init(this.bridge);
         }
         this.store = new Store(this.bridge);
-        this.profileSync = new ProfileSync(this.bridge, this.cfg);
+        this.profileSync = new ProfileSync(this.bridge, this.cfg, this.store);
         this.roomHandler = new MatrixRoomHandler(
             this.purple!, this.profileSync, this.store, this.cfg, this.deduplicator,
         );

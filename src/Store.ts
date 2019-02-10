@@ -21,7 +21,7 @@ export class BifrostRemoteUser {
         return this.remoteUser.getId();
     }
 
-    public get username() {
+    public get username(): string {
         return this.remoteUser.get("username");
     }
 
@@ -82,7 +82,7 @@ export class Store {
         }
         const userIds = await this.bridge.getUserStore().getMatrixLinks(remoteId);
         const realUserIds = userIds.filter(
-            (uId) => this.asBot.isRemoteUser(uId)
+            (uId) => this.asBot.isRemoteUser(uId),
         );
         const userId = realUserIds[0] || userIds[0];
         return new BifrostRemoteUser(remote, userId, this.asBot.isRemoteUser(userId));
@@ -107,7 +107,7 @@ export class Store {
     public async getUsernameMxidForProtocol(protocol: PurpleProtocol): Promise<{[mxid: string]: string}> {
         const set = {};
         const users = (await this.userStore.getByRemoteData({protocol_id: protocol.id, type: MUSER_TYPE_ACCOUNT})
-        ).concat(await this.userStore.getByRemoteData({protocol_id: protocol.id, type: MUSER_TYPE_ACCOUNT})).filter(
+        ).filter(
             (u) => u.data.isRemoteUser !== true,
         );
         for (const remoteUser of users) {
@@ -126,7 +126,8 @@ export class Store {
     }
 
     public async storeUser(userId: string, protocol: PurpleProtocol,
-                           username: string, type: MUSER_TYPES, extraData: any = {}) {
+                           username: string, type: MUSER_TYPES, extraData: any = {})
+                            : Promise<{remote: RemoteRoom, matrix: MatrixRoom}> {
         const mxUser = new MatrixUser(userId);
         const id = Util.createRemoteId(protocol.id, username);
         const existing = await this.userStore.getRemoteUser(id);
@@ -137,12 +138,14 @@ export class Store {
             remoteUser.set("type", type);
             await this.userStore.linkUsers(mxUser, remoteUser);
             log.info(`Linked new ${type} ${userId} -> ${id}`);
+            return {remote: remoteUser, matrix: mxUser};
         } else {
             log.debug(`Updated existing ${type} ${userId} -> ${id}`);
             Object.keys(extraData).forEach((key) => {
                 existing.set(key, extraData[key]);
             });
             await this.userStore.setRemoteUser(existing);
+            return {remote: existing, matrix: mxUser};
         }
     }
 

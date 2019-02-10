@@ -1,15 +1,14 @@
-import { MatrixUser, RemoteUser, Bridge, Intent} from "matrix-appservice-bridge";
 import { IPurpleAccount } from "./purple/IPurpleAccount";
 import * as _fs from "fs";
 import * as path from "path";
 import { PurpleProtocol } from "./purple/PurpleProtocol";
-import { Util } from "./Util";
-import { Logging } from "matrix-appservice-bridge";
+import { Logging, MatrixUser, Bridge, Intent } from "matrix-appservice-bridge";
 import { Config } from "./Config";
+import { Store, BifrostRemoteUser } from "./Store";
 const log = Logging.get("ProfileSync");
 
 export class ProfileSync {
-    constructor(private bridge: Bridge, private config: Config) {
+    constructor(private bridge: Bridge, private config: Config, private store: Store) {
 
     }
 
@@ -39,7 +38,7 @@ export class ProfileSync {
             name: senderId,
             avatar_uri: undefined,
         };
-        const buddy = account.getBuddy(remoteUser.get("username"));
+        const buddy = account.getBuddy(remoteUser.username);
         if (buddy === undefined) {
             try {
                 log.info("Fetching user info for", senderIdToLookup);
@@ -52,7 +51,7 @@ export class ProfileSync {
                 // XXX: This is dependant on the protocol.
                 remoteProfileSet.name = (uinfo["Full Name"] || uinfo["User ID"] || senderId) as string;
             } catch (ex) {
-                log.info("Couldn't fetch user info for ", remoteUser.get("username"));
+                log.info("Couldn't fetch user info for ", remoteUser.username);
             }
         } else {
             remoteProfileSet.name = buddy.name;
@@ -94,33 +93,18 @@ export class ProfileSync {
         await store.setMatrixUser(matrixUser);
     }
 
-    private handlePurpleProfileChange() {
-
-    }
-
-    private async getOrCreateStoreUsers(protocol: PurpleProtocol, senderId: string): Promise<[MatrixUser, RemoteUser]> {
-        const store = this.bridge.getUserStore();
-        const tempMxUser = protocol.getMxIdForProtocol(
+    private async getOrCreateStoreUsers(protocol: PurpleProtocol, senderId: string)
+    : Promise<[MatrixUser, BifrostRemoteUser]> {
+        const mxUser = protocol.getMxIdForProtocol(
             senderId,
             this.config.bridge.domain,
             this.config.bridge.userPrefix,
         );
-        let mxUser = await store.getMatrixUser(tempMxUser.getId());
-        if (!mxUser) {
-            mxUser = tempMxUser;
-            store.setMatrixUser(mxUser);
-        }
-        const remoteUsers = await store.getRemoteUsersFromMatrixId(tempMxUser.getId());
-        let rmUser;
+        const remoteUsers = await this.store.getRemoteUsersFromMxId(mxUser.getId());
         if (remoteUsers.length === 0) {
-            rmUser = new RemoteUser(Util.createRemoteId(protocol.id, senderId));
-            rmUser.set("protocolId", protocol.id);
-            rmUser.set("username", senderId);
-            rmUser.set("isRemoteUser", true);
-            await store.linkUsers(mxUser, rmUser);
-        } else {
-            rmUser = remoteUsers[0];
+            const {remote, matrix} = await this.store.storeUser(mxUser.userId, protocol, senderId, "ghost");
+            return [remote, matrix];
         }
-        return [mxUser, rmUser];
+        return [mxUser, remoteUsers[0]];
     }
 }
