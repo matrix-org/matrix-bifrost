@@ -71,7 +71,7 @@ export class XmppJsInstance extends EventEmitter implements IPurpleInstance {
     private bufferedMessages: Array<{xmlMsg: Element|string, resolve: (res: Promise<void>) => void}>;
     private autoRegister?: AutoRegistration;
     private bridge!: Bridge;
-    private xmppGateway: XmppJsGateway;
+    private xmppGateway: XmppJsGateway|null;
     private activeMUCUsers: Set<string>;
     private lastMessageInMUC: Map<string, {originIsMatrix: boolean, id: string}>;
     constructor(private config: Config) {
@@ -82,10 +82,10 @@ export class XmppJsInstance extends EventEmitter implements IPurpleInstance {
         this.seenMessages = new Set();
         this.presenceCache = new PresenceCache();
         this.serviceHandler = new ServiceHandler(this);
-        this.xmppGateway = new XmppJsGateway(this, config.bridge);
         this.connectionWasDropped = false;
         this.activeMUCUsers = new Set();
         this.lastMessageInMUC = new Map();
+        this.xmppGateway = null;
     }
 
     get gateway() {
@@ -150,6 +150,9 @@ export class XmppJsInstance extends EventEmitter implements IPurpleInstance {
         const opts = config.backendOpts as IXJSBackendOpts;
         if (!opts || !opts.service || !opts.domain || !opts.password) {
             throw Error("Missing opts for xmpp: service, domain, password");
+        }
+        if (opts.enableGateway === true) {
+            this.xmppGateway = new XmppJsGateway(this, this.config.bridge);
         }
         this.defaultRes = opts.defaultResource ? opts.defaultResource : "matrix-bridge";
         log.info(`Starting new XMPP component instance to ${opts.service} using domain ${opts.domain}`);
@@ -360,6 +363,9 @@ export class XmppJsInstance extends EventEmitter implements IPurpleInstance {
         const isOurs = to !== null && to.domain === this.myAddress.domain;
         log.info(`Got from=${from} to=${to} isOurs=${isOurs}`);
         const alias = isOurs && to!.local.startsWith("#") && this.serviceHandler.parseAliasFromJID(to!) || null;
+        if (alias && !this.gateway) {
+            log.warn("Not handling gateway request, gateways are disabled");
+        }
         try {
             if (isOurs) {
                 if (stanza.is("iq") && stanza.getAttr("type") === "get") {
@@ -370,7 +376,7 @@ export class XmppJsInstance extends EventEmitter implements IPurpleInstance {
             }
 
             if (alias && stanza.is("presence")) {
-                this.gateway.handleStanza(stanza, alias);
+                this.gateway!.handleStanza(stanza, alias);
                 return;
             }
 
@@ -404,10 +410,10 @@ export class XmppJsInstance extends EventEmitter implements IPurpleInstance {
         if (alias) {
             log.debug("This is an alias room, seeing if the user has a handle jid");
             convName = `${to.local}@${to.domain}`;
-            stanza.attrs.from = this.gateway.getRoomJidForRealJid(convName, stanza.attrs.from) || stanza.attrs.from;
+            stanza.attrs.from = this.gateway!.getRoomJidForRealJid(convName, stanza.attrs.from) || stanza.attrs.from;
             log.debug(stanza.attrs.from);
             from = jid(stanza.attrs.from) ;
-            this.gateway.reflectXMPPMessage(stanza);
+            this.gateway!.reflectXMPPMessage(stanza);
         }
         const chatState = stanza.getChildByAttr("xmlns", "http://jabber.org/protocol/chatstates");
 
@@ -646,6 +652,8 @@ export class XmppJsInstance extends EventEmitter implements IPurpleInstance {
         }
 
         if (delta.changed.includes("offline")) {
+            // Because we might not have cleared it yet.
+            this.activeMUCUsers.delete(stanza.attrs.from);
             if (delta.isSelf) {
                 // XXX: Should we attempt to reconnect/kick the user?
                 return;

@@ -40,8 +40,8 @@ export interface IGatewayRoom {
  * for XMPP.js).
  */
 export class GatewayHandler {
-    private aliasCache: Map<string, IGatewayRoom>;
-    private roomIdCache: Map<string, IGatewayRoom>;
+    private aliasCache!: Map<string, IGatewayRoom>;
+    private roomIdCache!: Map<string, IGatewayRoom>;
 
     constructor(
         private purple: IPurpleInstance,
@@ -50,6 +50,9 @@ export class GatewayHandler {
         private store: Store,
         private profileSync: ProfileSync,
     ) {
+        if (!purple.gateway) {
+            return;
+        }
         purple.on("gateway-queryroom", this.handleRoomQuery.bind(this));
         purple.on("gateway-joinroom", this.handleRoomJoin.bind(this));
         this.aliasCache = new Map();
