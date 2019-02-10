@@ -109,10 +109,12 @@ export class RoomSync {
                     // Don't handle remote non-gateway users, or matrix gateway users.
                     continue;
                 }
-                const remotes = (await this.store.getRemoteUsersFromMxId(userId)).filter(
+                const allRemotes = await this.store.getRemoteUsersFromMxId(userId);
+                const remotes = allRemotes.filter(
                     (ruser) => ruser && ruser.isAccount &&
                         ruser.protocolId === room.remote.get("protocol_id"),
                 );
+                log.debug(`Remotes found for ${userId}`, allRemotes, remotes, room.remote);
                 if (remotes.length === 0 && !isRemote) {
                     log.warn(`${userId} has no remote accounts matching the rooms protocol`);
                     continue;
