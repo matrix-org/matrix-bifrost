@@ -21,7 +21,7 @@ export class ProfileSync {
     ) {
         senderIdToLookup = senderIdToLookup ? senderIdToLookup : senderId;
         const store = this.bridge.getUserStore();
-        const [matrixUser, remoteUser] = await this.getOrCreateStoreUsers(protocol, senderId);
+        const {matrixUser, remoteUser} = await this.getOrCreateStoreUsers(protocol, senderId);
         const lastCheck = matrixUser.get("last_check");
         matrixUser.set("last_check", Date.now());
         if (!force &&
@@ -94,7 +94,7 @@ export class ProfileSync {
     }
 
     private async getOrCreateStoreUsers(protocol: PurpleProtocol, senderId: string)
-    : Promise<[MatrixUser, BifrostRemoteUser]> {
+    : Promise<{matrixUser: MatrixUser, remoteUser: BifrostRemoteUser}> {
         const userId: string = protocol.getMxIdForProtocol(
             senderId,
             this.config.bridge.domain,
@@ -112,8 +112,8 @@ export class ProfileSync {
 
         if (remoteUsers.length === 0) {
             const {remote, matrix} = await this.store.storeUser(mxUser.getId(), protocol, senderId, "ghost");
-            return [remote, matrix];
+            return {matrixUser: matrix, remoteUser: remote};
         }
-        return [mxUser, remoteUsers[0]];
+        return {matrixUser: mxUser, remoteUser: remoteUsers[0]};
     }
 }
