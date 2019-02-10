@@ -129,7 +129,7 @@ export class ServiceHandler {
                 throw Error("Not a valid alias");
             }
             const roomId = await this.queryRoom(alias, true);
-            log.info(`Response for alias request ${toStr} -> ${roomId}`);
+            log.info(`Response for alias request ${toStr} (${alias}) -> ${roomId}`);
             await this.xmpp.xmppWriteToStream(
                 x("iq", {
                     type: "result",
