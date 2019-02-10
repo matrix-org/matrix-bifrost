@@ -137,13 +137,17 @@ export class MatrixRoomHandler {
             await this.store.storeRoom(roomId, MROOM_TYPE_IM, remoteId, remoteData);
             // Room doesn't exist yet, create it.
         } else {
+            let entry;
             if (remoteEntries.length > 1) {
-                log.error(
-                    `Have multiple matrix rooms assigned for IM ${matrixUser.getId()} <-> ${data.sender}. Bailing`,
+                log.warn(
+                    `Have multiple matrix rooms assigned for IM ` +
+                    `${matrixUser.getId()} <-> ${data.sender}. Using last entry`,
                 );
-                return;
+                entry = remoteEntries[remoteEntries.length - 1];
+            } else {
+                entry = remoteEntries[0];
             }
-            roomId = remoteEntries[0].matrix.getId();
+            roomId = entry.matrix.getId();
         }
         return roomId;
     }
