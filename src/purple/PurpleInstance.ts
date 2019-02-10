@@ -6,7 +6,7 @@ import { IPurpleInstance } from "./IPurpleInstance";
 import { Logging } from "matrix-appservice-bridge";
 import * as path from "path";
 import { IConfigPurple } from "../Config";
-import { IUserInfo, IConversationEvent, IReceivedImMsg } from "./PurpleEvents";
+import { IUserInfo, IConversationEvent, IReceivedImMsg, IEventBody } from "./PurpleEvents";
 import { PurpleProtocol } from "./PurpleProtocol";
 import { IEventRequestData } from "../MatrixTypes";
 import { IGateway } from "./IGateway";
@@ -106,6 +106,10 @@ export class PurpleInstance extends EventEmitter implements IPurpleInstance {
         // This is for gateways, and we aren't a gateway yet.
     }
 
+    public eventAck(eventName: string, data: IEventBody) {
+        // This is for handling stuff after an event has been sent.
+    }
+
     private eventHandler() {
         helper.pollEvents().forEach((evt) => {
             if (!["received-chat-msg"].includes(evt.eventName)) {
@@ -143,4 +147,5 @@ export class PurpleInstance extends EventEmitter implements IPurpleInstance {
             }
         });
     }
+
 }

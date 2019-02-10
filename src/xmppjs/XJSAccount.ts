@@ -133,6 +133,10 @@ export class XmppJsAccount implements IPurpleAccount {
         if (htmlMsg) {
             message = message.replace(htmlAnchor, XHTMLIM.HTMLToXHTML(htmlMsg.body));
         }
+        if (msg.id) {
+            // Send RR for message if we have the matrixId.
+            this.xmpp.emitReadReciepts(msg.id, chatName, true);
+        }
         this.xmpp.xmppAddSentMessage(id);
         this.xmpp.xmppWriteToStream(message);
         Metrics.remoteCall("xmpp.message.groupchat");

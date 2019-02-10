@@ -72,6 +72,12 @@ export interface IChatTyping extends IConversationEvent {
     typing: boolean;
 }
 
+export interface IChatReadReceipt extends IConversationEvent {
+    sender: string;
+    messageId: string;
+    originIsMatrix: boolean;
+}
+
 export interface IGatewayRequest {
     roomAlias: string;
     result: (err: Error|null, res?: any) => void;

@@ -12,6 +12,7 @@ import { IEventBody,
     IGatewayJoin,
     IGatewayRoomQuery,
     IStoreRemoteUser,
+    IChatReadReceipt,
 } from "./PurpleEvents";
 import { IConfigPurple } from "../Config";
 import { EventEmitter } from "events";
@@ -30,7 +31,10 @@ export interface IPurpleInstance extends EventEmitter {
     getNickForChat(conv: any): string;
     getUsernameFromMxid(mxid: string, prefix: string): {username: string, protocol: PurpleProtocol};
     on(name: string, cb: (ev: IEventBody) => void);
-    on(name: "account-connection-error"|"account-signed-on"|"account-signed-off", cb: (ev: IAccountEvent) => void);
+    on(
+        name: "account-connection-error"|"account-signed-on"|"account-signed-off",
+        cb: (ev: IAccountEvent) => void,
+    );
     on(name: "chat-joined", cb: (ev: IConversationEvent) => void);
     on(name: "chat-joined-new", cb: (ev: IChatJoined) => void);
     on(name: "chat-user-joined"|"chat-user-left", cb: (ev: IUserStateChanged) => void);
@@ -41,6 +45,8 @@ export interface IPurpleInstance extends EventEmitter {
     on(name: "chat-typing"|"im-typing", cb: (ev: IChatTyping) => void);
     on(name: "received-im-msg"|"received-chat-msg", cb: (ev: IReceivedImMsg) => void);
     on(name: "store-remote-user", cb: (ev: IStoreRemoteUser) => void);
+    on(name: "read-receipt", cb: (ev: IChatReadReceipt) => void);
+    eventAck(eventName: string, data: IEventBody);
 
     needsDedupe(): boolean;
     needsAccountLock(): boolean;

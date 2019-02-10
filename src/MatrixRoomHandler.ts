@@ -10,6 +10,7 @@ import {
     IChatStringState,
     IChatTyping,
     IStoreRemoteUser,
+    IChatReadReceipt,
 } from "./purple/PurpleEvents";
 import { ProfileSync } from "./ProfileSync";
 import { Util } from "./Util";
@@ -30,6 +31,7 @@ const ACCOUNT_LOCK_MS = 1000;
 export class MatrixRoomHandler {
     private bridge: Bridge;
     private accountRoomLock: Set<string>;
+    private remoteEventIdMapping: Map<string, string>; // remote_id -> event_id
     private roomCreationLock: Map<string, Promise<void>>;
     constructor(
         private purple: IPurpleInstance,
@@ -76,6 +78,8 @@ export class MatrixRoomHandler {
                 storeUser.data,
             );
         });
+        this.remoteEventIdMapping = new Map();
+        purple.on("read-receipt", this.handleReadReceipt.bind(this));
     }
 
     /**
@@ -283,7 +287,10 @@ export class MatrixRoomHandler {
         );
         log.debug(`Sending message to ${roomId} as ${senderMatrixUser.getId()}`);
         const content = await MessageFormatter.messageToMatrixEvent(data.message, protocol, intent);
-        await intent.sendMessage(roomId, content);
+        const {event_id} = await intent.sendMessage(roomId, content);
+        if (data.message.id) {
+            this.remoteEventIdMapping.set(data.message.id, event_id);
+        }
     }
 
     private async handleIncomingChatMsg(data: IReceivedImMsg) {
@@ -455,5 +462,17 @@ export class MatrixRoomHandler {
         ).userId);
         const roomId = await this.createOrGetGroupChatRoom(data, intent, true);
         await intent.sendTyping(roomId, data.typing);
+    }
+
+    private async handleReadReceipt(data: IChatReadReceipt) {
+        const intent = this.bridge.getIntent(this.purple.getProtocol(data.account.protocol_id)!.getMxIdForProtocol(
+            data.sender,
+            this.config.bridge.domain,
+            this.config.bridge.userPrefix,
+            true,
+        ).userId);
+        const roomId = await this.createOrGetGroupChatRoom(data, intent, true);
+        const eventId = data.originIsMatrix ? data.messageId : this.remoteEventIdMapping.get(data.messageId);
+        await intent.sendReadReceipt(roomId, eventId);
     }
 }

@@ -15,7 +15,10 @@ import { IAccountEvent,
     IUserStateChanged,
     IChatTyping,
     IGatewayJoin,
-    IStoreRemoteUser} from "../purple/PurpleEvents";
+    IStoreRemoteUser,
+    IChatReadReceipt,
+    IChatStringState,
+    IEventBody} from "../purple/PurpleEvents";
 import { IBasicProtocolMessage, IMessageAttachment } from "../MessageFormatter";
 import { PresenceCache } from "./PresenceCache";
 import { Metrics } from "../Metrics";
@@ -69,6 +72,8 @@ export class XmppJsInstance extends EventEmitter implements IPurpleInstance {
     private autoRegister?: AutoRegistration;
     private bridge!: Bridge;
     private xmppGateway: XmppJsGateway;
+    private activeMUCUsers: Set<string>;
+    private lastMessageInMUC: Map<string, {originIsMatrix: boolean, id: string}>;
     constructor(private config: Config) {
         super();
         this.canWrite = false;
@@ -79,6 +84,8 @@ export class XmppJsInstance extends EventEmitter implements IPurpleInstance {
         this.serviceHandler = new ServiceHandler(this);
         this.xmppGateway = new XmppJsGateway(this, config.bridge);
         this.connectionWasDropped = false;
+        this.activeMUCUsers = new Set();
+        this.lastMessageInMUC = new Map();
     }
 
     get gateway() {
@@ -290,6 +297,45 @@ export class XmppJsInstance extends EventEmitter implements IPurpleInstance {
         return {username, protocol: XMPP_PROTOCOL};
     }
 
+    public eventAck(eventName: string, data: IEventBody) {
+        if (eventName === "received-chat-msg") {
+            const evData = data as IReceivedImMsg;
+            const messageId = evData.message.id;
+            if (!messageId) {
+                log.debug("Cannot send RR for message without an ID");
+                return;
+            }
+            log.debug(`Got ack for sending a message -> ${messageId}`);
+            this.emitReadReciepts(messageId, evData.conv!.name, false);
+        }
+    }
+
+    public emitReadReciepts(messageId: string, convName: string, originIsMatrix: boolean) {
+        // Filter for users in this MUC.
+        this.lastMessageInMUC.set(convName, {id: messageId, originIsMatrix});
+        const activeUsers = [...this.activeMUCUsers.keys()].filter(
+            (j) => j.startsWith(convName),
+        );
+        log.debug(`Emitting ${activeUsers.length} read reciepts`);
+        activeUsers.forEach((j) => {
+            this.emit("read-receipt", {
+                eventName: "read-receipt",
+                sender: j,
+                messageId,
+                conv: {
+                    // Don't include the handle
+                    name: convName,
+                },
+                account: {
+                    protocol_id: XMPP_PROTOCOL.id,
+                    username: null, // TODO: Lazy shortcut.
+                },
+                isGateway: false,
+                originIsMatrix,
+            } as IChatReadReceipt);
+        });
+    }
+
     private generateIdforMsg(stanza: Element) {
         const body = stanza.getChildText("body");
 
@@ -415,6 +461,34 @@ export class XmppJsInstance extends EventEmitter implements IPurpleInstance {
                     typing: chatState.is("composing"),
                 } as IChatTyping);
             }
+
+            if (chatState.is("active")) {
+                // TODO: Should this expire.
+                this.activeMUCUsers.add(stanza.attrs.from);
+                const readMsg = this.lastMessageInMUC.get(convName);
+                if (!readMsg) {
+                    return;
+                }
+                log.info(`${stanza.attrs.from} became active, updating RR with ${readMsg.id}`);
+                this.emit("read-receipt", {
+                    eventName: "read-receipt",
+                    sender: stanza.attrs.from,
+                    messageId: readMsg.id,
+                    conv: {
+                        // Don't include the handle
+                        name: convName,
+                    },
+                    account: {
+                        protocol_id: XMPP_PROTOCOL.id,
+                        username: null, // TODO: Lazy shortcut.
+                    },
+                    isGateway: false,
+                    originIsMatrix: readMsg.originIsMatrix,
+                } as IChatReadReceipt);
+            } else if (chatState.is("inactive")) {
+                log.info(`${stanza.attrs.from} became inactive`);
+                this.activeMUCUsers.delete(stanza.attrs.from);
+            }
         }
 
         // XXX: Must be a better way to handle this.
@@ -425,6 +499,7 @@ export class XmppJsInstance extends EventEmitter implements IPurpleInstance {
             // a room name change at the same time as the subject. The
             // RoomHandler code shoudln't attempt to change the name unless it is wrong.
             this.emit("chat-topic", {
+                eventName: "chat-topic",
                 conv: {
                     name: convName,
                 },
@@ -435,7 +510,7 @@ export class XmppJsInstance extends EventEmitter implements IPurpleInstance {
                 sender: stanza.attrs.from,
                 string: subject,
                 isGateway: false,
-            });
+            } as IChatStringState);
         }
 
         const body = stanza.getChild("body");
