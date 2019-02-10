@@ -85,13 +85,19 @@ export class GatewayHandler {
 
     public async sendMatrixMessage(
         chatName: string, sender: string, body: IBasicProtocolMessage, context: IBridgeContext) {
+        if (!this.purple.gateway) {
+            return;
+        }
         const room = await this.getVirtualRoom(context.rooms.matrix.getId(), this.bridge.getIntent());
-        this.purple.gateway!.sendMatrixMessage(chatName, sender, body, room, chatName);
+        this.purple.gateway.sendMatrixMessage(chatName, sender, body, room, chatName);
     }
 
     public async sendMatrixMembership(
         chatName: string, sender: string, displayname: string, membership: string, context: IBridgeContext,
     ) {
+        if (!this.purple.gateway) {
+            return;
+        }
         const room = await this.getVirtualRoom(context.rooms.matrix.getId(), this.bridge.getIntent());
         const existingMembership = room.membership.find((ev) => ev.sender === sender);
         if (existingMembership) {
@@ -112,10 +118,13 @@ export class GatewayHandler {
             this.roomIdCache.set(context.rooms.matrix.getId(), room);
         }
         log.info(`Updating membership for ${sender} in ${chatName}`);
-        this.purple.gateway!.sendMatrixMembership(chatName, sender, displayname, membership, room, chatName);
+        this.purple.gateway.sendMatrixMembership(chatName, sender, displayname, membership, room, chatName);
     }
 
     public async rejoinRemoteUser(mxid: string, roomid: string) {
+        if (!this.purple.gateway) {
+            return;
+        }
         const intent = this.bridge.getIntent(mxid);
         log.info(`Reconnecting ${mxid} to ${roomid}`);
         const user = (await this.store.getRemoteUsersFromMxId(mxid))[0];
@@ -123,7 +132,7 @@ export class GatewayHandler {
             log.warn("Cannot reconnect a user without a remote user stored");
             return;
         }
-        this.purple.gateway!.reconnectRemoteUser(user);
+        this.purple.gateway.reconnectRemoteUser(user);
     }
 
     private async handleRoomJoin(data: IGatewayJoin) {
