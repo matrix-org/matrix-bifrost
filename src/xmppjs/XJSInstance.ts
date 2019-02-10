@@ -590,6 +590,13 @@ export class XmppJsInstance extends EventEmitter implements IPurpleInstance {
                 // It also assumes that we have seen some presence from this user already.
                 isMucPm = !!this.presenceCache.getStatus(from.toString());
             }
+            if (!isMucPm && this.config.tuning.conferencePMFallbackCheck) {
+                // XXX: Sometimes, we can't even get presence for a user. The ultimate fallback we have is:
+                if (from.domain.startsWith("conf")) {
+                    isMucPm = true;
+                }
+            }
+            log.debug(`Emitting IM message (isMucPM:${isMucPm})`, message);
             this.emit("received-im-msg", {
                 eventName: "received-im-msg",
                 sender: isMucPm ? from.toString() : `${from.local}@${from.domain}`,

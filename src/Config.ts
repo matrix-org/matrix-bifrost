@@ -52,6 +52,7 @@ export class Config {
 
     public readonly tuning: IConfigTuning = {
         waitOnProfileBeforeSend: true,
+        conferencePMFallbackCheck: false,
     };
   /**
    * Apply a set of keys and values over the default config.
@@ -124,4 +125,5 @@ interface IConfigLogging {
 
 interface IConfigTuning {
     waitOnProfileBeforeSend: boolean;
+    conferencePMFallbackCheck: boolean;
 }
