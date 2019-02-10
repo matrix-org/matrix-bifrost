@@ -20,12 +20,12 @@ purple:
   pluginDir: "./node_modules/node-purple/deps/libpurple/"
 # -- For xmpp.js
 #  backendOpts:
-     # endpoint to reach the component on.
-#    service: "xmpp://localhost:5233"
+     # endpoint to reach the component on. The default port is 5347
+     #service: "xmpp://localhost:5347"
      # domin assigned to the component.
-#    domain: "matrix.localhost"
+     #domain: "matrix.localhost"
      # password needed by the component.
-#    password: "jam"
+     #password: "jam"
 
 # Matrix forwards room aliases join requests matching a regex in the
 # registration file to the owner's bridge, if the room doesn't exist.
@@ -58,7 +58,7 @@ autoRegistration:
 
 # Available subsitution variables for parameters:
 # <T_MXID> - The users mxid.
-# <T_MXID_SANE> - The users mxid, with @ an : replaced with _.
+# <T_MXID_SANE> - The users mxid, with an : replaced with _ and the @ discarded.
 # <T_LOCALPART> - The users localpart.
 # <T_DISPLAYNAME> - The users displayname, or localpart if not set.
 # <T_GENERATEPWD> - Generates a 32 char password
@@ -89,7 +89,7 @@ metrics:
   enabled: false
 
 provisioning:
-  # Can users use ""!purple" in a room to bridge it to a group
+  # Can users use ""!purple" in a room to bridge it to a group.
   enablePlumbing: true
   # Required power level to bridge a room into a group.
   requiredUserPL: 100

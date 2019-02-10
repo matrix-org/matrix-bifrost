@@ -132,7 +132,8 @@ export class AutoRegistration {
     }
 
     private getSaneMxId(mxId: string) {
-        const sane = mxId.replace(/:/g, "_").replace(/@/g, "");
+        let sane = mxId.replace(/:/g, "_");
+        sane = sane.startsWith("@") ? sane.substr(1) : sane;
         return sane.replace(/([A-Z])/g, "^$1".toLowerCase());
     }
 
