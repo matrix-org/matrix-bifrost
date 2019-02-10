@@ -114,7 +114,6 @@ export class RoomSync {
                     (ruser) => ruser && ruser.isAccount &&
                         ruser.protocolId === room.remote.get("protocol_id"),
                 );
-                log.debug(`Remotes found for ${userId}`, allRemotes, remotes, room.remote);
                 if (remotes.length === 0 && !isRemote) {
                     log.warn(`${userId} has no remote accounts matching the rooms protocol`);
                     continue;
