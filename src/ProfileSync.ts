@@ -102,7 +102,7 @@ export class ProfileSync {
         );
         const remoteUsers = await this.store.getRemoteUsersFromMxId(mxUser.getId());
         if (remoteUsers.length === 0) {
-            const {remote, matrix} = await this.store.storeUser(mxUser.userId, protocol, senderId, "ghost");
+            const {remote, matrix} = await this.store.storeUser(mxUser.getId(), protocol, senderId, "ghost");
             return [remote, matrix];
         }
         return [mxUser, remoteUsers[0]];
