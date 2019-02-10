@@ -246,7 +246,8 @@ export class XmppJsInstance extends EventEmitter implements IPurpleInstance {
         if (this.accounts.has(uLower)) {
             return this.accounts.get(uLower)!;
         }
-        this.accounts.set(uLower, new XmppJsAccount(username, this.defaultRes, this, mxid));
+        const acct = new XmppJsAccount(username, this.defaultRes, this, mxid);
+        this.accounts.set(uLower, acct);
         // Components don't "connect", so just emit this once we've created it.
         this.emit("account-signed-on", {
             eventName: "account-signed-on",
@@ -255,7 +256,7 @@ export class XmppJsInstance extends EventEmitter implements IPurpleInstance {
                 username,
             },
         } as IAccountEvent);
-        return this.accounts.get(username)!;
+        return acct;
     }
 
     public getProtocol(id: string): PurpleProtocol|undefined {
