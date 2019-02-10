@@ -1,5 +1,5 @@
 import { IChatJoinProperties,
-    IUserInfo, IConversationEvent, IChatJoined, IAccountMinimal } from "../purple/PurpleEvents";
+    IUserInfo, IConversationEvent, IChatJoined, IAccountMinimal, IStoreRemoteUser } from "../purple/PurpleEvents";
 import { XmppJsInstance, XMPP_PROTOCOL } from "./XJSInstance";
 import { IPurpleAccount, IChatJoinOptions } from "../purple/IPurpleAccount";
 import { IPurpleInstance } from "../purple/IPurpleInstance";
@@ -265,6 +265,12 @@ export class XmppJsAccount implements IPurpleAccount {
                     this.xmpp.on("chat-joined", cb);
                 });
             }
+            // To catch out races, we will emit this first.
+            this.xmpp.emit("store-remote-user", {
+                mxId: this.mxId,
+                remoteId: to,
+                protocol_id: XMPP_PROTOCOL.id,
+            } as IStoreRemoteUser);
             await this.xmpp.xmppSend(message);
             Metrics.remoteCall("xmpp.presence.join");
             return p;
