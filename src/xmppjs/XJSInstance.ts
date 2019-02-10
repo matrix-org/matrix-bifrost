@@ -438,11 +438,17 @@ export class XmppJsInstance extends EventEmitter implements IPurpleInstance {
             });
         }
 
-        const body = stanza.getChildText("body");
+        const body = stanza.getChild("body");
         if (!body) {
             log.debug("Don't know how to handle a message without children");
             return;
         }
+        this.handleTextMessage(stanza, localAcct, from, convName);
+    }
+
+    private handleTextMessage(stanza: Element, localAcct: XmppJsAccount, from: JID, convName: string) {
+        const body = stanza.getChildText("body");
+        const type = stanza.attrs.type;
         const attachments: IMessageAttachment[] = [];
         // https://xmpp.org/extensions/xep-0066.html#x-oob
         const attachmentWrapper = stanza.getChild("x");
@@ -494,7 +500,13 @@ export class XmppJsInstance extends EventEmitter implements IPurpleInstance {
                 log.debug(`Handling a message to ${convName}, who does not yet exist.`);
             }
             log.debug("Emitting chat message", message);
-            const isMucPm = stanza.getChildByAttr("xmlns", "http://jabber.org/protocol/muc#user");
+            let isMucPm = !!stanza.getChildByAttr("xmlns", "http://jabber.org/protocol/muc#user");
+            if (!isMucPm) {
+                // We can't rely on this due to https://xmpp.org/extensions/xep-0045.html#privatemessage
+                // XXX: This makes the broad assumption that we don't cache real JIDs in the presence store.
+                // It also assumes that we have seen some presence from this user already.
+                isMucPm = !!this.presenceCache.getStatus(from.toString());
+            }
             this.emit("received-im-msg", {
                 eventName: "received-im-msg",
                 sender: isMucPm ? from.toString() : `${from.local}@${from.domain}`,
