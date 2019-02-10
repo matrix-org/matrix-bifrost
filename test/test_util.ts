@@ -49,6 +49,14 @@ describe("Util", () => {
                 mxUser.getId(),
             ).to.equal("@_xmpp_frogdevice=2ffrogman=40frogplanet.com:example.com");
         });
+        it("should create a sensible userId for an xmpp jid with a resource with special chars", () => {
+            const mxUser = XMPP_PROTOCOL.getMxIdForProtocol(
+                "frogman@frogplanet.com/Frog!%$£ device", "example.com", "_xmpp_",
+            );
+            expect(
+                mxUser.getId(),
+            ).to.equal("@_xmpp_Frog=21=25=24=a3=20device=2ffrogman=40frogplanet.com:example.com");
+        });
     });
     describe("passwordGen", () => {
         it("should create a printable password", () => {
@@ -84,4 +92,11 @@ describe("Util", () => {
             });
         });
     });
+    describe("unescapeUserId", () => {
+        it("should unescape QF encoding", () => {
+            expect(
+                Util.unescapeUserId("Hello=a3=21=25=26=20World")
+            ).to.equal("Hello£!%& World");
+        });
+    })
 });

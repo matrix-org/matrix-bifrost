@@ -23,8 +23,8 @@ import { ServiceHandler } from "./ServiceHandler";
 import { XJSConnection } from "./XJSConnection";
 import { AutoRegistration } from "../AutoRegistration";
 import { XmppJsGateway } from "./XJSGateway";
-import { IEventRequestData } from "../MatrixTypes";
 import { IStza } from "./Stanzas";
+import { Util } from "../Util";
 
 const xLog = Logging.get("XMPP-conn");
 const log = Logging.get("XmppJsInstance");
@@ -42,15 +42,14 @@ class XmppProtocol extends PurpleProtocol {
     public getMxIdForProtocol(
             senderId: string,
             domain: string,
-            prefix: string = "",
-            isGroupChat: boolean = false) {
+            prefix: string = "") {
         const j = jid(senderId);
         /* is not allowed in a JID localpart so it is used as a seperator.
            =2F is /, =40 is @
            We also show the resource first if given, because it's usually the nick
            of a user which is more important than the localpart. */
-        const resource = j.resource ? j.resource + "=2f" : "";
-        return new MatrixUser(`@${prefix}${resource}${j.local}=40${j.domain}:${domain}`);
+        const resource = j.resource ? j.resource + "/" : "";
+        return new MatrixUser(`@${prefix}${resource}${j.local}@${j.domain}:${domain}`);
     }
 }
 
@@ -272,21 +271,19 @@ export class XmppJsInstance extends EventEmitter implements IPurpleInstance {
         return false;
     }
 
-    //`@${prefix}${resource}${j.local}=40${j.domain}:${domain}`
-
     public getUsernameFromMxid(
             mxid: string,
             prefix: string = ""): {username: string, protocol: PurpleProtocol} {
         // This is for GHOST accts
-        let uName = new MatrixUser(mxid, false).localpart;
+        const uName = Util.unescapeUserId(new MatrixUser(mxid, false).localpart);
         const rPrefix = prefix ? `(${prefix})` : "";
-        const regex =  new RegExp(`${rPrefix}(.+=2f)?(.+)=40(.+)`);
+        const regex =  new RegExp(`${rPrefix}(.+/)?(.+)@(.+)`);
         const match = regex.exec(uName);
         if (!match) {
             throw Error("Username didn't match");
         }
         const resource = match[2] ? match[2].substr(
-            0, match[2].length - "=2f".length) : "";
+            0, match[2].length - "/".length) : "";
         const localpart = match[3];
         const domain = match[4];
         const username = `${localpart}@${domain}${resource ? "/" + resource : ""}`;
@@ -530,7 +527,7 @@ export class XmppJsInstance extends EventEmitter implements IPurpleInstance {
                 });
                 return;
             }
-            log.error(`Failed to join ${from} ${to} :`, delta.errorMsg);
+            log.error(`Failed to handle presence ${from} ${to} :`, delta.errorMsg);
         }
 
         const username = localAcct ? localAcct.remoteId : to.toString();

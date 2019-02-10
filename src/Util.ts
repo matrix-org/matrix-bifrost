@@ -8,7 +8,7 @@ export class Util {
 
     public static MINUTE_MS = 60000;
 
-    public static createRemoteId(protocol: string, id: string) {
+    public static createRemoteId(protocol: string, id: string): string {
         return `${protocol}://${id}`;
     }
 
@@ -35,7 +35,7 @@ export class Util {
         return props;
     }
 
-    public static desanitizeProperties(props: IChatJoinProperties) {
+    public static desanitizeProperties(props: IChatJoinProperties): IChatJoinProperties {
         for (const k of Object.keys(props)) {
             const value = props[k];
             const newkey = k.replace(/·/g, ".");
@@ -43,5 +43,11 @@ export class Util {
             props[newkey] = value;
         }
         return props;
+    }
+
+    public static unescapeUserId(userId: string): string {
+         return userId.replace(/(=[0-9a-z]{2})/g, (code) =>
+             String.fromCharCode(parseInt(code.substr(1), 16)),
+         );
     }
 }
