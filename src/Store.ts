@@ -53,6 +53,10 @@ export class Store {
         this.asBot = bridge.getBot();
     }
 
+    public getMatrixUser(id: string): Promise<MatrixUser|null> {
+        return this.userStore.getMatrixUser(id);
+    }
+
     public async getMatrixUserForAccount(account: IAccountMinimal): Promise<MatrixUser|null> {
         const remoteId = Util.createRemoteId(account.protocol_id, account.username);
         const matrixUsers = await this.userStore.getMatrixUsersFromRemoteId(
@@ -106,7 +110,8 @@ export class Store {
 
     public async getUsernameMxidForProtocol(protocol: PurpleProtocol): Promise<{[mxid: string]: string}> {
         const set = {};
-        const users = (await this.userStore.getByRemoteData({protocol_id: protocol.id, type: MUSER_TYPE_ACCOUNT})
+        const users = (await this.userStore.getByRemoteData({protocol_id: protocol.id, type: MUSER_TYPE_ACCOUNT}))
+        .concat(await this.userStore.getByRemoteData({protocolId: protocol.id, type: MUSER_TYPE_ACCOUNT})
         ).filter(
             (u) => u.data.isRemoteUser !== true,
         );

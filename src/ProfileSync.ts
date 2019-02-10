@@ -95,11 +95,11 @@ export class ProfileSync {
 
     private async getOrCreateStoreUsers(protocol: PurpleProtocol, senderId: string)
     : Promise<[MatrixUser, BifrostRemoteUser]> {
-        const mxUser = protocol.getMxIdForProtocol(
+        const mxUser = await this.store.getMatrixUser(protocol.getMxIdForProtocol(
             senderId,
             this.config.bridge.domain,
             this.config.bridge.userPrefix,
-        );
+        ).getId());
         const remoteUsers = await this.store.getRemoteUsersFromMxId(mxUser.getId());
         if (remoteUsers.length === 0) {
             const {remote, matrix} = await this.store.storeUser(mxUser.getId(), protocol, senderId, "ghost");
