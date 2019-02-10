@@ -101,44 +101,19 @@ export class XmppJsAccount implements IPurpleAccount {
 
     public sendChat(chatName: string, msg: IBasicProtocolMessage) {
         const id = msg.id || IDPREFIX + Date.now().toString();
-        const contents: any[] = [];
-        const htmlMsg = (msg.formatted || []).find((f) => f.type === "html");
-        let htmlAnchor;
-        if (msg.opts && msg.opts.attachments) {
-            msg.opts.attachments.forEach((a) => {
-                contents.push(
-                    x("x", {
-                        xmlns: "jabber:x:oob",
-                    }, x("url", undefined, a.uri)));
-                // *some* XMPP clients expect the URL to be in the body, silly clients...
-                msg.body = a.uri;
-            });
-        } else if (htmlMsg) {
-            htmlAnchor = Buffer.from(htmlMsg.body).toString("base64").replace(/\W/g, "a");
-            contents.push(x("html", {
-                xmlns: "http://jabber.org/protocol/xhtml-im",
-            }), htmlAnchor);
+        if (msg.formatted && msg.formatted.length) {
+
+            msg.formatted.forEach(
+                (f) => { if (f.type === "html") { f.body = XHTMLIM.HTMLToXHTML(f.body); } },
+            );
         }
-        contents.push(x("body", undefined, msg.body));
-        let message: string = x(
-            "message",
-            {
-                to: chatName,
-                id,
-                from: `${this.remoteId}/${this.resource}`,
-                type: "groupchat",
-            },
-            contents,
-        ).toString();
-        if (htmlMsg) {
-            message = message.replace(htmlAnchor, XHTMLIM.HTMLToXHTML(htmlMsg.body));
-        }
+        const xMsg = new StzaMessage(`${this.remoteId}/${this.resource}`, chatName, msg, "groupchat");
         if (msg.id) {
             // Send RR for message if we have the matrixId.
             this.xmpp.emitReadReciepts(msg.id, chatName, true);
         }
         this.xmpp.xmppAddSentMessage(id);
-        this.xmpp.xmppWriteToStream(message);
+        this.xmpp.xmppSend(xMsg);
         Metrics.remoteCall("xmpp.message.groupchat");
     }
 
