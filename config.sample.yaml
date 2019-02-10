@@ -104,3 +104,11 @@ logging:
 #    "./error.log": "error"
 #    "./warn.log": "warn"
 #    "./debug.log": "debug"
+
+# These are specific flags or values to tune the bridge to different setups.
+# The defaults are usually fine, but adjust as needed.
+tuning:
+    # Do not send a message or join a room before setting a users profile for
+    # the first time. This should help clients hide ugly mxids better behind
+    # displaynames.
+    waitOnProfileBeforeSend: true

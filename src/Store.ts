@@ -36,6 +36,10 @@ export class BifrostRemoteUser {
     public get isGhost() {
         return this.remoteUser.get("type") === MUSER_TYPE_GHOST;
     }
+
+    public get displayname(): string|undefined {
+        return this.remoteUser.get("displayname");
+    }
 }
 
 export class Store {

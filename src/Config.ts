@@ -49,6 +49,10 @@ export class Config {
         enablePlumbing: true,
         requiredUserPL: 100,
     };
+
+    public readonly tuning: IConfigTuning = {
+        waitOnProfileBeforeSend: true,
+    };
   /**
    * Apply a set of keys and values over the default config.
    * @param newConfig Config keys
@@ -114,6 +118,10 @@ interface IConfigMetrics {
 }
 
 interface IConfigLogging {
-  console: "debug"|"info"|"warn"|"error"|"off";
-  files?: {[filename: string]: "debug"|"info"|"warn"|"error"};
+    console: "debug"|"info"|"warn"|"error"|"off";
+    files?: {[filename: string]: "debug"|"info"|"warn"|"error"};
+}
+
+interface IConfigTuning {
+    waitOnProfileBeforeSend: boolean;
 }

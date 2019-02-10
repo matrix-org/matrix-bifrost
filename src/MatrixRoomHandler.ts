@@ -399,19 +399,23 @@ export class MatrixRoomHandler {
         ) : senderMatrixUser;
         const intent = this.bridge.getIntent(intentUser.userId);
         const roomId = await this.createOrGetGroupChatRoom(data, intent, true);
+        // Do we need to set a profile before we can join to avoid uglyness?
+        const profileNeeded = this.config.tuning.waitOnProfileBeforeSend &&
+            (!remoteUser || remoteUser!.displayname);
         try {
             if (data.state === "joined") {
-                await intent.join(roomId);
-                // If this is a gateway join, we need to report back to the user.
-                if (data.gatewayAlias) {
-                    this
-                }
                 const account = this.purple.getAccount(data.account.username, data.account.protocol_id)!;
+                if (!profileNeeded) {
+                    await intent.join(roomId);
+                }
                 await this.profileSync.updateProfile(
                     protocol,
                     data.sender,
                     account,
                 );
+                if (profileNeeded) {
+                    await intent.join(roomId);
+                }
             } else {
                 await intent.kick(roomId, senderMatrixUser.getId(), data.reason || undefined);
             }
