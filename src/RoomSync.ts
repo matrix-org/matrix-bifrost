@@ -101,6 +101,10 @@ export class RoomSync {
             }
             const userIds = Object.keys(members);
             for (const userId of userIds) {
+                // Never sync the bot user.
+                if (bot.getUserId() === userId) {
+                    continue;
+                }
                 const isRemote = bot.isRemoteUser(userId);
                 if (isRemote && isGateway) {
                     await this.gateway.rejoinRemoteUser(userId, roomId);
@@ -134,7 +138,7 @@ export class RoomSync {
     }
 
     private async onAccountSignedin(ev: IAccountEvent) {
-        log.debug(`${ev.account.username} signed in, checking if we need to reconnect them to some rooms`);
+        log.info(`${ev.account.username} signed in, checking if we need to reconnect them to some rooms`);
         const matrixUser = await this.store.getMatrixUserForAccount(ev.account);
         const acct = this.purple.getAccount(
             ev.account.username,
