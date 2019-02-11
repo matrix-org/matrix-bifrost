@@ -162,6 +162,17 @@ export class Store {
         await this.roomStore.removeEntriesByMatrixRoomId(matrixId);
     }
 
+    public async getEntryByMatrixId(roomId: string): Promise<{matrix: MatrixRoom, remote: RemoteRoom}|null> {
+        // TODO: This assumes one remote
+        const entries = await this.roomStore.getEntriesByMatrixId(roomId);
+        if (entries.length > 1) {
+            log.warn(`${roomId} has multiple entries`);
+        } else if (entries.length === 0) {
+            return null;
+        }
+        return {matrix: entries[0].matrix, remote: entries[0].remote};
+    }
+
     public async storeRoom(matrixId: string, type: MROOM_TYPES, remoteId: string, remoteData: IRemoteRoomData)
     : Promise<{remote: RemoteRoom, matrix: MatrixRoom}> {
         // XXX: If a room with all these identifiers already exists, replace it.

@@ -101,8 +101,12 @@ export class MatrixEventHandler {
     }
 
     public async onEvent(request: IEventRequest, context: IBridgeContext) {
-        const roomType: string|null = context.rooms.matrix ? context.rooms.matrix.get("type") : null;
         const event = request.getData();
+        const ctx = await this.store.getEntryByMatrixId(event.room_id);
+        context.rooms.matrix = ctx ? ctx.matrix : null;
+        context.rooms.remote = ctx ? ctx.remote : null;
+
+        const roomType: string|null = context.rooms.matrix ? context.rooms.matrix.get("type") : null;
         const newInvite = !roomType && event.type === "m.room.member" && event.content.membership === "invite";
         log.debug("Got event (id, type, sender, roomtype):", event.event_id, event.type, event.sender, roomType);
         const botUserId = this.bridge.getBot().client.getUserId();
