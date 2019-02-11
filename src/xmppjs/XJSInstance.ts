@@ -348,7 +348,7 @@ export class XmppJsInstance extends EventEmitter implements IPurpleInstance {
             return Buffer.from(`${stanza.getAttr("from")}${body}`).toString("base64");
         }
 
-        return Buffer.from(stanza.children.map((c) => c.toString()).join("")).toString("base64");
+        return Buffer.from(stanza.toString()).toString("base64");
     }
 
     private async onStanza(stanza: Element) {
