@@ -170,7 +170,10 @@ export class Store {
         } else if (entries.length === 0) {
             return null;
         }
-        return {matrix: entries[0].matrix, remote: entries[0].remote};
+        // XXX: The room store can become full of empty remote_id entries.
+        const entryWithRemote = entries.filter((e) => e.remote)[0];
+        let entry = entryWithRemote || entries[0];
+        return {matrix: entry.matrix, remote: entry.remote};
     }
 
     public async storeRoom(matrixId: string, type: MROOM_TYPES, remoteId: string, remoteData: IRemoteRoomData)
