@@ -358,6 +358,13 @@ return `- ${account.protocol.name} (${username}) [Enabled=${account.isEnabled}] 
                         `${acct.protocol.id}:${res.conv.name}`,
                     ).toString("base64");
                     await this.store.storeRoom(event.room_id, MROOM_TYPE_GROUP, remoteId, remoteData);
+
+                    // Fetch Matrix members and join them.
+                    const userIds = Object.keys(await this.bridge.getBot().getJoinedMembers(event.room_id));
+                    userIds.forEach((userId) => {
+                        this.getAccountForMxid(userId);
+                    })
+
                 }
             }
         } catch (ex) {
