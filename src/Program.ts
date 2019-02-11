@@ -18,6 +18,9 @@ import { AutoRegistration } from "./AutoRegistration";
 import { GatewayHandler } from "./GatewayHandler";
 
 const log = Logging.get("Program");
+const bridgeLog = Logging.get("bridge");
+
+process.setMaxListeners(100);
 
 /**
  * This is the entry point for the bridge. It contains
@@ -100,6 +103,9 @@ class Program {
                     Metrics.requestOutcome(false, request.getDuration(), "success");
                 });
             },
+            onLog: (msg: string, error: boolean) => {
+                bridgeLog[error ? "warn" : "debug"](msg);
+            },
             onAliasQueried: (alias, roomId) => this.eventHandler!.onAliasQueried(alias, roomId),
             // We don't handle these just yet.
             // thirdPartyLookup: this.thirdpa.ThirdPartyLookup,
@@ -158,6 +164,7 @@ class Program {
             }
             await purple.start();
             if (purple instanceof XmppJsInstance) {
+                log.debug("Signing in accounts...");
                 purple.signInAccounts(
                     await this.store.getUsernameMxidForProtocol(purple.getProtocols()[0]),
                 );
