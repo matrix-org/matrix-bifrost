@@ -167,7 +167,7 @@ export class RoomSync {
             try {
                 if (membership.membership === "join") {
                     log.info(`${i}/${reconsToMake} JOIN ${remoteId} -> ${membership.room_name}`);
-                    await acct!.joinChat(membership.params);
+                    await acct!.joinChat(membership.params, this.purple, JOINLEAVE_TIMEOUT, false);
                     acct!.setJoinPropertiesForRoom(membership.room_name, membership.params);
                 } else {
                     log.info(`${i}/${reconsToMake} LEAVE ${remoteId} -> ${membership.room_name}`);

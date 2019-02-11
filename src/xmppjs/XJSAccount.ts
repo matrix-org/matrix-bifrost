@@ -158,7 +158,6 @@ export class XmppJsAccount implements IPurpleAccount {
                 clearTimeout(timeout);
                 const error = stanza.getChild("error");
                 if (error) {
-                    log.debug(`Error when calling self-ping, not in ${to}`);
                     resolve(false);
                 }
                 resolve(true);
@@ -248,7 +247,7 @@ export class XmppJsAccount implements IPurpleAccount {
                 this.waitingToJoin.add(roomName);
             }
             let p: Promise<IChatJoined>|undefined;
-            if (instance && setWaiting) {
+            if (instance) {
                 p = new Promise((resolve, reject) => {
                     const timer = setTimeout(reject, timeout);
                     const cb = (data: IChatJoined) => {
