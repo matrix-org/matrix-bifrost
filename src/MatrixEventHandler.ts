@@ -102,6 +102,7 @@ export class MatrixEventHandler {
 
     public async onEvent(request: IEventRequest, context: IBridgeContext) {
         const event = request.getData();
+        log.info(`Got ${event.event_id}`);
         const ctx = await this.store.getEntryByMatrixId(event.room_id);
         context.rooms.matrix = ctx ? ctx.matrix : null;
         context.rooms.remote = ctx ? ctx.remote : null;
@@ -359,11 +360,11 @@ return `- ${account.protocol.name} (${username}) [Enabled=${account.isEnabled}] 
                     ).toString("base64");
                     await this.store.storeRoom(event.room_id, MROOM_TYPE_GROUP, remoteId, remoteData);
 
-                    // Fetch Matrix members and join them.
-                    const userIds = Object.keys(await this.bridge.getBot().getJoinedMembers(event.room_id));
-                    userIds.forEach((userId) => {
-                        this.getAccountForMxid(userId);
-                    })
+                    // // Fetch Matrix members and join them.
+                    // const userIds = Object.keys(await this.bridge.getBot().getJoinedMembers(event.room_id));
+                    // userIds.forEach((userId) => {
+                    //     this.getAccountForMxid(userId);
+                    // })
 
                 }
             }
