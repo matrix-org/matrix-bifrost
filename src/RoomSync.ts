@@ -135,6 +135,7 @@ export class RoomSync {
                 this.accountRoomMemberships.set(remoteUser.id, acctMemberList);
             }
         }));
+
     }
 
     private async onAccountSignedin(ev: IAccountEvent) {
@@ -156,18 +157,20 @@ export class RoomSync {
         }
         const remoteId = Util.createRemoteId(ev.account.protocol_id, ev.account.username);
         const reconnectStack = this.accountRoomMemberships.get(remoteId) || [];
-        log.debug(`Found ${reconnectStack.length} reconnections to be made for ${remoteId}`);
+        const reconsToMake = reconnectStack.length;
+        log.debug(`Found ${reconsToMake} reconnections to be made for ${remoteId}`);
         let membership: IRoomMembership|undefined;
         membership = reconnectStack.pop();
+        let i = 0;
         while (membership) {
+            i++;
             try {
                 if (membership.membership === "join") {
-                    log.info(`${remoteId} is joining ${membership.room_name}`);
-                    log.debug("with", membership.params);
-                    await acct!.joinChat(membership.params, this.purple, JOINLEAVE_TIMEOUT);
+                    log.info(`${i}/${reconsToMake} JOIN ${remoteId} -> ${membership.room_name}`);
+                    await acct!.joinChat(membership.params);
                     acct!.setJoinPropertiesForRoom(membership.room_name, membership.params);
                 } else {
-                    log.info(`${remoteId} is leaving ${membership.room_name}`);
+                    log.info(`${i}/${reconsToMake} LEAVE ${remoteId} -> ${membership.room_name}`);
                     await acct!.rejectChat(membership.params);
                     this.deduplicator.decrementRoomUsers(membership.room_name);
                 }

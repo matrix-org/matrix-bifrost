@@ -355,6 +355,7 @@ export class XmppJsInstance extends EventEmitter implements IPurpleInstance {
         const startedAt = Date.now();
         const id = stanza.attrs.id = stanza.attrs.id || this.generateIdforMsg(stanza);
         if (this.seenMessages.has(id)) {
+            log.debug("Dropped message ", id);
             return;
         }
         this.seenMessages.add(id);
@@ -363,7 +364,7 @@ export class XmppJsInstance extends EventEmitter implements IPurpleInstance {
         const to = stanza.attrs.to ? jid(stanza.attrs.to) : null;
 
         const isOurs = to !== null && to.domain === this.myAddress.domain;
-        log.info(`Got from=${from} to=${to} isOurs=${isOurs}`);
+        log.info(`Got ${stanza.name} from=${from} to=${to} isOurs=${isOurs}`);
         const alias = isOurs && to!.local.startsWith("#") && this.serviceHandler.parseAliasFromJID(to!) || null;
         if (alias && !this.gateway) {
             log.warn("Not handling gateway request, gateways are disabled");
@@ -614,8 +615,8 @@ export class XmppJsInstance extends EventEmitter implements IPurpleInstance {
         const localAcct = this.accounts.get(`${to.local}@${to.domain}`);
         const from = jid(stanza.getAttr("from"));
         const convName = `${from.local}@${from.domain}`;
-
         const delta = this.presenceCache.add(stanza);
+
         if (!delta) {
             return;
         }
@@ -635,7 +636,6 @@ export class XmppJsInstance extends EventEmitter implements IPurpleInstance {
 
         // emit a chat-joined-new if an account was joining this room.
         if (delta.isSelf && localAcct && localAcct.waitingToJoin.has(convName)) {
-            localAcct.waitingToJoin.delete(convName);
             this.emit("store-remote-user", {
                 mxId: localAcct.mxId,
                 remoteId: `${convName}/${localAcct.roomHandles.get(convName)}`,

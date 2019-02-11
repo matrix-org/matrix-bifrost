@@ -238,25 +238,23 @@ export class XmppJsAccount implements IPurpleAccount {
                 };
             }
             const from = `${this.remoteId}/${this.resource}`;
-            const id = uuid();
             log.info(`Joining to=${to} from=${from}`);
             const message = new StzaPresenceJoin(
                 from,
                 to,
-                id,
             );
             this.roomHandles.set(roomName, components.handle);
             if (setWaiting) {
                 this.waitingToJoin.add(roomName);
             }
             let p: Promise<IChatJoined>|undefined;
-            if (instance) {
+            if (instance && setWaiting) {
                 p = new Promise((resolve, reject) => {
                     const timer = setTimeout(reject, timeout);
                     const cb = (data: IChatJoined) => {
-                        if (data.conv.name === roomName &&
-                            data.account.username === this.remoteId) {
+                        if (data.conv.name === roomName) {
                             this.waitingToJoin.delete(roomName);
+                            log.info(`Got ack for join ${roomName}`);
                             clearTimeout(timer);
                             this.xmpp.removeListener("chat-joined", cb);
                             resolve(data);
