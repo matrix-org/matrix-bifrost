@@ -474,25 +474,24 @@ export class XmppJsInstance extends EventEmitter implements IPurpleInstance {
                 // TODO: Should this expire.
                 this.activeMUCUsers.add(stanza.attrs.from);
                 const readMsg = this.lastMessageInMUC.get(convName);
-                if (!readMsg) {
-                    return;
+                if (readMsg) {
+                    log.info(`${stanza.attrs.from} became active, updating RR with ${readMsg.id}`);
+                    this.emit("read-receipt", {
+                        eventName: "read-receipt",
+                        sender: stanza.attrs.from,
+                        messageId: readMsg.id,
+                        conv: {
+                            // Don't include the handle
+                            name: convName,
+                        },
+                        account: {
+                            protocol_id: XMPP_PROTOCOL.id,
+                            username: null, // TODO: Lazy shortcut.
+                        },
+                        isGateway: false,
+                        originIsMatrix: readMsg.originIsMatrix,
+                    } as IChatReadReceipt);
                 }
-                log.info(`${stanza.attrs.from} became active, updating RR with ${readMsg.id}`);
-                this.emit("read-receipt", {
-                    eventName: "read-receipt",
-                    sender: stanza.attrs.from,
-                    messageId: readMsg.id,
-                    conv: {
-                        // Don't include the handle
-                        name: convName,
-                    },
-                    account: {
-                        protocol_id: XMPP_PROTOCOL.id,
-                        username: null, // TODO: Lazy shortcut.
-                    },
-                    isGateway: false,
-                    originIsMatrix: readMsg.originIsMatrix,
-                } as IChatReadReceipt);
             } else if (chatState.is("inactive")) {
                 log.info(`${stanza.attrs.from} became inactive`);
                 this.activeMUCUsers.delete(stanza.attrs.from);
