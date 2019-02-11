@@ -355,7 +355,6 @@ export class XmppJsInstance extends EventEmitter implements IPurpleInstance {
         const startedAt = Date.now();
         const id = stanza.attrs.id = stanza.attrs.id || this.generateIdforMsg(stanza);
         if (this.seenMessages.has(id)) {
-            log.debug("Dropped message ", id);
             return;
         }
         this.seenMessages.add(id);

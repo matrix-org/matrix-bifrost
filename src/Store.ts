@@ -9,7 +9,7 @@ import { IAccountMinimal } from "./purple/PurpleEvents";
 const log = Logging.get("Store");
 
 export class BifrostRemoteUser {
-    constructor(private remoteUser: RemoteUser, private userIds: string, public readonly isRemote: boolean) {
+    constructor(public readonly remoteUser: RemoteUser, private userIds: string, public readonly isRemote: boolean) {
 
     }
 
@@ -132,7 +132,7 @@ export class Store {
 
     public async storeUser(userId: string, protocol: PurpleProtocol,
                            username: string, type: MUSER_TYPES, extraData: any = {})
-                            : Promise<{remote: RemoteRoom, matrix: MatrixRoom}> {
+                            : Promise<{remote: BifrostRemoteUser, matrix: MatrixUser}> {
         const mxUser = new MatrixUser(userId);
         const id = Util.createRemoteId(protocol.id, username);
         const existing = await this.userStore.getRemoteUser(id);
@@ -143,15 +143,18 @@ export class Store {
             remoteUser.set("type", type);
             await this.userStore.linkUsers(mxUser, remoteUser);
             log.info(`Linked new ${type} ${userId} -> ${id}`);
-            return {remote: remoteUser, matrix: mxUser};
-        } else {
-            log.debug(`Updated existing ${type} ${userId} -> ${id}`);
-            Object.keys(extraData).forEach((key) => {
-                existing.set(key, extraData[key]);
-            });
-            await this.userStore.setRemoteUser(existing);
-            return {remote: existing, matrix: mxUser};
+            return {remote: new BifrostRemoteUser(
+                remoteUser, userId, this.asBot.isRemoteUser(userId),
+            ), matrix: mxUser};
         }
+        log.debug(`Updated existing ${type} ${userId} -> ${id}`);
+        Object.keys(extraData).forEach((key) => {
+            existing.set(key, extraData[key]);
+        });
+        await this.userStore.setRemoteUser(existing);
+        return {remote: new BifrostRemoteUser(
+            existing, userId, this.asBot.isRemoteUser(userId),
+        ), matrix: mxUser};
     }
 
     public async removeRoomByRoomId(matrixId: string) {
@@ -165,14 +168,12 @@ export class Store {
     public async getEntryByMatrixId(roomId: string): Promise<{matrix: MatrixRoom, remote: RemoteRoom}|null> {
         // TODO: This assumes one remote
         const entries = await this.roomStore.getEntriesByMatrixId(roomId);
-        if (entries.length > 1) {
-            log.warn(`${roomId} has multiple entries`);
-        } else if (entries.length === 0) {
+        if (entries.length === 0) {
             return null;
         }
         // XXX: The room store can become full of empty remote_id entries.
         const entryWithRemote = entries.filter((e) => e.remote)[0];
-        let entry = entryWithRemote || entries[0];
+        const entry = entryWithRemote || entries[0];
         return {matrix: entry.matrix, remote: entry.remote};
     }
 
@@ -187,7 +188,6 @@ export class Store {
             remoteId,
         remoteData);
         try {
-            await this.roomStore.setMatrixRoom(mxRoom);
             await this.roomStore.linkRooms(mxRoom, remote);
         } catch (ex) {
             log.error("Failed to store room:", ex);

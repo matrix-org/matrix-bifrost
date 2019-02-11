@@ -28,6 +28,9 @@ export class ProfileSync {
             lastCheck != null && (Date.now() - lastCheck) < this.config.profile.updateInterval) {
                 return; // Don't need to check.
         }
+        log.debug(`
+            Checking for profile updates for ${matrixUser.getId()} since their last_check time expired ${lastCheck}`
+        );
         const remoteProfileSet:
         {
             nick: string|undefined,
