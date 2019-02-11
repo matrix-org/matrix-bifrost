@@ -133,7 +133,7 @@ export class PresenceCache {
                 delta.status = currentPresence;
                 delta.changed.push("offline");
             }
-        } else if (!currentPresence.online) {
+        } else if (!currentPresence.online || isSelf) {
             delta.changed.push("online");
             currentPresence.online = true;
             delta.status = currentPresence;
