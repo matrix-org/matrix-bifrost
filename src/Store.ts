@@ -76,6 +76,10 @@ export class Store {
         return matrixUsers[0];
     }
 
+    public async setMatrixUser(matrix: MatrixUser) {
+        this.userStore.setMatrixUser(matrix);
+    }
+
     public async getRemoteUserBySender(sender: string, protocol: PurpleProtocol): Promise<BifrostRemoteUser|null> {
         const remoteId = Util.createRemoteId(protocol.id, sender);
         const remote = await this.bridge.getUserStore().getRemoteUser(

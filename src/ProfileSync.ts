@@ -20,7 +20,6 @@ export class ProfileSync {
         senderIdToLookup?: string,
     ) {
         senderIdToLookup = senderIdToLookup ? senderIdToLookup : senderId;
-        const store = this.bridge.getUserStore();
         const {matrixUser, remoteUser} = await this.getOrCreateStoreUsers(protocol, senderId);
         const lastCheck = matrixUser.get("last_check");
         matrixUser.set("last_check", Date.now());
@@ -93,7 +92,7 @@ export class ProfileSync {
                 log.error("Failed to update avatar_url for user:", e);
             }
         }
-        await store.setMatrixUser(matrixUser);
+        await this.store.setMatrixUser(matrixUser);
     }
 
     private async getOrCreateStoreUsers(protocol: PurpleProtocol, senderId: string)

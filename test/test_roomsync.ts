@@ -26,6 +26,7 @@ function createBotAndIntent() {
         isRemoteUser: (userId: string) => {
             return userId.startsWith("@remote");
         },
+        getUserId: () => "@bot:localhost",
     };
     const intent = {
 
