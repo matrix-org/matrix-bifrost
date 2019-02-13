@@ -1,8 +1,9 @@
 import { IChatJoinProperties } from "./purple/PurpleEvents";
 import { PurpleProtocol } from "./purple/PurpleProtocol";
-import { MatrixUser } from "matrix-appservice-bridge";
+import { MatrixUser, Intent } from "matrix-appservice-bridge";
 import { ProtoHacks } from "./ProtoHacks";
 import * as crypto from "crypto";
+import { IEventRequestData } from "./MatrixTypes";
 
 export class Util {
 
@@ -49,5 +50,25 @@ export class Util {
          return userId.replace(/(=[0-9a-z]{2})/g, (code) =>
              String.fromCharCode(parseInt(code.substr(1), 16)),
          );
+    }
+
+    public static async getMessagesBeforeJoin(
+        intent: Intent, roomId: string): Promise<IEventRequestData[]> {
+        const client = intent.getClient();
+        // Because the JS SDK expects this to be set :/
+        client._clientOpts = {
+            lazyLoadMembers: false,
+        };
+        const res = await client._createMessagesRequest(roomId, undefined, undefined, "b");
+        const msgs: IEventRequestData[] = [];
+        for (const msg of res.chunk.reverse()) {
+            if (msg.type === "m.room.member" && msg.sender === client.getUserId()) {
+                break;
+            }
+            if (msg.type === "m.room.message") {
+                msgs.push(msg);
+            }
+        }
+        return msgs;
     }
 }

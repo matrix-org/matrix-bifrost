@@ -53,6 +53,7 @@ export class Config {
     public readonly tuning: IConfigTuning = {
         waitOnProfileBeforeSend: true,
         conferencePMFallbackCheck: false,
+        waitOnJoinBeforePM: [],
     };
   /**
    * Apply a set of keys and values over the default config.
@@ -124,6 +125,12 @@ interface IConfigLogging {
 }
 
 interface IConfigTuning {
+    // Don't send a message or join a room before setting a profile picture
     waitOnProfileBeforeSend: boolean;
+    // A nasty hack to check the domain for conf* to see if the PM is coming from a MUC.
+    // This is only really needed for legacy clients that don't implement xmlns
     conferencePMFallbackCheck: boolean;
+    // Don't send messages from the remote protocol until we have seen them join.
+    // A list of prefixes to check.
+    waitOnJoinBeforePM: string[];
 }

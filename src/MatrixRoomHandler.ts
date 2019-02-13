@@ -115,45 +115,58 @@ export class MatrixRoomHandler {
             protocol_id: data.account.protocol_id,
             recipient: data.sender,
         };
+        const remoteId = Buffer.from(
+            `${matrixUser.getId()}:${data.account.protocol_id}:${data.sender}`,
+        ).toString("base64");
+        if (this.roomCreationLock.has(remoteId)) {
+            log.info(remoteId, "is already being created, waiting...");
+            await (this.roomCreationLock.get(remoteId) || Promise.resolve());
+            log.info("room was created, no longer waiting");
+        }
         // For some reason the following function wites to remoteData, so recreate it later
         const remoteEntries = await roomStore.getEntriesByRemoteRoomData(remoteData);
-        let roomId;
-        if (remoteEntries == null || remoteEntries.length === 0) {
-            remoteData = {
-                matrixUser: matrixUser.getId(),
-                protocol_id: data.account.protocol_id,
-                recipient: data.sender,
-            };
-            log.info(`Couldn't find room for IM ${matrixUser.getId()} <-> ${data.sender}. Creating a new one`);
-            const res = await intent.createRoom({
-                createAsClient: true,
-                options: {
-                    is_direct: true,
-                    visibility: "private",
-                    invite: [matrixUser.getId()],
-                },
-            });
-            roomId = res.room_id;
-            log.debug("Created room with id ", roomId);
-            const remoteId = Buffer.from(
-                `${matrixUser.getId()}:${data.account.protocol_id}:${data.sender}`,
-            ).toString("base64");
-            await this.store.storeRoom(roomId, MROOM_TYPE_IM, remoteId, remoteData);
-            // Room doesn't exist yet, create it.
-        } else {
-            let entry;
-            if (remoteEntries.length > 1) {
-                log.warn(
-                    `Have multiple matrix rooms assigned for IM ` +
-                    `${matrixUser.getId()} <-> ${data.sender}. Using last entry`,
-                );
-                entry = remoteEntries[remoteEntries.length - 1];
-            } else {
-                entry = remoteEntries[0];
+        if (remoteEntries != null && remoteEntries.length >= 1) {
+            if (remoteEntries.length === 1) {
+                return remoteEntries.matrix.getId();
             }
-            roomId = entry.matrix.getId();
+            log.warn(
+                `Have multiple matrix rooms assigned for IM ` +
+                `${matrixUser.getId()} <-> ${data.sender}. Using first entry`,
+            );
+            return remoteEntries[0].matrix.getId();
         }
-        return roomId;
+        // Room doesn't exist yet, create it.
+        //
+        log.info(`Couldn't find room for IM ${matrixUser.getId()} <-> ${data.sender}. Creating a new one`);
+        remoteData = {
+            matrixUser: matrixUser.getId(),
+            protocol_id: data.account.protocol_id,
+            recipient: data.sender,
+        };
+        let roomId: string;
+        const createPromise = intent.createRoom({
+            createAsClient: true,
+            options: {
+                is_direct: true,
+                visibility: "private",
+                invite: [matrixUser.getId()],
+            },
+        }).then(({room_id}) => {
+            roomId = room_id;
+            log.debug("Created room with id ", room_id);
+            return this.store.storeRoom(roomId, MROOM_TYPE_IM, remoteId, remoteData);
+        });
+        this.roomCreationLock.set(remoteId, createPromise as Promise<any>);
+        await createPromise;
+        if (this.config.tuning.waitOnJoinBeforePM.find((prefix) => matrixUser.localpart.startsWith(prefix))) {
+            log.info(
+                "Recipient matches waitOnJoinBeforePM, holding back sending messages until the user has joined",
+            );
+            await this.deduplicator.waitForJoin(roomId!, matrixUser.getId());
+            log.info("User joined, can now send messages")
+        }
+        this.roomCreationLock.delete(remoteId);
+        return roomId!;
     }
 
     private async createOrGetGroupChatRoom(
@@ -285,7 +298,7 @@ export class MatrixRoomHandler {
         await this.profileSync.updateProfile(protocol, data.sender,
             account,
         );
-        log.debug(`Sending message to ${roomId} as ${senderMatrixUser.getId()}`);
+        log.info(`Sending IM to ${roomId} as ${senderMatrixUser.getId()}`);
         const content = await MessageFormatter.messageToMatrixEvent(data.message, protocol, intent);
         const {event_id} = await intent.sendMessage(roomId, content);
         if (data.message.id) {

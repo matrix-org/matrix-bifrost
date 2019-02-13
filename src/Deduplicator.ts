@@ -26,11 +26,30 @@ export class Deduplicator {
     private expectedMessages: string[];
     private usersInRoom: {[roomName: string]: number};
     private chosenOnes: Map<string, string>;
+    private waitJoinList: Map<string, () => void>;
 
     constructor() {
         this.expectedMessages = [];
         this.usersInRoom = {};
         this.chosenOnes = new Map();
+        this.waitJoinList = new Map();
+    }
+
+    public waitForJoinResolve(roomId: string, userId: string) {
+        if (this.waitJoinList.has(`${roomId}:${userId}`)) {
+            this.waitJoinList.get(`${roomId}:${userId}`)!();
+        }
+    }
+
+    public waitForJoin(roomId: string, userId: string, timeoutMs: number = 60000) {
+        log.debug(`Waiting for ${userId} to join ${roomId}..`);
+        let timeout: NodeJS.Timeout;
+        return new Promise((resolve, reject) => {
+            this.waitJoinList.set(`${roomId}:${userId}`, resolve);
+            timeout = setTimeout(() => reject("Wait for join timeout expired"), timeoutMs);
+        }).then(() => {
+            clearTimeout(timeout);
+        });
     }
 
     public isTheChosenOneForRoom(roomName: string, remoteId: string) {

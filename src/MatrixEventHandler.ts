@@ -18,8 +18,6 @@ import { MessageFormatter } from "./MessageFormatter";
 import { GatewayHandler } from "./GatewayHandler";
 const log = Logging.get("MatrixEventHandler");
 
-const RETRY_JOIN_MS = 5000;
-
 /**
  * Handles events coming into the appservice.
  */
@@ -102,15 +100,19 @@ export class MatrixEventHandler {
 
     public async onEvent(request: IEventRequest, context: IBridgeContext) {
         const event = request.getData();
-        log.info(`Got ${event.event_id}`);
         const ctx = await this.store.getEntryByMatrixId(event.room_id);
         context.rooms.matrix = ctx ? ctx.matrix : null;
         context.rooms.remote = ctx ? ctx.remote : null;
 
+        if (event.type === "m.room.member" && event.content.membership === "join") {
+            this.deduplicator.waitForJoinResolve(event.room_id, event.sender);
+        }
+
         const roomType: string|null = context.rooms.matrix ? context.rooms.matrix.get("type") : null;
         const newInvite = !roomType && event.type === "m.room.member" && event.content.membership === "invite";
-        log.debug("Got event (id, type, sender, roomtype):", event.event_id, event.type, event.sender, roomType);
-        const botUserId = this.bridge.getBot().client.getUserId();
+        log.info("Got event (id, type, sender, roomtype):", event.event_id, event.type, event.sender, roomType);
+        const bridgeBot = this.bridge.getBot();
+        const botUserId = bridgeBot.getUserId();
         if (newInvite) {
             log.debug(`Handling invite from ${event.sender}.`);
             if (event.state_key === botUserId) {
@@ -119,7 +121,7 @@ export class MatrixEventHandler {
                 } catch (e) {
                     log.error("Failed to handle invite for bot:", e);
                 }
-            } else if (event.content.is_direct && this.bridge.getBot().isRemoteUser(event.state_key)) {
+            } else if (event.content.is_direct && bridgeBot.isRemoteUser(event.state_key)) {
                 log.debug("Got request to PM", event.state_key);
                 const {
                     username,
@@ -127,22 +129,33 @@ export class MatrixEventHandler {
                 } = this.purple.getUsernameFromMxid(event.state_key!, this.config.bridge.userPrefix);
                 log.debug("Mapped username to", username, protocol);
                 const {acct} = await this.getAccountForMxid(context, event, protocol.id);
-                const roomStore = this.bridge.getRoomStore();
                 const remoteData = {
                     matrixUser: event.sender,
                     protocol_id: acct.protocol.id,
                     recipient: username,
                 } as any;
-                const remoteId = Buffer.from(
-                    `${event.sender}:${acct.protocol.id}:${username}`,
-                ).toString("base64");
-                await this.store.storeRoom(event.room_id, MROOM_TYPE_IM, remoteId, remoteData);
                 const ghostIntent = this.bridge.getIntent(event.state_key);
                 // XXX: See https://github.com/matrix-org/matrix-appservice-bridge/issues/96
                 ghostIntent.opts.registered = false;
                  // If the join fails to join because it's not registered, it tries to get invited which will fail.
                 log.debug(`Joining ${event.state_key} to ${event.room_id}.`);
                 await ghostIntent.join(event.room_id);
+                const remoteId = Buffer.from(
+                    `${event.sender}:${acct.protocol.id}:${username}`,
+                ).toString("base64");
+                const {remote} = await this.store.storeRoom(event.room_id, MROOM_TYPE_IM, remoteId, remoteData);
+                context.rooms.remote = remote;
+                // Fetch events from the room now we have joined to see if anything got missed.
+                log.debug("Joined to IM room, now calling /messages to get any previous messages");
+                try {
+                    const messages = await Util.getMessagesBeforeJoin(ghostIntent, event.room_id);
+                    for (const msg of messages) {
+                        log.debug(`Got ${msg.event_id} before join, handling`);
+                        await this.handleImMessage(context, msg);
+                    }
+                } catch (ex) {
+                    log.error("Couldn't handle messages from before we were joined:", ex);
+                }
             }
         }
 
