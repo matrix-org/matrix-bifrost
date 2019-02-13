@@ -46,11 +46,13 @@ export class Store {
     private roomStore: RoomStore;
     private userStore: UserStore;
     private asBot: AsBot;
+    private userLock: Map<string, Promise<void>>
 
     constructor(private bridge: Bridge) {
         this.roomStore = bridge.getRoomStore();
         this.userStore = bridge.getUserStore();
         this.asBot = bridge.getBot();
+        this.userLock = new Map();
     }
 
     public getMatrixUser(id: string): Promise<MatrixUser|null> {
@@ -82,6 +84,7 @@ export class Store {
 
     public async getRemoteUserBySender(sender: string, protocol: PurpleProtocol): Promise<BifrostRemoteUser|null> {
         const remoteId = Util.createRemoteId(protocol.id, sender);
+        await this.userLock.get(remoteId);
         const remote = await this.bridge.getUserStore().getRemoteUser(
             remoteId,
         );
@@ -137,28 +140,15 @@ export class Store {
     public async storeUser(userId: string, protocol: PurpleProtocol,
                            username: string, type: MUSER_TYPES, extraData: any = {})
                             : Promise<{remote: BifrostRemoteUser, matrix: MatrixUser}> {
-        const mxUser = new MatrixUser(userId);
         const id = Util.createRemoteId(protocol.id, username);
-        const existing = await this.userStore.getRemoteUser(id);
-        if (!existing) {
-            const remoteUser = new RemoteUser(Util.createRemoteId(protocol.id, username), extraData);
-            remoteUser.set("protocol_id", protocol.id);
-            remoteUser.set("username", username);
-            remoteUser.set("type", type);
-            await this.userStore.linkUsers(mxUser, remoteUser);
-            log.info(`Linked new ${type} ${userId} -> ${id}`);
-            return {remote: new BifrostRemoteUser(
-                remoteUser, userId, this.asBot.isRemoteUser(userId),
-            ), matrix: mxUser};
-        }
-        log.debug(`Updated existing ${type} ${userId} -> ${id}`);
-        Object.keys(extraData).forEach((key) => {
-            existing.set(key, extraData[key]);
-        });
-        await this.userStore.setRemoteUser(existing);
-        return {remote: new BifrostRemoteUser(
-            existing, userId, this.asBot.isRemoteUser(userId),
-        ), matrix: mxUser};
+        await this.userLock.get(id);
+        const p = this._storeUser(userId, protocol, username, type, extraData);
+        log.debug("Locking ", id);
+        this.userLock.set(id, p.then(() => { /*for typing*/ }));
+        const res = await p;
+        log.debug("Unlocking ", id);
+        this.userLock.delete(id);
+        return p;
     }
 
     public async removeRoomByRoomId(matrixId: string) {
@@ -198,5 +188,32 @@ export class Store {
             throw ex;
         }
         return {matrix: mxRoom, remote};
+    }
+
+    private async _storeUser(userId: string, protocol: PurpleProtocol,
+                             username: string, type: MUSER_TYPES, extraData: any = {})
+                            : Promise<{remote: BifrostRemoteUser, matrix: MatrixUser}> {
+        const id = Util.createRemoteId(protocol.id, username);
+        const mxUser = new MatrixUser(userId);
+        const existing = await this.userStore.getRemoteUser(id);
+        if (!existing) {
+            const remoteUser = new RemoteUser(Util.createRemoteId(protocol.id, username), extraData);
+            remoteUser.set("protocol_id", protocol.id);
+            remoteUser.set("username", username);
+            remoteUser.set("type", type);
+            await this.userStore.linkUsers(mxUser, remoteUser);
+            log.info(`Linked new ${type} ${userId} -> ${id}`);
+            return {remote: new BifrostRemoteUser(
+                remoteUser, userId, this.asBot.isRemoteUser(userId),
+            ), matrix: mxUser};
+        }
+        log.debug(`Updated existing ${type} ${userId} -> ${id}`);
+        Object.keys(extraData).forEach((key) => {
+            existing.set(key, extraData[key]);
+        });
+        await this.userStore.setRemoteUser(existing);
+        return {remote: new BifrostRemoteUser(
+            existing, userId, this.asBot.isRemoteUser(userId),
+        ), matrix: mxUser};
     }
 }
