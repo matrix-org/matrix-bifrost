@@ -72,10 +72,12 @@ export class AutoRegistration {
         log.info("Attempting to reverse register", username);
         const step = this.autoRegConfig.protocolSteps![protocol.id];
         const usernameFormat = step.parameters.username;
+        const hasLocalpart = usernameFormat.includes("<T_LOCALPART>");
         if (!usernameFormat) {
             throw Error("No parameter 'username' on registration step, cannot get mxid");
         }
         let mxid;
+        log.debug("Input name:", username, ". usernameFormat:", usernameFormat);
         if (usernameFormat.includes("<T_MXID>")) {
             const discards = username.split("<T_MXID>");
             mxid = username.replace(discards[0], discards[1]);
@@ -88,7 +90,18 @@ export class AutoRegistration {
             mxid = "@" + [...[...mxid].reverse().join("").replace("_", ":")].reverse().join("");
             // Replace any ^a strings with A.
             mxid = mxid.replace(/(\^([a-z]))/g, (m, p1, p2) => p2.toUpperCase());
-        } else {
+        } else if (hasLocalpart && usernameFormat.includes("<T_DOMAIN>")) {
+            let regexStr = usernameFormat.replace(/[-\/\\^$*+?.()|[\]{}]/g, "\\$&");
+            regexStr = regexStr.replace("<T_LOCALPART>", "(.+)").replace("<T_DOMAIN>", "(.+)");
+            const match = new RegExp(regexStr).exec(username);
+            if (!match || match.length < 3) {
+                throw Error("String didn't match");
+            }
+            log.debug("Result:", match);
+            mxid = `@${match[1]}:${match[2]}`;
+        } else if (hasLocalpart) {
+            throw Error("We don't support localpart only, yet.");
+        } else  {
             throw Error("No T_MXID or T_MXID_SANE on username parameter, cannot get mxid");
         }
         if (mxid) {
