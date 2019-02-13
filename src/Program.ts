@@ -14,6 +14,7 @@ import { XmppJsInstance } from "./xmppjs/XJSInstance";
 import { Metrics } from "./Metrics";
 import { AutoRegistration } from "./AutoRegistration";
 import { GatewayHandler } from "./GatewayHandler";
+import * as request from "request-promise-native";
 
 const log = Logging.get("Program");
 const bridgeLog = Logging.get("bridge");
@@ -83,6 +84,20 @@ class Program {
       callback(reg);
     }
 
+    private async waitForHomeserver() {
+        // Wait for the homeserver to start before progressing with the bridge.
+        const url = `${this.config.bridge.homeserverUrl}/_matrix/client/versions`;
+        while (true) {
+            try {
+                (await request.get(url));
+                return true;
+            } catch (ex) {
+                log.warn("Failed to contact", url, "waiting..");
+            }
+            await new Promise((resolve) => setTimeout(resolve, 2000));
+        }
+    }
+
     private async registerBot() {
         const intent = this.bridge.getIntent();
         intent.opts.registered = false;
@@ -111,6 +126,7 @@ class Program {
         log.info("Starting purple bridge on port", port);
         this.cfg.ApplyConfig(config);
         Logging.configure(this.cfg.logging);
+        await this.waitForHomeserver();
         this.bridge = new Bridge({
           controller: {
             // onUserQuery: userQuery,
