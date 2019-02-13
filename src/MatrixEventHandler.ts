@@ -128,7 +128,7 @@ export class MatrixEventHandler {
                     protocol,
                 } = this.purple.getUsernameFromMxid(event.state_key!, this.config.bridge.userPrefix);
                 log.debug("Mapped username to", username, protocol);
-                const {acct} = await this.getAccountForMxid(context, event, protocol.id);
+                const {acct} = await this.getAccountForMxid(event.sender, protocol.id);
                 const remoteData = {
                     matrixUser: event.sender,
                     protocol_id: acct.protocol.id,
@@ -348,11 +348,11 @@ return `- ${account.protocol.name} (${username}) [Enabled=${account.isEnabled}] 
                 if (!protocol) {
                     throw new Error("Protocol not found");
                 }
-                const {acct} = await this.getAccountForMxid(context, event, protocol.id);
+                const {acct} = await this.getAccountForMxid(event.sender, protocol.id);
                 const paramSet = await this.getJoinParametersForCommand(acct, cmdArgs, event.room_id, "!purple bridge");
                 log.debug("Got appropriate param set", paramSet);
                 if (paramSet != null) {
-                    await ProtoHacks.addJoinProps(protocol.id, paramSet, event.sender, this.bridge.getIntent());
+                    await ProtoHacks.addJoinProps(protocol.id, paramSet, event.sender, intent);
                     // We want to join the room to make sure it works.
                     let res: IConversationEvent;
                     try {
@@ -362,7 +362,6 @@ return `- ${account.protocol.name} (${username}) [Enabled=${account.isEnabled}] 
                         log.warn("Failed to join chat for plumbing:", ex);
                         throw Error("Failed to join chat");
                     }
-                    const roomStore = this.bridge.getRoomStore();
                     const remoteData = {
                         protocol_id: acct.protocol.id,
                         room_name: res.conv.name,
@@ -372,13 +371,24 @@ return `- ${account.protocol.name} (${username}) [Enabled=${account.isEnabled}] 
                         `${acct.protocol.id}:${res.conv.name}`,
                     ).toString("base64");
                     await this.store.storeRoom(event.room_id, MROOM_TYPE_GROUP, remoteId, remoteData);
-
-                    // // Fetch Matrix members and join them.
-                    // const userIds = Object.keys(await this.bridge.getBot().getJoinedMembers(event.room_id));
-                    // userIds.forEach((userId) => {
-                    //     this.getAccountForMxid(userId);
-                    // })
-
+                    // Fetch Matrix members and join them.
+                    try {
+                        const userIds = Object.keys(await this.bridge.getBot().getJoinedMembers(event.room_id));
+                        await Promise.all(userIds.map(async (userId) => {
+                            if (this.bridge.getBot().getUserId() === userId) {
+                                return; // Don't join the bridge bot.
+                            }
+                            log.info(`Joining ${userId} to ${remoteId}`);
+                            const getAcctRes = await this.getAccountForMxid(userId, protocol.id);
+                            const joinParamSet = await this.getJoinParametersForCommand(
+                                getAcctRes.acct, cmdArgs, event.room_id, "",
+                            );
+                            await ProtoHacks.addJoinProps(protocol.id, joinParamSet, userId, intent);
+                            await getAcctRes.acct.joinChat(joinParamSet!, this.purple, 5000, false);
+                        }));
+                    } catch (ex) {
+                        log.warn("Syncing users to newly plumbed room failed: ", ex);
+                    }
                 }
             }
         } catch (ex) {
@@ -486,8 +496,9 @@ Say \`help\` for more commands.
     private async handleImMessage(context: IBridgeContext, event: IEventRequestData) {
         log.info("Handling IM message");
         let acct: IPurpleAccount;
+        const roomProtocol = context.rooms.remote.get("protocol_id");
         try {
-            acct = (await this.getAccountForMxid(context, event)).acct;
+            acct = (await this.getAccountForMxid(event.sender, roomProtocol)).acct;
         } catch (ex) {
             log.error(`Couldn't handle ${event.event_id}, ${ex}`);
             return;
@@ -508,7 +519,7 @@ Say \`help\` for more commands.
             return;
         }
         try {
-            const {acct, newAcct} = await this.getAccountForMxid(context, event);
+            const {acct, newAcct} = await this.getAccountForMxid(event.sender, roomProtocol);
             log.info(`Got ${acct.name} for ${event.sender}`);
             if (!acct.isInRoom(name)) {
                 log.debug(`${event.sender} talked in ${name}, joining them.`);
@@ -557,6 +568,7 @@ Say \`help\` for more commands.
         let acct: IPurpleAccount;
         const isGateway = context.rooms.remote.get("gateway");
         const name = context.rooms.remote.get("room_name");
+        const roomProtocol = context.rooms.remote.get("protocol_id");
         if (isGateway) {
             const displayname = event.content.displayname ||
                 (await this.bridge.getIntent().getProfileInfo(event.sender)).displayname;
@@ -567,7 +579,7 @@ Say \`help\` for more commands.
         }
 
         try {
-            acct = (await this.getAccountForMxid(context, event)).acct;
+            acct = (await this.getAccountForMxid(event.sender, roomProtocol)).acct;
         } catch (ex) {
             log.error("Failed to handle join/leave:", ex);
             // Kick em if we cannot join em.
@@ -604,7 +616,7 @@ Say \`help\` for more commands.
         let paramSet;
         let acct;
         try {
-            acct = await this.getAccountForMxid(context, event, protocol.id);
+            acct = await this.getAccountForMxid(event.sender, protocol.id);
             paramSet = await this.getJoinParametersForCommand(acct.acct, args, event.room_id, "join");
             await ProtoHacks.addJoinProps(protocol.id, paramSet, event.sender, this.bridge.getIntent());
         } catch (ex) {
@@ -714,28 +726,26 @@ E.g. \`${command} ${acct.protocol.id}\` ${required.join(" ")} ${optional.join(" 
         }
     }
 
-    private async getAccountForMxid(
-        context: IBridgeContext, event: IEventRequestData, protocol?: string,
+    private async getAccountForMxid(sender: string, protocol: string,
     ): Promise<{acct: IPurpleAccount, newAcct: boolean}> {
-        const roomProtocol = protocol || context.rooms.remote.get("protocol_id");
-        const remoteUser = context.senders.remotes.find(
-            (remote) => (remote.get("protocol_id") || remote.get("protocolId") === roomProtocol)
-             && remote.get("type") === "account");
-        if (remoteUser == null) {
-            log.info(`Account not found for ${event.sender}`);
+        const remoteUser = (await this.store.getRemoteUsersFromMxId(sender)).find(
+            (remote) => remote.protocolId === protocol && remote.isAccount,
+        );
+        if (!remoteUser) {
+            log.info(`Account not found for ${sender}`);
             if (!this.autoReg) {
                 throw Error("Autoregistration of accounts not supported");
             }
-            if (!this.autoReg.isSupported(roomProtocol)) {
-                throw Error(`${roomProtocol} cannot be autoregistered`);
+            if (!this.autoReg.isSupported(protocol)) {
+                throw Error(`${protocol} cannot be autoregistered`);
             }
             return {
-                acct: await this.autoReg.registerUser(roomProtocol, event.sender),
+                acct: await this.autoReg.registerUser(protocol, sender),
                 newAcct: true,
             };
         }
         // XXX: We assume the first remote, this needs to be fixed for multiple accounts
-        const acct = this.purple.getAccount(remoteUser.get("username"), roomProtocol, event.sender);
+        const acct = this.purple.getAccount(remoteUser.username, protocol, sender);
         if (!acct) {
             log.error("Account wasn't found in backend, we cannot handle this im!");
             throw new Error("Account not found");
