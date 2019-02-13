@@ -127,7 +127,7 @@ export class MatrixRoomHandler {
         const remoteEntries = await roomStore.getEntriesByRemoteRoomData(remoteData);
         if (remoteEntries != null && remoteEntries.length >= 1) {
             if (remoteEntries.length === 1) {
-                return remoteEntries.matrix.getId();
+                return remoteEntries[0].matrix.getId();
             }
             log.warn(
                 `Have multiple matrix rooms assigned for IM ` +
@@ -163,7 +163,7 @@ export class MatrixRoomHandler {
                 "Recipient matches waitOnJoinBeforePM, holding back sending messages until the user has joined",
             );
             await this.deduplicator.waitForJoin(roomId!, matrixUser.getId());
-            log.info("User joined, can now send messages")
+            log.info("User joined, can now send messages");
         }
         this.roomCreationLock.delete(remoteId);
         return roomId!;
@@ -401,7 +401,7 @@ export class MatrixRoomHandler {
         const protocol = this.purple.getProtocol(data.account.protocol_id)!;
         const remoteUser = await this.store.getRemoteUserBySender(data.sender, protocol);
         if (remoteUser && !remoteUser.isRemote) {
-            log.debug(`Didn't handle join/leave for ${data.sender}, isn't remote`, remoteUser);
+            log.debug(`Didn't handle join/leave for ${data.sender}, isn't remote`);
             return; // Do NOT handle state changes from our own users.
         }
         log.info(data.state === "joined" ? "Joining" : "Leaving", data.sender, "from", data.conv.name);
