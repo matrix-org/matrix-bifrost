@@ -25,6 +25,7 @@ export class Config {
     };
 
     public readonly bridgeBot: IConfigBridgeBot = {
+        displayname: "Bifrost Bot",
         accounts: [],
     };
 
@@ -94,6 +95,7 @@ export interface IConfigAutoReg {
 }
 
 export interface IConfigBridgeBot {
+    displayname: string;
     accounts: IBridgeBotAccount[]; // key -> parameter value
 }
 

@@ -1,10 +1,8 @@
-import { Cli, Bridge, AppServiceRegistration, ClientFactory, Logging } from "matrix-appservice-bridge";
+import { Cli, Bridge, AppServiceRegistration, Logging } from "matrix-appservice-bridge";
 import { MatrixEventHandler } from "./MatrixEventHandler";
 import { MatrixRoomHandler } from "./MatrixRoomHandler";
-import { PurpleProtocol } from "./purple/PurpleProtocol";
 import { IPurpleInstance } from "./purple/IPurpleInstance";
-import { EventEmitter } from "events";
-import { IReceivedImMsg, IAccountEvent } from "./purple/PurpleEvents";
+import {  IAccountEvent } from "./purple/PurpleEvents";
 import { ProfileSync } from "./ProfileSync";
 import { IEventRequest } from "./MatrixTypes";
 import { RoomSync } from "./RoomSync";
@@ -85,6 +83,30 @@ class Program {
       callback(reg);
     }
 
+    private async registerBot() {
+        const intent = this.bridge.getIntent();
+        intent.opts.registered = false;
+        await intent._ensureRegistered();
+        // Set a profile for the bridge user.
+        try {
+            if (this.config.bridgeBot.displayname !==
+                await intent.getProfileInfo(this.bridge.getBot().getUserId(), "displayname")) {
+                await intent.setDisplayName(this.config.bridgeBot.displayname);
+                log.debug("Changed bridge bot name to:", this.config.bridgeBot.displayname);
+            }
+        } catch (ex) {
+            if (ex.errcode === "M_NOT_FOUND") {
+                return intent.setDisplayName(this.config.bridgeBot.displayname).catch((err) => {
+                    log.error("Failed to update profile: ", ex);
+                    process.exit(1);
+                }).then(() => {
+                    log.debug("Set bridge bot name to:", this.config.bridgeBot.displayname);
+                });
+            }
+            log.error("Failed to update profile: ", ex);
+        }
+    }
+
     private async runBridge(port: number, config: any) {
         log.info("Starting purple bridge on port", port);
         this.cfg.ApplyConfig(config);
@@ -127,13 +149,15 @@ class Program {
         } else {
             throw new Error(`Backend ${this.cfg.purple.backend} not supported`);
         }
-
         const purple = this.purple!;
 
         if (this.cfg.metrics.enable) {
             log.info("Enabling metrics");
             Metrics.init(this.bridge);
         }
+
+        await this.registerBot();
+
         this.store = new Store(this.bridge);
         this.profileSync = new ProfileSync(this.bridge, this.cfg, this.store);
         this.roomHandler = new MatrixRoomHandler(
