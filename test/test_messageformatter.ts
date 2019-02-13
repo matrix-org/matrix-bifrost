@@ -1,14 +1,8 @@
 import * as Chai from "chai";
 import { PurpleProtocol } from "../src/purple/PurpleProtocol";
 import { MessageFormatter } from "../src/MessageFormatter";
+import { dummyProtocol } from "./mocks/dummyprotocol";
 const expect = Chai.expect;
-
-const dummyProtocol = new PurpleProtocol({
-    id: "prpl-dummy",
-    name: "Dummy",
-    homepage: undefined,
-    summary: undefined,
-});
 
 const XMPP = new PurpleProtocol({
     id: "prpl-jabber",

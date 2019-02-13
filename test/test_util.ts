@@ -95,8 +95,8 @@ describe("Util", () => {
     describe("unescapeUserId", () => {
         it("should unescape QF encoding", () => {
             expect(
-                Util.unescapeUserId("Hello=a3=21=25=26=20World")
+                Util.unescapeUserId("Hello=a3=21=25=26=20World"),
             ).to.equal("Hello£!%& World");
         });
-    })
+    });
 });
