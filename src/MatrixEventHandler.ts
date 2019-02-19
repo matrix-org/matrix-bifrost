@@ -199,6 +199,10 @@ export class MatrixEventHandler {
             }
         }
 
+        if (roomType === MROOM_TYPE_GROUP && event.state_key !== undefined) {
+            this.handleStateEv(context, event);
+        }
+
         if (event.type !== "m.room.message") {
             // We are only handling bridged room messages now.
             return;
@@ -601,6 +605,19 @@ Say \`help\` for more commands.
             // Only do this if it's NOT an invite.
             this.deduplicator.decrementRoomUsers(name);
         }
+    }
+
+    private async handleStateEv(context: IBridgeContext, event: IEventRequestData) {
+        const isGateway = context.rooms.remote.get("gateway");
+        const name = context.rooms.remote.get("room_name");
+        log.info(`Handling group state event for ${name}`);
+        if (isGateway) {
+            await this.gatewayHandler.sendStateEvent(
+                name, event.sender, event, context,
+            );
+            return;
+        }
+        // XXX: Support state changes for non-gateways
     }
 
     private async handleJoin(args: string[], context: IBridgeContext, event: IEventRequestData) {

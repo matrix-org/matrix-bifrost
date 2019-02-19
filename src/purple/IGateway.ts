@@ -8,11 +8,13 @@ export interface IGateway {
         chatName: string,
         sender: string, body: IBasicProtocolMessage, room: IGatewayRoom,
         roomname: string,
-    );
+    ): void;
     sendMatrixMembership(
         chatName: string, sender: string, displayname: string, membership: string, room: IGatewayRoom,
-        roomname: string,
-    );
-    onRemoteJoin(err: string|null, joinId: string, room: IGatewayRoom|undefined, ownMxid: string|undefined);
-    reconnectRemoteUser(user: BifrostRemoteUser);
+    ): void;
+    sendStateChange(
+        chatName: string, sender: string, type: "topic"|"name"|"avatar", room: IGatewayRoom,
+    ): void;
+    onRemoteJoin(err: string|null, joinId: string, room: IGatewayRoom|undefined, ownMxid: string|undefined): void;
+    reconnectRemoteUser(user: BifrostRemoteUser): void;
 }

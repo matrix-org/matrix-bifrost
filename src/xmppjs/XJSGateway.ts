@@ -2,14 +2,12 @@ import { XmppJsInstance, XMPP_PROTOCOL } from "./XJSInstance";
 import { Element, x } from "@xmpp/xml";
 import { jid, JID } from "@xmpp/jid";
 import { Logging, Intent } from "matrix-appservice-bridge";
-import { IEventRequestData, IBridgeContext } from "../MatrixTypes";
 import { IConfigBridge } from "../Config";
 import { MessageFormatter, IBasicProtocolMessage } from "..//MessageFormatter";
 import { Metrics } from "../Metrics";
 import { IGatewayRoomQuery, IGatewayJoin, IUserStateChanged, IStoreRemoteUser } from "../purple/PurpleEvents";
 import { IGatewayRoom } from "../GatewayHandler";
 import { PresenceCache } from "./PresenceCache";
-import { IRemoteGroupData } from "../StoreTypes";
 import { XHTMLIM } from "./XHTMLIM";
 import { BifrostRemoteUser } from "../Store";
 import { StzaPresenceItem, StzaMessage, StzaMessageSubject, StzaPresenceError } from "./Stanzas";
@@ -128,21 +126,51 @@ export class XmppJsGateway {
     }
 
     public sendMatrixMembership(
-        chatName: string, sender: string, displayname: string, membership: "join"|"leave", room: IGatewayRoom,
-        roomname: string,
+        chatName: string, sender: string, displayname: string, membership: "join"|"leave",
     ) {
-        log.info(`Got new ${membership} for ${sender} in ${roomname}`);
+        log.info(`Got new ${membership} for ${sender} in ${chatName}`);
         // Iterate around each joined member and add the new presence step.
         const from = `${chatName}/` + (displayname || sender);
-        const users = Object.keys(this.roomUsers.get(roomname) || {});
+        const users = Object.keys(this.roomUsers.get(chatName) || {});
         if (users.length === 0) {
             log.warn("No users found for gateway room!");
         }
         users.forEach((remoteJid) => {
-            const affiliation = membership === "join" ? "member" : "none";
-            const role = membership === "join" ? "participant" : "none";
-            const type = membership === "join" ? "" : "unavailable";
-            this.xmpp.xmppSend(new StzaPresenceItem(from, remoteJid, undefined, affiliation, role, false, type));
+            let affiliation = "";
+            let role = "";
+            let type = "";
+            if (membership === "join") {
+                affiliation = "member";
+                role = "participant";
+            } else if (membership === "leave") {
+                affiliation = "member";
+                role = "none";
+                type = "unavailable";
+            }
+            this.xmpp.xmppSend(
+                new StzaPresenceItem(
+                    from, remoteJid, undefined, affiliation,
+                    role, false, undefined, type,
+                ),
+            );
+        });
+    }
+
+    public sendStateChange(
+        chatName: string, sender: string, type: "topic"|"name"|"avatar", room: IGatewayRoom,
+    ) {
+        log.info(`Got new ${type} for ${sender} in ${chatName}`);
+        // Iterate around each joined member and add the new presence step.
+        const users = Object.keys(this.roomUsers.get(chatName) || {});
+        if (users.length === 0) {
+            log.warn("No users found for gateway room!");
+        }
+        users.forEach((remoteJid) => {
+            if (type === "topic" || type === "name") {
+                this.xmpp.xmppSend(new StzaMessageSubject(chatName, remoteJid, undefined,
+                    `${room.name || ""} ${room.topic ? "| " + room.topic : ""}`,
+                ));
+            }
         });
     }
 

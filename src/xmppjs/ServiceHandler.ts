@@ -128,6 +128,7 @@ export class ServiceHandler {
             if (!alias) {
                 throw Error("Not a valid alias");
             }
+            log.debug(`Running room discovery for ${toStr}`);
             const roomId = await this.queryRoom(alias, true);
             log.info(`Response for alias request ${toStr} (${alias}) -> ${roomId}`);
             await this.xmpp.xmppWriteToStream(
