@@ -40,6 +40,7 @@ export class Config {
 
     public readonly portals: IConfigPortals = {
         aliases: undefined,
+        enableGateway: false,
     };
 
     public readonly metrics: IConfigMetrics = {
@@ -110,6 +111,7 @@ export interface IConfigProfile {
 
 export interface IConfigPortals {
     aliases: {[regex: string]: IRoomAlias} | undefined;
+    enableGateway: boolean;
 }
 
 export interface IConfigProvisioning {

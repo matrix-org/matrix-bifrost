@@ -151,7 +151,7 @@ export class XmppJsInstance extends EventEmitter implements IPurpleInstance {
         if (!opts || !opts.service || !opts.domain || !opts.password) {
             throw Error("Missing opts for xmpp: service, domain, password");
         }
-        if (opts.enableGateway === true) {
+        if (this.config.portals.enableGateway === true) {
             this.xmppGateway = new XmppJsGateway(this, this.config.bridge);
         }
         this.defaultRes = opts.defaultResource ? opts.defaultResource : "matrix-bridge";

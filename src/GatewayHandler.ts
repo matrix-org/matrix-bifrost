@@ -1,7 +1,7 @@
 import { IGatewayJoin, IGatewayRoomQuery } from "./purple/PurpleEvents";
 import { IPurpleInstance } from "./purple/IPurpleInstance";
 import { Bridge, Logging, Intent } from "matrix-appservice-bridge";
-import { IConfigBridge } from "./Config";
+import { IConfigBridge, Config } from "./Config";
 import { Store } from "./Store";
 import { MROOM_TYPE_GROUP, IRemoteGroupData, IRoomEntry } from "./StoreTypes";
 import { IEventRequest, IBridgeContext } from "./MatrixTypes";
@@ -46,11 +46,11 @@ export class GatewayHandler {
     constructor(
         private purple: IPurpleInstance,
         private bridge: Bridge,
-        private config: IConfigBridge,
+        private config: Config,
         private store: Store,
         private profileSync: ProfileSync,
     ) {
-        if (!purple.gateway) {
+        if (!config.portals.enableGateway) {
             return;
         }
         purple.on("gateway-queryroom", this.handleRoomQuery.bind(this));
@@ -92,6 +92,26 @@ export class GatewayHandler {
         this.purple.gateway.sendMatrixMessage(chatName, sender, body, room, chatName);
     }
 
+    public async sendStateEvent(chatName: string, sender: string, ev: any , context: IBridgeContext) {
+        if (!this.purple.gateway) {
+            return;
+        }
+        const room = await this.getVirtualRoom(context.rooms.matrix.getId(), this.bridge.getIntent());
+        if (ev.type === "m.room.name") {
+            log.info("Handing room name change for gateway");
+            room.name = ev.content.name;
+            this.purple.gateway.sendStateChange(chatName, sender, "name", room);
+        } else if (ev.type === "m.room.topic") {
+            log.info("Handing room topic change for gateway");
+            room.topic = ev.content.topic;
+            this.purple.gateway.sendStateChange(chatName, sender, "topic", room);
+        } else if (ev.type === "m.room.avatar") {
+            log.info("Handing room avatar change for gateway");
+            log.debug("Room avatar changes aren't supported yet.");
+        //    this.purple.gateway.sendStateChange(chatName, sender, "topic", ev.content.topic);
+        }
+    }
+
     public async sendMatrixMembership(
         chatName: string, sender: string, displayname: string, membership: string, context: IBridgeContext,
     ) {
@@ -118,7 +138,7 @@ export class GatewayHandler {
             this.roomIdCache.set(context.rooms.matrix.getId(), room);
         }
         log.info(`Updating membership for ${sender} in ${chatName}`);
-        this.purple.gateway.sendMatrixMembership(chatName, sender, displayname, membership, room, chatName);
+        this.purple.gateway.sendMatrixMembership(chatName, sender, displayname, membership, room);
     }
 
     public async rejoinRemoteUser(mxid: string, roomid: string) {
@@ -140,8 +160,8 @@ export class GatewayHandler {
         const protocol = this.purple.getProtocol(data.protocol_id)!;
         const intentUser = protocol.getMxIdForProtocol(
             data.sender,
-            this.config.domain,
-            this.config.userPrefix,
+            this.config.bridge.domain,
+            this.config.bridge.userPrefix,
             true,
         );
         log.info(`${intentUser.userId} is attempting to join ${data.roomAlias}`);

@@ -4,5 +4,4 @@ export interface IXJSBackendOpts {
     password: string;
     defaultResource: string;
     logRawStream: boolean;
-    enableGateway: boolean;
 }
