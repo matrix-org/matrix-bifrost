@@ -80,7 +80,7 @@ describe("Stanzas", () => {
             assertXML(stanza.xml);
             expect(stanza.xml).to.equal(
                 "<message from='foo@bar' to='baz@bar' id='someid' type='groupchat'><html><p>"
-                + "<strong>Viva la</strong> matrix&#x32D;</p></html><body>Viva la matrix&#x32D;</body>"
+                + "<strong>Viva la</strong> matrix&#x32D;</p></html><body>http://matrix.org</body>"
                 + "<x xmlns='jabber:x:oob'><url>http://matrix.org</url></x></message>",
             );
         });
