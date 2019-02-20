@@ -205,9 +205,8 @@ export class Store {
         // We use `select` to get the _id.
         const roomEntries = await this.roomStore.select({}) as any;
         const invalidRoomEntries = roomEntries.filter(
-            (entry) =>
-            (entry.remote === undefined && entry.matrix.data.type !== MROOM_TYPE_UADMIN)
-            || entry.matrix.data === undefined,
+            (entry) => entry.matrix.data === undefined ||
+            (entry.remote === undefined && entry.matrix.data.type !== MROOM_TYPE_UADMIN),
         );
         log.info(`Found ${roomEntries.length} room entries, ${invalidRoomEntries.length} of which are invalid`);
         if (canWrite && invalidRoomEntries.length > 0) {
