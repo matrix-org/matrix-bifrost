@@ -231,7 +231,9 @@ export class XmppJsGateway {
         return set;
     }
 
-    public onRemoteJoin(err: string|null, joinId: string, room: IGatewayRoom|undefined, ownMxid: string|undefined) {
+    public async onRemoteJoin(
+        err: string|null, joinId: string, room: IGatewayRoom|undefined, ownMxid: string|undefined,
+    ) {
         log.debug("Handling remote join for " + joinId);
         const stanza = this.stanzaCache.get(joinId);
         this.stanzaCache.delete(joinId);
@@ -260,7 +262,10 @@ export class XmppJsGateway {
         // 1. membership of others.
         log.debug("Emitting membership of other users");
         const xMembers = this.getMemberJidSet(room, `${to.local}@${to.domain}`);
-        Object.keys(xMembers).forEach((sender) => {
+        // Ensure we chunk this
+        let sent = 0;
+        for (const sender of Object.keys(xMembers)) {
+            sent++;
             if (sender === ownMxid) {
                 return;
             }
@@ -268,7 +273,12 @@ export class XmppJsGateway {
             this.xmpp.xmppSend(
                 new StzaPresenceItem(from, stanza.attrs.from, undefined, "member", "participant"),
             );
-        });
+            if (sent % 20 === 0) {
+                log.debug("Sent 20 presence statuses, waiting 333ms before sending more");
+                await new Promise((resolve) => setTimeout(resolve, 333));
+            }
+        }
+
         log.debug("Emitting membership of self");
         // 2. self presence
         this.xmpp.xmppSend(
