@@ -28,7 +28,6 @@ import { AutoRegistration } from "../AutoRegistration";
 import { XmppJsGateway } from "./XJSGateway";
 import { IStza } from "./Stanzas";
 import { Util } from "../Util";
-import { IPurpleStoreOpts } from "../purple/IPurpleStoreOpts";
 
 const xLog = Logging.get("XMPP-conn");
 const log = Logging.get("XmppJsInstance");

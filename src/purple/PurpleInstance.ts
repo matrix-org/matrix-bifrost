@@ -10,7 +10,6 @@ import { IUserInfo, IConversationEvent, IReceivedImMsg, IEventBody } from "./Pur
 import { PurpleProtocol } from "./PurpleProtocol";
 import { IEventRequestData } from "../MatrixTypes";
 import { IGateway } from "./IGateway";
-import { IPurpleStoreOpts } from "./IPurpleStoreOpts";
 const log = Logging.get("PurpleInstance");
 
 export class PurpleInstance extends EventEmitter implements IPurpleInstance {
@@ -21,12 +20,6 @@ export class PurpleInstance extends EventEmitter implements IPurpleInstance {
         super();
         this.protocols = [];
         this.accounts = new Map();
-    }
-
-    public get storeOpts(): IPurpleStoreOpts {
-        return {
-            userCanHaveMultipleAccounts: true,
-        };
     }
 
     public createPurpleAccount(username, protocol: PurpleProtocol) {
