@@ -32,15 +32,13 @@ export class StzaPresence implements IStza {
 
     get xml(): string {
         const type = this.presenceType ? ` type='${this.presenceType}'` : "";
-        const id = this.id ? ` id='${this.id}'` : "";
+        const id = this.id ? ` id="${this.id}"` : "";
         let content = "";
         if (this.includeXContent) {
             content = this.xContent ? `<x xmlns='http://jabber.org/protocol/${this.xProtocol}'>${this.xContent}</x>` :
                 "<x xmlns='http://jabber.org/protocol/muc'/>";
         }
-        return `
-            <presence from="${this.from}" to="${this.to}" ${id}${type}>${content}${this.presenceContent}</presence>
-        `;
+        return `<presence from="${this.from}" to="${this.to}"${id}${type}>${content}${this.presenceContent}</presence>`;
     }
 }
 
@@ -180,7 +178,7 @@ export class StzaMessageSubject implements IStza {
     }
 
     get xml(): string {
-        return `<message from='${this.from}' to='${this.to}' id='${this.id}' type='groupchat'>`
+        return `<message from="${this.from}" to="${this.to}" id="${this.id}" type='groupchat'>`
              + `<subject>${this.subject}</subject></message>`;
     }
 }
