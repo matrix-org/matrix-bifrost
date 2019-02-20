@@ -45,7 +45,7 @@ export class Store {
     private roomStore: RoomStore;
     private userStore: UserStore;
     private asBot: AsBot;
-    private userLock: Map<string, Promise<void>>
+    private userLock: Map<string, Promise<void>>;
 
     constructor(private bridge: Bridge) {
         this.roomStore = bridge.getRoomStore();
