@@ -124,6 +124,7 @@ class Program {
     }
 
     private async runBridge(port: number, config: any) {
+        const checkOnly = process.env.BIFROST_CHECK_ONLY === "true";
         log.info("Starting purple bridge on port", port);
         this.cfg.ApplyConfig(config);
         Logging.configure(this.cfg.logging);
@@ -202,6 +203,10 @@ class Program {
 
         this.eventHandler.setBridge(this.bridge, autoReg || undefined);
         this.roomHandler.setBridge(this.bridge);
+        if (checkOnly) {
+            log.warn("BIFROST_CHECK_ONLY is set, exiting");
+            process.exit(0);
+        }
         log.info("Bridge has started.");
         try {
             if (purple instanceof XmppJsInstance) {
