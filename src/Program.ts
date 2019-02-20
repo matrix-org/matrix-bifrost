@@ -105,8 +105,8 @@ class Program {
         await intent._ensureRegistered();
         // Set a profile for the bridge user.
         try {
-            if (this.config.bridgeBot.displayname !==
-                await intent.getProfileInfo(this.bridge.getBot().getUserId(), "displayname")) {
+            const currentName = (await intent.getProfileInfo(this.bridge.getBot().getUserId())).displayname;
+            if (this.config.bridgeBot.displayname !== currentName) {
                 await intent.setDisplayName(this.config.bridgeBot.displayname);
                 log.debug("Changed bridge bot name to:", this.config.bridgeBot.displayname);
             }
