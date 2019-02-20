@@ -147,6 +147,10 @@ export class StzaMessage implements IStza {
         const attachments = this.attachments.map((a) =>
             `<x xmlns='jabber:x:oob'><url>${he.encode(a)}</url></x>`,
         );
+        if (this.attachments.length === 1) {
+            // For reasons unclear to me, XMPP reccomend we make the body == attachment url to make them show up inline.
+            this.body = this.attachments[0];
+        }
         return `<message from='${this.from}' to='${this.to}' id='${this.id}' ${type}>`
              + `${this.html}<body>${he.encode(this.body)}</body>${attachments}</message>`;
     }
