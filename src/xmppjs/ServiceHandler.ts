@@ -226,6 +226,7 @@ export class ServiceHandler {
 
         if (profile.displayname) {
             vCard.push(x("FN", undefined, profile.displayname));
+            vCard.push(x("NICKNAME", undefined, profile.displayname));
         }
 
         if (profile.avatar_url) {
