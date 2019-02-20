@@ -195,8 +195,13 @@ export class Store {
      * This will check to see if there are multiple instances of a user or room.
      * @return [description]
      */
-    public async integrityCheck(): Promise<void> {
+    public async integrityCheck(canWrite: boolean): Promise<void> {
         log.warn("Starting integrity check");
+        if (canWrite) {
+            log.warn("Check WILL modify database");
+        } else {
+            log.warn("Check WILL NOT modify database");
+        }
         // Check the room store.
         // Rooms are considered invalid if they have no remote part.
         // We use `select` to get the _id.
@@ -205,7 +210,7 @@ export class Store {
             (entry) => entry.remote === undefined && entry.matrix.data.type !== MROOM_TYPE_UADMIN,
         );
         log.info(`Found ${roomEntries.length} room entries, ${invalidRoomEntries.length} of which are invalid`);
-        if (invalidRoomEntries.length > 0) {
+        if (canWrite && invalidRoomEntries.length > 0) {
             log.info("Cleaning up room entries");
             await Promise.all(invalidRoomEntries.map((entry) => {
                 log.debug(`Cleaning up room entry ${entry._id}`);
@@ -223,7 +228,7 @@ export class Store {
             userEntryIds.filter((e) => e.id === entry.id).length >= 2,
         );
         log.info(`Found ${userEntries.length} ghost user entries, ${invalidUserEntries.length} of which are invalid`);
-        if (invalidUserEntries.length > 0) {
+        if (canWrite && invalidUserEntries.length > 0) {
             log.info("Cleaning up user entries");
             await Promise.all(invalidUserEntries.map((entry) => {
                 log.debug(`Cleaning up user entry ${entry._id}`);
@@ -233,7 +238,6 @@ export class Store {
             })).then(() => { /* for typescript */});
         }
     }
-
 
     private async _storeUser(userId: string, protocol: PurpleProtocol,
                              username: string, type: MUSER_TYPES, extraData: any = {})

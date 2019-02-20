@@ -175,7 +175,8 @@ class Program {
 
         this.store = new Store(this.bridge);
         try {
-            await this.store.integrityCheck();
+            const ignoreIntegrity = process.env.BIFROST_INTEGRITY_WRITE;
+            await this.store.integrityCheck(ignoreIntegrity === undefined || ignoreIntegrity !== "false");
             await this.waitForHomeserver();
             await this.registerBot();
         } catch (ex) {
