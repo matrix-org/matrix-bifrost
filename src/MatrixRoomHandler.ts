@@ -275,9 +275,16 @@ export class MatrixRoomHandler {
             this.config.bridge.userPrefix,
             false,
         );
+
+        // Update the user if needed.
+        const account = this.purple.getAccount(data.account.username, data.account.protocol_id, matrixUser.getId())!;
+        await this.profileSync.updateProfile(protocol, data.sender,
+            account,
+        );
+
         const intent = this.bridge.getIntent(senderMatrixUser.getId());
         log.debug("Identified ghost user as", senderMatrixUser.getId());
-        let roomId;
+        let roomId: string;
         try {
             roomId = await this.createOrGetIMRoom(data, matrixUser, intent);
         } catch (e) {
@@ -293,11 +300,6 @@ export class MatrixRoomHandler {
             roomId = await this.createOrGetIMRoom(data, matrixUser, intent);
         }
 
-        // Update the user if needed.
-        const account = this.purple.getAccount(data.account.username, data.account.protocol_id, matrixUser.getId())!;
-        await this.profileSync.updateProfile(protocol, data.sender,
-            account,
-        );
         log.info(`Sending IM to ${roomId} as ${senderMatrixUser.getId()}`);
         const content = await MessageFormatter.messageToMatrixEvent(data.message, protocol, intent);
         const {event_id} = await intent.sendMessage(roomId, content);
