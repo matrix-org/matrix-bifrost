@@ -6,7 +6,7 @@ import * as request from "request-promise-native";
 import { IGatewayRoom } from "../GatewayHandler";
 import { IGatewayRoomQuery, IGatewayPublicRoomsQuery } from "../purple/PurpleEvents";
 import { StzaIqDiscoInfo } from "./Stanzas";
-import { IPublicRoom } from "src/MatrixTypes";
+import { IPublicRoom } from "../MatrixTypes";
 
 const log = Logging.get("ServiceHandler");
 
@@ -22,12 +22,14 @@ const MAX_AVATARS = 1024;
 
 export class ServiceHandler {
     private avatarCache: Map<string, {data: Buffer, type: string}>;
+    private existingAliases: Map<string, string>; /* alias -> room_id */
     private discoInfo: StzaIqDiscoInfo;
     constructor(private xmpp: XmppJsInstance) {
         this.avatarCache = new Map();
+        this.existingAliases = new Map();
         this.discoInfo = new StzaIqDiscoInfo("", "", "");
         this.discoInfo.feature.add("http://jabber.org/protocol/disco#info");
-        this.discoInfo.feature.add("http://jabber.org/protocol/disco#items");
+        // this.discoInfo.feature.add("http://jabber.org/protocol/disco#items");
         this.discoInfo.feature.add("http://jabber.org/protocol/protocol/muc");
         this.discoInfo.feature.add("jabber:iq:version");
         this.discoInfo.feature.add("jabber:iq:search");
@@ -57,7 +59,7 @@ export class ServiceHandler {
         }
 
         if (stanza.getChildByAttr("xmlns", "http://jabber.org/protocol/disco#items")) {
-            return this.handleDiscoItems(from, to, id);
+            // return this.handleDiscoItems(from, to, id);
         }
 
         if (stanza.getChildByAttr("xmlns", "vcard-temp")) {
@@ -176,7 +178,11 @@ export class ServiceHandler {
                 throw Error("Not a valid alias");
             }
             log.debug(`Running room discovery for ${toStr}`);
-            const roomId = await this.queryRoom(alias, true);
+            let roomId = this.existingAliases.get(alias);
+            if (!roomId) {
+                roomId = await this.queryRoom(alias, true) as string;
+                this.existingAliases.set(alias, roomId);
+            }
             log.info(`Response for alias request ${toStr} (${alias}) -> ${roomId}`);
             await this.xmpp.xmppWriteToStream(
                 x("iq", {
