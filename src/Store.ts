@@ -5,8 +5,6 @@ import { MROOM_TYPES, IRoomEntry, IRemoteRoomData, IRemoteGroupData,
     MUSER_TYPE_ACCOUNT, MUSER_TYPE_GHOST, MUSER_TYPES, MROOM_TYPE_UADMIN } from "./StoreTypes";
 import { PurpleProtocol } from "./purple/PurpleProtocol";
 import { IAccountMinimal } from "./purple/PurpleEvents";
-import { IPurpleStoreOpts } from "./purple/IPurpleStoreOpts";
-
 const log = Logging.get("Store");
 
 export class BifrostRemoteUser {
