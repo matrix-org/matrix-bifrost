@@ -1,4 +1,5 @@
 import { Cli, Bridge, AppServiceRegistration, Logging } from "matrix-appservice-bridge";
+import { EventEmitter } from "events";
 import { MatrixEventHandler } from "./MatrixEventHandler";
 import { MatrixRoomHandler } from "./MatrixRoomHandler";
 import { IPurpleInstance } from "./purple/IPurpleInstance";
@@ -19,7 +20,7 @@ import * as request from "request-promise-native";
 const log = Logging.get("Program");
 const bridgeLog = Logging.get("bridge");
 
-process.setMaxListeners(100);
+EventEmitter.defaultMaxListeners = 50;
 
 /**
  * This is the entry point for the bridge. It contains
@@ -126,7 +127,6 @@ class Program {
         log.info("Starting purple bridge on port", port);
         this.cfg.ApplyConfig(config);
         Logging.configure(this.cfg.logging);
-        await this.waitForHomeserver();
         this.bridge = new Bridge({
           controller: {
             // onUserQuery: userQuery,
@@ -172,14 +172,19 @@ class Program {
             Metrics.init(this.bridge);
         }
 
-        await this.registerBot();
-
         this.store = new Store(this.bridge);
+        try {
+            await this.waitForHomeserver();
+            await this.registerBot();
+        } catch (ex) {
+            log.error("Encountered an error when starting:", ex);
+            process.exit(1);
+        }
         this.profileSync = new ProfileSync(this.bridge, this.cfg, this.store);
         this.roomHandler = new MatrixRoomHandler(
             this.purple!, this.profileSync, this.store, this.cfg, this.deduplicator,
         );
-        this.gatewayHandler = new GatewayHandler(purple, this.bridge, this.cfg.bridge, this.store, this.profileSync);
+        this.gatewayHandler = new GatewayHandler(purple, this.bridge, this.cfg, this.store, this.profileSync);
         this.roomSync = new RoomSync(purple, this.store, this.deduplicator, this.gatewayHandler);
         this.eventHandler = new MatrixEventHandler(
             purple, this.store, this.deduplicator, this.config, this.gatewayHandler,
@@ -197,12 +202,12 @@ class Program {
         this.eventHandler.setBridge(this.bridge, autoReg || undefined);
         this.roomHandler.setBridge(this.bridge);
         log.info("Bridge has started.");
-        await this.roomSync.sync(this.bridge.getBot(), this.bridge.getIntent());
         try {
             if (purple instanceof XmppJsInstance) {
                 purple.preStart(this.bridge, autoReg);
             }
             await purple.start();
+            await this.roomSync.sync(this.bridge.getBot(), this.bridge.getIntent());
             if (purple instanceof XmppJsInstance) {
                 log.debug("Signing in accounts...");
                 purple.signInAccounts(

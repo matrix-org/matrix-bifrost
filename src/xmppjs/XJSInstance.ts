@@ -28,6 +28,7 @@ import { AutoRegistration } from "../AutoRegistration";
 import { XmppJsGateway } from "./XJSGateway";
 import { IStza } from "./Stanzas";
 import { Util } from "../Util";
+import { IPurpleStoreOpts } from "../purple/IPurpleStoreOpts";
 
 const xLog = Logging.get("XMPP-conn");
 const log = Logging.get("XmppJsInstance");
@@ -341,6 +342,10 @@ export class XmppJsInstance extends EventEmitter implements IPurpleInstance {
         });
     }
 
+    public resolveSenderRecipientForIM() {
+
+    }
+
     private generateIdforMsg(stanza: Element) {
         const body = stanza.getChildText("body");
 
@@ -410,12 +415,34 @@ export class XmppJsInstance extends EventEmitter implements IPurpleInstance {
         let convName = `${from.local}@${from.domain}`;
 
         if (alias) {
-            log.debug("This is an alias room, seeing if the user has a handle jid");
-            convName = `${to.local}@${to.domain}`;
-            stanza.attrs.from = this.gateway!.getRoomJidForRealJid(convName, stanza.attrs.from) || stanza.attrs.from;
-            log.debug(stanza.attrs.from);
-            from = jid(stanza.attrs.from) ;
-            this.gateway!.reflectXMPPMessage(stanza);
+            if (!to.resource) {
+                convName = `${to.local}@${to.domain}`;
+                stanza.attrs.from = this.gateway!.getRoomJidForRealJid(
+                    convName, stanza.attrs.from) || stanza.attrs.from;
+                from = jid(stanza.attrs.from) ;
+                this.gateway!.reflectXMPPMessage(stanza);
+            } else {
+                const userId = this.gateway!.getMatrixIDForJID(to);
+                if (userId) {
+                    // This is a PM *to* matrix
+                    log.debug(`Sending gateway PM to ${userId} (${to})`);
+                    for (const acct of this.accounts.values()) {
+                        if (acct.mxId === userId) {
+                            localAcct = acct;
+                            break;
+                        }
+                    }
+                    if (localAcct === undefined) {
+                        log.error(`No account defined for ${userId}, cannot bridge.`);
+                    }
+                    stanza.attrs.from = this.gateway!.getAnonIDForJID(`${to.local}@${to.domain}`, from);
+                } else {
+                    log.debug(`Sending gateway PM to XMPP user (${to})`);
+                    this.gateway!.reflectPM(stanza);
+                    return;
+                }
+            }
+
         }
         const chatState = stanza.getChildByAttr("xmlns", "http://jabber.org/protocol/chatstates");
 
@@ -425,7 +452,8 @@ export class XmppJsInstance extends EventEmitter implements IPurpleInstance {
             log.warn(`Message ${stanza.attrs.id} returned an error: `, error.toString());
             if (error.attrs.code === "406" && error.getChild("not-acceptable") && localAcct) {
                 log.warn("Got 406/not-acceptable, rejoining room..");
-                // https://xmpp.org/extensions/xep-0045.html#message says we should treat this as the user not being joined.
+                // https://xmpp.org/extensions/xep-0045.html#message says we
+                // should treat this as the user not being joined.
                 await localAcct.rejoinChat(convName);
                 // TODO: Resend the message?
             }
@@ -581,7 +609,6 @@ export class XmppJsInstance extends EventEmitter implements IPurpleInstance {
             if (!localAcct) {
                 log.debug(`Handling a message to ${convName}, who does not yet exist.`);
             }
-            log.debug("Emitting chat message", message);
             let isMucPm = !!stanza.getChildByAttr("xmlns", "http://jabber.org/protocol/muc#user");
             if (!isMucPm) {
                 // We can't rely on this due to https://xmpp.org/extensions/xep-0045.html#privatemessage
@@ -686,6 +713,22 @@ export class XmppJsInstance extends EventEmitter implements IPurpleInstance {
                 gatewayAlias,
             } as IUserStateChanged);
             return;
+        }
+
+        if (delta.changed.includes("kick")) {
+            log.info("Got kick for user");
+            this.emit(delta.status!.ours ? "chat-kick" : "chat-user-kick", {
+                conv: {
+                    name: convName,
+                },
+                account: {
+                    protocol_id: XMPP_PROTOCOL.id,
+                    username,
+                },
+                sender: stanza.attrs.from,
+                state: "kick",
+                gatewayAlias,
+            } as IUserStateChanged);
         }
 
         if (delta.changed.includes("online")) {

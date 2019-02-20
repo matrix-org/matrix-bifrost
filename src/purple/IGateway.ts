@@ -16,5 +16,5 @@ export interface IGateway {
         chatName: string, sender: string, type: "topic"|"name"|"avatar", room: IGatewayRoom,
     ): void;
     onRemoteJoin(err: string|null, joinId: string, room: IGatewayRoom|undefined, ownMxid: string|undefined): void;
-    reconnectRemoteUser(user: BifrostRemoteUser): void;
+    reconnectRemoteUser(user: BifrostRemoteUser, room: IGatewayRoom): void;
 }

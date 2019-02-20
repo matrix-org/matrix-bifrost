@@ -143,8 +143,10 @@ export class GatewayHandler {
 
     public async rejoinRemoteUser(mxid: string, roomid: string) {
         if (!this.purple.gateway) {
+            log.debug("Not rejoining remote user, gateway not enabled");
             return;
         }
+        const room = await this.getVirtualRoom(roomid, this.bridge.getIntent());
         const intent = this.bridge.getIntent(mxid);
         log.info(`Reconnecting ${mxid} to ${roomid}`);
         const user = (await this.store.getRemoteUsersFromMxId(mxid))[0];
@@ -152,7 +154,7 @@ export class GatewayHandler {
             log.warn("Cannot reconnect a user without a remote user stored");
             return;
         }
-        this.purple.gateway.reconnectRemoteUser(user);
+        this.purple.gateway.reconnectRemoteUser(user, room);
     }
 
     private async handleRoomJoin(data: IGatewayJoin) {
