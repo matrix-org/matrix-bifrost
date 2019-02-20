@@ -417,8 +417,12 @@ export class XmppJsInstance extends EventEmitter implements IPurpleInstance {
             if (!to.resource) {
                 convName = `${to.local}@${to.domain}`;
                 stanza.attrs.from = this.gateway!.getRoomJidForRealJid(
-                    convName, stanza.attrs.from) || stanza.attrs.from;
-                from = jid(stanza.attrs.from) ;
+                    convName, stanza.attrs.from) || false;
+                if (stanza.attrs.from) {
+                    log.warn(`Couldn't find a user for ${from.toString()} reflect message with, dropping`);
+                    return;
+                }
+                from = jid(stanza.attrs.from);
                 this.gateway!.reflectXMPPMessage(stanza);
             } else {
                 const userId = this.gateway!.getMatrixIDForJID(to);
