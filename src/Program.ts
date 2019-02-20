@@ -174,6 +174,7 @@ class Program {
 
         this.store = new Store(this.bridge);
         try {
+            await this.store.integrityCheck();
             await this.waitForHomeserver();
             await this.registerBot();
         } catch (ex) {

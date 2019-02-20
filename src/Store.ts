@@ -2,9 +2,10 @@ import { Bridge, MatrixRoom, RemoteRoom, RemoteUser,
     MatrixUser, UserStore, RoomStore, Logging, AsBot } from "matrix-appservice-bridge";
 import { Util } from "./Util";
 import { MROOM_TYPES, IRoomEntry, IRemoteRoomData, IRemoteGroupData,
-    MUSER_TYPE_ACCOUNT, MUSER_TYPE_GHOST, MUSER_TYPES } from "./StoreTypes";
+    MUSER_TYPE_ACCOUNT, MUSER_TYPE_GHOST, MUSER_TYPES, MROOM_TYPE_UADMIN } from "./StoreTypes";
 import { PurpleProtocol } from "./purple/PurpleProtocol";
 import { IAccountMinimal } from "./purple/PurpleEvents";
+import { IPurpleStoreOpts } from "./purple/IPurpleStoreOpts";
 
 const log = Logging.get("Store");
 
@@ -118,7 +119,7 @@ export class Store {
     public async getUsernameMxidForProtocol(protocol: PurpleProtocol): Promise<{[mxid: string]: string}> {
         const set = {};
         const users = (await this.userStore.getByRemoteData({protocol_id: protocol.id, type: MUSER_TYPE_ACCOUNT}))
-        .concat(await this.userStore.getByRemoteData({protocolId: protocol.id, type: MUSER_TYPE_ACCOUNT})
+        .concat(await this.userStore.getByRemoteData({protocolId: protocol.id, type: MUSER_TYPE_ACCOUNT}),
         ).filter(
             (u) => u.data.isRemoteUser !== true,
         );
@@ -189,6 +190,50 @@ export class Store {
         }
         return {matrix: mxRoom, remote};
     }
+
+    /**
+     * This will check to see if there are multiple instances of a user or room.
+     * @return [description]
+     */
+    public async integrityCheck(): Promise<void> {
+        log.warn("Starting integrity check");
+        // Check the room store.
+        // Rooms are considered invalid if they have no remote part.
+        // We use `select` to get the _id.
+        const roomEntries = await this.roomStore.select({}) as any;
+        const invalidRoomEntries = roomEntries.filter(
+            (entry) => entry.remote === undefined && entry.matrix.data.type !== MROOM_TYPE_UADMIN,
+        );
+        log.info(`Found ${roomEntries.length} room entries, ${invalidRoomEntries.length} of which are invalid`);
+        if (invalidRoomEntries.length > 0) {
+            log.info("Cleaning up room entries");
+            await Promise.all(invalidRoomEntries.map((entry) => {
+                log.debug(`Cleaning up room entry ${entry._id}`);
+                return this.roomStore.delete({
+                    _id: entry._id,
+                }) as Promise<void>;
+            })).then(() => { /* for typescript */});
+        }
+
+        // Check the user store.
+        // Ghosts that exist twice are invalid.
+        const userEntries = await this.userStore.getByRemoteData({type: "ghost"});
+        const userEntryIds = userEntries.map((entry) => entry.id);
+        const invalidUserEntries = userEntries.filter((entry) =>
+            userEntryIds.filter((e) => e.id === entry.id).length >= 2,
+        );
+        log.info(`Found ${userEntries.length} ghost user entries, ${invalidUserEntries.length} of which are invalid`);
+        if (invalidUserEntries.length > 0) {
+            log.info("Cleaning up user entries");
+            await Promise.all(invalidUserEntries.map((entry) => {
+                log.debug(`Cleaning up user entry ${entry._id}`);
+                return this.userStore.delete({
+                    id: entry,
+                }) as Promise<void>;
+            })).then(() => { /* for typescript */});
+        }
+    }
+
 
     private async _storeUser(userId: string, protocol: PurpleProtocol,
                              username: string, type: MUSER_TYPES, extraData: any = {})
