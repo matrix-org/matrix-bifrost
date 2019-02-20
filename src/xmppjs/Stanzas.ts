@@ -16,6 +16,8 @@ export class StzaPresence implements IStza {
         public presenceType?: string,
     ) {
         this.id = this.id || uuid();
+        this.from = from.replace('"', "&quot;");
+        this.to = to.replace('"', "&quot;");
     }
 
     get xContent(): string { return ""; }
@@ -36,7 +38,9 @@ export class StzaPresence implements IStza {
             content = this.xContent ? `<x xmlns='http://jabber.org/protocol/${this.xProtocol}'>${this.xContent}</x>` :
                 "<x xmlns='http://jabber.org/protocol/muc'/>";
         }
-        return `<presence from='${this.from}' to='${this.to}'${id}${type}>${content}${this.presenceContent}</presence>`;
+        return `
+            <presence from="${this.from}" to="${this.to}" ${id}${type}>${content}${this.presenceContent}</presence>
+        `;
     }
 }
 
@@ -151,7 +155,10 @@ export class StzaMessage implements IStza {
             // For reasons unclear to me, XMPP reccomend we make the body == attachment url to make them show up inline.
             this.body = this.attachments[0];
         }
-        return `<message from='${this.from}' to='${this.to}' id='${this.id}' ${type}>`
+        this.from = this.from.replace('"', "&quot;");
+        this.to = this.to.replace('"', "&quot;");
+        this.id = this.id.replace('"', "&quot;");
+        return `<message from="${this.from}" to="${this.to}" id="${this.id}" ${type}>`
              + `${this.html}<body>${he.encode(this.body)}</body>${attachments}</message>`;
     }
 }
