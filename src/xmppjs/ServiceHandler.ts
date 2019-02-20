@@ -4,7 +4,9 @@ import { jid, JID } from "@xmpp/jid";
 import { Logging } from "matrix-appservice-bridge";
 import * as request from "request-promise-native";
 import { IGatewayRoom } from "../GatewayHandler";
-import { IGatewayRoomQuery } from "../purple/PurpleEvents";
+import { IGatewayRoomQuery, IGatewayPublicRoomsQuery } from "../purple/PurpleEvents";
+import { StzaIqDiscoInfo } from "./Stanzas";
+import { IPublicRoom } from "src/MatrixTypes";
 
 const log = Logging.get("ServiceHandler");
 
@@ -20,8 +22,15 @@ const MAX_AVATARS = 1024;
 
 export class ServiceHandler {
     private avatarCache: Map<string, {data: Buffer, type: string}>;
+    private discoInfo: StzaIqDiscoInfo;
     constructor(private xmpp: XmppJsInstance) {
         this.avatarCache = new Map();
+        this.discoInfo = new StzaIqDiscoInfo("", "", "");
+        this.discoInfo.feature.add("http://jabber.org/protocol/disco#info");
+        this.discoInfo.feature.add("http://jabber.org/protocol/disco#items");
+        this.discoInfo.feature.add("http://jabber.org/protocol/protocol/muc");
+        this.discoInfo.feature.add("jabber:iq:version");
+        this.discoInfo.feature.add("jabber:iq:search");
     }
 
     public parseAliasFromJID(to: JID): string|null {
@@ -41,6 +50,14 @@ export class ServiceHandler {
 
         if (stanza.getChildByAttr("xmlns", "jabber:iq:version")) {
             return this.handleVersionRequest(from, to, id);
+        }
+
+        if (stanza.getChildByAttr("xmlns", "http://jabber.org/protocol/disco#info")) {
+            return this.handleDiscoInfo(from, to, id);
+        }
+
+        if (stanza.getChildByAttr("xmlns", "http://jabber.org/protocol/disco#items")) {
+            return this.handleDiscoItems(from, to, id);
         }
 
         if (stanza.getChildByAttr("xmlns", "vcard-temp")) {
@@ -104,6 +121,36 @@ export class ServiceHandler {
                 ],
             ),
         ));
+    }
+
+    private handleDiscoInfo(to: string, from: string, id: string): Promise<void> {
+        this.discoInfo.to = to;
+        this.discoInfo.from = from;
+        this.discoInfo.id = id;
+        return this.xmpp.xmppSend(this.discoInfo);
+    }
+
+    private async handleDiscoItems(to: string, from: string, id: string): Promise<void> {
+        this.discoInfo.to = to;
+        this.discoInfo.from = from;
+        this.discoInfo.id = id;
+        const rooms: IPublicRoom[] = await new Promise((resolve, reject) => {
+            this.xmpp.emit("gateway-publicrooms", {
+                searchString: "",
+                result: (err, res) => {
+                    if (err) {
+                        reject(err);
+                    }
+                    resolve(res);
+                },
+            } as IGatewayPublicRoomsQuery);
+        });
+        if (rooms.length) {
+
+        } else {
+
+        }
+        return this.xmpp.xmppSend(this.discoInfo);
     }
 
     private queryRoom(roomAlias: string, onlyCheck: boolean = false): Promise<string|IGatewayRoom> {

@@ -197,3 +197,54 @@ export class StzaIqPing implements IStza {
 </iq>`;
     }
 }
+
+export abstract class StzaIqDisco implements IStza {
+    constructor(
+        public from: string,
+        public to: string,
+        public id: string,
+        protected iqType = "result",
+        protected queryType = "",
+    ) {
+
+    }
+
+    get type(): string {
+        return "iq";
+    }
+
+    get queryContent(): string { return ""; }
+
+    get xml(): string {
+        return `<iq from='${this.from}' to='${this.to}' id='${this.id}' type='${this.iqType}'>
+        <query xmlns='http://jabber.org/protocol/disco#${this.queryType}'>
+        ${this.queryContent}</query></iq>`;
+    }
+}
+
+export class StzaIqDiscoInfo extends StzaIqDisco {
+    public identity: Set<{category: string, type: string, name: string}>;
+    public feature: Set<string>;
+
+    constructor(
+        public from: string,
+        public to: string,
+        public id: string) {
+        super(from, to, id, "result", "info");
+        this.identity = new Set();
+        this.feature = new Set();
+    }
+
+    get queryContent(): string {
+        let identity = "";
+        let feature = "";
+        this.identity.forEach((ident) => {
+            identity += `<identity category='${ident.category}' type='${ident.type}' name='${ident.name}'/>`;
+        });
+        this.feature.forEach((feat) => {
+            feature += `<feature var='${feat}'/>`;
+        });
+        return identity + feature;
+    }
+
+}

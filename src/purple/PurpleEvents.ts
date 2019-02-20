@@ -6,6 +6,7 @@ import { IPurpleAccount } from "./IPurpleAccount";
 import { IBasicProtocolMessage } from "../MessageFormatter";
 import { IGatewayRoom } from "../GatewayHandler";
 import { IRemoteUserAccountRemote } from "../StoreTypes";
+import { IPublicRoom } from "../MatrixTypes";
 
 export interface IChatJoinProperties {[key: string]: string; }
 
@@ -50,7 +51,7 @@ export interface IChatJoined extends IConversationEvent {
 
 export interface IUserStateChanged extends IConversationEvent {
     sender: string;
-    state: "joined"|"left";
+    state: "joined"|"left"|"kick";
     kicker: string|undefined;
     reason?: string;
     gatewayAlias: string|null;
@@ -86,6 +87,12 @@ export interface IGatewayRequest {
 export interface IGatewayRoomQuery extends IGatewayRequest {
     onlyCheck: boolean;
     result: (err: Error|null, res?: string|IGatewayRoom) => void;
+}
+
+export interface IGatewayPublicRoomsQuery extends IGatewayRequest {
+    onlyCheck: boolean;
+    searchString: string;
+    result: (err: Error|null, res?: IPublicRoom[]) => void;
 }
 
 export interface IGatewayJoin {
