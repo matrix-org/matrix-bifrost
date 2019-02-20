@@ -276,7 +276,7 @@ export class XmppJsGateway {
                 new StzaPresenceItem(from, stanza.attrs.from, undefined, "member", "participant"),
             );
             if (sent % 40 === 0) {
-                log.debug(`Sent 20 presence statuses, waiting ${JOIN_PRESENCE_CHUNK_DELAY_MS}ms before sending more`);
+                log.debug(`Sent 40 presence statuses, waiting ${JOIN_PRESENCE_CHUNK_DELAY_MS}ms before sending more`);
                 await new Promise((resolve) => setTimeout(resolve, JOIN_PRESENCE_CHUNK_DELAY_MS));
             }
         }

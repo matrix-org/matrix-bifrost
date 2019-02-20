@@ -205,7 +205,7 @@ export class XmppJsAccount implements IPurpleAccount {
         : Promise<IConversationEvent|void> {
             const roomName = components.fullRoomName || `${components.room}@${components.server}`;
             const to = `${roomName}/${components.handle}`;
-            if (!components.room || !components.server || !components.handle) {
+            if (!components.fullRoomName && (!components.room || !components.server || !components.handle)) {
                 throw Error("Missing room, server or handle");
             }
             log.debug(`joinChat:`, this.remoteId, components);
