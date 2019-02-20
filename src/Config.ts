@@ -1,6 +1,10 @@
 import { IAutoRegStep } from "./AutoRegistration";
 import { IRoomAlias } from "./RoomAliasSet";
 import { IXJSBackendOpts } from "./xmppjs/XJSBackendOpts";
+import { Logging } from "matrix-appservice-bridge";
+
+const log = Logging.get("Config");
+
 export class Config {
 
     public readonly bridge: IConfigBridge = {
@@ -71,6 +75,14 @@ export class Config {
             }
             configLayer[key] = newConfig[key];
         });
+
+        if (this === configLayer) {
+            const enableGateway = (this.purple.backendOpts as any).enableGateway;
+            if (enableGateway !== undefined) {
+                log.warn("purple.backendOpts.enableGateway has been moved to portals.enableGateway");
+                this.portals.enableGateway = enableGateway;
+            }
+        }
     }
 }
 
