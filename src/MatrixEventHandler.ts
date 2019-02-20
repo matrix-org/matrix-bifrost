@@ -369,6 +369,7 @@ return `- ${account.protocol.name} (${username}) [Enabled=${account.isEnabled}] 
                     const remoteData = {
                         protocol_id: acct.protocol.id,
                         room_name: res.conv.name,
+                        plumbed: true,
                         properties: Util.sanitizeProperties(paramSet), // for joining
                     } as any;
                     const remoteId = Buffer.from(

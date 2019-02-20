@@ -266,8 +266,9 @@ export class XmppJsGateway {
         let sent = 0;
         for (const sender of Object.keys(xMembers)) {
             sent++;
+            log.debug(`Emitting ${sender} ${sent}/${Object.keys(xMembers).length}`);
             if (sender === ownMxid) {
-                return;
+                continue;
             }
             const from = xMembers[sender];
             this.xmpp.xmppSend(

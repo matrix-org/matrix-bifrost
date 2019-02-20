@@ -187,13 +187,13 @@ export class GatewayHandler {
                 );
             }
             const vroom = await this.getVirtualRoom(roomId!, intent);
-            this.purple.gateway!.onRemoteJoin(null, data.join_id, vroom, intentUser.userId);
+            await this.purple.gateway!.onRemoteJoin(null, data.join_id, vroom, intentUser.userId);
         } catch (ex) {
             if (roomId) {
                 intent.leave(roomId);
             }
             log.warn("Failed to join room:", ex.message);
-            this.purple.gateway!.onRemoteJoin("Failed to join", data.join_id, undefined, undefined);
+            await this.purple.gateway!.onRemoteJoin("Failed to join", data.join_id, undefined, undefined);
         }
     }
 
