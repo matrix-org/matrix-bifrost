@@ -173,6 +173,7 @@ export class MatrixRoomHandler {
         data: IConversationEvent|IChatInvite|IChatJoined|IUserStateChanged,
         intent: Intent,
         getOnly: boolean = false,
+        failIfPlumbed: boolean = false,
     ) {
         let roomName;
         let props;
@@ -204,6 +205,9 @@ export class MatrixRoomHandler {
         // For some reason the following function wites to remoteData, so recreate it later
         const remoteEntry = await this.store.getRoomByRemoteData(remoteData);
         if (remoteEntry) {
+            if (remoteEntry.remote.get("plumbed") && failIfPlumbed) {
+                return false;
+            }
             return remoteEntry.matrix.getId();
         }
         let roomId;
@@ -449,7 +453,10 @@ export class MatrixRoomHandler {
     private async handleTopic(data: IChatStringState) {
         const intent = this.bridge.getIntent();
         log.info(`Setting topic for ${data.conv.name}: ${data.string}`);
-        const roomId = await this.createOrGetGroupChatRoom(data, intent, true);
+        const roomId = await this.createOrGetGroupChatRoom(data, intent, true, true);
+        if (roomId === false) {
+            log.info("Room does not support setting topic");
+        }
         const state = await intent.roomState(roomId) as IEventRequestData[];
         const topicEv = state.find((ev) => ev.type === "m.room.topic");
         const nameEv = state.find((ev) => ev.type === "m.room.name");
