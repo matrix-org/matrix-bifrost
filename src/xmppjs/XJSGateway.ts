@@ -15,7 +15,7 @@ import { StzaPresenceItem, StzaMessage, StzaMessageSubject, StzaPresenceError } 
 const log = Logging.get("XmppJsGateway");
 
 const MAX_HISTORY = 100;
-const JOIN_PRESENCE_CHUNK_DELAY_MS = 333;
+const JOIN_PRESENCE_CHUNK_DELAY_MS = 1500;
 
 /**
  * This class effectively implements a MUC that sits in between the gateway interface
@@ -275,7 +275,7 @@ export class XmppJsGateway {
             this.xmpp.xmppSend(
                 new StzaPresenceItem(from, stanza.attrs.from, undefined, "member", "participant"),
             );
-            if (sent % 20 === 0) {
+            if (sent % 40 === 0) {
                 log.debug(`Sent 20 presence statuses, waiting ${JOIN_PRESENCE_CHUNK_DELAY_MS}ms before sending more`);
                 await new Promise((resolve) => setTimeout(resolve, JOIN_PRESENCE_CHUNK_DELAY_MS));
             }
