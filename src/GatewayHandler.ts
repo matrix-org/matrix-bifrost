@@ -222,9 +222,11 @@ export class GatewayHandler {
         let room = await this.store.getRoomByRemoteData({
             protocol_id: data.protocol_id,
             room_name: data.room_name,
-            gateway: true,
         });
         if (room) {
+            if (!room.remote.get("gateway")) {
+                throw Error("Room is bridged via a portal or plumbing, not allowing gateway");
+            }
             return room;
         }
         room = this.store.storeRoom(roomId, MROOM_TYPE_GROUP, remoteId, {
