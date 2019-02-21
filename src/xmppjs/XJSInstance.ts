@@ -130,6 +130,18 @@ export class XmppJsInstance extends EventEmitter implements IPurpleInstance {
         return p;
     }
 
+    public xmppWaitForDrain(timeoutMs: number = 30000): Promise<void> {
+        return new Promise((resolve, reject) => {
+            const timeout = setTimeout(() => {
+                reject("Timed out waiting for drain");
+            }, timeoutMs);
+            this.xmpp.socket.once("drain", () => {
+                clearTimeout(timeout);
+                resolve();
+            });
+        });
+    }
+
     public xmppAddSentMessage(id: string) { this.seenMessages.add(id); }
 
     public isWaitingToJoin(j: JID): string|undefined {
@@ -716,6 +728,22 @@ export class XmppJsInstance extends EventEmitter implements IPurpleInstance {
                 gatewayAlias,
             } as IUserStateChanged);
             return;
+        }
+
+        if (delta.changed.includes("kick")) {
+            log.info("Got kick for user");
+            this.emit(delta.status!.ours ? "chat-kick" : "chat-user-kick", {
+                conv: {
+                    name: convName,
+                },
+                account: {
+                    protocol_id: XMPP_PROTOCOL.id,
+                    username,
+                },
+                sender: stanza.attrs.from,
+                state: "kick",
+                gatewayAlias,
+            } as IUserStateChanged);
         }
 
         if (delta.changed.includes("online")) {

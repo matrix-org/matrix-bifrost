@@ -40,10 +40,10 @@ describe("XJSAccount", () => {
             } as IBasicProtocolMessage);
             expect(instance.sentMessageIDs).to.include("12345");
             expect(instance.sentMessages[0]).to.deep.equal({
-                from: "bob@matrix.localhost/matrix-bridge",
-                to: "alice@remote.server",
+                _from: "bob@matrix.localhost/matrix-bridge",
+                _to: "alice@remote.server",
                 messageType: "chat",
-                id: "12345",
+                _id: "12345",
                 html: "",
                 body: "Hello!",
                 attachments: [],

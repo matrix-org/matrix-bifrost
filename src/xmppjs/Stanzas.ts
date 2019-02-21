@@ -7,17 +7,48 @@ export interface IStza {
     xml: string;
 }
 
-export class StzaPresence implements IStza {
+export abstract class StzaBase implements IStza {
+    public type!: string;
+    public xml!: string;
+    private _from: string = "";
+    private _to: string = "";
+    private _id?: string = "";
+    constructor(from: string, to: string, id?: string) {
+        this.from = from;
+        this.to = to;
+        this.id = id;
+    }
+
+    get from() { return this._from; }
+
+    set from(val: string) {
+        this._from = he.encode(val);
+    }
+
+    get to() { return this._to; }
+
+    set to(val: string) {
+        this._to = he.encode(val);
+    }
+
+    get id(): string|undefined { return this._id || undefined; }
+
+    set id(val: string|undefined) {
+        if (!val) { return; }
+        this._id = he.encode(val);
+    }
+
+}
+
+export class StzaPresence extends StzaBase {
     protected includeXContent: boolean = true;
     constructor(
-        public from: string,
-        public to: string,
-        public id?: string,
+        from: string,
+        to: string,
+        id?: string,
         public presenceType?: string,
     ) {
-        this.id = this.id || uuid();
-        this.from = from.replace('"', "&quot;");
-        this.to = to.replace('"', "&quot;");
+        super(from, to, id);
     }
 
     get xContent(): string { return ""; }
@@ -86,9 +117,9 @@ export class StzaPresenceError extends StzaPresence {
 
 export class StzaPresenceJoin extends StzaPresence {
     constructor(
-        public from: string,
-        public to: string,
-        public id?: string,
+        from: string,
+        to: string,
+        id?: string,
         public presenceType?: string,
     ) {
         super(from, to, id);
@@ -112,17 +143,17 @@ export class StzaPresencePart extends StzaPresence {
     }
 }
 
-export class StzaMessage implements IStza {
+export class StzaMessage extends StzaBase {
     public html: string = "";
     public body: string = "";
     public attachments: string[] = [];
-    public id;
     constructor(
-        public from: string,
-        public to: string,
+        from: string,
+        to: string,
         idOrMsg?: string|IBasicProtocolMessage,
         public messageType?: string,
     ) {
+        super(from, to, undefined);
         if (idOrMsg && idOrMsg.hasOwnProperty("body")) {
             idOrMsg = idOrMsg as IBasicProtocolMessage;
             this.body = idOrMsg.body;
@@ -135,7 +166,7 @@ export class StzaMessage implements IStza {
             }
             this.id = idOrMsg.id;
         } else if (idOrMsg) {
-            this.id = idOrMsg;
+            this.id = idOrMsg as string;
         }
         this.id = this.id || uuid();
     }
@@ -153,22 +184,19 @@ export class StzaMessage implements IStza {
             // For reasons unclear to me, XMPP reccomend we make the body == attachment url to make them show up inline.
             this.body = this.attachments[0];
         }
-        this.from = this.from.replace('"', "&quot;");
-        this.to = this.to.replace('"', "&quot;");
-        this.id = this.id.replace('"', "&quot;");
         return `<message from="${this.from}" to="${this.to}" id="${this.id}" ${type}>`
              + `${this.html}<body>${he.encode(this.body)}</body>${attachments}</message>`;
     }
 }
 
-export class StzaMessageSubject implements IStza {
+export class StzaMessageSubject extends StzaBase {
     constructor(
-        public from: string,
-        public to: string,
-        public id?: string,
+        from: string,
+        to: string,
+        id?: string,
         public subject: string = "",
     ) {
-        this.id = this.id || uuid();
+        super(from, to, id);
     }
 
     get content(): string { return ""; }
@@ -183,13 +211,13 @@ export class StzaMessageSubject implements IStza {
     }
 }
 
-export class StzaIqPing implements IStza {
+export class StzaIqPing extends StzaBase {
     constructor(
-        public from: string,
-        public to: string,
-        public id: string,
+        from: string,
+        to: string,
+        id: string,
     ) {
-        this.id = this.id || uuid();
+        super(from, to, id || uuid());
     }
 
     get type(): string {
@@ -203,15 +231,15 @@ export class StzaIqPing implements IStza {
     }
 }
 
-export abstract class StzaIqDisco implements IStza {
+export abstract class StzaIqDisco extends StzaBase {
     constructor(
-        public from: string,
-        public to: string,
-        public id: string,
+        from: string,
+        to: string,
+        id: string,
         protected iqType = "result",
         protected queryType = "",
     ) {
-
+        super(from, to, id);
     }
 
     get type(): string {
