@@ -19,9 +19,9 @@ function createGateway(config?: IConfigBridge) {
 function createMember(sender: string, displayname?: string, membership: string = "join") {
     return {
         sender,
-        membership,
         content: {
             displayname,
+            membership,
         },
     };
 }

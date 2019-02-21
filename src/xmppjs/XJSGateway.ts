@@ -224,7 +224,7 @@ export class XmppJsGateway {
         }
         const set = {};
         room.membership.forEach((ev) => {
-            if (ev.membership !== "join") { return; }
+            if (ev.content.membership !== "join") { return; }
             set[ev.sender] = `${chatName}/` + (ev.content.displayname || ev.sender);
         });
         this.matrixRoomUsers.set(chatName, set);
@@ -254,6 +254,7 @@ export class XmppJsGateway {
                 stanza.attrs.to, stanza.attrs.from, stanza.attrs.id,
                 `${to.local}@${to.domain}`, "cancel", "service-unavailable",
             ));
+            return;
         }
         room = room!;
 
