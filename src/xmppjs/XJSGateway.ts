@@ -39,8 +39,10 @@ export class XmppJsGateway {
     }
 
     public handleStanza(stanza: Element, gatewayAlias: string) {
+        log.info(`Handling ${stanza.name} ${stanza.attrs.from} ${stanza.attrs.to} for ${gatewayAlias}`);
         const delta = this.presenceCache.add(stanza);
         if (!delta) {
+            log.debug("No delta");
             return;
         }
         const to = jid(stanza.attrs.to);
@@ -57,9 +59,7 @@ export class XmppJsGateway {
                 protocol_id: XMPP_PROTOCOL.id,
                 room_name: `${to.local}@${to.domain}`,
             } as IGatewayJoin);
-        }
-
-        if (delta.changed.includes("offline")) {
+        } else if (delta.changed.includes("offline")) {
             const wasKicked = delta.status!.kick;
             let kicker;
             if (wasKicked && wasKicked.kicker) {
@@ -82,6 +82,8 @@ export class XmppJsGateway {
             } as IUserStateChanged);
 
             // XXX: Emit to other XMPP users.
+        } else {
+            log.debug("Nothing to do");
         }
     }
 
