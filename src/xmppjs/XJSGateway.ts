@@ -274,13 +274,11 @@ export class XmppJsGateway {
                 continue;
             }
             const from = xMembers[sender];
+            const drainPromise = this.xmpp.xmppWaitForDrain();
             this.xmpp.xmppSend(
                 new StzaPresenceItem(from, stanza.attrs.from, undefined, "member", "participant"),
             );
-            if (sent % 25 === 0) {
-                await this.xmpp.xmppWaitForDrain();
-                log.debug(`Sent 25 presence statuses, waiting for drain before sending more`);
-            }
+            await drainPromise;
         }
 
         log.debug("Emitting membership of self");
