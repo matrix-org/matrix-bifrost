@@ -275,7 +275,7 @@ export class XmppJsGateway {
             }
             const from = xMembers[sender];
 
-            if (sent % 75) {
+            if (sent % 75 === 0) {
                 try {
                     await this.xmpp.xmppWaitForDrain(500);
                 } catch (ex) {
