@@ -221,18 +221,25 @@ export class Store {
 
         // Check the user store.
         // Ghosts that exist twice are invalid.
-        const userEntries = await this.userStore.getByRemoteData({type: "ghost"});
-        const userEntryIds = userEntries.map((entry) => entry.id);
-        const invalidUserEntries = userEntries.filter((entry) =>
+        const userEntries = await this.userStore.getByRemoteData({});
+        // XXX: Hack, only do this for xmpp.js where accounts are re-creatable.
+        const noTypeEntries = userEntries.filter((e) => e.get("type") === undefined
+        && (e.get("protocolId") === "xmpp-js" || e.get("protocol_id") === "xmpp-js"));
+        log.info(`Found ${userEntries.length} user entries, ${noTypeEntries.length} of which have no type`);
+        const ghostEntries = userEntries.filter((e) => e.get("type") === "ghost");
+        const userEntryIds = ghostEntries.map((entry) => entry.id);
+        const invalidUserEntries = ghostEntries.filter((entry) =>
             userEntryIds.filter((e) => e.id === entry.id).length >= 2,
-        );
-        log.info(`Found ${userEntries.length} ghost user entries, ${invalidUserEntries.length} of which are invalid`);
+        ).concat(noTypeEntries);
+        log.info(`Also found ${invalidUserEntries.length - noTypeEntries.length} invalid ghosts`);
+
+        // Write to the DB
         if (canWrite && invalidUserEntries.length > 0) {
             log.info("Cleaning up user entries");
             await Promise.all(invalidUserEntries.map((entry) => {
-                log.debug(`Cleaning up user entry ${entry._id}`);
+                log.debug(`Cleaning up user entry ${entry.id}`);
                 return this.userStore.delete({
-                    id: entry,
+                    id: entry.id,
                 }) as Promise<void>;
             })).then(() => { /* for typescript */});
         }

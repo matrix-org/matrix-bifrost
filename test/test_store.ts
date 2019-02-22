@@ -3,7 +3,8 @@ import { Store } from "../src/Store";
 import { mockStore } from "./mocks/store";
 import { PurpleProtocol } from "../src/purple/PurpleProtocol";
 import { MUSER_TYPE_GHOST } from "../src/StoreTypes";
-import { MatrixUser } from "matrix-appservice-bridge";
+import { Util } from "../src/Util";
+import { MatrixUser, RemoteUser } from "matrix-appservice-bridge";
 const expect = Chai.expect;
 
 let store: Store;
@@ -18,16 +19,6 @@ const dummyProtocol = new PurpleProtocol({
 describe("Store", () => {
     beforeEach(() => {
         store = mockStore();
-    });
-    describe("getUsernameMxidForProtocol", () => {
-        it ("should fetch no users if none are in the store", async () => {
-            const res = await store.getUsernameMxidForProtocol(dummyProtocol);
-            expect(Object.keys(res)).to.be.empty;
-        });
-        it ("should fetch one user if two conflicting ones exist in the store.", async () => {
-            const res = await store.getUsernameMxidForProtocol(dummyProtocol);
-            expect(res[0]).to.equal;
-        });
     });
     it("should not overrwrite custom keys", async () => {
         // First, store a user.
