@@ -127,7 +127,14 @@ class Program {
         const checkOnly = process.env.BIFROST_CHECK_ONLY === "true";
         log.info("Starting purple bridge on port", port);
         this.cfg.ApplyConfig(config);
-        Logging.configure(this.cfg.logging);
+        if (checkOnly && this.config.logging.console === "off") {
+            // Force console if we are doing an integrity check only.
+            Logging.configure({
+                console: "info",
+            });
+        } else {
+            Logging.configure(this.cfg.logging);
+        }
         this.bridge = new Bridge({
           controller: {
             // onUserQuery: userQuery,
