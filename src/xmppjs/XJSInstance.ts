@@ -135,6 +135,7 @@ export class XmppJsInstance extends EventEmitter implements IPurpleInstance {
             const timeout = setTimeout(() => {
                 reject("Timed out waiting for drain");
             }, timeoutMs);
+            log.debug("Waiting for drain");
             this.xmpp.socket.once("drain", () => {
                 clearTimeout(timeout);
                 resolve();

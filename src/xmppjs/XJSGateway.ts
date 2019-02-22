@@ -274,11 +274,17 @@ export class XmppJsGateway {
                 continue;
             }
             const from = xMembers[sender];
-            const drainPromise = this.xmpp.xmppWaitForDrain();
+
+            if (sent % 75) {
+                try {
+                    await this.xmpp.xmppWaitForDrain(500);
+                } catch (ex) {
+                    log.warn("Drain didn't arrive, oh well");
+                }
+            }
             this.xmpp.xmppSend(
                 new StzaPresenceItem(from, stanza.attrs.from, undefined, "member", "participant"),
             );
-            await drainPromise;
         }
 
         log.debug("Emitting membership of self");
