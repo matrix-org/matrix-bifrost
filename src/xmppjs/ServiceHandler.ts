@@ -55,7 +55,8 @@ export class ServiceHandler {
         }
 
         // Only respond to this if it has no local part.
-        if (stanza.getChildByAttr("xmlns", "http://jabber.org/protocol/disco#info") && !to.local) {
+        const local = jid(to).local;
+        if (stanza.getChildByAttr("xmlns", "http://jabber.org/protocol/disco#info") && !local) {
             return this.handleDiscoInfo(from, to, id);
         }
 
@@ -67,7 +68,7 @@ export class ServiceHandler {
             return this.handleVcard(from, to, id, intent);
         }
 
-        if (stanza.getChildByAttr("xmlns", "http://jabber.org/protocol/disco#info") && this.xmpp.gateway && to.local) {
+        if (stanza.getChildByAttr("xmlns", "http://jabber.org/protocol/disco#info") && this.xmpp.gateway && local) {
              return this.handleRoomDiscovery(to, from, id);
         }
 
