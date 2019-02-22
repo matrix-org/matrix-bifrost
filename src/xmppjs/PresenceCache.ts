@@ -33,7 +33,7 @@ export interface IPresenceStatus {
 export class PresenceCache {
     private presence: Map<string, IPresenceStatus>;
 
-    constructor() {
+    constructor(private isGateway: boolean = false) {
         this.presence = new Map();
     }
 
@@ -81,7 +81,8 @@ export class PresenceCache {
             };
         }
         const type = stanza.getAttr("type")!;
-        const from = jid(stanza.getAttr("from"));
+        // If it's a gateway, we want to invert this.
+        const from = jid( this.isGateway ? stanza.attrs.to : stanza.attrs.from);
 
         if (!from.resource) {
             // Not sure how to handle presence without a resource.

@@ -27,9 +27,33 @@ function createMember(sender: string, displayname?: string, membership: string =
 }
 
 describe("XJSGateway", () => {
+    describe("handleStanza", () => {
+        it("should be able to join a room", () => {
+            const {gw, mockXmpp} = createGateway();
+            let joinCount = 0;
+            mockXmpp.on("gateway-joinroom", () => {
+                joinCount++;
+            });
+            gw.handleStanza(
+                x("presence", {
+                    from: "frogman@frogworld/froddevice",
+                    to: "#worldoffrogs#frogworld.net/SlippyNick",
+                    id: "myjoinid",
+                }, x("x", {xmlns: "http://jabber.org/protocol/muc"}) ),
+            "#matrix:bar");
+            gw.handleStanza(
+                x("presence", {
+                    from: "frogman@frogworld/froddevice",
+                    to: "#worldoffrogs2#frogworld.net/SlippyNick",
+                    id: "myjoinid",
+                }, x("x", {xmlns: "http://jabber.org/protocol/muc"}) ),
+            "#matrix:bar");
+            expect(joinCount).to.equal(2);
+        });
+    });
     describe("onRemoteJoin", () => {
         it("should fail without an existing stanza", async () => {
-            const {gw, mockXmpp} = createGateway();
+            const {gw} = createGateway();
             const room: IGatewayRoom = {
                 name: "GatewayRoom",
                 topic: "GatewayTopic",
@@ -60,7 +84,7 @@ describe("XJSGateway", () => {
             gw.handleStanza(
                 x("presence", {
                     from: "frogman@froguniverse/frogdevice",
-                    to: "#matrix#bar@conference.localhost",
+                    to: "#matrix#bar@conference.localhost/frognick",
                     id: "myjoinid",
                 }, x("x", {xmlns: "http://jabber.org/protocol/muc"}) ),
             "#matrix:bar");
@@ -96,7 +120,7 @@ describe("XJSGateway", () => {
                 itemType: "",
             });
             expect(messages[2]).to.deep.equal({
-                _from: "#matrix#bar@conference.localhost",
+                _from: "#matrix#bar@conference.localhost/frognick",
                 _to: "frogman@froguniverse/frogdevice",
                 _id: "",
                 presenceType: "",
@@ -129,7 +153,7 @@ describe("XJSGateway", () => {
             gw.handleStanza(
                 x("presence", {
                     from: "frogman@froguniverse/frogdevice",
-                    to: "#matrix#bar@conference.localhost",
+                    to: "#matrix#bar@conference.localhost/frognick",
                     id: "myjoinid",
                 }, x("x", {xmlns: "http://jabber.org/protocol/muc"}) ),
             "#matrix:bar");
@@ -142,7 +166,7 @@ describe("XJSGateway", () => {
             });
             // 2500 users + 1 self presence
             expect(messages.filter((m) => m.type === "presence")).to.have.lengthOf(2501);
-            expect(mockXmpp.drainWaits).to.equal(2500 / 1000);
+            expect(mockXmpp.drainWaits).to.equal(2500 / 100);
         });
     });
 });

@@ -35,7 +35,7 @@ export class XmppJsGateway {
         this.stanzaCache = new Map();
         this.roomUsers = new Map();
         this.matrixRoomUsers = new Map();
-        this.presenceCache = new PresenceCache();
+        this.presenceCache = new PresenceCache(true);
     }
 
     public handleStanza(stanza: Element, gatewayAlias: string) {
@@ -80,8 +80,6 @@ export class XmppJsGateway {
                 reason: wasKicked ? wasKicked.reason : delta.status!.status,
                 gatewayAlias,
             } as IUserStateChanged);
-
-            // XXX: Emit to other XMPP users.
         } else {
             log.debug("Nothing to do");
         }
@@ -325,7 +323,7 @@ export class XmppJsGateway {
             this.xmpp.xmppWriteToStream(e);
         });
         // 4. The room subject
-        this.xmpp.xmppSend(new StzaMessageSubject(stanza.attrs.to, stanza.attrs.from, undefined,
+        this.xmpp.xmppSend(new StzaMessageSubject(chatName, stanza.attrs.from, undefined,
             `${room.name || ""} ${room.topic ? "| " + room.topic : ""}`,
         ));
         // All done, now for some house cleaning.
