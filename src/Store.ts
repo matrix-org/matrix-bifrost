@@ -84,13 +84,13 @@ export class Store {
     public async getRemoteUserBySender(sender: string, protocol: PurpleProtocol): Promise<BifrostRemoteUser|null> {
         const remoteId = Util.createRemoteId(protocol.id, sender);
         await this.userLock.get(remoteId);
-        const remote = await this.bridge.getUserStore().getRemoteUser(
+        const remote = await this.userStore.getRemoteUser(
             remoteId,
         );
         if (!remote) {
             return null;
         }
-        const userIds = await this.bridge.getUserStore().getMatrixLinks(remoteId);
+        const userIds = await this.userStore.getMatrixLinks(remoteId);
         const realUserIds = userIds.filter(
             (uId) => this.asBot.isRemoteUser(uId),
         );
@@ -99,7 +99,7 @@ export class Store {
     }
 
     public async getRemoteUsersFromMxId(userId: string): Promise<BifrostRemoteUser[]> {
-        return (await this.bridge.getUserStore().getRemoteUsersFromMatrixId(
+        return (await this.userStore.getRemoteUsersFromMatrixId(
             userId,
         )).map((u) => new BifrostRemoteUser(u, userId, this.asBot.isRemoteUser(userId)));
     }
@@ -242,7 +242,7 @@ export class Store {
                              username: string, type: MUSER_TYPES, extraData: any = {})
                             : Promise<{remote: BifrostRemoteUser, matrix: MatrixUser}> {
         const id = Util.createRemoteId(protocol.id, username);
-        const mxUser = new MatrixUser(userId);
+        const mxUser = (await this.userStore.getMatrixUser(userId)) || new MatrixUser(userId);
         const existing = await this.userStore.getRemoteUser(id);
         if (!existing) {
             const remoteUser = new RemoteUser(Util.createRemoteId(protocol.id, username), extraData);
@@ -254,7 +254,21 @@ export class Store {
             return {remote: new BifrostRemoteUser(
                 remoteUser, userId, this.asBot.isRemoteUser(userId),
             ), matrix: mxUser};
+        } else {
+            const linkedMatrixUsers = await this.userStore.getMatrixLinks(id);
+            if (!linkedMatrixUsers.includes(mxUser.getId())) {
+                log.warn(`${id} was not correctly linked to ${mxUser.getId()}, resolving`);
+                await this.userStore.linkUsers(mxUser, existing);
+            }
+            for (const lnkUserId of linkedMatrixUsers) {
+                if (lnkUserId === mxUser.getId()) {
+                    continue;
+                }
+                log.warn(`${id} is linked to ${lnkUserId}, removing`);
+                await this.userStore.unlinkUserIds(lnkUserId, id);
+            }
         }
+        // If we have an old mxid for this remote, update it.
         log.debug(`Updated existing ${type} ${userId} -> ${id}`);
         Object.keys(extraData).forEach((key) => {
             existing.set(key, extraData[key]);
