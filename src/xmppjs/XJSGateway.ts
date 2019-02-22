@@ -39,7 +39,6 @@ export class XmppJsGateway {
     }
 
     public handleStanza(stanza: Element, gatewayAlias: string) {
-        log.info(`Handling ${stanza.name} ${stanza.attrs.from} ${stanza.attrs.to} for ${gatewayAlias}`);
         const delta = this.presenceCache.add(stanza);
         if (!delta) {
             log.debug("No delta");
@@ -48,7 +47,7 @@ export class XmppJsGateway {
         const to = jid(stanza.attrs.to);
         const convName = `${to.local}@${to.domain}`;
         const isMucType = stanza.getChildByAttr("xmlns", "http://jabber.org/protocol/muc");
-
+        log.info(`Handling ${stanza.name} from=${stanza.attrs.from} to=${stanza.attrs.to} for ${gatewayAlias}`);
         if (delta.changed.includes("online") && isMucType) {
             this.addStanzaToCache(stanza);
             // Gateways are special.
@@ -275,9 +274,9 @@ export class XmppJsGateway {
             }
             const from = xMembers[sender];
 
-            if (sent % 75 === 0) {
+            if (sent % 100 === 0) {
                 try {
-                    await this.xmpp.xmppWaitForDrain(500);
+                    await this.xmpp.xmppWaitForDrain(250);
                 } catch (ex) {
                     log.warn("Drain didn't arrive, oh well");
                 }
