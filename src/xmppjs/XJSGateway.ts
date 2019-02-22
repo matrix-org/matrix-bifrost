@@ -61,10 +61,11 @@ export class XmppJsGateway {
         } else if (delta.changed.includes("offline")) {
             const wasKicked = delta.status!.kick;
             let kicker;
+
             if (wasKicked && wasKicked.kicker) {
                 kicker = `${convName}/${wasKicked.kicker}`;
             }
-
+            this.remoteLeft(stanza);
             this.xmpp.emit("chat-user-left", {
                 conv: {
                     name: convName,
@@ -243,6 +244,8 @@ export class XmppJsGateway {
             throw Error("Stanza for join not in cache, cannot handle");
         }
         const to = jid(stanza.attrs.to);
+        const chatName = `${to.local}@${to.domain}`;
+
         if (err || !room) {
             const presenceStatus = this.presenceCache.getStatus(stanza.attrs.from);
             if (presenceStatus) {
@@ -253,17 +256,30 @@ export class XmppJsGateway {
             // XXX: Specify the actual failure reason.
             this.xmpp.xmppSend(new StzaPresenceError(
                 stanza.attrs.to, stanza.attrs.from, stanza.attrs.id,
-                `${to.local}@${to.domain}`, "cancel", "service-unavailable",
+                chatName, "cancel", "service-unavailable",
             ));
             return;
         }
         room = room!;
 
-        // https://xmpp.org/extensions/xep-0045.html#order
+        const existingAnonJIDs = Object.values(this.roomUsers.get(chatName) || {}).concat(
+            Object.values(this.matrixRoomUsers.get(chatName) || {}),
+        );
+        // Check if the nick conflicts.
+        if (existingAnonJIDs.find((name) => name === stanza.attrs.from)) {
+            // This name conflicts, send a conflict message.
+            log.error("Conflicting nickname, not joining");
+            this.xmpp.xmppSend(new StzaPresenceError(
+                stanza.attrs.to, stanza.attrs.from, stanza.attrs.id,
+                chatName, "cancel", "conflict",
+            ));
+            return;
+        }
 
+        // https://xmpp.org/extensions/xep-0045.html#order
         // 1. membership of others.
         log.debug("Emitting membership of other users");
-        const xMembers = this.getMemberJidSet(room, `${to.local}@${to.domain}`);
+        const xMembers = this.getMemberJidSet(room, chatName);
         // Ensure we chunk this
         let sent = 0;
         for (const sender of Object.keys(xMembers)) {
@@ -338,9 +354,42 @@ export class XmppJsGateway {
         );
     }
 
+    private remoteLeft(stanza: Element) {
+        log.info(`${stanza.attrs.from} left ${stanza.attrs.to}`);
+        const to = jid(stanza.attrs.to);
+        const chatName = `${to.local}@${to.domain}`;
+        const anonJid = (this.roomUsers.get(chatName) || {})[stanza.attrs.from];
+        if (anonJid !== stanza.attrs.to) {
+            log.error(`User tried to leave room as ${stanza.attrs.to}, but they are connected as ${anonJid}`);
+            return;
+        }
+        this.dropUserFromRoomUsers(chatName, stanza.attrs.from);
+        const leaveStza = new StzaPresenceItem(
+            anonJid,
+            stanza.attrs.to,
+            undefined,
+            "member",
+            "none",
+            true,
+            stanza.attrs.from,
+        );
+        this.xmpp.xmppWriteToStream(leaveStza);
+        leaveStza.self = false;
+        Object.keys(this.roomUsers.get(stanza.attrs.to) || {}).forEach((recipient) => {
+            leaveStza.to = recipient;
+            this.xmpp.xmppSend(leaveStza);
+        });
+    }
+
     private addUserToRoomUsers(roomName: string, roomJid: string, realJid: string) {
         const rUsers = (this.roomUsers.get(roomName) || {});
         rUsers[realJid] = roomJid;
+        this.roomUsers.set(roomName, rUsers);
+    }
+
+    private dropUserFromRoomUsers(roomName: string, realJid: string) {
+        const rUsers = (this.roomUsers.get(roomName) || {});
+        delete rUsers[realJid];
         this.roomUsers.set(roomName, rUsers);
     }
 }

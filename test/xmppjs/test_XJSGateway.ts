@@ -142,7 +142,7 @@ describe("XJSGateway", () => {
             });
             // 2500 users + 1 self presence
             expect(messages.filter((m) => m.type === "presence")).to.have.lengthOf(2501);
-            expect(mockXmpp.drainWaits).to.equal(2500 / 25);
+            expect(mockXmpp.drainWaits).to.equal(2500 / 1000);
         });
     });
 });
