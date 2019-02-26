@@ -9,7 +9,12 @@ export interface IChatJoinOptions {
     required: boolean;
 }
 
-export interface IPurpleAccount {
+export interface IProfileProvider {
+    getUserInfo(who: string): Promise<IUserInfo>;
+    getAvatarBuffer(uri: string, senderId: string): Promise<{type: string, data: Buffer}>;
+}
+
+export interface IPurpleAccount extends IProfileProvider {
     remoteId: string;
     name: string;
     isEnabled: boolean;
@@ -35,6 +40,4 @@ export interface IPurpleAccount {
     rejectChat(components: IChatJoinProperties);
     getConversation(name: string): any|undefined;
     getChatParamsForProtocol(): IChatJoinOptions[];
-    getUserInfo(who: string): Promise<IUserInfo>;
-    getAvatarBuffer(uri: string, senderId: string): Promise<{type: string, data: Buffer}>;
 }

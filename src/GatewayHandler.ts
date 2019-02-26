@@ -172,7 +172,13 @@ export class GatewayHandler {
         try {
             // XXX: We don't get the room_id from the join call, because Intents are made of fail.
             await intent._ensureRegistered();
+            if (this.config.tuning.waitOnProfileBeforeSend) {
+                await this.profileSync.updateProfile(protocol, data.sender, this.purple.gateway!);
+            }
             const res = await intent.getClient().joinRoom(data.roomAlias, {syncRoom: false});
+            if (!this.config.tuning.waitOnProfileBeforeSend) {
+                await this.profileSync.updateProfile(protocol, data.sender, this.purple.gateway!)
+            }
             if (!res || !res.roomId) {
                 throw Error(
                     "Roomid not given in join",

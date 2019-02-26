@@ -5,12 +5,13 @@ import { Logging, Intent } from "matrix-appservice-bridge";
 import { IConfigBridge } from "../Config";
 import { MessageFormatter, IBasicProtocolMessage } from "..//MessageFormatter";
 import { Metrics } from "../Metrics";
-import { IGatewayRoomQuery, IGatewayJoin, IUserStateChanged, IStoreRemoteUser } from "../purple/PurpleEvents";
+import { IGatewayRoomQuery, IGatewayJoin, IUserStateChanged, IStoreRemoteUser, IUserInfo } from "../purple/PurpleEvents";
 import { IGatewayRoom } from "../GatewayHandler";
 import { PresenceCache } from "./PresenceCache";
 import { XHTMLIM } from "./XHTMLIM";
 import { BifrostRemoteUser } from "../Store";
 import { StzaPresenceItem, StzaMessage, StzaMessageSubject, StzaPresenceError } from "./Stanzas";
+import { IGateway } from "../purple/IGateway";
 
 const log = Logging.get("XmppJsGateway");
 
@@ -21,7 +22,7 @@ const MAX_HISTORY = 100;
  * and XMPP.
  */
 
-export class XmppJsGateway {
+export class XmppJsGateway implements IGateway {
     // For storing room history, should be clipped at MAX_HISTORY per room.
     private roomHistory: Map<string, [Element]>;
     // For storing requests to be responded to, like joins
@@ -331,6 +332,25 @@ export class XmppJsGateway {
             user.extraData.handle,
             user.extraData.real_jid,
         );
+    }
+
+    public async getUserInfo(who: string): Promise<IUserInfo> {
+        const j = jid(who);
+        //const status = this.xmpp.presenceCache.getStatus(who);
+        const ui: IUserInfo = {
+            Nickname: j.resource || j.local,
+            eventName: "meh",
+            who,
+            account: {
+                protocol_id: "",
+                username: "",
+            },
+        };
+        return ui;
+    }
+
+    public getAvatarBuffer(uri: string, senderId: string): Promise<{ type: string; data: Buffer; }> {
+        throw new Error("Method not implemented.");
     }
 
     private addUserToRoomUsers(roomName: string, roomJid: string, realJid: string) {
