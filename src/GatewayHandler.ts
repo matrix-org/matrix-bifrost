@@ -177,7 +177,7 @@ export class GatewayHandler {
             }
             const res = await intent.getClient().joinRoom(data.roomAlias, {syncRoom: false});
             if (!this.config.tuning.waitOnProfileBeforeSend) {
-                await this.profileSync.updateProfile(protocol, data.sender, this.purple.gateway!)
+                await this.profileSync.updateProfile(protocol, data.sender, this.purple.gateway!);
             }
             if (!res || !res.roomId) {
                 throw Error(

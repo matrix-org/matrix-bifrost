@@ -1,9 +1,9 @@
 import { IBasicProtocolMessage } from "../MessageFormatter";
 import { IGatewayRoom } from "../GatewayHandler";
-import { IBridgeContext } from "../MatrixTypes";
 import { BifrostRemoteUser } from "../Store";
+import { IProfileProvider } from "./IPurpleAccount";
 
-export interface IGateway {
+export interface IGateway extends IProfileProvider {
     sendMatrixMessage(
         chatName: string,
         sender: string, body: IBasicProtocolMessage, room: IGatewayRoom,
