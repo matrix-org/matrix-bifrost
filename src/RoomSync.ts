@@ -107,7 +107,11 @@ export class RoomSync {
                 }
                 const isRemote = bot.isRemoteUser(userId);
                 if (isRemote && isGateway) {
-                    await this.gateway.rejoinRemoteUser(userId, roomId);
+                    try {
+                        await this.gateway.rejoinRemoteUser(userId, roomId);
+                    } catch (ex) {
+                        log.warn(`Failed to rejoin gateway user ${userId} to ${roomId}`, ex);
+                    }
                     continue;
                 } else if ((isRemote && !isGateway) || isGateway) {
                     // Don't handle remote non-gateway users, or matrix gateway users.
