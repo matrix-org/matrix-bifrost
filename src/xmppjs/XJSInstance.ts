@@ -435,6 +435,7 @@ export class XmppJsInstance extends EventEmitter implements IPurpleInstance {
                 // Group message to a MUC, so reflect it to other XMPP users
                 // and set the right to/from addresses.
                 convName = `${to.local}@${to.domain}`;
+                log.info(`Sending gateway group message to ${convName}`);
                 if (!this.gateway!.reflectXMPPMessage(convName, stanza)) {
                     log.warn(`Message could not be sent, not forwarding to Matrix`);
                     return;
@@ -452,7 +453,7 @@ export class XmppJsInstance extends EventEmitter implements IPurpleInstance {
                 const userId = this.gateway!.getMatrixIDForJID(convName, to);
                 if (userId) {
                     // This is a PM *to* matrix
-                    log.debug(`Sending gateway PM to ${userId} (${to})`);
+                    log.info(`Sending gateway PM to ${userId} (${to})`);
                     for (const acct of this.accounts.values()) {
                         if (acct.mxId === userId) {
                             localAcct = acct;
@@ -472,12 +473,11 @@ export class XmppJsInstance extends EventEmitter implements IPurpleInstance {
                     }
                 } else {
                     // This is a PM to another XMPP user, easy.
-                    log.debug(`Sending gateway PM to XMPP user (${to})`);
+                    log.info(`Sending gateway PM to XMPP user (${to})`);
                     this.gateway!.reflectPM(stanza);
                     return;
                 }
             }
-
         }
         const chatState = stanza.getChildByAttr("xmlns", "http://jabber.org/protocol/chatstates");
 
