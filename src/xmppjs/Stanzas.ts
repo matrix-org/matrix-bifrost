@@ -74,25 +74,38 @@ export class StzaPresence extends StzaBase {
 }
 
 export class StzaPresenceItem extends StzaPresence {
+    protected statusCodes: Set<string>;
     constructor(
         from: string,
         to: string,
         id?: string,
         public affiliation: string = "member",
         public role: string = "participant",
-        public self: boolean = false,
+        self: boolean = false,
         public jid: string = "",
-        public itemType: string = "",
+        itemType: string = "",
     ) {
         super(from, to, id, itemType);
+        this.statusCodes = new Set();
+        this.self = self;
     }
+
+    set self(isSelf: boolean) {
+        this.statusCodes[isSelf ? "add" : "delete"]("110");
+    }
+
+    get itemContents(): string { return ""; }
 
     get xProtocol(): string { return "muc#user"; }
 
     public get xContent() {
-        const statusCode = this.self ? "<status code='110'/>" : "";
+        const statusCodes = [...this.statusCodes].map((s) => `<status code='${s}'/>`).join("");
         const jid = this.jid ? ` jid='${this.jid}'` : "";
-        return `<item affiliation='${this.affiliation}'${jid} role='${this.role}'/>${statusCode}`;
+        if (this.itemContents) {
+return `<item affiliation='${this.affiliation}'${jid} role='${this.role}'>${this.itemContents}</item>${statusCodes}`;
+        } else {
+            return `<item affiliation='${this.affiliation}'${jid} role='${this.role}'/>${statusCodes}`;
+        }
     }
 }
 
@@ -143,6 +156,24 @@ export class StzaPresencePart extends StzaPresence {
     }
 }
 
+export class StzaPresenceKick extends StzaPresenceItem {
+    constructor(
+        from: string,
+        to: string,
+        public reason: string,
+        public actorNick?: string,
+        self: boolean = false,
+    ) {
+        super(from, to, undefined, "none", "none", self, undefined, "unavailable");
+        this.statusCodes.add("307");
+    }
+
+    get itemContents(): string {
+        const actor = this.actorNick ? `<actor nick='${he.encode(this.actorNick)}'/>` : "";
+        return `${actor}<reason>${he.encode(this.reason)}</reason>`;
+    }
+
+}
 export class StzaMessage extends StzaBase {
     public html: string = "";
     public body: string = "";

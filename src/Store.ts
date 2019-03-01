@@ -84,13 +84,13 @@ export class Store {
     public async getRemoteUserBySender(sender: string, protocol: PurpleProtocol): Promise<BifrostRemoteUser|null> {
         const remoteId = Util.createRemoteId(protocol.id, sender);
         await this.userLock.get(remoteId);
-        const remote = await this.bridge.getUserStore().getRemoteUser(
+        const remote = await this.userStore.getRemoteUser(
             remoteId,
         );
         if (!remote) {
             return null;
         }
-        const userIds = await this.bridge.getUserStore().getMatrixLinks(remoteId);
+        const userIds = await this.userStore.getMatrixLinks(remoteId);
         const realUserIds = userIds.filter(
             (uId) => this.asBot.isRemoteUser(uId),
         );
@@ -99,7 +99,7 @@ export class Store {
     }
 
     public async getRemoteUsersFromMxId(userId: string): Promise<BifrostRemoteUser[]> {
-        return (await this.bridge.getUserStore().getRemoteUsersFromMatrixId(
+        return (await this.userStore.getRemoteUsersFromMatrixId(
             userId,
         )).map((u) => new BifrostRemoteUser(u, userId, this.asBot.isRemoteUser(userId)));
     }
@@ -221,18 +221,25 @@ export class Store {
 
         // Check the user store.
         // Ghosts that exist twice are invalid.
-        const userEntries = await this.userStore.getByRemoteData({type: "ghost"});
-        const userEntryIds = userEntries.map((entry) => entry.id);
-        const invalidUserEntries = userEntries.filter((entry) =>
+        const userEntries = await this.userStore.getByRemoteData({});
+        // XXX: Hack, only do this for xmpp.js where accounts are re-creatable.
+        const noTypeEntries = userEntries.filter((e) => e.get("type") === undefined
+        && (e.get("protocolId") === "xmpp-js" || e.get("protocol_id") === "xmpp-js"));
+        log.info(`Found ${userEntries.length} user entries, ${noTypeEntries.length} of which have no type`);
+        const ghostEntries = userEntries.filter((e) => e.get("type") === "ghost");
+        const userEntryIds = ghostEntries.map((entry) => entry.id);
+        const invalidUserEntries = ghostEntries.filter((entry) =>
             userEntryIds.filter((e) => e.id === entry.id).length >= 2,
-        );
-        log.info(`Found ${userEntries.length} ghost user entries, ${invalidUserEntries.length} of which are invalid`);
+        ).concat(noTypeEntries);
+        log.info(`Also found ${invalidUserEntries.length - noTypeEntries.length} invalid ghosts`);
+
+        // Write to the DB
         if (canWrite && invalidUserEntries.length > 0) {
             log.info("Cleaning up user entries");
             await Promise.all(invalidUserEntries.map((entry) => {
-                log.debug(`Cleaning up user entry ${entry._id}`);
+                log.debug(`Cleaning up user entry ${entry.id}`);
                 return this.userStore.delete({
-                    id: entry,
+                    id: entry.id,
                 }) as Promise<void>;
             })).then(() => { /* for typescript */});
         }
@@ -242,7 +249,7 @@ export class Store {
                              username: string, type: MUSER_TYPES, extraData: any = {})
                             : Promise<{remote: BifrostRemoteUser, matrix: MatrixUser}> {
         const id = Util.createRemoteId(protocol.id, username);
-        const mxUser = new MatrixUser(userId);
+        const mxUser = (await this.userStore.getMatrixUser(userId)) || new MatrixUser(userId);
         const existing = await this.userStore.getRemoteUser(id);
         if (!existing) {
             const remoteUser = new RemoteUser(Util.createRemoteId(protocol.id, username), extraData);
@@ -254,7 +261,21 @@ export class Store {
             return {remote: new BifrostRemoteUser(
                 remoteUser, userId, this.asBot.isRemoteUser(userId),
             ), matrix: mxUser};
+        } else {
+            const linkedMatrixUsers = await this.userStore.getMatrixLinks(id);
+            if (!linkedMatrixUsers.includes(mxUser.getId())) {
+                log.warn(`${id} was not correctly linked to ${mxUser.getId()}, resolving`);
+                await this.userStore.linkUsers(mxUser, existing);
+            }
+            for (const lnkUserId of linkedMatrixUsers) {
+                if (lnkUserId === mxUser.getId()) {
+                    continue;
+                }
+                log.warn(`${id} is linked to ${lnkUserId}, removing`);
+                await this.userStore.unlinkUserIds(lnkUserId, id);
+            }
         }
+        // If we have an old mxid for this remote, update it.
         log.debug(`Updated existing ${type} ${userId} -> ${id}`);
         Object.keys(extraData).forEach((key) => {
             existing.set(key, extraData[key]);

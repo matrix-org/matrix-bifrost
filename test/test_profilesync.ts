@@ -130,11 +130,12 @@ describe("ProfileSync", () => {
     it("will skip the second profile update", async () => {
         const time = Date.now();
         const {profileSync, account, values, store} = createProfileSync({});
-        await profileSync.updateProfile(dummyProtocol, "alice@foobar.com", account as any, false);
+        await profileSync.updateProfile(dummyProtocol, "aconvo@foobar.com/FOO!$BAR", account as any, false);
         const matrixUser = await store.getMatrixUser(values.userId);
         expect(matrixUser.get("last_check")).to.be.above(time);
         const lastTime = matrixUser.get("last_check");
-        await profileSync.updateProfile(dummyProtocol, "alice@foobar.com", account as any, false);
-        expect(matrixUser.get("last_check")).to.be.equal(lastTime);
+        await profileSync.updateProfile(dummyProtocol, "aconvo@foobar.com/FOO!$BAR", account as any, false);
+        const matrixUserTwo = await store.getMatrixUser(values.userId);
+        expect(matrixUserTwo.get("last_check")).to.be.equal(lastTime);
     });
 });

@@ -23,6 +23,8 @@ export interface IPresenceStatus {
     affiliation: string;
     role: string;
     ours: boolean;
+    // For gateways only
+    devices: Set<string>|undefined;
     photoId: string|undefined;
 }
 
@@ -33,7 +35,7 @@ export interface IPresenceStatus {
 export class PresenceCache {
     private presence: Map<string, IPresenceStatus>;
 
-    constructor() {
+    constructor(private isGateway: boolean = false) {
         this.presence = new Map();
     }
 
@@ -81,7 +83,12 @@ export class PresenceCache {
             };
         }
         const type = stanza.getAttr("type")!;
-        const from = jid(stanza.getAttr("from"));
+        // If it's a gateway, we want to invert this.
+        const from = jid( this.isGateway ? stanza.attrs.to : stanza.attrs.from);
+        let device: string|null = null;
+        if (this.isGateway) {
+            device = jid(stanza.attrs.from).resource;
+        }
 
         if (!from.resource) {
             // Not sure how to handle presence without a resource.
@@ -99,8 +106,14 @@ export class PresenceCache {
             role: "",
             online: false,
             ours: false,
+            devices: this.isGateway ? new Set() : undefined,
         } as IPresenceStatus;
         const delta: IPresenceDelta = {changed: [], isSelf, error: null, errorMsg: null};
+
+        if (device && !currentPresence.devices!.has(device)) {
+            currentPresence.devices!.add(device);
+            delta.changed.push("newdevice");
+        }
 
         if (newUser) {
             delta.changed.push("new");

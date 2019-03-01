@@ -10,6 +10,13 @@ const aliceJoin = x("presence", {
     from: "aroom@conf.xmpp.matrix.org/alice",
 });
 
+const aliceJoinGateway = x("presence", {
+    xmlns: "jabber:client",
+    from: "alice@xmpp.matrix.org/fakedevice",
+    to: "aroom@conf.xmpp.matrix.org/alice",
+});
+
+
 const aliceLeave = x("presence", {
     to: "bob@xmpp.matrix.org/fakedevice",
     from: "aroom@conf.xmpp.matrix.org/alice",
@@ -167,5 +174,28 @@ describe("PresenceCache", () => {
         expect(status!.kick!.kicker).to.eq("bob");
         expect(status!.kick!.reason).to.eq("Didn't like em much");
         expect(status!.resource).to.eq("alice");
+    });
+
+    it("should handle two new devices in gateway mode", () => {
+        const p = new PresenceCache(true);
+        p.add(aliceJoinGateway)!;
+        const delta2 = p.add(x("presence", {
+            xmlns: "jabber:client",
+            from: "alice@xmpp.matrix.org/fakedevice2",
+            to: "aroom@conf.xmpp.matrix.org/alice",
+        }))!;
+        expect(delta2).to.not.be.undefined;
+        expect(delta2.changed).to.not.contain("online");
+        expect(delta2.changed).to.not.contain("new");
+        expect(delta2.changed).to.contain("newdevice");
+        expect(delta2.error).to.be.null;
+        expect(delta2.isSelf).to.be.false;
+        const status = p.getStatus("aroom@conf.xmpp.matrix.org/alice");
+        expect(status).to.not.be.undefined;
+        expect(status!.online).to.be.true;
+        expect(status!.ours).to.be.false;
+        expect(status!.resource).to.eq("alice");
+        expect(status!.devices!).to.contain("fakedevice");
+        expect(status!.devices!).to.contain("fakedevice2");
     });
 });

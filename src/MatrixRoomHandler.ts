@@ -65,6 +65,7 @@ export class MatrixRoomHandler {
         purple.on("chat-invite", this.handleChatInvite.bind(this));
         purple.on("chat-user-joined", this.handleRemoteUserState.bind(this));
         purple.on("chat-user-left", this.handleRemoteUserState.bind(this));
+        purple.on("chat-user-kick", this.handleRemoteUserState.bind(this));
         /* This also handles chat names, which are just set as the conv.name */
         purple.on("chat-topic", this.handleTopic.bind(this));
         purple.on("chat-typing", this.handleTyping.bind(this));
@@ -281,10 +282,12 @@ export class MatrixRoomHandler {
         );
 
         // Update the user if needed.
-        const account = this.purple.getAccount(data.account.username, data.account.protocol_id, matrixUser.getId())!;
-        await this.profileSync.updateProfile(protocol, data.sender,
-            account,
-        );
+        const account = this.purple.getAccount(data.account.username, data.account.protocol_id, matrixUser.getId());
+        if (account) {
+            await this.profileSync.updateProfile(protocol, data.sender,
+                account,
+            );
+        }
 
         const intent = this.bridge.getIntent(senderMatrixUser.getId());
         log.debug("Identified ghost user as", senderMatrixUser.getId());
@@ -348,14 +351,17 @@ export class MatrixRoomHandler {
             this.config.bridge.userPrefix,
             true,
         );
-        const account = this.purple.getAccount(data.account.username, data.account.protocol_id)!;
-        await this.profileSync.updateProfile(
-            protocol,
-            data.sender,
-            account,
-            false,
-            ProtoHacks.getSenderIdToLookup(protocol, data.sender, data.conv.name),
-        );
+        const account = this.purple.getAccount(data.account.username, data.account.protocol_id);
+        if (account) {
+            await this.profileSync.updateProfile(
+                protocol,
+                data.sender,
+                account,
+                false,
+                ProtoHacks.getSenderIdToLookup(protocol, data.sender, data.conv.name),
+            );
+        }
+
         const intent = this.bridge.getIntent(senderMatrixUser.getId());
         let roomId;
         try {
@@ -407,10 +413,18 @@ export class MatrixRoomHandler {
         const protocol = this.purple.getProtocol(data.account.protocol_id)!;
         const remoteUser = await this.store.getRemoteUserBySender(data.sender, protocol);
         if (remoteUser && !remoteUser.isRemote) {
-            log.debug(`Didn't handle join/leave for ${data.sender}, isn't remote`);
+            log.debug(`Didn't handle join/leave/kick for ${data.sender}, isn't remote`);
             return; // Do NOT handle state changes from our own users.
         }
-        log.info(data.state === "joined" ? "Joining" : "Leaving", data.sender, "from", data.conv.name);
+        let verb;
+        if (data.state === "joined") {
+            verb = "Joining";
+        } else if (data.state === "left") {
+            verb = "Leaving";
+        } else if (data.state === "kick") {
+            verb = "Kicking";
+        }
+        log.info(verb, data.sender, "from", data.conv.name);
         const senderMatrixUser = protocol.getMxIdForProtocol(
             data.sender,
             this.config.bridge.domain,
@@ -425,20 +439,22 @@ export class MatrixRoomHandler {
         ) : senderMatrixUser;
         const intent = this.bridge.getIntent(intentUser.userId);
         const roomId = await this.createOrGetGroupChatRoom(data, intent, true);
+        const account = this.purple.getAccount(data.account.username, data.account.protocol_id);
         // Do we need to set a profile before we can join to avoid uglyness?
         const profileNeeded = this.config.tuning.waitOnProfileBeforeSend &&
             (!remoteUser || remoteUser!.displayname);
         try {
             if (data.state === "joined") {
-                const account = this.purple.getAccount(data.account.username, data.account.protocol_id)!;
                 if (!profileNeeded) {
                     await intent.join(roomId);
                 }
-                await this.profileSync.updateProfile(
-                    protocol,
-                    data.sender,
-                    account,
-                );
+                if (account) {
+                    await this.profileSync.updateProfile(
+                        protocol,
+                        data.sender,
+                        account,
+                    );
+                }
                 if (profileNeeded) {
                     await intent.join(roomId);
                 }

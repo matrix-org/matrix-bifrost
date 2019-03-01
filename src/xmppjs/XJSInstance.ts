@@ -135,6 +135,7 @@ export class XmppJsInstance extends EventEmitter implements IPurpleInstance {
             const timeout = setTimeout(() => {
                 reject("Timed out waiting for drain");
             }, timeoutMs);
+            log.debug("Waiting for drain");
             this.xmpp.socket.once("drain", () => {
                 clearTimeout(timeout);
                 resolve();
@@ -250,6 +251,13 @@ export class XmppJsInstance extends EventEmitter implements IPurpleInstance {
     }
 
     public getAccount(username: string, protocolId: string, mxid: string): IPurpleAccount|null {
+        const j = jid(username);
+        if (j.domain === this.myAddress.domain &&
+            j.local.startsWith("#") &&
+            this.serviceHandler.parseAliasFromJID(j)) {
+            // Account is an gateway alias, not trying.
+            return null;
+        }
         const uLower = username.toLowerCase();
         log.debug("Getting account", username);
         if (protocolId !== "xmpp-js") {
@@ -353,10 +361,6 @@ export class XmppJsInstance extends EventEmitter implements IPurpleInstance {
         });
     }
 
-    public resolveSenderRecipientForIM() {
-
-    }
-
     private generateIdforMsg(stanza: Element) {
         const body = stanza.getChildText("body");
 
@@ -426,18 +430,26 @@ export class XmppJsInstance extends EventEmitter implements IPurpleInstance {
         let convName = `${from.local}@${from.domain}`;
 
         if (alias) {
+            // If this is an alias, we want to do some gateway related things.
             if (!to.resource) {
+                // Group message to a MUC, so reflect it to other XMPP users
+                // and set the right to/from addresses.
                 convName = `${to.local}@${to.domain}`;
-                stanza.attrs.from = this.gateway!.getRoomJidForRealJid(
+                if (!this.gateway!.reflectXMPPMessage(convName, stanza)) {
+                    log.warn(`Message could not be sent, not forwarding to Matrix`);
+                    return;
+                }
+                stanza.attrs.from = this.gateway!.getAnonIDForJID(
                     convName, stanza.attrs.from) || false;
                 if (stanza.attrs.from === false) {
                     log.warn(`Couldn't find a user for ${from.toString()} reflect message with, dropping`);
                     return;
                 }
                 from = jid(stanza.attrs.from);
-                this.gateway!.reflectXMPPMessage(stanza);
             } else {
-                const userId = this.gateway!.getMatrixIDForJID(to);
+                // This is a PM, then.
+                convName = `${to.local}@${to.domain}`;
+                const userId = this.gateway!.getMatrixIDForJID(convName, to);
                 if (userId) {
                     // This is a PM *to* matrix
                     log.debug(`Sending gateway PM to ${userId} (${to})`);
@@ -448,10 +460,18 @@ export class XmppJsInstance extends EventEmitter implements IPurpleInstance {
                         }
                     }
                     if (localAcct === undefined) {
-                        log.error(`No account defined for ${userId}, cannot bridge.`);
+                        log.warn(`No account defined for ${userId}, registering new account.`);
+                        localAcct = await this.autoRegister!.registerUser(XMPP_PROTOCOL.id, userId) as XmppJsAccount;
                     }
-                    stanza.attrs.from = this.gateway!.getAnonIDForJID(`${to.local}@${to.domain}`, from);
+                    const anonJid = this.gateway!.getAnonIDForJID(`${to.local}@${to.domain}`, from);
+                    if (anonJid) {
+                        from = jid(anonJid);
+                    } else {
+                        log.error("Couldn't find anon jid for PM");
+                        return;
+                    }
                 } else {
+                    // This is a PM to another XMPP user, easy.
                     log.debug(`Sending gateway PM to XMPP user (${to})`);
                     this.gateway!.reflectPM(stanza);
                     return;
@@ -488,7 +508,7 @@ export class XmppJsInstance extends EventEmitter implements IPurpleInstance {
             } else {
                 log.warn("Could not handle message, auto registration is disabled");
             }
-        } else if (alias) {
+        } else if (!localAcct && alias) {
             // This is a gateway, so setup a fake account.
             localAcct = {
                 remoteId: `${to!.local}@${to!.domain}`,

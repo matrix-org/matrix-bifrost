@@ -8,6 +8,7 @@ import { XMPP_PROTOCOL } from "../../src/xmppjs/XJSInstance";
 export class MockXJSInstance extends EventEmitter {
     public sentMessageIDs: string[] = [];
     public sentMessages: IStza[] = [];
+    public sentPackets: Element[] = [];
     public selfPingResponse: "respond-ok"|"respond-error"|"no-response" = "respond-error";
     public accountUsername!: string;
     public drainWaits: number = 0;
@@ -39,6 +40,10 @@ export class MockXJSInstance extends EventEmitter {
                 },
             } as IChatJoined);
         }
+    }
+
+    public xmppWriteToStream(msg: Element) {
+        this.sentPackets.push(msg);
     }
 
     public xmppWaitForDrain(): Promise<void> {

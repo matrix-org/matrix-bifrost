@@ -90,7 +90,7 @@ describe("RoomSync", () => {
             },
         ]);
     });
-    it("should only sync remote users for gateways", async () => {
+    it("should sync remote users for gateways", async () => {
         const {rs, store} = createRoomSync();
         const {bot, intent} = createBotAndIntent();
         await store.storeRoom("!abc:foobar", MROOM_TYPE_GROUP, "foobar", {
@@ -104,8 +104,8 @@ describe("RoomSync", () => {
         expect(rs.getMembershipForUser("prpl-dummy://foobar")).to.not.exist;
         expect(remoteJoins).to.deep.equal([
             {
-                user: "@remote_foo:bar",
-                room: "!abc:foobar",
+                 user: "@remote_foo:bar",
+                 room: "!abc:foobar",
             },
         ]);
     });

@@ -1,21 +1,21 @@
 import { XmppJsInstance, XMPP_PROTOCOL } from "./XJSInstance";
 import { Element, x } from "@xmpp/xml";
 import { jid, JID } from "@xmpp/jid";
-import { Logging, Intent } from "matrix-appservice-bridge";
+import { Logging } from "matrix-appservice-bridge";
 import { IConfigBridge } from "../Config";
-import { MessageFormatter, IBasicProtocolMessage } from "..//MessageFormatter";
+import { IBasicProtocolMessage } from "..//MessageFormatter";
 import { Metrics } from "../Metrics";
-import { IGatewayRoomQuery, IGatewayJoin, IUserStateChanged, IStoreRemoteUser, IUserInfo } from "../purple/PurpleEvents";
+import { IGatewayJoin, IUserStateChanged, IStoreRemoteUser, IUserInfo } from "../purple/PurpleEvents";
 import { IGatewayRoom } from "../GatewayHandler";
 import { PresenceCache } from "./PresenceCache";
 import { XHTMLIM } from "./XHTMLIM";
 import { BifrostRemoteUser } from "../Store";
-import { StzaPresenceItem, StzaMessage, StzaMessageSubject, StzaPresenceError } from "./Stanzas";
+import { StzaPresenceItem, StzaMessage, StzaMessageSubject,
+    StzaPresenceError, StzaBase, StzaPresenceKick } from "./Stanzas";
 import { IGateway } from "../purple/IGateway";
+import { GatewayMUCMembership, IGatewayMemberXmpp, IGatewayMemberMatrix } from "./GatewayMUCMembership";
 
 const log = Logging.get("XmppJsGateway");
-
-const MAX_HISTORY = 100;
 
 /**
  * This class effectively implements a MUC that sits in between the gateway interface
@@ -29,26 +29,25 @@ export class XmppJsGateway implements IGateway {
     private stanzaCache: Map<string, Element>; // id -> stanza
     private presenceCache: PresenceCache;
     // Storing every XMPP user and their anonymous.
-    private roomUsers: Map<string, {[realJid: string]: string}>; // "room_name" -> {realJid: anonJid}
-    private matrixRoomUsers: Map<string, {[matrixId: string]: string}>; // "room_name" -> {matrixId: anonJid}
+    private members: GatewayMUCMembership;
     constructor(private xmpp: XmppJsInstance, private config: IConfigBridge) {
         this.roomHistory = new Map();
         this.stanzaCache = new Map();
-        this.roomUsers = new Map();
-        this.matrixRoomUsers = new Map();
-        this.presenceCache = new PresenceCache();
+        this.members = new GatewayMUCMembership();
+        this.presenceCache = new PresenceCache(true);
     }
 
     public handleStanza(stanza: Element, gatewayAlias: string) {
         const delta = this.presenceCache.add(stanza);
         if (!delta) {
+            log.debug("No delta");
             return;
         }
         const to = jid(stanza.attrs.to);
         const convName = `${to.local}@${to.domain}`;
         const isMucType = stanza.getChildByAttr("xmlns", "http://jabber.org/protocol/muc");
-
-        if (delta.changed.includes("online") && isMucType) {
+        log.info(`Handling ${stanza.name} from=${stanza.attrs.from} to=${stanza.attrs.to} for ${gatewayAlias}`);
+        if ((delta.changed.includes("online") || delta.changed.includes("newdevice")) && isMucType) {
             this.addStanzaToCache(stanza);
             // Gateways are special.
             this.xmpp.emit("gateway-joinroom", {
@@ -58,36 +57,36 @@ export class XmppJsGateway implements IGateway {
                 protocol_id: XMPP_PROTOCOL.id,
                 room_name: `${to.local}@${to.domain}`,
             } as IGatewayJoin);
-        }
-
-        if (delta.changed.includes("offline")) {
+        } else if (delta.changed.includes("offline")) {
             const wasKicked = delta.status!.kick;
-            let kicker;
+            let kicker: string|undefined;
+
             if (wasKicked && wasKicked.kicker) {
                 kicker = `${convName}/${wasKicked.kicker}`;
             }
-
+            const member = this.members.getXmppMemberByRealJid(convName, stanza.attrs.from);
+            this.remoteLeft(stanza);
+            if (!member) {
+                log.warn("User has gone offline, but we don't have a member for them");
+                return;
+            }
             this.xmpp.emit("chat-user-left", {
                 conv: {
                     name: convName,
                 },
                 account: {
                     protocol_id: XMPP_PROTOCOL.id,
-                    username: "any",
+                    username: convName,
                 },
-                sender: this.getRoomJidForRealJid(convName, stanza.attrs.from),
+                sender: member.anonymousJid.toString(),
                 state: "left",
                 kicker,
                 reason: wasKicked ? wasKicked.reason : delta.status!.status,
                 gatewayAlias,
             } as IUserStateChanged);
-
-            // XXX: Emit to other XMPP users.
+        } else {
+            log.debug("Nothing to do");
         }
-    }
-
-    public getRoomJidForRealJid(roomName: string, j: string) {
-        return (this.roomUsers.get(`${roomName}`) || {})[j];
     }
 
     public addStanzaToCache(stanza: Element) {
@@ -95,39 +94,33 @@ export class XmppJsGateway implements IGateway {
         log.debug("Added cached stanza for " + stanza.attrs.id);
     }
 
-    public getMatrixIDForJID(j: JID) {
-        const chatName = `${j.local}@${j.domain}`;
-        const xmppMembers = this.roomUsers.get(chatName);
-        if (xmppMembers && Object.keys(xmppMembers).find((m) => xmppMembers[m] === j.toString())) {
-            // XMPP user exists for this anon jid, return false
+    public getMatrixIDForJID(chatName: string, j: JID) {
+        const user = this.members.getMemberByAnonJid<IGatewayMemberMatrix>(chatName, j.toString());
+        if (!user) {
             return false;
         }
-        const members = this.matrixRoomUsers.get(chatName);
-        if (!members) {
-            throw Error("This room doesn't have a memberlist");
-        }
-        const userId = Object.keys(members).find((m) => members[m] === j.toString());
-        log.debug(`Got ${userId} for ${chatName}`);
-        if (userId) {
-            return userId;
-        }
-        return false;
+        log.debug(`Got ${user.matrixId} for ${chatName}`);
+        return user.matrixId;
     }
 
-    public getAnonIDForJID(chatName: string, j: JID) {
-        return this.roomUsers.get(chatName)![j.toString()];
+    public getAnonIDForJID(chatName: string, j: JID): string|null {
+        const member = this.members.getXmppMemberByRealJid(chatName, j.toString());
+        if (member) {
+            return member.anonymousJid.toString();
+        }
+        return null;
     }
 
     public sendMatrixMessage(
-        chatName: string, sender: string, msg: IBasicProtocolMessage, room: IGatewayRoom, roomname: string) {
+        chatName: string, sender: string, msg: IBasicProtocolMessage, room: IGatewayRoom) {
+        this.updateMatrixMemberListForRoom(chatName, room);
         log.info(`Sending ${msg.id} to ${chatName}`);
-        const xMembers = this.getMemberJidSet(room, chatName);
-        const from = xMembers[sender];
+        const from = this.members.getMatrixMemberByMatrixId(chatName, sender);
         if (!from) {
             log.error(`Cannot send ${msg.id}: No member cached.`);
             return;
         }
-        const users = (this.roomUsers.get(chatName) || {});
+        const users = this.members.getXmppMembers(chatName);
         this.xmpp.xmppAddSentMessage(msg.id!);
 
         // Ensure that the html portion is XHTMLIM
@@ -139,26 +132,77 @@ export class XmppJsGateway implements IGateway {
             });
         }
 
-        Object.keys(users).forEach((remoteJid) => {
-            this.xmpp.xmppSend(new StzaMessage(from, remoteJid, msg, "groupchat"));
+        users.forEach((xmppUser) => {
+            xmppUser.devices!.forEach((device) => {
+                this.xmpp.xmppSend(new StzaMessage(
+                    from.anonymousJid.toString(),
+                    device.toString(),
+                    msg,
+                    "groupchat",
+                ));
+            });
         });
     }
 
-    public reflectXMPPMessage(stanza: Element) {
-        Object.keys(this.roomUsers.get(stanza.attrs.to) || {}).forEach((to) => {
-            stanza.attrs.to = to;
-            this.xmpp.xmppWriteToStream(stanza);
+    public reflectXMPPMessage(chatName: string, stanza: Element): boolean {
+        const member = this.members.getXmppMemberByRealJid(chatName, stanza.attrs.from);
+        if (!member) {
+            log.warn(`${stanza.attrs.from} is not part of this room.`);
+            // Send the sender an error.
+            this.xmpp.xmppSend(
+                new StzaPresenceKick(
+                    stanza.attrs.to,
+                    stanza.attrs.from,
+                    "Dropped connection to the gateway, please rejoin",
+                    "Bifrost",
+                    true,
+                ),
+            );
+            return false;
+        }
+        const preserveFrom = stanza.attrs.from;
+        new Promise(() => {
+            stanza.attrs.from = member!.anonymousJid;
+            const xmppMembers = this.members.getXmppMembers(chatName);
+            xmppMembers.forEach((xmppUser) => {
+                xmppUser.devices!.forEach((device) => {
+                    stanza.attrs.to = device;
+                    this.xmpp.xmppWriteToStream(stanza);
+                });
+            });
+        }).catch((err) => {
+            log.warn("Failed to reflect XMPP message:", err);
+        });
+        stanza.attrs.from = preserveFrom;
+        return true;
+    }
+
+    public reflectXMPPStanza(chatName: string, stanza: StzaBase) {
+        const xmppMembers = this.members.getXmppMembers(chatName);
+        xmppMembers.forEach((xmppUser) => {
+            xmppUser.devices!.forEach((device) => {
+                stanza.to = device.toString();
+                this.xmpp.xmppSend(stanza);
+            });
         });
     }
 
     public reflectPM(stanza: Element) {
         const to = jid(stanza.attrs.to);
-        const memberList = this.roomUsers.get(`${to.local}@${to.domain}`);
-        if (!memberList) {
-            throw Error("No memberlist for MUC");
+        const convName = `${to.local}@${to.domain}`;
+        // This is quite easy..
+        const sender = this.members.getXmppMemberByRealJid(convName, stanza.attrs.from);
+        if (!sender) {
+            log.error("Cannot find sender in memberlist for PM");
+            return;
         }
-        stanza.attrs.from = memberList[stanza.attrs.from];
-        stanza.attrs.to = Object.keys(memberList).find((m) => memberList[m] === stanza.attrs.to);
+        const recipient = this.members.getMemberByAnonJid<IGatewayMemberXmpp>(convName, stanza.attrs.to);
+        if (!recipient) {
+            log.error("Cannot find recipient in memberlist for PM");
+            return;
+        }
+        stanza.attrs.from = sender.anonymousJid.toString();
+        stanza.attrs.to = recipient.devices[recipient.devices.length - 1].toString();
         log.info(`Reflecting PM message ${stanza.attrs.from} -> ${stanza.attrs.to}`);
         this.xmpp.xmppWriteToStream(stanza);
     }
@@ -169,17 +213,15 @@ export class XmppJsGateway implements IGateway {
         log.info(`Got new ${membership} for ${sender} in ${chatName}`);
         // Iterate around each joined member and add the new presence step.
         const from = `${chatName}/` + (displayname || sender);
-        const users = Object.keys(this.roomUsers.get(chatName) || {});
+        const users = this.members.getXmppMembers(chatName);
         if (users.length === 0) {
             log.warn("No users found for gateway room!");
         }
-        const memberList = this.matrixRoomUsers.get(chatName)!;
         if (membership === "join") {
-            memberList[sender] = from;
+            this.members.addMatrixMember(chatName, sender, jid(from));
         } else {
-            delete memberList[sender];
+            this.members.removeMatrixMember(chatName, sender);
         }
-        this.matrixRoomUsers.set(chatName, memberList);
         let affiliation = "";
         let role = "";
         let type = "";
@@ -191,13 +233,15 @@ export class XmppJsGateway implements IGateway {
             role = "none";
             type = "unavailable";
         }
-        users.forEach((remoteJid) => {
-            this.xmpp.xmppSend(
-                new StzaPresenceItem(
-                    from, remoteJid, undefined, affiliation,
-                    role, false, undefined, type,
-                ),
-            );
+        users.forEach((user) => {
+            user.devices!.forEach((device) => {
+                this.xmpp.xmppSend(
+                    new StzaPresenceItem(
+                        from, device.toString(), undefined, affiliation,
+                        role, false, undefined, type,
+                    ),
+                );
+            });
         });
     }
 
@@ -206,30 +250,17 @@ export class XmppJsGateway implements IGateway {
     ) {
         log.info(`Got new ${type} for ${sender} in ${chatName}`);
         // Iterate around each joined member and add the new presence step.
-        const users = Object.keys(this.roomUsers.get(chatName) || {});
+        const users = this.members.getXmppMembers(chatName);
         if (users.length === 0) {
             log.warn("No users found for gateway room!");
         }
-        users.forEach((remoteJid) => {
-            if (type === "topic" || type === "name") {
-                this.xmpp.xmppSend(new StzaMessageSubject(chatName, remoteJid, undefined,
-                    `${room.name || ""} ${room.topic ? "| " + room.topic : ""}`,
-                ));
-            }
-        });
-    }
-
-    public getMemberJidSet(room: IGatewayRoom, chatName: string) {
-        if (this.matrixRoomUsers.has(chatName)) {
-            return this.matrixRoomUsers.get(chatName)!;
+        if (type !== "topic" && type !== "name") {
+            return;
         }
-        const set = {};
-        room.membership.forEach((ev) => {
-            if (ev.content.membership !== "join") { return; }
-            set[ev.sender] = `${chatName}/` + (ev.content.displayname || ev.sender);
-        });
-        this.matrixRoomUsers.set(chatName, set);
-        return set;
+        this.reflectXMPPStanza(chatName,
+            new StzaMessageSubject(chatName, "", undefined,
+            `${room.name || ""} ${room.topic ? "| " + room.topic : ""}`,
+        ));
     }
 
     public async onRemoteJoin(
@@ -242,7 +273,10 @@ export class XmppJsGateway implements IGateway {
             log.error("Could not find stanza in cache for remoteJoin. Cannot handle");
             throw Error("Stanza for join not in cache, cannot handle");
         }
+        const from = jid(stanza.attrs.from);
         const to = jid(stanza.attrs.to);
+        const chatName = `${to.local}@${to.domain}`;
+
         if (err || !room) {
             const presenceStatus = this.presenceCache.getStatus(stanza.attrs.from);
             if (presenceStatus) {
@@ -253,41 +287,94 @@ export class XmppJsGateway implements IGateway {
             // XXX: Specify the actual failure reason.
             this.xmpp.xmppSend(new StzaPresenceError(
                 stanza.attrs.to, stanza.attrs.from, stanza.attrs.id,
-                `${to.local}@${to.domain}`, "cancel", "service-unavailable",
+                chatName, "cancel", "service-unavailable",
             ));
             return;
         }
         room = room!;
 
-        // https://xmpp.org/extensions/xep-0045.html#order
+        // Check if the nick conflicts.
+        const existingMember = this.members.getMemberByAnonJid(chatName, stanza.attrs.to);
+        if (existingMember) {
+            if (existingMember.type === "matrix") {
+                log.error("Conflicting nickname, not joining");
+                this.xmpp.xmppSend(new StzaPresenceError(
+                    stanza.attrs.to, stanza.attrs.from, stanza.attrs.id,
+                    chatName, "cancel", "conflict",
+                ));
+                throw Error("Conflicting nickname, not joining");
+            }
+            const existingXmppMember = existingMember as IGatewayMemberXmpp;
+            const existingUserId = `${existingXmppMember.realJid!.local}@${existingXmppMember.realJid!.domain}`;
+            const currentUserId = `${from.local}@${from.domain}`;
+            if (existingXmppMember.devices.find((s) => s.toString() === stanza.attrs.from)) {
+                log.debug("Existing device has requested a join");
+                // An existing device has reconnected, so fall through here.
+            } else if (existingUserId === currentUserId) {
+                log.debug(`${currentUserId} is joining from a new device ${from.resource}`);
+            } else {
+                // Different user after the same nick, heck them.
+                log.error("Conflicting nickname, not joining");
+                this.xmpp.xmppSend(new StzaPresenceError(
+                    stanza.attrs.to, stanza.attrs.from, stanza.attrs.id,
+                    chatName, "cancel", "conflict",
+                ));
+                throw Error("Conflicting nickname, not joining");
+            }
+        }
 
+        // FROM THIS POINT ON, WE CONSIDER THE USER JOINED.
+
+        this.members.addXmppMember(
+            `${to.local}@${to.domain}`,
+            jid(stanza.attrs.from),
+            jid(stanza.attrs.to),
+        );
+
+        // https://xmpp.org/extensions/xep-0045.html#order
         // 1. membership of others.
         log.debug("Emitting membership of other users");
-        const xMembers = this.getMemberJidSet(room, `${to.local}@${to.domain}`);
+        this.updateMatrixMemberListForRoom(chatName, room);
+        const members = this.members.getMembers(chatName);
         // Ensure we chunk this
         let sent = 0;
-        for (const sender of Object.keys(xMembers)) {
+        for (const member of members) {
             sent++;
-            log.debug(`Emitting ${sender} ${sent}/${Object.keys(xMembers).length}`);
-            if (sender === ownMxid) {
+            if (member.anonymousJid.toString() === stanza.attrs.to) {
                 continue;
             }
-            const from = xMembers[sender];
-            this.xmpp.xmppSend(
-                new StzaPresenceItem(from, stanza.attrs.from, undefined, "member", "participant"),
-            );
-            if (sent % 25 === 0) {
-                await this.xmpp.xmppWaitForDrain();
-                log.debug(`Sent 25 presence statuses, waiting for drain before sending more`);
+            if (sent % 100 === 0) {
+                try {
+                    await this.xmpp.xmppWaitForDrain(250);
+                } catch (ex) {
+                    log.warn("Drain didn't arrive, oh well");
+                }
             }
+            this.xmpp.xmppSend(
+                new StzaPresenceItem(
+                    member.anonymousJid.toString(),
+                    stanza.attrs.from,
+                    undefined,
+                    "member",
+                    "participant",
+                ),
+            );
         }
 
         log.debug("Emitting membership of self");
         // 2. self presence
         this.xmpp.xmppSend(
-            new StzaPresenceItem(stanza.attrs.to, stanza.attrs.from, undefined, undefined, undefined, true));
-        this.reflectXMPPMessage(x("presence", {
-                from: stanza.attrs.to,
+            new StzaPresenceItem(
+                stanza.attrs.to,
+                stanza.attrs.from,
+                undefined,
+                "member",
+                "participant",
+                true,
+            ),
+        );
+        this.reflectXMPPMessage(chatName, x("presence", {
+                from: stanza.attrs.from,
                 to: null,
                 id: stanza.attrs.id,
             }, x("x", {
@@ -304,8 +391,9 @@ export class XmppJsGateway implements IGateway {
             // TODO: Add delay info to this.
             this.xmpp.xmppWriteToStream(e);
         });
+        log.debug("Emitting subject");
         // 4. The room subject
-        this.xmpp.xmppSend(new StzaMessageSubject(stanza.attrs.to, stanza.attrs.from, undefined,
+        this.xmpp.xmppSend(new StzaMessageSubject(chatName, stanza.attrs.from, undefined,
             `${room.name || ""} ${room.topic ? "| " + room.topic : ""}`,
         ));
         // All done, now for some house cleaning.
@@ -320,17 +408,17 @@ export class XmppJsGateway implements IGateway {
                 room_name: `${to.local}@${to.domain}`,
             },
         } as IStoreRemoteUser);
-        this.addUserToRoomUsers(`${to.local}@${to.domain}`, stanza.attrs.to, stanza.attrs.from);
+        log.debug(`Join complete for ${to}`);
     }
 
     public reconnectRemoteUser(user: BifrostRemoteUser, room: IGatewayRoom) {
         log.info("I have been called upon to resurrect " + user.id);
+        this.updateMatrixMemberListForRoom(user.extraData.room_name, room);
         // Make sure we cache this
-        this.getMemberJidSet(room, user.extraData.room_name);
-        this.addUserToRoomUsers(
+        this.members.addXmppMember(
             user.extraData.room_name,
-            user.extraData.handle,
-            user.extraData.real_jid,
+            jid(user.extraData.real_jid),
+            jid(`${user.extraData.handle}`),
         );
     }
 
@@ -353,9 +441,65 @@ export class XmppJsGateway implements IGateway {
         throw new Error("Method not implemented.");
     }
 
-    private addUserToRoomUsers(roomName: string, roomJid: string, realJid: string) {
-        const rUsers = (this.roomUsers.get(roomName) || {});
-        rUsers[realJid] = roomJid;
-        this.roomUsers.set(roomName, rUsers);
+    public maskPMSenderRecipient(senderMxid: string, recipientJid: string)
+        : {recipient: string, sender: string}|undefined {
+        const j = jid(recipientJid);
+        const convName = `${j.local}@${j.domain}`;
+        log.info("Looking up possible gateway:", senderMxid, recipientJid, convName);
+        const recipient = this.members.getMemberByAnonJid<IGatewayMemberXmpp>(convName, recipientJid);
+        if (!recipient) {
+            return undefined;
+        }
+        const sender = this.members.getMatrixMemberByMatrixId(convName, senderMxid);
+        if (!sender) {
+            log.warn("Couldn't get sender's mxid");
+            throw Error("Couldn't find the senders anonymous jid for a MUC PM over the gateway");
+        }
+        return {
+            recipient: recipient.devices![recipient!.devices!.length - 1].toString(),
+            sender: sender.anonymousJid.toString(),
+        };
+    }
+
+    private updateMatrixMemberListForRoom(chatName: string, room: IGatewayRoom) {
+        const joined = room.membership.filter((member) => member.content.membership === "join" && !member.isRemote);
+        joined.forEach((member) => {
+            this.members.addMatrixMember(
+                chatName,
+                member.state_key,
+                jid(`${chatName}/${member.content.displayname || member.sender}`),
+            );
+        });
+        const left = room.membership.filter((member) => member.content.membership === "leave" && !member.isRemote);
+        left.forEach((member) => {
+            this.members.removeMatrixMember(
+                chatName,
+                member.state_key,
+            );
+        });
+    }
+
+    private remoteLeft(stanza: Element) {
+        log.info(`${stanza.attrs.from} left ${stanza.attrs.to}`);
+        const to = jid(stanza.attrs.to);
+        const chatName = `${to.local}@${to.domain}`;
+        const user = this.members.getXmppMemberByRealJid(chatName, stanza.attrs.from);
+        if (!user) {
+            log.error(`User tried to leave room, but they aren't in the member list`);
+            return;
+        }
+        this.members.removeXmppMember(chatName, stanza.attrs.from);
+        const leaveStza = new StzaPresenceItem(
+            user.anonymousJid.toString(),
+            stanza.attrs.to,
+            undefined,
+            "member",
+            "none",
+            true,
+            stanza.attrs.from,
+        );
+        this.xmpp.xmppWriteToStream(leaveStza);
+        leaveStza.self = false;
+        this.reflectXMPPStanza(chatName, leaveStza);
     }
 }

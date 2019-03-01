@@ -127,7 +127,14 @@ class Program {
         const checkOnly = process.env.BIFROST_CHECK_ONLY === "true";
         log.info("Starting purple bridge on port", port);
         this.cfg.ApplyConfig(config);
-        Logging.configure(this.cfg.logging);
+        if (checkOnly && this.config.logging.console === "off") {
+            // Force console if we are doing an integrity check only.
+            Logging.configure({
+                console: "info",
+            });
+        } else {
+            Logging.configure(this.cfg.logging);
+        }
         this.bridge = new Bridge({
           controller: {
             // onUserQuery: userQuery,
@@ -176,7 +183,12 @@ class Program {
         this.store = new Store(this.bridge);
         try {
             const ignoreIntegrity = process.env.BIFROST_INTEGRITY_WRITE;
-            await this.store.integrityCheck(ignoreIntegrity === undefined || ignoreIntegrity !== "false");
+            await this.store.integrityCheck(
+                ignoreIntegrity === undefined || ignoreIntegrity !== "false");
+            if (checkOnly) {
+                log.warn("BIFROST_CHECK_ONLY is set, exiting");
+                process.exit(0);
+            }
             await this.waitForHomeserver();
             await this.registerBot();
         } catch (ex) {
@@ -204,10 +216,6 @@ class Program {
 
         this.eventHandler.setBridge(this.bridge, autoReg || undefined);
         this.roomHandler.setBridge(this.bridge);
-        if (checkOnly) {
-            log.warn("BIFROST_CHECK_ONLY is set, exiting");
-            process.exit(0);
-        }
         log.info("Bridge has started.");
         try {
             if (purple instanceof XmppJsInstance) {
