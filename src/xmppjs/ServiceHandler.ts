@@ -5,7 +5,7 @@ import { Logging } from "matrix-appservice-bridge";
 import * as request from "request-promise-native";
 import { IGatewayRoom } from "../GatewayHandler";
 import { IGatewayRoomQuery, IGatewayPublicRoomsQuery } from "../purple/PurpleEvents";
-import { StzaIqDiscoInfo } from "./Stanzas";
+import { StzaIqDiscoInfo, StzaIqPing } from "./Stanzas";
 import { IPublicRoom } from "../MatrixTypes";
 
 const log = Logging.get("ServiceHandler");
@@ -68,8 +68,35 @@ export class ServiceHandler {
             return this.handleVcard(from, to, id, intent);
         }
 
-        if (stanza.getChildByAttr("xmlns", "http://jabber.org/protocol/disco#info") && this.xmpp.gateway && local) {
-             return this.handleRoomDiscovery(to, from, id);
+        if (this.xmpp.gateway) {
+            if (stanza.getChildByAttr("xmlns", "http://jabber.org/protocol/disco#info") && local) {
+                 return this.handleRoomDiscovery(to, from, id);
+            }
+
+            if (stanza.getChildByAttr("xmlns", "urn:xmpp:ping")) {
+                log.debug(`Got self ping request: ${to}`)
+                const toJid = jid(to);
+                const chatName = `${toJid.local}@${toJid.domain}`;
+                const exists = !!this.xmpp.gateway.getAnonIDForJID(chatName, stanza.attrs.from);
+                if (exists) {
+                    return this.xmpp.xmppSend(new StzaIqPing(to, from, id));
+                } else {
+                    return this.xmpp.xmppWriteToStream(x("iq", {
+                        type: "error",
+                        from: to,
+                        to: from,
+                        id,
+                    }, x("error", {
+                                type: "cancel",
+                                by: chatName,
+                            },
+                            x("not-acceptable", {
+                                xmlns: "urn:ietf:params:xml:ns:xmpp-stanzas",
+                            }),
+                        ),
+                    ));
+                }
+            }
         }
 
         return this.xmpp.xmppWriteToStream(x("iq", {
