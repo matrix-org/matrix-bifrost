@@ -467,7 +467,7 @@ export class XmppJsGateway implements IGateway {
             this.members.addMatrixMember(
                 chatName,
                 member.state_key,
-                jid(`${chatName}/${member.content.displayname || member.sender}`),
+                jid(`${chatName}/${member.content.displayname || member.state_key}`),
             );
         });
         const left = room.membership.filter((member) => member.content.membership === "leave" && !member.isRemote);

@@ -16,10 +16,10 @@ function createGateway(config?: IConfigBridge) {
     return {gw: new XmppJsGateway(mockXmpp as any, config), mockXmpp};
 }
 
-function createMember(sender: string, displayname?: string, membership: string = "join") {
+function createMember(stateKey: string, displayname?: string, membership: string = "join") {
     return {
-        sender,
-        isRemote: sender.startsWith("@_xmpp_"),
+        state_key: stateKey,
+        isRemote: stateKey.startsWith("@_xmpp_"),
         content: {
             displayname,
             membership,
@@ -148,7 +148,6 @@ describe("XJSGateway", () => {
                 }, x("x", {xmlns: "http://jabber.org/protocol/muc"}) ),
             "#matrix:bar");
             await gw.onRemoteJoin(null, "myjoinid2", room, "@_xmpp_baz:bar");
-
         });
         it("should join a remote user to a room with a large member count", async () => {
             const {gw, mockXmpp} = createGateway();
