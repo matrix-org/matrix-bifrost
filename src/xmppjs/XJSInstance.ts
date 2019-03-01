@@ -425,7 +425,7 @@ export class XmppJsInstance extends EventEmitter implements IPurpleInstance {
             return;
         }
         const to = jid(stanza.attrs.to)!;
-        let localAcct = this.accounts.get(`${to!.local}@${to!.domain}`)!;
+        let localAcct: any = this.accounts.get(`${to!.local}@${to!.domain}`)!;
         let from = jid(stanza.attrs.from);
         let convName = `${from.local}@${from.domain}`;
 
@@ -454,6 +454,7 @@ export class XmppJsInstance extends EventEmitter implements IPurpleInstance {
                 if (userId) {
                     // This is a PM *to* matrix
                     log.info(`Sending gateway PM to ${userId} (${to})`);
+                    localAcct = undefined;
                     for (const acct of this.accounts.values()) {
                         if (acct.mxId === userId) {
                             localAcct = acct;
