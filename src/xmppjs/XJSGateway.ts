@@ -412,6 +412,9 @@ export class XmppJsGateway implements IGateway {
     }
 
     public reconnectRemoteUser(user: BifrostRemoteUser, room: IGatewayRoom) {
+        if (!user.extraData.real_jid) {
+            return;
+        }
         log.info("I have been called upon to resurrect " + user.id);
         this.updateMatrixMemberListForRoom(user.extraData.room_name, room);
         // Make sure we cache this
