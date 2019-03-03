@@ -147,7 +147,6 @@ export class GatewayHandler {
             return;
         }
         const room = await this.getVirtualRoom(roomid, this.bridge.getIntent());
-        const intent = this.bridge.getIntent(mxid);
         log.info(`Reconnecting ${mxid} to ${roomid}`);
         const user = (await this.store.getRemoteUsersFromMxId(mxid))[0];
         if (!user) {
@@ -199,7 +198,7 @@ export class GatewayHandler {
                 intent.leave(roomId);
             }
             log.warn("Failed to join room:", ex.message);
-            await this.purple.gateway!.onRemoteJoin("Failed to join", data.join_id, undefined, undefined);
+            await this.purple.gateway!.onRemoteJoin(ex.message, data.join_id, undefined, undefined);
         }
     }
 
@@ -225,16 +224,22 @@ export class GatewayHandler {
         const remoteId = Buffer.from(
             `${data.protocol_id}:${data.room_name}`,
         ).toString("base64");
+        // Check if we have bridged this already.
+        const exists = (await this.store.getRoomByRoomId(roomId));
+        if (exists) {
+            const roomName = exists.remote.data.room_name;
+            throw Error(`This room is already bridged to ${roomName}`);
+        }
+
         let room = await this.store.getRoomByRemoteData({
             protocol_id: data.protocol_id,
             room_name: data.room_name,
         });
+
         if (room) {
-            if (!room.remote.get("gateway")) {
-                throw Error("Room is bridged via a portal or plumbing, not allowing gateway");
-            }
             return room;
         }
+
         room = this.store.storeRoom(roomId, MROOM_TYPE_GROUP, remoteId, {
             protocol_id: data.protocol_id,
             room_name: data.room_name,

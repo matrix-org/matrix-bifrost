@@ -1,4 +1,5 @@
 import { PurpleProtocol } from "../../src/purple/PurpleProtocol";
+import { MatrixUser } from "matrix-appservice-bridge";
 
 class DummyProtocol extends PurpleProtocol {
     constructor() {
@@ -14,7 +15,7 @@ class DummyProtocol extends PurpleProtocol {
             senderId: string,
             domain: string,
             prefix: string = "") {
-
+        return new MatrixUser(`@${prefix}${senderId}:${domain}`);
     }
 }
 

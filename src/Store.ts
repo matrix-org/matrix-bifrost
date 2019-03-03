@@ -114,6 +114,11 @@ export class Store {
         }
     }
 
+    public async getRoomByRoomId(roomId: string) {
+        const entries = await this.roomStore.getEntriesByMatrixId(roomId);
+        return entries[0] || null;
+    }
+
     public async getUsernameMxidForProtocol(protocol: PurpleProtocol): Promise<{[mxid: string]: string}> {
         const set = {};
         const users = (await this.userStore.getByRemoteData({protocol_id: protocol.id, type: MUSER_TYPE_ACCOUNT}))
