@@ -79,7 +79,7 @@ export class GatewayHandler {
             roomId,
             membership,
         };
-        log.debug("Room:", room);
+        log.debug(`Hydrated room ${roomId} '${room.name}' '${room.topic}' ${room.membership.length} `);
         this.roomIdCache.set(roomId, room);
         return room;
     }
@@ -246,7 +246,7 @@ export class GatewayHandler {
         ).toString("base64");
         // Check if we have bridged this already.
         const exists = (await this.store.getRoomByRoomId(roomId));
-        if (exists) {
+        if (exists && !exists.remote.data.gateway) {
             const roomName = exists.remote.data.room_name;
             throw Error(`This room is already bridged to ${roomName}`);
         }
