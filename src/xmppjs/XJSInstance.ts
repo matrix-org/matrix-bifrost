@@ -81,7 +81,7 @@ export class XmppJsInstance extends EventEmitter implements IPurpleInstance {
         this.bufferedMessages = [];
         this.seenMessages = new Set();
         this.presenceCache = new PresenceCache();
-        this.serviceHandler = new ServiceHandler(this);
+        this.serviceHandler = new ServiceHandler(this, config.bridge);
         this.connectionWasDropped = false;
         this.activeMUCUsers = new Set();
         this.lastMessageInMUC = new Map();
@@ -390,7 +390,7 @@ export class XmppJsInstance extends EventEmitter implements IPurpleInstance {
         }
         try {
             if (isOurs) {
-                if (stanza.is("iq") && stanza.getAttr("type") === "get") {
+                if (stanza.is("iq") && ["get", "set"].includes(stanza.getAttr("type"))) {
                     await this.serviceHandler.handleIq(stanza, this.bridge.getIntent());
                     return;
                 }

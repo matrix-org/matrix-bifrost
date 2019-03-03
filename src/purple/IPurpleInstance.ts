@@ -13,6 +13,7 @@ import { IEventBody,
     IGatewayRoomQuery,
     IStoreRemoteUser,
     IChatReadReceipt,
+    IGatewayPublicRoomsQuery,
 } from "./PurpleEvents";
 import { EventEmitter } from "events";
 import { IGateway } from "./IGateway";
@@ -40,6 +41,7 @@ export interface IPurpleInstance extends EventEmitter {
     on(name: "chat-invite", cb: (ev: IChatInvite) => void);
     on(name: "gateway-queryroom", cb: (ev: IGatewayRoomQuery) => void);
     on(name: "gateway-joinroom", cb: (ev: IGatewayJoin) => void);
+    on(name: "gateway-publicrooms", cb: (ev: IGatewayPublicRoomsQuery) => void);
     on(name: "chat-typing"|"im-typing", cb: (ev: IChatTyping) => void);
     on(name: "received-im-msg"|"received-chat-msg", cb: (ev: IReceivedImMsg) => void);
     on(name: "store-remote-user", cb: (ev: IStoreRemoteUser) => void);

@@ -5,8 +5,9 @@ import { Logging } from "matrix-appservice-bridge";
 import * as request from "request-promise-native";
 import { IGatewayRoom } from "../GatewayHandler";
 import { IGatewayRoomQuery, IGatewayPublicRoomsQuery } from "../purple/PurpleEvents";
-import { StzaIqDiscoInfo, StzaIqPing } from "./Stanzas";
-import { IPublicRoom } from "../MatrixTypes";
+import { StzaIqDiscoInfo, StzaIqPing, StzaIqDiscoItems, StzaIqSearchFields } from "./Stanzas";
+import { IPublicRoomsResponse } from "../MatrixTypes";
+import { IConfigBridge } from "../Config";
 
 const log = Logging.get("ServiceHandler");
 
@@ -24,12 +25,12 @@ export class ServiceHandler {
     private avatarCache: Map<string, {data: Buffer, type: string}>;
     private existingAliases: Map<string, string>; /* alias -> room_id */
     private discoInfo: StzaIqDiscoInfo;
-    constructor(private xmpp: XmppJsInstance) {
+    constructor(private xmpp: XmppJsInstance, private bridgeConfig: IConfigBridge) {
         this.avatarCache = new Map();
         this.existingAliases = new Map();
         this.discoInfo = new StzaIqDiscoInfo("", "", "");
         this.discoInfo.feature.add("http://jabber.org/protocol/disco#info");
-        // this.discoInfo.feature.add("http://jabber.org/protocol/disco#items");
+        this.discoInfo.feature.add("http://jabber.org/protocol/disco#items");
         this.discoInfo.feature.add("http://jabber.org/protocol/protocol/muc");
         this.discoInfo.feature.add("jabber:iq:version");
         this.discoInfo.feature.add("jabber:iq:search");
@@ -41,6 +42,14 @@ export class ServiceHandler {
             return null;
         }
         return `#${aliasRaw[1]}:${aliasRaw[2]}`;
+    }
+
+    public createJIDFromAlias(alias: string): string|null {
+        const aliasRaw = /#(.+):(.+)/g.exec(alias);
+        if (!aliasRaw || aliasRaw.length < 3) {
+            return null;
+        }
+        return `#${aliasRaw[1]}#${aliasRaw[2]}@${this.xmpp.xmppAddress.domain}`;
     }
 
     public async handleIq(stanza: Element, intent: any): Promise<void> {
@@ -60,21 +69,27 @@ export class ServiceHandler {
             return this.handleDiscoInfo(from, to, id);
         }
 
-        if (stanza.getChildByAttr("xmlns", "http://jabber.org/protocol/disco#items")) {
-            // return this.handleDiscoItems(from, to, id);
-        }
-
         if (stanza.getChildByAttr("xmlns", "vcard-temp")) {
             return this.handleVcard(from, to, id, intent);
         }
 
         if (this.xmpp.gateway) {
+            const searchQuery = stanza.getChildByAttr("xmlns", "jabber:iq:search");
+            if (stanza.getChildByAttr("xmlns", "http://jabber.org/protocol/disco#items") &&
+                this.xmpp.xmppAddress.domain === jid(to).domain) {
+                return this.handleDiscoItems(from, to, id, "", undefined);
+            }
+
+            if (searchQuery && !local) {
+                // XXX: Typescript is a being a bit funny about Element, so doing an any here.
+                return this.handleDiscoItems(from, to, id, stanza.attrs.type, searchQuery as any);
+            }
+
             if (stanza.getChildByAttr("xmlns", "http://jabber.org/protocol/disco#info") && local) {
                  return this.handleRoomDiscovery(to, from, id);
             }
-
             if (stanza.getChildByAttr("xmlns", "urn:xmpp:ping")) {
-                log.debug(`Got self ping request: ${to}`)
+                log.debug(`Got self ping request: ${to}`);
                 const toJid = jid(to);
                 const chatName = `${toJid.local}@${toJid.domain}`;
                 const exists = !!this.xmpp.gateway.getAnonIDForJID(chatName, stanza.attrs.from);
@@ -161,27 +176,92 @@ export class ServiceHandler {
         return this.xmpp.xmppSend(this.discoInfo);
     }
 
-    private async handleDiscoItems(to: string, from: string, id: string): Promise<void> {
-        this.discoInfo.to = to;
-        this.discoInfo.from = from;
-        this.discoInfo.id = id;
-        const rooms: IPublicRoom[] = await new Promise((resolve, reject) => {
-            this.xmpp.emit("gateway-publicrooms", {
-                searchString: "",
-                result: (err, res) => {
-                    if (err) {
-                        reject(err);
-                    }
-                    resolve(res);
-                },
-            } as IGatewayPublicRoomsQuery);
-        });
-        if (rooms.length) {
-
-        } else {
-
+    private async handleDiscoItems(to: string, from: string, id: string, type: string,
+                                   searchElement?: Element): Promise<void> {
+        log.info("Got disco items request, looking up public rooms");
+        let searchString = "";
+        let homeserver: string|null = null;
+        if (searchElement) {
+            log.debug("Request was a search");
+            if (type === "get") {
+                log.debug("Responding with search fields");
+                // Getting search fields.
+                return this.xmpp.xmppSend(
+                    new StzaIqSearchFields(
+                        from,
+                        to,
+                        id,
+                        "Please enter a searh term to find Matrix rooms:",
+                        {
+                            Term: "",
+                            Homeserver: this.bridgeConfig.domain,
+                        },
+                    ),
+                );
+            } else if (type === "set") {
+                // Searching via a term.
+                const term = searchElement.getChild("Term");
+                if (term) {
+                    searchString = term.text();
+                }
+                const hServer = searchElement.getChild("Homeserver");
+                if (hServer) {
+                    homeserver = hServer.text();
+                }
+            } else {
+                // Not sure what to do with this.
+                return;
+            }
         }
-        return this.xmpp.xmppSend(this.discoInfo);
+
+        const response = new StzaIqDiscoItems(
+            from, to, id, searchElement ? "jabber:iq:search" : "http://jabber.org/protocol/disco#items",
+        );
+        let rooms: IPublicRoomsResponse;
+        try {
+            rooms = await new Promise((resolve, reject) => {
+                this.xmpp.emit("gateway-publicrooms", {
+                    searchString,
+                    homeserver,
+                    result: (err, res) => {
+                        if (err) {
+                            reject(err);
+                        }
+                        resolve(res);
+                    },
+                } as IGatewayPublicRoomsQuery);
+            });
+        } catch (ex) {
+            log.warn(`Failed to search rooms: ${ex}`);
+            // XXX: There isn't a very good way to explain why it failed,
+            // so we use service unavailable.
+            return this.xmpp.xmppWriteToStream(x("iq", {
+                type: "error",
+                from,
+                to,
+                id,
+            }, x("error", {
+                        type: "cancel",
+                        code: "503",
+                    },
+                    x("service-unavailable", {
+                        xmlns: "urn:ietf:params:xml:ns:xmpp-stanzas",
+                    }),
+                ),
+            ));
+        }
+
+        rooms.chunk.forEach((room) => {
+            if (room.canonical_alias == null) {
+                return;
+            }
+            const j = this.createJIDFromAlias(room.canonical_alias);
+            if (!j) {
+                return;
+            }
+            response.addItem(j, room.name || room.canonical_alias);
+        });
+        return this.xmpp.xmppSend(response);
     }
 
     private queryRoom(roomAlias: string, onlyCheck: boolean = false): Promise<string|IGatewayRoom> {
@@ -224,9 +304,12 @@ export class ServiceHandler {
                         xmlns: "http://jabber.org/protocol/disco#info",
                     }, [
                         x("identity", {
-                            category: "conference",
+                            category: "gateway",
                             name: alias,
-                            type: "text",
+                            type: "matrix",
+                        }),
+                        x("feature", {
+                            var: "http://jabber.org/protocol/disco#info",
                         }),
                         x("feature", {
                             var: "http://jabber.org/protocol/muc",

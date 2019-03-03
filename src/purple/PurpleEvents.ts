@@ -5,8 +5,7 @@
 import { IPurpleAccount } from "./IPurpleAccount";
 import { IBasicProtocolMessage } from "../MessageFormatter";
 import { IGatewayRoom } from "../GatewayHandler";
-import { IRemoteUserAccountRemote } from "../StoreTypes";
-import { IPublicRoom } from "../MatrixTypes";
+import { IPublicRoomsResponse } from "../MatrixTypes";
 
 export interface IChatJoinProperties {[key: string]: string; }
 
@@ -92,7 +91,8 @@ export interface IGatewayRoomQuery extends IGatewayRequest {
 export interface IGatewayPublicRoomsQuery extends IGatewayRequest {
     onlyCheck: boolean;
     searchString: string;
-    result: (err: Error|null, res?: IPublicRoom[]) => void;
+    homeserver: string|null;
+    result: (err: Error|null, res?: IPublicRoomsResponse) => void;
 }
 
 export interface IGatewayJoin {

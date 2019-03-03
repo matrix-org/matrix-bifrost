@@ -281,8 +281,32 @@ export abstract class StzaIqDisco extends StzaBase {
 
     get xml(): string {
         return `<iq from='${this.from}' to='${this.to}' id='${this.id}' type='${this.iqType}'>
-        <query xmlns='http://jabber.org/protocol/disco#${this.queryType}'>
+        <query xmlns='${this.queryType}'>
         ${this.queryContent}</query></iq>`;
+    }
+}
+
+export class StzaIqDiscoItems extends StzaIqDisco {
+    private items: Array<{jid: string, name: string}>;
+    constructor(
+        from: string,
+        to: string,
+        id: string,
+        queryType: string,
+    ) {
+        super(from, to, id, "result", queryType);
+        this.items = [];
+    }
+
+    get queryContent(): string {
+        const items = this.items.map((item) =>
+            `<item jid='${he.encode(item.jid)}' name='${he.encode(item.name)}'/>`,
+        ).join("");
+        return items;
+    }
+
+    public addItem(jid: string, name: string) {
+        this.items.push({jid, name});
     }
 }
 
@@ -294,7 +318,7 @@ export class StzaIqDiscoInfo extends StzaIqDisco {
         public from: string,
         public to: string,
         public id: string) {
-        super(from, to, id, "result", "info");
+        super(from, to, id, "result", "http://jabber.org/protocol/disco#info");
         this.identity = new Set();
         this.feature = new Set();
     }
@@ -311,4 +335,29 @@ export class StzaIqDiscoInfo extends StzaIqDisco {
         return identity + feature;
     }
 
+}
+
+export class StzaIqSearchFields extends StzaBase {
+    constructor(
+        from: string,
+        to: string,
+        id: string,
+        public instructions: string,
+        public fields: {[key: string]: string},
+    ) {
+        super(from, to, id);
+    }
+
+    get type(): string {
+        return "iq";
+    }
+
+    get queryContent(): string { return ""; }
+
+    get xml(): string {
+        const fields = Object.keys(this.fields).map((field) => `<${field}>${this.fields[field]}</${field}>`).join("");
+        return `<iq from='${this.from}' to='${this.to}' id='${this.id}' type='result' xml:lang='en'>`
+        + `<query xmlns='jabber:iq:search'><instructions>${he.encode(this.instructions)}</instructions>`
+        + `${fields}</query></iq>`;
+    }
 }

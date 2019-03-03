@@ -1,4 +1,4 @@
-import { IGatewayJoin, IGatewayRoomQuery } from "./purple/PurpleEvents";
+import { IGatewayJoin, IGatewayRoomQuery, IGatewayPublicRoomsQuery } from "./purple/PurpleEvents";
 import { IPurpleInstance } from "./purple/IPurpleInstance";
 import { Bridge, Logging, Intent } from "matrix-appservice-bridge";
 import { IConfigBridge, Config } from "./Config";
@@ -55,6 +55,7 @@ export class GatewayHandler {
         }
         purple.on("gateway-queryroom", this.handleRoomQuery.bind(this));
         purple.on("gateway-joinroom", this.handleRoomJoin.bind(this));
+        purple.on("gateway-publicrooms", this.handlePublicRooms.bind(this));
         this.aliasCache = new Map();
         this.roomIdCache = new Map();
     }
@@ -214,6 +215,25 @@ export class GatewayHandler {
                 ev.result(null, res.roomId);
             }
             this.bridge.getIntent().leave(res.roomId);
+        } catch (ex) {
+            log.warn("Room not found:", ex);
+            ev.result(Error("Room not found"));
+        }
+    }
+
+    private async handlePublicRooms(ev: IGatewayPublicRoomsQuery) {
+        log.info(`Trying to discover public rooms search=${ev.searchString} homeserver=${ev.homeserver}`);
+        try {
+            // XXX: We should check to see if the room exists in our cache.
+            // We have to join the room, as doing a lookup would not prompt a bridge like freenode
+            // to intervene.
+            const res = await this.bridge.getIntent().getClient().publicRooms({
+                server: ev.homeserver || undefined,
+                filter: {
+                    generic_search_term: ev.searchString,
+                },
+            });
+            ev.result(null, res);
         } catch (ex) {
             log.warn("Room not found:", ex);
             ev.result(Error("Room not found"));
