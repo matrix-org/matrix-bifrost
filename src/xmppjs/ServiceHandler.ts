@@ -29,7 +29,7 @@ export class ServiceHandler {
         this.avatarCache = new Map();
         this.existingAliases = new Map();
         this.discoInfo = new StzaIqDiscoInfo("", "", "");
-        this.discoInfo.identity.add({category: "gateway", type: "matrix", name : "Bifrost"});
+        this.discoInfo.identity.add({category: "conference", type: "text", name : "Bifrost"});
         this.discoInfo.feature.add("http://jabber.org/protocol/disco#info");
         this.discoInfo.feature.add("http://jabber.org/protocol/disco#items");
         this.discoInfo.feature.add("http://jabber.org/protocol/muc");
