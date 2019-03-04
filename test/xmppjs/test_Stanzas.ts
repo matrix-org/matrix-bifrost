@@ -1,6 +1,6 @@
 import * as Chai from "chai";
 import { StzaPresenceItem, StzaPresenceError, StzaMessageSubject,
-    StzaMessage, StzaPresencePart } from "../../src/xmppjs/Stanzas";
+    StzaMessage, StzaPresencePart, StzaPresenceKick } from "../../src/xmppjs/Stanzas";
 import * as parser from "fast-xml-parser";
 const expect = Chai.expect;
 
@@ -41,6 +41,18 @@ describe("Stanzas", () => {
             assertXML(xml);
             expect(xml).to.equal(
                 "<presence from=\"foo@bar\" to=\"baz@bar\" type='unavailable'></presence>",
+            );
+        });
+    });
+    describe("StzaPresenceKick", () => {
+        it("should create a valid stanza", () => {
+            const xml = new StzaPresenceKick("foo@bar", "baz@bar", "reasonable reason", "Kicky", true).xml;
+            assertXML(xml);
+            expect(xml).to.equal(
+                `<presence from="foo@bar" to="baz@bar" type='unavailable'>`
+                + "<x xmlns='http://jabber.org/protocol/muc#user'><item affiliation='none' role='none'>"
+                + "<actor nick='Kicky'/><reason>reasonable reason</reason></item><status code='110'/>"
+                + "<status code='307'/></x></presence>",
             );
         });
     });

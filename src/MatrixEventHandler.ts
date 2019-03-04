@@ -127,11 +127,10 @@ export class MatrixEventHandler {
                     username,
                     protocol,
                 } = this.purple.getUsernameFromMxid(event.state_key!, this.config.bridge.userPrefix);
-                log.debug("Mapped username to", username, protocol);
-                const {acct} = await this.getAccountForMxid(event.sender, protocol.id);
+                log.debug("Mapped username to", username);
                 const remoteData = {
                     matrixUser: event.sender,
-                    protocol_id: acct.protocol.id,
+                    protocol_id: protocol.id,
                     recipient: username,
                 } as any;
                 const ghostIntent = this.bridge.getIntent(event.state_key);
@@ -141,7 +140,7 @@ export class MatrixEventHandler {
                 log.debug(`Joining ${event.state_key} to ${event.room_id}.`);
                 await ghostIntent.join(event.room_id);
                 const remoteId = Buffer.from(
-                    `${event.sender}:${acct.protocol.id}:${username}`,
+                    `${event.sender}:${protocol.id}:${username}`,
                 ).toString("base64");
                 const {remote} = await this.store.storeRoom(event.room_id, MROOM_TYPE_IM, remoteId, remoteData);
                 context.rooms.remote = remote;

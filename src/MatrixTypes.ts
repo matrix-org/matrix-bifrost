@@ -47,6 +47,11 @@ export interface IBridgeContext {
     };
 }
 
+export interface IPublicRoomsResponse {
+    total_room_count_estimate: number;
+    chunk: IPublicRoom[];
+}
+
 export interface IPublicRoom {
     aliases: string[]; // Aliases of the room. May be empty.
     canonical_alias: string|undefined; // The canonical alias of the room, if any.

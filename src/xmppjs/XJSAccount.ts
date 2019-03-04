@@ -37,6 +37,7 @@ export class XmppJsAccount implements IPurpleAccount {
     public readonly connected = true;
 
     public readonly roomHandles: Map<string, string>;
+    private readonly pmSessions: Set<string>;
     private lastStanzaTs: Map<string, number>;
     private checkInterval: NodeJS.Timeout;
     constructor(
@@ -47,6 +48,7 @@ export class XmppJsAccount implements IPurpleAccount {
     ) {
         this.roomHandles = new Map();
         this.waitingToJoin = new Set();
+        this.pmSessions = new Set();
         this.lastStanzaTs = new Map();
         this.checkInterval = setInterval(() => {
             this.lastStanzaTs.forEach((ts, roomName) => {
@@ -88,12 +90,23 @@ export class XmppJsAccount implements IPurpleAccount {
 
     public sendIM(recipient: string, msg: IBasicProtocolMessage) {
         msg.id = msg.id || IDPREFIX + Date.now().toString();
+        // Check if the recipient is a gateway user, because if so we need to do some fancy masking.
+        const res = this.xmpp.gateway ? this.xmpp.gateway.maskPMSenderRecipient(this.mxId, recipient) : null;
+        let sender = `${this.remoteId}/${this.resource}`;
+        if (res) {
+            recipient = res.recipient;
+            sender = res.sender;
+        }
+        log.debug(`IM ${sender} -> ${recipient}`);
         const message = new StzaMessage(
-            `${this.remoteId}/${this.resource}`,
+            sender,
             recipient,
             msg,
             "chat",
         );
+        if (!this.pmSessions.has(recipient)) {
+            this.pmSessions.add(recipient);
+        }
         this.xmpp.xmppAddSentMessage(msg.id);
         this.xmpp.xmppSend(message);
         Metrics.remoteCall("xmpp.message.chat");

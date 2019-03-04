@@ -81,7 +81,7 @@ export class XmppJsInstance extends EventEmitter implements IPurpleInstance {
         this.bufferedMessages = [];
         this.seenMessages = new Set();
         this.presenceCache = new PresenceCache();
-        this.serviceHandler = new ServiceHandler(this);
+        this.serviceHandler = new ServiceHandler(this, config.bridge);
         this.connectionWasDropped = false;
         this.activeMUCUsers = new Set();
         this.lastMessageInMUC = new Map();
@@ -251,6 +251,13 @@ export class XmppJsInstance extends EventEmitter implements IPurpleInstance {
     }
 
     public getAccount(username: string, protocolId: string, mxid: string): IPurpleAccount|null {
+        const j = jid(username);
+        if (j.domain === this.myAddress.domain &&
+            j.local.startsWith("#") &&
+            this.serviceHandler.parseAliasFromJID(j)) {
+            // Account is an gateway alias, not trying.
+            return null;
+        }
         const uLower = username.toLowerCase();
         log.debug("Getting account", username);
         if (protocolId !== "xmpp-js") {
@@ -354,10 +361,6 @@ export class XmppJsInstance extends EventEmitter implements IPurpleInstance {
         });
     }
 
-    public resolveSenderRecipientForIM() {
-
-    }
-
     private generateIdforMsg(stanza: Element) {
         const body = stanza.getChildText("body");
 
@@ -387,7 +390,7 @@ export class XmppJsInstance extends EventEmitter implements IPurpleInstance {
         }
         try {
             if (isOurs) {
-                if (stanza.is("iq") && stanza.getAttr("type") === "get") {
+                if (stanza.is("iq") && ["get", "set"].includes(stanza.getAttr("type"))) {
                     await this.serviceHandler.handleIq(stanza, this.bridge.getIntent());
                     return;
                 }
@@ -422,26 +425,36 @@ export class XmppJsInstance extends EventEmitter implements IPurpleInstance {
             return;
         }
         const to = jid(stanza.attrs.to)!;
-        let localAcct = this.accounts.get(`${to!.local}@${to!.domain}`)!;
+        let localAcct: any = this.accounts.get(`${to!.local}@${to!.domain}`)!;
         let from = jid(stanza.attrs.from);
         let convName = `${from.local}@${from.domain}`;
 
         if (alias) {
+            // If this is an alias, we want to do some gateway related things.
             if (!to.resource) {
+                // Group message to a MUC, so reflect it to other XMPP users
+                // and set the right to/from addresses.
                 convName = `${to.local}@${to.domain}`;
-                stanza.attrs.from = this.gateway!.getRoomJidForRealJid(
+                log.info(`Sending gateway group message to ${convName}`);
+                if (!this.gateway!.reflectXMPPMessage(convName, stanza)) {
+                    log.warn(`Message could not be sent, not forwarding to Matrix`);
+                    return;
+                }
+                stanza.attrs.from = this.gateway!.getAnonIDForJID(
                     convName, stanza.attrs.from) || false;
                 if (stanza.attrs.from === false) {
                     log.warn(`Couldn't find a user for ${from.toString()} reflect message with, dropping`);
                     return;
                 }
                 from = jid(stanza.attrs.from);
-                this.gateway!.reflectXMPPMessage(stanza);
             } else {
-                const userId = this.gateway!.getMatrixIDForJID(to);
+                // This is a PM, then.
+                convName = `${to.local}@${to.domain}`;
+                const userId = this.gateway!.getMatrixIDForJID(convName, to);
                 if (userId) {
                     // This is a PM *to* matrix
-                    log.debug(`Sending gateway PM to ${userId} (${to})`);
+                    log.info(`Sending gateway PM to ${userId} (${to})`);
+                    localAcct = undefined;
                     for (const acct of this.accounts.values()) {
                         if (acct.mxId === userId) {
                             localAcct = acct;
@@ -449,16 +462,23 @@ export class XmppJsInstance extends EventEmitter implements IPurpleInstance {
                         }
                     }
                     if (localAcct === undefined) {
-                        log.error(`No account defined for ${userId}, cannot bridge.`);
+                        log.warn(`No account defined for ${userId}, registering new account.`);
+                        localAcct = await this.autoRegister!.registerUser(XMPP_PROTOCOL.id, userId) as XmppJsAccount;
                     }
-                    stanza.attrs.from = this.gateway!.getAnonIDForJID(`${to.local}@${to.domain}`, from);
+                    const anonJid = this.gateway!.getAnonIDForJID(`${to.local}@${to.domain}`, from);
+                    if (anonJid) {
+                        from = jid(anonJid);
+                    } else {
+                        log.error("Couldn't find anon jid for PM");
+                        return;
+                    }
                 } else {
-                    log.debug(`Sending gateway PM to XMPP user (${to})`);
+                    // This is a PM to another XMPP user, easy.
+                    log.info(`Sending gateway PM to XMPP user (${to})`);
                     this.gateway!.reflectPM(stanza);
                     return;
                 }
             }
-
         }
         const chatState = stanza.getChildByAttr("xmlns", "http://jabber.org/protocol/chatstates");
 
@@ -489,7 +509,7 @@ export class XmppJsInstance extends EventEmitter implements IPurpleInstance {
             } else {
                 log.warn("Could not handle message, auto registration is disabled");
             }
-        } else if (alias) {
+        } else if (!localAcct && alias) {
             // This is a gateway, so setup a fake account.
             localAcct = {
                 remoteId: `${to!.local}@${to!.domain}`,
@@ -569,10 +589,11 @@ export class XmppJsInstance extends EventEmitter implements IPurpleInstance {
             log.debug("Don't know how to handle a message without children");
             return;
         }
-        this.handleTextMessage(stanza, localAcct, from, convName);
+        this.handleTextMessage(stanza, localAcct, from, convName, alias != null);
     }
 
-    private handleTextMessage(stanza: Element, localAcct: XmppJsAccount, from: JID, convName: string) {
+    private handleTextMessage(stanza: Element, localAcct: XmppJsAccount, from: JID,
+                              convName: string, forceMucPM: boolean) {
         const body = stanza.getChildText("body");
         const type = stanza.attrs.type;
         const attachments: IMessageAttachment[] = [];
@@ -625,7 +646,7 @@ export class XmppJsInstance extends EventEmitter implements IPurpleInstance {
             if (!localAcct) {
                 log.debug(`Handling a message to ${convName}, who does not yet exist.`);
             }
-            let isMucPm = !!stanza.getChildByAttr("xmlns", "http://jabber.org/protocol/muc#user");
+            let isMucPm = !!stanza.getChildByAttr("xmlns", "http://jabber.org/protocol/muc#user") || forceMucPM;
             if (!isMucPm) {
                 // We can't rely on this due to https://xmpp.org/extensions/xep-0045.html#privatemessage
                 // XXX: This makes the broad assumption that we don't cache real JIDs in the presence store.

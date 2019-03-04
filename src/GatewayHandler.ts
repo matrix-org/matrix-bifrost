@@ -1,4 +1,4 @@
-import { IGatewayJoin, IGatewayRoomQuery } from "./purple/PurpleEvents";
+import { IGatewayJoin, IGatewayRoomQuery, IGatewayPublicRoomsQuery } from "./purple/PurpleEvents";
 import { IPurpleInstance } from "./purple/IPurpleInstance";
 import { Bridge, Logging, Intent } from "matrix-appservice-bridge";
 import { IConfigBridge, Config } from "./Config";
@@ -55,6 +55,7 @@ export class GatewayHandler {
         }
         purple.on("gateway-queryroom", this.handleRoomQuery.bind(this));
         purple.on("gateway-joinroom", this.handleRoomJoin.bind(this));
+        purple.on("gateway-publicrooms", this.handlePublicRooms.bind(this));
         this.aliasCache = new Map();
         this.roomIdCache = new Map();
     }
@@ -78,7 +79,7 @@ export class GatewayHandler {
             roomId,
             membership,
         };
-        log.debug("Room:", room);
+        log.debug(`Hydrated room ${roomId} '${room.name}' '${room.topic}' ${room.membership.length} `);
         this.roomIdCache.set(roomId, room);
         return room;
     }
@@ -89,7 +90,7 @@ export class GatewayHandler {
             return;
         }
         const room = await this.getVirtualRoom(context.rooms.matrix.getId(), this.bridge.getIntent());
-        this.purple.gateway.sendMatrixMessage(chatName, sender, body, room, chatName);
+        this.purple.gateway.sendMatrixMessage(chatName, sender, body, room);
     }
 
     public async sendStateEvent(chatName: string, sender: string, ev: any , context: IBridgeContext) {
@@ -147,7 +148,6 @@ export class GatewayHandler {
             return;
         }
         const room = await this.getVirtualRoom(roomid, this.bridge.getIntent());
-        const intent = this.bridge.getIntent(mxid);
         log.info(`Reconnecting ${mxid} to ${roomid}`);
         const user = (await this.store.getRemoteUsersFromMxId(mxid))[0];
         if (!user) {
@@ -172,7 +172,13 @@ export class GatewayHandler {
         try {
             // XXX: We don't get the room_id from the join call, because Intents are made of fail.
             await intent._ensureRegistered();
+            if (this.config.tuning.waitOnProfileBeforeSend) {
+                await this.profileSync.updateProfile(protocol, data.sender, this.purple.gateway!);
+            }
             const res = await intent.getClient().joinRoom(data.roomAlias, {syncRoom: false});
+            if (!this.config.tuning.waitOnProfileBeforeSend) {
+                await this.profileSync.updateProfile(protocol, data.sender, this.purple.gateway!);
+            }
             if (!res || !res.roomId) {
                 throw Error(
                     "Roomid not given in join",
@@ -193,7 +199,7 @@ export class GatewayHandler {
                 intent.leave(roomId);
             }
             log.warn("Failed to join room:", ex.message);
-            await this.purple.gateway!.onRemoteJoin("Failed to join", data.join_id, undefined, undefined);
+            await this.purple.gateway!.onRemoteJoin(ex.message, data.join_id, undefined, undefined);
         }
     }
 
@@ -215,20 +221,45 @@ export class GatewayHandler {
         }
     }
 
+    private async handlePublicRooms(ev: IGatewayPublicRoomsQuery) {
+        log.info(`Trying to discover public rooms search=${ev.searchString} homeserver=${ev.homeserver}`);
+        try {
+            // XXX: We should check to see if the room exists in our cache.
+            // We have to join the room, as doing a lookup would not prompt a bridge like freenode
+            // to intervene.
+            const res = await this.bridge.getIntent().getClient().publicRooms({
+                server: ev.homeserver || undefined,
+                filter: {
+                    generic_search_term: ev.searchString,
+                },
+            });
+            ev.result(null, res);
+        } catch (ex) {
+            log.warn("Room not found:", ex);
+            ev.result(Error("Room not found"));
+        }
+    }
+
     private async getOrCreateGatewayRoom(data: IGatewayJoin, roomId: string): Promise<IRoomEntry> {
         const remoteId = Buffer.from(
             `${data.protocol_id}:${data.room_name}`,
         ).toString("base64");
+        // Check if we have bridged this already.
+        const exists = (await this.store.getRoomByRoomId(roomId));
+        if (exists && !exists.remote.data.gateway) {
+            const roomName = exists.remote.data.room_name;
+            throw Error(`This room is already bridged to ${roomName}`);
+        }
+
         let room = await this.store.getRoomByRemoteData({
             protocol_id: data.protocol_id,
             room_name: data.room_name,
         });
+
         if (room) {
-            if (!room.remote.get("gateway")) {
-                throw Error("Room is bridged via a portal or plumbing, not allowing gateway");
-            }
             return room;
         }
+
         room = this.store.storeRoom(roomId, MROOM_TYPE_GROUP, remoteId, {
             protocol_id: data.protocol_id,
             room_name: data.room_name,

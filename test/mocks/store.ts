@@ -4,7 +4,7 @@ import * as Datastore from "nedb";
 
 const DEF_REGEX = /@remote/;
 
-export function mockStore(remoteUserRegex = DEF_REGEX) {
+export function mockStore(remoteUserRegex = DEF_REGEX): Store {
     const userStore = new UserBridgeStore(new Datastore());
     const roomStore = new RoomBridgeStore(new Datastore());
     return new Store({

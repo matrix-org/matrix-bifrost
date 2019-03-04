@@ -1,4 +1,4 @@
-import { IPurpleAccount } from "./purple/IPurpleAccount";
+import { IPurpleAccount, IProfileProvider } from "./purple/IPurpleAccount";
 import * as _fs from "fs";
 import * as path from "path";
 import { PurpleProtocol } from "./purple/PurpleProtocol";
@@ -15,7 +15,7 @@ export class ProfileSync {
     public async updateProfile(
         protocol: PurpleProtocol,
         senderId: string,
-        account: IPurpleAccount,
+        account: IProfileProvider,
         force: boolean = false,
         senderIdToLookup?: string,
     ) {
@@ -39,7 +39,10 @@ export class ProfileSync {
             name: senderId,
             avatar_uri: undefined,
         };
-        const buddy = account.getBuddy(remoteUser.username);
+        let buddy;
+        if ((account as IPurpleAccount).getBuddy !== undefined) {
+            buddy = (account as IPurpleAccount).getBuddy(remoteUser.username);
+        }
         if (buddy === undefined) {
             try {
                 log.info("Fetching user info for", senderIdToLookup);

@@ -13,10 +13,9 @@ import { IEventBody,
     IGatewayRoomQuery,
     IStoreRemoteUser,
     IChatReadReceipt,
+    IGatewayPublicRoomsQuery,
 } from "./PurpleEvents";
-import { IConfigPurple } from "../Config";
 import { EventEmitter } from "events";
-import { IEventRequestData } from "../MatrixTypes";
 import { IGateway } from "./IGateway";
 
 export interface IPurpleInstance extends EventEmitter {
@@ -37,11 +36,12 @@ export interface IPurpleInstance extends EventEmitter {
     );
     on(name: "chat-joined", cb: (ev: IConversationEvent) => void);
     on(name: "chat-joined-new", cb: (ev: IChatJoined) => void);
-    on(name: "chat-user-joined"|"chat-user-left", cb: (ev: IUserStateChanged) => void);
+    on(name: "chat-user-joined"|"chat-user-left"|"chat-user-kick"|"chat-kick", cb: (ev: IUserStateChanged) => void);
     on(name: "chat-topic", cb: (ev: IChatStringState) => void);
     on(name: "chat-invite", cb: (ev: IChatInvite) => void);
     on(name: "gateway-queryroom", cb: (ev: IGatewayRoomQuery) => void);
     on(name: "gateway-joinroom", cb: (ev: IGatewayJoin) => void);
+    on(name: "gateway-publicrooms", cb: (ev: IGatewayPublicRoomsQuery) => void);
     on(name: "chat-typing"|"im-typing", cb: (ev: IChatTyping) => void);
     on(name: "received-im-msg"|"received-chat-msg", cb: (ev: IReceivedImMsg) => void);
     on(name: "store-remote-user", cb: (ev: IStoreRemoteUser) => void);
