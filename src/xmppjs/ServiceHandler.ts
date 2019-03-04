@@ -29,9 +29,10 @@ export class ServiceHandler {
         this.avatarCache = new Map();
         this.existingAliases = new Map();
         this.discoInfo = new StzaIqDiscoInfo("", "", "");
+        this.discoInfo.identity.add({category: "gateway", type: "matrix", name : "Bifrost"});
         this.discoInfo.feature.add("http://jabber.org/protocol/disco#info");
         this.discoInfo.feature.add("http://jabber.org/protocol/disco#items");
-        this.discoInfo.feature.add("http://jabber.org/protocol/protocol/muc");
+        this.discoInfo.feature.add("http://jabber.org/protocol/muc");
         this.discoInfo.feature.add("jabber:iq:version");
         this.discoInfo.feature.add("jabber:iq:search");
     }
@@ -215,7 +216,8 @@ export class ServiceHandler {
         }
 
         const response = new StzaIqDiscoItems(
-            from, to, id, searchElement ? "jabber:iq:search" : "http://jabber.org/protocol/disco#items",
+            from, to, id,
+            searchElement ? "jabber:iq:search" : "http://jabber.org/protocol/disco#items",
         );
         let rooms: IPublicRoomsResponse;
         try {
