@@ -589,10 +589,11 @@ export class XmppJsInstance extends EventEmitter implements IPurpleInstance {
             log.debug("Don't know how to handle a message without children");
             return;
         }
-        this.handleTextMessage(stanza, localAcct, from, convName);
+        this.handleTextMessage(stanza, localAcct, from, convName, alias != null);
     }
 
-    private handleTextMessage(stanza: Element, localAcct: XmppJsAccount, from: JID, convName: string) {
+    private handleTextMessage(stanza: Element, localAcct: XmppJsAccount, from: JID,
+                              convName: string, forceMucPM: boolean) {
         const body = stanza.getChildText("body");
         const type = stanza.attrs.type;
         const attachments: IMessageAttachment[] = [];
@@ -645,7 +646,7 @@ export class XmppJsInstance extends EventEmitter implements IPurpleInstance {
             if (!localAcct) {
                 log.debug(`Handling a message to ${convName}, who does not yet exist.`);
             }
-            let isMucPm = !!stanza.getChildByAttr("xmlns", "http://jabber.org/protocol/muc#user");
+            let isMucPm = !!stanza.getChildByAttr("xmlns", "http://jabber.org/protocol/muc#user") || forceMucPM;
             if (!isMucPm) {
                 // We can't rely on this due to https://xmpp.org/extensions/xep-0045.html#privatemessage
                 // XXX: This makes the broad assumption that we don't cache real JIDs in the presence store.
