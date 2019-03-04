@@ -256,9 +256,8 @@ export class StzaIqPing extends StzaBase {
     }
 
     get xml(): string {
-        return `<iq from='${this.from}' to='${this.to}' id='${this.id}' type='get'>
-    <ping xmlns='urn:xmpp:ping'/>
-</iq>`;
+        return `<iq from='${this.from}' to='${this.to}' id='${this.id}' type='get'>`
+               + "<ping xmlns='urn:xmpp:ping'/></iq>";
     }
 }
 
@@ -280,9 +279,8 @@ export abstract class StzaIqDisco extends StzaBase {
     get queryContent(): string { return ""; }
 
     get xml(): string {
-        return `<iq from='${this.from}' to='${this.to}' id='${this.id}' type='${this.iqType}'>
-        <query xmlns='${this.queryType}'>
-        ${this.queryContent}</query></iq>`;
+        return `<iq from='${this.from}' to='${this.to}' id='${this.id}' type='${this.iqType}'>`
+         + `<query xmlns='${this.queryType}'>${this.queryContent}</query></iq>`;
     }
 }
 
