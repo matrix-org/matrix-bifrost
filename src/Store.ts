@@ -264,7 +264,7 @@ export class Store {
             log.info(`Removing ${roomGroup.length} duplicate rooms.`);
             if (canWrite) {
                 await Promise.all(roomGroup.map((removedEntry) => {
-                    log.debug(`Cleaning up room entry ${removedEntry._id}`);
+                    log.info(`Cleaning up room entry ${removedEntry._id}`, removedEntry.remote);
                     removedRemoteRooms.push(removedEntry._id);
                     return this.roomStore.delete({
                         _id: removedEntry._id,
