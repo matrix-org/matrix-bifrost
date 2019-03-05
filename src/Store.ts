@@ -261,18 +261,16 @@ export class Store {
             });
             roomGroup.pop(); // Remove the one we want to keep
             log.info(`Removing ${roomGroup.length} duplicate rooms.`);
-            if (canWrite) {
-                await Promise.all(roomGroup.map((removedEntry) => {
-                    log.info(`Cleaning up room entry ${removedEntry._id}`, removedEntry.remote);
-                    removedRemoteRooms.push(removedEntry._id);
-                    if (!canWrite) {
-                        return Promise.resolve();
-                    }
-                    return this.roomStore.delete({
-                        _id: removedEntry._id,
-                    }) as Promise<void>;
-                })).then(() => { /* for typescript */});
-            }
+            await Promise.all(roomGroup.map((removedEntry) => {
+                log.info(`Cleaning up room entry ${removedEntry._id}`, removedEntry.remote);
+                removedRemoteRooms.push(removedEntry._id);
+                if (!canWrite) {
+                    return Promise.resolve();
+                }
+                return this.roomStore.delete({
+                    _id: removedEntry._id,
+                }) as Promise<void>;
+            })).then(() => { /* for typescript */});
         }
 
         // Check the user store.
