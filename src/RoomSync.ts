@@ -152,10 +152,15 @@ export class RoomSync {
         );
         if (matrixUser === null) {
             log.warn(`${ev.account.username} isn't bound to a matrix account. Disabling`);
-            if (acct !== null) {
-                acct.setEnabled(false);
-                return;
+            try {
+                if (acct !== null) {
+                    acct.setEnabled(false);
+                    return;
+                }
+            } catch (ex) {
+                // This can fail.
             }
+
             log.error(`Tried to get ${ev.account.username} but libpurple found nothing. This shouldn't happen!`);
             return;
         }
