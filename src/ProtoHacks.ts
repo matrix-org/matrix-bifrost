@@ -15,12 +15,16 @@ export const XMPP_JS = "xmpp-js";
  * carefully so that future folks can understand what is going on.
  */
 export class ProtoHacks {
-    public static async addJoinProps(protocolId: string, props: any, userId: string, intent: Intent) {
+    public static async addJoinProps(protocolId: string, props: any, userId: string, intent: Intent|string) {
         // When joining XMPP rooms, we should set a handle so pull off one from the users
         // profile.
         if (protocolId === PRPL_XMPP || protocolId === XMPP_JS) {
             try {
-                props.handle = (await intent.getProfileInfo(userId)).displayname;
+                if (typeof(intent) === "string") {
+                    props.handle = intent;
+                } else {
+                    props.handle = (await intent.getProfileInfo(userId)).displayname;
+                }
             } catch (ex) {
                 log.warn("Failed to get profile for", userId);
                 props.handle = userId;

@@ -129,7 +129,9 @@ export class RoomSync {
                 const remoteUser = remotes[0];
                 log.info(`${remoteUser.id} will join ${room.remote.get("room_name")} on connection`);
                 const props = Util.desanitizeProperties(Object.assign({}, room.remote.get("properties")));
-                await ProtoHacks.addJoinProps(room.remote.get("protocol_id"), props, userId, intent);
+                await ProtoHacks.addJoinProps(
+                    room.remote.get("protocol_id"), props, userId, members[userId].displayname || intent
+                );
                 const acctMemberList = this.accountRoomMemberships.get(remoteUser.id) || [];
                 acctMemberList.push({
                     room_name: room.remote.get("room_name"),
