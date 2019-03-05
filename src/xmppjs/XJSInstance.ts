@@ -235,8 +235,13 @@ export class XmppJsInstance extends EventEmitter implements IPurpleInstance {
 
     public signInAccounts(mxidUsernames: {[mxid: string]: string}) {
         Object.keys(mxidUsernames).forEach((mxid) => {
-            log.debug(`Signing in ${mxid} (${mxidUsernames[mxid]}) to XMPP`);
-            this.getAccount(mxidUsernames[mxid], XMPP_PROTOCOL.id, mxid);
+            try {
+                log.debug(`Signing in ${mxid} (${mxidUsernames[mxid]}) to XMPP`);
+                this.getAccount(mxidUsernames[mxid], XMPP_PROTOCOL.id, mxid);
+            } catch (ex) {
+                log.error(`Failed to signInAccounts for ${mxid}:`, ex);
+                throw Error("Cannot continue");
+            }
         });
     }
 
