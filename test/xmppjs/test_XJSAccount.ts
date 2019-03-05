@@ -33,17 +33,17 @@ describe("XJSAccount", () => {
     });
 
     describe("sendIM", () => {
-        it("should be able to send a basic message", async () => {
-            await acct.sendIM("alice@remote.server", {
+        it("should be able to send a basic message", () => {
+            acct.sendIM("alice@remote.server", {
                 body: "Hello!",
                 id: "12345",
             } as IBasicProtocolMessage);
             expect(instance.sentMessageIDs).to.include("12345");
             expect(instance.sentMessages[0]).to.deep.equal({
-                _from: "bob@matrix.localhost/matrix-bridge",
-                _to: "alice@remote.server",
+                hFrom: "bob@matrix.localhost/matrix-bridge",
+                hTo: "alice@remote.server",
                 messageType: "chat",
-                _id: "12345",
+                hId: "12345",
                 html: "",
                 body: "Hello!",
                 attachments: [],

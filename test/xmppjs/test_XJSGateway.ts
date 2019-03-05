@@ -113,9 +113,9 @@ describe("XJSGateway", () => {
             expect((messages[2] as any).statusCodes).to.contain("110");
 
             expect(messages[3]).to.deep.equal({
-                _from: "#matrix#bar@conference.localhost",
-                _to: "frogman@froguniverse/frogdevice",
-                _id: "",
+                hFrom: "#matrix#bar@conference.localhost",
+                hTo: "frogman@froguniverse/frogdevice",
+                hId: "",
                 subject: "GatewayRoom | GatewayTopic",
             });
         });

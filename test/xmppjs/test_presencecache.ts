@@ -16,7 +16,6 @@ const aliceJoinGateway = x("presence", {
     to: "aroom@conf.xmpp.matrix.org/alice",
 });
 
-
 const aliceLeave = x("presence", {
     to: "bob@xmpp.matrix.org/fakedevice",
     from: "aroom@conf.xmpp.matrix.org/alice",
@@ -24,7 +23,7 @@ const aliceLeave = x("presence", {
 }, [
     x("x", {xmlns: "http://jabber.org/protocol/muc#user"}, [
         x("item", {affiliation: "none", role: "none"}),
-    ])
+    ]),
 ]);
 
 const bobJoin = x("presence", {
@@ -34,7 +33,7 @@ const bobJoin = x("presence", {
     x("x", {xmlns: "http://jabber.org/protocol/muc#user"}, [
         x("item", {affiliation: "member", role: "participant"}),
         x("status", {code: "110"}),
-    ])
+    ]),
 ]);
 
 const aliceSeesBobJoin = x("presence", {
@@ -54,7 +53,7 @@ const bobLeave = x("presence", {
     x("x", {xmlns: "http://jabber.org/protocol/muc#user"}, [
         x("item", {affiliation: "none", role: "none"}),
         x("status", {code: "110"}),
-    ])
+    ]),
 ]);
 
 const aliceKick = x("presence", {

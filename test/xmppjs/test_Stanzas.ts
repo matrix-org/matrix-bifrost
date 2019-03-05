@@ -7,7 +7,7 @@ const expect = Chai.expect;
 function assertXML(xml) {
     const err = parser.validate(xml);
     if (err !== true) {
-        console.error(xml);
+        // console.error(xml);
         throw new Chai.AssertionError(err.err.code + ": " + err.err.msg);
     }
 }
@@ -96,6 +96,16 @@ describe("Stanzas", () => {
                 "<message from=\"foo@bar\" to=\"baz@bar\" id=\"someid\" type='groupchat'><html><p>"
                 + "<strong>Viva la</strong> matrix&#x32D;</p></html><body>http://matrix.org</body>"
                 + "<x xmlns='jabber:x:oob'><url>http://matrix.org</url></x></message>",
+            );
+        });
+    });
+    describe("StzaMessage", () => {
+        it("should create a valid stanza", () => {
+            const xml = new StzaMessageSubject("foo@bar", "baz@bar", "someid", "This is a subject").xml;
+            assertXML(xml);
+            expect(xml).to.equal(
+                "<message from=\"foo@bar\" to=\"baz@bar\" id=\"someid\" type='groupchat'>"
+                + "<subject>This is a subject</subject></message>",
             );
         });
     });

@@ -90,7 +90,7 @@ class Program {
         const url = `${this.config.bridge.homeserverUrl}/_matrix/client/versions`;
         while (true) {
             try {
-                (await request.get(url));
+                request.get(url);
                 return true;
             } catch (ex) {
                 log.warn("Failed to contact", url, "waiting..");
@@ -139,14 +139,14 @@ class Program {
           controller: {
             // onUserQuery: userQuery,
             onAliasQuery: (alias, aliasLocalpart) => this.eventHandler!.onAliasQuery(alias, aliasLocalpart),
-            onEvent: (request: IEventRequest, context) => {
+            onEvent: (r: IEventRequest, context) => {
                 if (this.eventHandler === undefined) {return; }
-                const p = this.eventHandler.onEvent(request, context).catch((err) => {
+                const p = this.eventHandler.onEvent(r, context).catch((err) => {
                     log.error("onEvent err", err);
                 }).catch(() => {
-                    Metrics.requestOutcome(false, request.getDuration(), "fail");
+                    Metrics.requestOutcome(false, r.getDuration(), "fail");
                 }).then(() => {
-                    Metrics.requestOutcome(false, request.getDuration(), "success");
+                    Metrics.requestOutcome(false, r.getDuration(), "success");
                 });
             },
             onLog: (msg: string, error: boolean) => {

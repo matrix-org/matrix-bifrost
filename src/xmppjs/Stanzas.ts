@@ -10,32 +10,32 @@ export interface IStza {
 export abstract class StzaBase implements IStza {
     public type!: string;
     public xml!: string;
-    private _from: string = "";
-    private _to: string = "";
-    private _id?: string = "";
+    private hFrom: string = "";
+    private hTo: string = "";
+    private hId?: string = "";
     constructor(from: string, to: string, id?: string) {
         this.from = from;
         this.to = to;
         this.id = id;
     }
 
-    get from() { return this._from; }
+    get from() { return this.hFrom; }
 
     set from(val: string) {
-        this._from = he.encode(val);
+        this.hFrom = he.encode(val);
     }
 
-    get to() { return this._to; }
+    get to() { return this.hTo; }
 
     set to(val: string) {
-        this._to = he.encode(val);
+        this.hTo = he.encode(val);
     }
 
-    get id(): string|undefined { return this._id || undefined; }
+    get id(): string|undefined { return this.hId || undefined; }
 
     set id(val: string|undefined) {
         if (!val) { return; }
-        this._id = he.encode(val);
+        this.hId = he.encode(val);
     }
 
 }

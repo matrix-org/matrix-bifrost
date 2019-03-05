@@ -21,7 +21,7 @@ describe("XHTMLIM", () => {
         ).to.equal(
             "<html xmlns='http://jabber.org/protocol/xhtml-im'>o/</html>",
         );
-    })
+    });
     it("should transform a message with a link", () => {
         expect(
             XHTMLIM.HTMLToXHTML(

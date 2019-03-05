@@ -52,7 +52,7 @@ export interface IRemoteUserAccountRemote extends IRemoteUserAccount {
     last_check?: number;
     displayname?: string;
     avatar_url?: string;
-    protocol_data: {[key: string]: string|number}
+    protocol_data: {[key: string]: string|number};
 }
 
 export interface IRoomEntry {
