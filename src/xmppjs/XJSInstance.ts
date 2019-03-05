@@ -514,9 +514,15 @@ export class XmppJsInstance extends EventEmitter implements IPurpleInstance {
             localAcct = {
                 remoteId: `${to!.local}@${to!.domain}`,
             } as any;
-        } else {
+        }
+
+        if (!alias) {
+            // This is used to reset a timer that will self ping
+            // if no messages get seen. This is pointless on a gateway,
+            // so disable it.
             localAcct.xmppBumpLastStanzaTs(convName);
         }
+
         if (chatState) {
             if (chatState.is("composing") || chatState.is("active") || chatState.is("paused")) {
                 const eventName = type === "groupchat" ? "chat-typing" : "im-typing";
