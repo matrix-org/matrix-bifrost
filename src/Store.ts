@@ -2,7 +2,7 @@ import { Bridge, MatrixRoom, RemoteRoom, RemoteUser,
     MatrixUser, UserStore, RoomStore, Logging, AsBot } from "matrix-appservice-bridge";
 import { Util } from "./Util";
 import { MROOM_TYPES, IRoomEntry, IRemoteRoomData, IRemoteGroupData,
-    MUSER_TYPE_ACCOUNT, MUSER_TYPE_GHOST, MUSER_TYPES, MROOM_TYPE_UADMIN } from "./StoreTypes";
+    MUSER_TYPE_ACCOUNT, MUSER_TYPE_GHOST, MUSER_TYPES, MROOM_TYPE_UADMIN, MROOM_TYPE_GROUP } from "./StoreTypes";
 import { PurpleProtocol } from "./purple/PurpleProtocol";
 import { IAccountMinimal } from "./purple/PurpleEvents";
 const log = Logging.get("Store");
@@ -205,6 +205,7 @@ export class Store {
         } else {
             log.warn("Check WILL NOT modify database");
         }
+        const removedRemoteRooms: string[] = [];
         // Check the room store.
         // Rooms are considered invalid if they have no remote part.
         // We use `select` to get the _id.
@@ -218,10 +219,58 @@ export class Store {
             log.info("Cleaning up room entries");
             await Promise.all(invalidRoomEntries.map((entry) => {
                 log.debug(`Cleaning up room entry ${entry._id}`);
+                removedRemoteRooms.push(entry._id);
                 return this.roomStore.delete({
                     _id: entry._id,
                 }) as Promise<void>;
             })).then(() => { /* for typescript */});
+        }
+
+        // Special case problem: Gateways used to be allowed for rooms that were plumbed/portals
+        // We need to remove any gateways to these rooms.
+        for (const entry of roomEntries) {
+            log.debug(`Checking ${entry.matrix_id} for dupes`);
+            if (removedRemoteRooms.includes(entry._id) ||
+            entry.matrix.extras.type !== MROOM_TYPE_GROUP) {
+                continue;
+            }
+            const roomGroup: [any] = roomEntries.filter(
+                (e) => !removedRemoteRooms.includes(e._id) &&
+                        e.matrix_id === entry.matrix_id,
+            );
+            if (roomGroup.length === 1) {
+                continue;
+            }
+            log.warn(`${entry.matrix_id} has two or more entries`);
+            // Favour Plumbed > Portal > Gateway
+            roomGroup.sort((eA, eB) => {
+                if (eA.remote.plumbed && !eB.remote.plumbed) {
+                    return 1;
+                } else if (!eA.remote.plumbed && eB.remote.plumbed) {
+                    return -1;
+                } else if (eA.remote.plumbed && eB.remote.plumbed) {
+                    return 0;
+                }
+                if (eA.remote.gateway && !eB.remote.gateway) {
+                    return -1;
+                } else if (!eA.remote.gateway && eB.remote.gateway) {
+                    return 1;
+                } else {
+                    return 0;
+                }
+            });
+            roomGroup.reverse();
+            roomGroup.pop();
+            log.info(`Removing ${roomGroup.length} duplicate rooms.`);
+            if (canWrite) {
+                await Promise.all(roomGroup.map((removedEntry) => {
+                    log.debug(`Cleaning up room entry ${removedEntry._id}`);
+                    removedRemoteRooms.push(removedEntry._id);
+                    return this.roomStore.delete({
+                        _id: removedEntry._id,
+                    }) as Promise<void>;
+                })).then(() => { /* for typescript */});
+            }
         }
 
         // Check the user store.
