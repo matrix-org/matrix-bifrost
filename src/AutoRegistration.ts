@@ -132,8 +132,8 @@ export class AutoRegistration {
         const mxUser = new MatrixUser(mxId);
         for (const key of Object.keys(parameters)) {
             let val = parameters[key];
-            val = val.replace("<T_MXID>", mxId);
-            val = val.replace("<T_MXID_SANE>", this.getSaneMxId(mxId));
+            val = val.replace("<T_MXID>", mxUser.getId());
+            val = val.replace("<T_MXID_SANE>", this.getSaneMxId(mxUser.getId()));
             val = val.replace("<T_LOCALPART>", mxUser.localpart);
             val = val.replace("<T_DOMAIN>", mxUser.host);
             val = val.replace("<T_DISPLAYNAME>", profile.displayname || mxUser.localpart);
