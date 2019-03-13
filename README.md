@@ -15,7 +15,7 @@ This has been tested to work on `Node.JS v10` and `Synapse 0.34.0`.
 
 This bridge features multiple backends for spinning up bridges on different types of network.
 The following are supported:
-* `xmpp.js`
+* `xmpp.js` *Supported on Docker*
     Designed to bridge to XMPP networks directly, without purple. Good for setups requiring an extremely scalable XMPP bridge. Uses XMPP components.
 * `node-purple`
     Uses libpurple to bridge to a number of networks supported by libpurple2. Good for simple bridges for a small number of users, or for bridging to less available protocols.
@@ -69,6 +69,18 @@ npm run genreg -- -u http://localhost:9555 # Set listener url here.
 ```
 
 This file should be accessible by your **homeserver**, which will use this file to get the correct url and tokens to push events to.
+
+For Synapse, this can be done by:
+
+* Editing `app_service_config_files` in `homeserver.yaml` to include the full path of your registration file generated above.
+
+```yaml
+app_service_config_files: 
+    - ".../bifrost-registration.yaml"
+```
+
+* Restart synapse, if it is running (`synctl restart`)
+
 
 ### XMPP bridge using the xmpp.js backend
 
