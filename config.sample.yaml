@@ -18,7 +18,7 @@ purple:
   enableDebug: false
   # For node-purple, a directory containing plugins to load.
   pluginDir: "./node_modules/node-purple/deps/libpurple/"
-# -- For xmpp.js
+# -- For xmpp.js - You need an existing xmpp server for this to work.
 #  backendOpts:
      # endpoint to reach the component on. The default port is 5347
      #service: "xmpp://localhost:5347"
@@ -32,6 +32,8 @@ purple:
 # The following options allow you to configure how the purple bridge may
 # match those aliases to remote rooms.
 portals:
+  # Enable gateway support for protocols that support them, e.g. xmpp.js
+  enableGateway: false
   # List of regexes to match a alias that can be turned into a bridge.
   aliases:
     # This matches _purple_ followed by anything
@@ -43,6 +45,7 @@ portals:
         room: "regex:1"
         # Set the server to be conf.localhost
         server: "conf.localhost"
+    # For xmpp.js, please use:
 
 # Automatically register users with accounts if they join/get invited
 # a room with a protocol they are not bound to.
@@ -54,11 +57,12 @@ autoRegistration:
 #   xmpp-js:
 #     type: "implicit"
 #     parameters:
-#       username: "<T_LOCALPART>@matrix.localhost"
+#       username: "<T_LOCALPART>_<T_DOMAIN>@matrix.localhost"
 
 # Available subsitution variables for parameters:
 # <T_MXID> - The users mxid.
 # <T_MXID_SANE> - The users mxid, with an : replaced with _ and the @ discarded.
+# <T_DOMAIN> - The users domain.
 # <T_LOCALPART> - The users localpart.
 # <T_DISPLAYNAME> - The users displayname, or localpart if not set.
 # <T_GENERATEPWD> - Generates a 32 char password
@@ -66,7 +70,7 @@ autoRegistration:
 
 
 ## This is how to autoregister folks with prosody (xmpp)
-## with the included lua script in extras. This applies to node-purple.
+## with the included lua script in extras. This applies to node-purple (NOT xmpp.js)
 #   protocolSteps:
 #       prpl-jabber:
 #           type: "http"
@@ -112,3 +116,12 @@ tuning:
     # the first time. This should help clients hide ugly mxids better behind
     # displaynames.
     waitOnProfileBeforeSend: true
+    #  A nasty hack to check the domain for conf* to see if the PM is coming from a MUC.
+    # This is only really needed for legacy clients that don't implement xmlns.
+    # This is specific to the XMPP.js bridge.
+    # conferencePMFallbackCheck: false
+    # Don't send messages from the remote protocol until we have seen them join.
+    # A list of prefixes to check for a userId.
+    # This is useful for talking to remote IRC users who might not see a message
+    # until after they have joined.
+    # waitOnJoinBeforePM: string[];
