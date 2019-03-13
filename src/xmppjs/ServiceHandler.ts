@@ -95,7 +95,7 @@ export class ServiceHandler {
                 const chatName = `${toJid.local}@${toJid.domain}`;
                 const exists = !!this.xmpp.gateway.getAnonIDForJID(chatName, stanza.attrs.from);
                 if (exists) {
-                    return this.xmpp.xmppSend(new StzaIqPing(to, from, id));
+                    return this.xmpp.xmppSend(new StzaIqPing(to, from, id, "result"));
                 } else {
                     return this.xmpp.xmppWriteToStream(x("iq", {
                         type: "error",

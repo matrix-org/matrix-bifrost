@@ -164,6 +164,7 @@ export class XmppJsAccount implements IPurpleAccount {
             `${this.remoteId}/${this.resource}`,
             to,
             id,
+            "get",
         ));
         return new Promise((resolve, reject) => {
             const timeout = setTimeout(() => resolve(false), 1000);

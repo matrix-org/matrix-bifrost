@@ -247,6 +247,7 @@ export class StzaIqPing extends StzaBase {
         from: string,
         to: string,
         id: string,
+        public responseType: string,
     ) {
         super(from, to, id || uuid());
     }
@@ -256,7 +257,7 @@ export class StzaIqPing extends StzaBase {
     }
 
     get xml(): string {
-        return `<iq from='${this.from}' to='${this.to}' id='${this.id}' type='get'>`
+        return `<iq from='${this.from}' to='${this.to}' id='${this.id}' type='${this.responseType}'>`
                + "<ping xmlns='urn:xmpp:ping'/></iq>";
     }
 }
