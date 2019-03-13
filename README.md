@@ -9,7 +9,7 @@ This bridge is in very active development currently and intended mainly for expe
 
 This has been tested to work on `Node.JS v10` and `Synapse 0.34.0`.
 
-**You must read this README carefully as simply installing required dependencies may NOT be enough for some backends**
+**NOTE: You must read this README carefully as simply installing required dependencies may NOT be enough for some backends**
 
 ## Backends
 
@@ -51,6 +51,8 @@ You can install this on Ubuntu/Debian using `sudo apt install build-essential li
 Instructions for other distributions will come soon.
 
 ### Installing & Configuring
+
+**NOTE: You must carefully read the config.sample.yaml and use the bits appropriate for you. Do NOT copy and paste it verbatim as it won't work.**
 
 ```shell
 npm install # Install dependencies
