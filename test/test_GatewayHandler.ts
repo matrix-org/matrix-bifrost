@@ -15,7 +15,7 @@ function createGH() {
         intent: null,
         profileUpdated: false,
         remoteJoin: null,
-        remoteJoinPromise: new Promise((resolve) => remoteJoinResolve = resolve)
+        remoteJoinPromise: new Promise((resolve) => remoteJoinResolve = resolve),
     };
     const bridge = {
         getIntent: (userId) => {
