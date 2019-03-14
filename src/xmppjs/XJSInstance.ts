@@ -57,6 +57,7 @@ class XmppProtocol extends PurpleProtocol {
 }
 
 export const XMPP_PROTOCOL = new XmppProtocol();
+const SEEN_MESSAGES_SIZE = 16384;
 
 export class XmppJsInstance extends EventEmitter implements IPurpleInstance {
     public readonly presenceCache: PresenceCache;
@@ -143,7 +144,14 @@ export class XmppJsInstance extends EventEmitter implements IPurpleInstance {
         });
     }
 
-    public xmppAddSentMessage(id: string) { this.seenMessages.add(id); }
+    public xmppAddSentMessage(id: string) {
+        this.seenMessages.add(id);
+        // Remove old entries
+        if (this.seenMessages.size >= SEEN_MESSAGES_SIZE) {
+            const arr = [...this.seenMessages].slice(0, 50);
+            arr.forEach(this.seenMessages.delete.bind(this.seenMessages));
+        }
+    }
 
     public isWaitingToJoin(j: JID): string|undefined {
         for (const acct of this.accounts.values()) {
@@ -382,7 +390,7 @@ export class XmppJsInstance extends EventEmitter implements IPurpleInstance {
         if (this.seenMessages.has(id)) {
             return;
         }
-        this.seenMessages.add(id);
+        this.xmppAddSentMessage(id);
         log.debug("Stanza:", stanza.toJSON());
         const from = stanza.attrs.from ? jid(stanza.attrs.from) : null;
         const to = stanza.attrs.to ? jid(stanza.attrs.to) : null;

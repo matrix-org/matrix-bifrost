@@ -24,6 +24,7 @@ import { IEventRequest, IEventRequestData } from "./MatrixTypes";
 const log = Logging.get("MatrixRoomHandler");
 
 const ACCOUNT_LOCK_MS = 1000;
+const EVENT_MAPPING_SIZE = 16384;
 
 /**
  * Handles creation and handling of rooms.
@@ -316,6 +317,11 @@ export class MatrixRoomHandler {
         const {event_id} = await intent.sendMessage(roomId, content);
         if (data.message.id) {
             this.remoteEventIdMapping.set(data.message.id, event_id);
+            // Remove old entires.
+            if (this.remoteEventIdMapping.size >= EVENT_MAPPING_SIZE) {
+                const keyArr = [...this.remoteEventIdMapping.keys()].slice(0, 50);
+                keyArr.forEach(this.remoteEventIdMapping.delete.bind(this.remoteEventIdMapping));
+            }
         }
     }
 
