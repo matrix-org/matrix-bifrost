@@ -46,6 +46,7 @@ export interface IChatInvite extends IAccountEvent {
 export interface IChatJoined extends IConversationEvent {
     purpleAccount: IPurpleAccount;
     join_properties: IChatJoinProperties;
+    should_invite: boolean;
 }
 
 export interface IUserStateChanged extends IConversationEvent {

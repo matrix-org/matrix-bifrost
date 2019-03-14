@@ -709,7 +709,10 @@ export class XmppJsInstance extends EventEmitter implements IPurpleInstance {
         const username = localAcct ? localAcct.remoteId : to.toString();
 
         // emit a chat-joined-new if an account was joining this room.
-        if (delta.isSelf && localAcct && localAcct.waitingToJoin.has(convName)) {
+        if (delta.isSelf
+            && localAcct
+            && localAcct.waitingToJoin.has(convName)
+            && delta.changed.includes("online")) {
             this.emit("store-remote-user", {
                 mxId: localAcct.mxId,
                 remoteId: `${convName}/${localAcct.roomHandles.get(convName)}`,
@@ -730,6 +733,7 @@ export class XmppJsInstance extends EventEmitter implements IPurpleInstance {
                     server: from.domain,
                     handle: from.resource,
                 },
+                should_invite: false,
             } as IChatJoined);
         }
 

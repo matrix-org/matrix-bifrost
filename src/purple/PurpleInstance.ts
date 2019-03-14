@@ -122,7 +122,11 @@ export class PurpleInstance extends EventEmitter implements IPurpleInstance {
                     if (purpleAccount._waitingJoinRoomProps) {
                         // tslint:disable-next-line
                         const join_properties = purpleAccount._waitingJoinRoomProps;
-                        this.emit("chat-joined-new", Object.assign(evt, {purpleAccount, join_properties}));
+                        this.emit("chat-joined-new", Object.assign(evt, {
+                            purpleAccount,
+                            join_properties,
+                            should_invite: true,
+                        }));
                         purpleAccount.eraseWaitingJoinRoomProps();
                     }
                 }

@@ -54,6 +54,10 @@ export class MatrixRoomHandler {
             }
             const intent = this.bridge.getIntent();
             const roomId = await this.createOrGetGroupChatRoom(ev, intent);
+            if (!ev.should_invite) {
+                // Not all backends need to invite users to their rooms.
+                return false;
+            }
             const memberlist = Object.keys((await this.bridge.getBot().getJoinedMembers(roomId)));
             if (!memberlist.includes(matrixUser.getId())) {
                 log.debug(`Invited ${matrixUser.getId()} to a chat they tried to join`);
