@@ -1,7 +1,7 @@
 -- Expose a simple token based servlet to handle user registrations from web pages
 -- through Base64 encoded JSON.
 
--- Updated for use with matrix-appservice-purple by removing some restrictions
+-- Updated for use with matrix-bifrost by removing some restrictions
 -- from the plugin like verifying an email address.
 
 -- Copyright (C) 2010 - 2013, Marco Cirillo (LW.Org)
