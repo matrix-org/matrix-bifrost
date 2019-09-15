@@ -70,11 +70,11 @@ export class XHTMLIM {
             ontext: (text) => {
                 xhtml += `${he.escape(text)}`;
             },
-            onclosetag: (tagname) => {
-                if (VALID_ELEMENT_ATTRIBUTES[tagname] === undefined) {
+            onclosetag: (name) => {
+                if (VALID_ELEMENT_ATTRIBUTES[name] === undefined) {
                     return;
                 }
-                xhtml += `</${tagname}>`;
+                xhtml += `</${name}>`;
             },
         }, {
             decodeEntities: true,
