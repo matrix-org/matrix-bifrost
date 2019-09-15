@@ -1,7 +1,7 @@
 import { IConfigPortals } from "./Config";
-import { PurpleProtocol } from "./purple/PurpleProtocol";
-import { IChatJoinProperties } from "./purple/PurpleEvents";
-import { IPurpleInstance } from "./purple/IPurpleInstance";
+import { BifrostProtocol } from "./backend-common/BifrostProtocol";
+import { IChatJoinProperties } from "./backend-common/BifrostEvents";
+import { IBifrostInstance } from "./backend-common/BifrostInstance";
 import { Logging } from "matrix-appservice-bridge";
 const log = Logging.get("RoomAliasSet");
 
@@ -11,14 +11,14 @@ export interface IRoomAlias {
 }
 
 export interface IAliasResult {
-    protocol: PurpleProtocol;
+    protocol: BifrostProtocol;
     properties: IChatJoinProperties;
 }
 
 export class RoomAliasSet {
     private aliases: Map<RegExp, IRoomAlias>;
 
-    constructor(config: IConfigPortals, private purple: IPurpleInstance) {
+    constructor(config: IConfigPortals, private instance: IBifrostInstance) {
         config.aliases = config.aliases || {};
         this.aliases = new Map();
         Object.keys(config.aliases).forEach((regex) => {
@@ -36,7 +36,7 @@ export class RoomAliasSet {
                 continue;
             }
             const opts = this.aliases.get(regex)!;
-            const protocol = this.purple.getProtocol(opts.protocol)!;
+            const protocol = this.instance.getProtocol(opts.protocol)!;
             if (!protocol) {
                 log.warn(`${alias} matched ${opts.protocol} but no protocol is available`);
                 return;

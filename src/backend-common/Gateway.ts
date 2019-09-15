@@ -1,7 +1,7 @@
 import { IBasicProtocolMessage } from "../MessageFormatter";
 import { IGatewayRoom } from "../GatewayHandler";
 import { BifrostRemoteUser } from "../Store";
-import { IProfileProvider } from "./IPurpleAccount";
+import { IProfileProvider } from "./IBifrostAccount";
 
 export interface IGateway extends IProfileProvider {
     sendMatrixMessage(

@@ -1,8 +1,7 @@
-import { IChatInvite, IChatJoined, IChatJoinProperties } from "./purple/PurpleEvents";
-import { PurpleProtocol } from "./purple/PurpleProtocol";
-import { Intent } from "matrix-appservice-bridge";
-import { Logging } from "matrix-appservice-bridge";
-import { IPurpleAccount } from "./purple/IPurpleAccount";
+import { IChatInvite, IChatJoined, IChatJoinProperties } from "./backend-common/BifrostEvents";
+import { BifrostProtocol } from "./backend-common/BifrostProtocol";
+import { Intent, Logging } from "matrix-appservice-bridge";
+import { IBifrostAccount } from "./backend-common/BifrostAccount";
 const log = Logging.get("ProtoHacks");
 
 export const PRPL_MATRIX = "prpl-matrix";
@@ -59,7 +58,7 @@ export class ProtoHacks {
         return invite.room_name;
     }
 
-    public static getSenderIdToLookup(protocol: PurpleProtocol, senderId: string, chatName: string) {
+    public static getSenderIdToLookup(protocol: BifrostProtocol, senderId: string, chatName: string) {
         // If this is an XMPP MUC, we want to append the chatname to the user.
         if (protocol.id === PRPL_XMPP && chatName) {
             return `${chatName}/${senderId}`;
@@ -67,7 +66,7 @@ export class ProtoHacks {
         return senderId;
     }
 
-    public static getSenderId(account: IPurpleAccount, senderId: string, roomName?: string): string {
+    public static getSenderId(account: IBifrostAccount, senderId: string, roomName?: string): string {
         // XXX: XMPP uses "handles" in group chats which might not be the same as
         // the username.
         if (account.protocol.id === PRPL_XMPP && roomName) {

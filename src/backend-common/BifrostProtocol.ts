@@ -1,6 +1,6 @@
 import { MatrixUser } from "matrix-appservice-bridge";
 
-export class PurpleProtocol {
+export class BifrostProtocol {
     public readonly name: string;
     public readonly summary: string;
     public readonly homepage: string;

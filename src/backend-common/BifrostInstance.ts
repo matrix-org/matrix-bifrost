@@ -1,5 +1,5 @@
-import { PurpleProtocol } from "./PurpleProtocol";
-import { IPurpleAccount } from "./IPurpleAccount";
+import { BifrostProtocol } from "./BifrostProtocol";
+import { IBifrostAccount } from "./IBifrostAccount";
 import { IEventBody,
     IAccountEvent,
     IChatJoined,
@@ -14,21 +14,21 @@ import { IEventBody,
     IStoreRemoteUser,
     IChatReadReceipt,
     IGatewayPublicRoomsQuery,
-} from "./PurpleEvents";
+} from "./BifrostEvents";
 import { EventEmitter } from "events";
 import { IGateway } from "./IGateway";
 
-export interface IPurpleInstance extends EventEmitter {
+export interface IBifrostInstance extends EventEmitter {
     gateway: IGateway|null;
-    createPurpleAccount(username, protocol: PurpleProtocol): IPurpleAccount;
+    createPurpleAccount(username, protocol: BifrostProtocol): IBifrostAccount;
     getBuddyFromChat(conv: any, buddy: string): any;
     start(): Promise<void>;
-    getAccount(username: string, protocolId: string, mxid?: string): IPurpleAccount|null;
-    getProtocol(id: string): PurpleProtocol|undefined;
-    getProtocols(): PurpleProtocol[];
-    findProtocol(nameOrId: string): PurpleProtocol|undefined;
+    getAccount(username: string, protocolId: string, mxid?: string): IBifrostAccount|null;
+    getProtocol(id: string): BifrostProtocol|undefined;
+    getProtocols(): BifrostProtocol[];
+    findProtocol(nameOrId: string): BifrostProtocol|undefined;
     getNickForChat(conv: any): string;
-    getUsernameFromMxid(mxid: string, prefix: string): {username: string, protocol: PurpleProtocol};
+    getUsernameFromMxid(mxid: string, prefix: string): {username: string, protocol: BifrostProtocol};
     on(name: string, cb: (ev: IEventBody) => void);
     on(
         name: "account-connection-error"|"account-signed-on"|"account-signed-off",

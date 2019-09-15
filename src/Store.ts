@@ -3,8 +3,8 @@ import { Bridge, MatrixRoom, RemoteRoom, RemoteUser,
 import { Util } from "./Util";
 import { MROOM_TYPES, IRoomEntry, IRemoteRoomData, IRemoteGroupData,
     MUSER_TYPE_ACCOUNT, MUSER_TYPE_GHOST, MUSER_TYPES, MROOM_TYPE_UADMIN, MROOM_TYPE_GROUP } from "./StoreTypes";
-import { PurpleProtocol } from "./purple/PurpleProtocol";
-import { IAccountMinimal } from "./purple/PurpleEvents";
+import { BifrostProtocol } from "./backend-common/BifrostProtocol";
+import { IAccountMinimal } from "./backend-common/BifrostEvents";
 const log = Logging.get("Store");
 
 export class BifrostRemoteUser {
@@ -81,7 +81,7 @@ export class Store {
         this.userStore.setMatrixUser(matrix);
     }
 
-    public async getRemoteUserBySender(sender: string, protocol: PurpleProtocol): Promise<BifrostRemoteUser|null> {
+    public async getRemoteUserBySender(sender: string, protocol: BifrostProtocol): Promise<BifrostRemoteUser|null> {
         const remoteId = Util.createRemoteId(protocol.id, sender);
         await this.userLock.get(remoteId);
         const remote = await this.userStore.getRemoteUser(
@@ -119,7 +119,7 @@ export class Store {
         return entries[0] || null;
     }
 
-    public async getUsernameMxidForProtocol(protocol: PurpleProtocol): Promise<{[mxid: string]: string}> {
+    public async getUsernameMxidForProtocol(protocol: BifrostProtocol): Promise<{[mxid: string]: string}> {
         const set = {};
         const users = (await this.userStore.getByRemoteData({protocol_id: protocol.id, type: MUSER_TYPE_ACCOUNT}))
         .concat(await this.userStore.getByRemoteData({protocolId: protocol.id, type: MUSER_TYPE_ACCOUNT}),
@@ -141,7 +141,7 @@ export class Store {
         return this.roomStore.getEntriesByMatrixRoomData({type});
     }
 
-    public async storeUser(userId: string, protocol: PurpleProtocol,
+    public async storeUser(userId: string, protocol: BifrostProtocol,
                            username: string, type: MUSER_TYPES, extraData: any = {})
                             : Promise<{remote: BifrostRemoteUser, matrix: MatrixUser}> {
         const id = Util.createRemoteId(protocol.id, username);
@@ -299,7 +299,7 @@ export class Store {
         }
     }
 
-    private async _storeUser(userId: string, protocol: PurpleProtocol,
+    private async _storeUser(userId: string, protocol: BifrostProtocol,
                              username: string, type: MUSER_TYPES, extraData: any = {})
                             : Promise<{remote: BifrostRemoteUser, matrix: MatrixUser}> {
         const id = Util.createRemoteId(protocol.id, username);

@@ -5,7 +5,7 @@ import { Util } from "./Util";
 import { Logging } from "matrix-appservice-bridge";
 import { Store } from "./Store";
 import { IPurpleInstance } from "./purple/IPurpleInstance";
-import { IPurpleAccount } from "./purple/IPurpleAccount";
+import { IBifrostAccount } from "./backend-common/IBifrostAccount";
 import { PurpleProtocol } from "./purple/PurpleProtocol";
 import { MUSER_TYPE_ACCOUNT } from "./StoreTypes";
 const log = Logging.get("AutoRegistration");

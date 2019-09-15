@@ -1,7 +1,7 @@
 // @ts-ignore - These are optional.
-import { helper, plugins, messaging, Protocol, Conversation } from "node-purple";
+import { helper, plugins, messaging, Conversation } from "node-purple";
 import { EventEmitter } from "events";
-import { PurpleAccount } from "./PurpleAccount";
+import { PurpleAccount } from "../backend-common/IBifrostAccount";
 import { IPurpleInstance } from "./IPurpleInstance";
 import { Logging } from "matrix-appservice-bridge";
 import * as path from "path";
@@ -9,7 +9,7 @@ import { IConfigPurple } from "../Config";
 import { IUserInfo, IConversationEvent, IReceivedImMsg, IEventBody } from "./PurpleEvents";
 import { PurpleProtocol } from "./PurpleProtocol";
 import { IEventRequestData } from "../MatrixTypes";
-import { IGateway } from "./IGateway";
+import { IGateway } from "../backend-common/IGateway";
 const log = Logging.get("PurpleInstance");
 
 export class PurpleInstance extends EventEmitter implements IPurpleInstance {

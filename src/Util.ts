@@ -1,7 +1,5 @@
-import { IChatJoinProperties } from "./purple/PurpleEvents";
-import { PurpleProtocol } from "./purple/PurpleProtocol";
-import { MatrixUser, Intent } from "matrix-appservice-bridge";
-import { ProtoHacks } from "./ProtoHacks";
+import { IChatJoinProperties } from "./backend-common/BifrostEvents";
+import { Intent } from "matrix-appservice-bridge";
 import * as crypto from "crypto";
 import { IEventRequestData } from "./MatrixTypes";
 

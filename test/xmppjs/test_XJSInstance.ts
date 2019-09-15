@@ -4,9 +4,9 @@ import { XmppJsInstance, XMPP_PROTOCOL } from "../../src/xmppjs/XJSInstance";
 const expect = Chai.expect;
 
 describe("XJSInstance", () => {
-    it("should parse a join message", () => {
+    // it("should parse a join message", () => {
 
-    });
+    // });
 
     it("should match an xmpp username", () => {
         const instance = new XmppJsInstance({} as any);

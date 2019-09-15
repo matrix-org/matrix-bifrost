@@ -1,5 +1,5 @@
 import { MatrixRoom, RemoteRoom, MatrixUser } from "matrix-appservice-bridge";
-import { IChatJoinProperties } from "./purple/PurpleEvents";
+import { IChatJoinProperties } from "./backend-common/BifrostEvents";
 
 export const MROOM_TYPE_UADMIN = "user-admin";
 export const MROOM_TYPE_IM = "im";
@@ -12,7 +12,7 @@ export type MROOM_TYPES = "user-admin"|"im"|"group";
 export type MUSER_TYPES = "account"|"ghost";
 
 export interface IRemoteRoomData {
-    type?: MROOM_TYPES; // One of [MROOM_TYPE_UADMIN, MROOM_TYPE_IM]
+    type?: MROOM_TYPES;
     protocol_id?: string;
 }
 

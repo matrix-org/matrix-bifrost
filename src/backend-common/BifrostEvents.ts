@@ -2,7 +2,7 @@
  * A collection of interfaces that may be emitted by PurpleInterface
  */
 
-import { IPurpleAccount } from "./IPurpleAccount";
+import { IBifrostAccount } from "./IBifrostAccount";
 import { IBasicProtocolMessage } from "../MessageFormatter";
 import { IGatewayRoom } from "../GatewayHandler";
 import { IPublicRoomsResponse } from "../MatrixTypes";
@@ -44,7 +44,7 @@ export interface IChatInvite extends IAccountEvent {
 }
 
 export interface IChatJoined extends IConversationEvent {
-    purpleAccount: IPurpleAccount;
+    purpleAccount: IBifrostAccount; //todo: rename
     join_properties: IChatJoinProperties;
     should_invite: boolean;
 }
