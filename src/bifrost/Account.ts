@@ -1,6 +1,6 @@
-import { IChatJoinProperties, IUserInfo, IConversationEvent, IChatJoined } from "./PurpleEvents";
-import { IPurpleInstance } from "./IPurpleInstance";
-import { PurpleProtocol } from "./PurpleProtocol";
+import { IChatJoinProperties, IUserInfo, IConversationEvent } from "./Events";
+import { IBifrostInstance } from "./Instance";
+import { BifrostProtocol } from "./Protocol";
 import { IBasicProtocolMessage } from "../MessageFormatter";
 
 export interface IChatJoinOptions {
@@ -14,12 +14,12 @@ export interface IProfileProvider {
     getAvatarBuffer(uri: string, senderId: string): Promise<{type: string, data: Buffer}>;
 }
 
-export interface IPurpleAccount extends IProfileProvider {
+export interface IBifrostAccount extends IProfileProvider {
     remoteId: string;
     name: string;
     isEnabled: boolean;
     connected: boolean;
-    protocol: PurpleProtocol;
+    protocol: BifrostProtocol;
 
     findAccount();
     createNew(password?: string);
@@ -32,7 +32,7 @@ export interface IPurpleAccount extends IProfileProvider {
     isInRoom(roomName: string): boolean;
     joinChat(
         components: IChatJoinProperties,
-        purple?: IPurpleInstance,
+        purple?: IBifrostInstance,
         timeout?: number,
         setWaiting?: boolean)
         : Promise<IConversationEvent|void>;
