@@ -11,7 +11,7 @@ export class Config {
         domain: "",
         homeserverUrl: "",
         mediaserverUrl: undefined,
-        userPrefix: "_purple_",
+        userPrefix: "_bifrost_",
         userStoreFile: "user-store.db",
         roomStoreFile: "room-store.db",
     };

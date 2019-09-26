@@ -156,7 +156,6 @@ export class GatewayHandler {
             data.sender,
             this.config.bridge.domain,
             this.config.bridge.userPrefix,
-            true,
         );
         log.info(`${intentUser.userId} is attempting to join ${data.roomAlias}`);
         const intent = this.bridge.getIntent(intentUser.userId);

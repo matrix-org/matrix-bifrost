@@ -187,8 +187,4 @@ export class PurpleAccount implements IBifrostAccount {
             data: await fs.readFile(iconPath),
         };
     }
-
-    // connect() {
-    //     accounts.connect(this.username, this.protocol.id);
-    // }
 }

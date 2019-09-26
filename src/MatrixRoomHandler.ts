@@ -283,7 +283,6 @@ export class MatrixRoomHandler {
             data.sender,
             this.config.bridge.domain,
             this.config.bridge.userPrefix,
-            false,
         );
 
         // Update the user if needed.
@@ -359,7 +358,6 @@ export class MatrixRoomHandler {
             data.sender,
             this.config.bridge.domain,
             this.config.bridge.userPrefix,
-            true,
         );
         const account = this.purple.getAccount(data.account.username, data.account.protocol_id);
         if (account) {
@@ -401,7 +399,6 @@ export class MatrixRoomHandler {
             data.sender,
             this.config.bridge.domain,
             this.config.bridge.userPrefix,
-            true,
         );
         const intent = this.bridge.getIntent(senderMatrixUser.getId());
         let roomId;
@@ -439,13 +436,11 @@ export class MatrixRoomHandler {
             data.sender,
             this.config.bridge.domain,
             this.config.bridge.userPrefix,
-            true,
         );
         const intentUser = data.kicker ? protocol.getMxIdForProtocol(
             data.kicker,
             this.config.bridge.domain,
             this.config.bridge.userPrefix,
-            true,
         ) : senderMatrixUser;
         const intent = this.bridge.getIntent(intentUser.userId);
         const roomId = await this.createOrGetGroupChatRoom(data, intent, true);
@@ -506,7 +501,6 @@ export class MatrixRoomHandler {
             data.sender,
             this.config.bridge.domain,
             this.config.bridge.userPrefix,
-            true,
         ).userId);
         const roomId = await this.createOrGetGroupChatRoom(data, intent, true);
         await intent.sendTyping(roomId, data.typing);
@@ -517,7 +511,6 @@ export class MatrixRoomHandler {
             data.sender,
             this.config.bridge.domain,
             this.config.bridge.userPrefix,
-            true,
         ).userId);
         const roomId = await this.createOrGetGroupChatRoom(data, intent, true);
         const eventId = data.originIsMatrix ? data.messageId : this.remoteEventIdMapping.get(data.messageId);
