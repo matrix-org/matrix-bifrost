@@ -1,3 +1,4 @@
+// tslint:disable: no-any
 import * as Chai from "chai";
 import { IGatewayRoom } from "../src/bifrost/Gateway";
 import { Config } from "../src/Config";

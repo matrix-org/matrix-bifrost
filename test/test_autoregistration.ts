@@ -1,3 +1,4 @@
+// tslint:disable: no-any
 import * as Chai from "chai";
 import { AutoRegistration } from "../src/AutoRegistration";
 const expect = Chai.expect;

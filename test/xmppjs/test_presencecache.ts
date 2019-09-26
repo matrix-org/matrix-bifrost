@@ -1,6 +1,5 @@
 import * as Chai from "chai";
 import { PresenceCache } from "../../src/xmppjs/PresenceCache";
-import { jid } from "@xmpp/component";
 import { x } from "@xmpp/xml";
 const expect = Chai.expect;
 

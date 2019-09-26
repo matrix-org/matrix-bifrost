@@ -1,3 +1,4 @@
+// tslint:disable: no-any
 export class MockIntent {
     public ensureRegisteredCalled: boolean = false;
     public leftRoom: string = "";

@@ -76,16 +76,16 @@ describe("Util", () => {
                 "my.wonderful.property": "foo",
                 "normal_property": "bar",
             })).to.deep.equal({
-                "my·wonderful·property": "foo",
-                "normal_property": "bar",
+                my·wonderful·property: "foo",
+                normal_property: "bar",
             });
         });
     });
     describe("desanitizeProperties", () => {
         it("should desanitize properties", () => {
             expect(Util.desanitizeProperties({
-                "my·wonderful·property": "foo",
-                "normal_property": "bar",
+                my·wonderful·property: "foo",
+                normal_property: "bar",
             })).to.deep.equal({
                 "my.wonderful.property": "foo",
                 "normal_property": "bar",

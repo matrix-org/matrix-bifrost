@@ -1,3 +1,4 @@
+// tslint:disable: no-any
 import * as Chai from "chai";
 import { mockStore } from "./mocks/store";
 import { BifrostProtocol } from "../src/bifrost/Protocol";

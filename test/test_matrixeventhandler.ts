@@ -1,3 +1,4 @@
+// tslint:disable: no-any
 import * as Chai from "chai";
 import { MatrixEventHandler } from "../src/MatrixEventHandler";
 import { mockStore } from "./mocks/store";
@@ -71,9 +72,7 @@ function createMEH() {
             opts: {
 
             },
-            join: () => {
-
-            },
+            join: () => { /* empty */ },
             getClient: () => ({
                 getUserId: () => userId,
                 _createMessagesRequest: () => Promise.resolve({
