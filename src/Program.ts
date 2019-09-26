@@ -171,12 +171,11 @@ class Program {
             this.bridge.opts.eventStore = undefined;
         }
         await this.bridge.run(port, this.cfg);
-
         if (this.cfg.purple.backend === "node-purple") {
             log.info("Selecting node-purple as a backend");
             this.purple = new (require("./purple/PurpleInstance").PurpleInstance)(this.cfg.purple);
-        } else if (this.cfg.purple.backend === "xmpp.js") {
-            log.info("Selecting xmpp.js as a backend");
+        } else if (this.cfg.purple.backend === "xmpp-js") {
+            log.info("Selecting xmpp-js as a backend");
             this.purple = new (require("./xmppjs/XJSInstance").XmppJsInstance)(this.cfg);
         } else {
             throw new Error(`Backend ${this.cfg.purple.backend} not supported`);
