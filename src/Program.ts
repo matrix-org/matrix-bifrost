@@ -96,15 +96,17 @@ class Program {
         const intent = this.bridge.getIntent();
         intent.opts.registered = false;
         await intent._ensureRegistered();
+        const botUserId = this.bridge.getBot().getUserId();
         // Set a profile for the bridge user.
         try {
-            const currentName = (await intent.getProfileInfo(this.bridge.getBot().getUserId())).displayname;
+            const currentName = (await intent.getProfileInfo(botUserId, "displayname")).displayname;
             if (this.config.bridgeBot.displayname !== currentName) {
                 await intent.setDisplayName(this.config.bridgeBot.displayname);
                 log.debug("Changed bridge bot name to:", this.config.bridgeBot.displayname);
             }
         } catch (ex) {
-            if (ex.errcode === "M_NOT_FOUND") {
+            // Synapse loooove to send us M_UNKNOWN
+            if (ex.errcode === "M_NOT_FOUND" || ex.errcode === "M_UNKNOWN") {
                 return intent.setDisplayName(this.config.bridgeBot.displayname).catch((err) => {
                     log.error("Failed to update profile: ", ex);
                     process.exit(1);
