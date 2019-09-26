@@ -1,7 +1,6 @@
 # matrix-bifröst
 
-[![Build Status](https://travis-ci.org/matrix-org/matrix-bifrost.svg?branch=master)](https://travis-ci.org/matrix-org/matrix-bifrost)
-[![#bifrost:half-shot.uk](https://img.shields.io/badge/bifrost%3Ahalf--shot.uk-lightgrey.svg)](https://matrix.to/#/#bifrost:half-shot.uk)
+[![Build status](https://badge.buildkite.com/36e28cac6177e2faad18f63099e5422b4a839d525560e38ed0.svg)](https://buildkite.com/matrix-dot-org/matrix-bifrost)[![#bifrost:half-shot.uk](https://img.shields.io/badge/bifrost%3Ahalf--shot.uk-lightgrey.svg)](https://matrix.to/#/#bifrost:half-shot.uk)
 
 General purpose puppeting bridges using libpurple and other backends.
 
