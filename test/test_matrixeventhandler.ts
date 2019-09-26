@@ -151,9 +151,9 @@ describe("MatrixEventHandler", () => {
                 matrixUser: "@alice:localhost",
                 protocol_id: dummyProtocol.id,
             } as IRemoteImData);
-            expect(storeEntry).to.exist;
-            expect(storeEntry.matrix.getId()).to.equal("!12345:localhost");
-            expect(storeEntry.matrix.get("type")).to.equal(MROOM_TYPE_IM);
+            expect(storeEntry).to.not.be.null;
+            expect(storeEntry!.matrix.getId()).to.equal("!12345:localhost");
+            expect(storeEntry!.matrix.get("type")).to.equal(MROOM_TYPE_IM);
         });
     });
 });

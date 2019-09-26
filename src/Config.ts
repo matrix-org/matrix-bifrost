@@ -2,6 +2,7 @@ import { IAutoRegStep } from "./AutoRegistration";
 import { IRoomAlias } from "./RoomAliasSet";
 import { IXJSBackendOpts } from "./xmppjs/XJSBackendOpts";
 import { Logging } from "matrix-appservice-bridge";
+import { PgDataStoreOpts } from "./store/postgres/PgDatastore";
 
 const log = Logging.get("Config");
 
@@ -17,6 +18,7 @@ export class Config {
     public readonly datastore: IConfigDatastore = {
         engine: "nedb",
         connectionString: "nedb://.",
+        opts: undefined,
     };
 
     public readonly purple: IConfigPurple = {
@@ -99,7 +101,7 @@ export interface IConfigBridge {
 
 export interface IConfigPurple {
     backendOpts: {}|IXJSBackendOpts|undefined;
-    backend: "node-purple"|"xmpp.js";
+    backend: "node-purple"|"xmpp-js";
     enableDebug: boolean;
     pluginDir: string;
 }
@@ -154,6 +156,7 @@ interface IConfigTuning {
 }
 
 export interface IConfigDatastore {
-    engine: "nedb";
+    engine: "nedb"|"postgres";
     connectionString: string;
+    opts: undefined|PgDataStoreOpts;
 }

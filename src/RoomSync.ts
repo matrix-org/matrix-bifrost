@@ -119,7 +119,7 @@ export class RoomSync {
                 }
                 const allRemotes = await this.store.getRemoteUsersFromMxId(userId);
                 const remotes = allRemotes.filter(
-                    (ruser) => ruser && ruser.isAccount &&
+                    (ruser) => ruser && !ruser.isRemote &&
                         ruser.protocolId === room.remote.get("protocol_id"),
                 );
                 if (remotes.length === 0 && !isRemote) {

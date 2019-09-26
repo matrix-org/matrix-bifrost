@@ -52,7 +52,7 @@ export class MatrixEventHandler {
         log.info(`Got request to bridge ${aliasLocalpart}`);
         if (!res) {
             log.warn(`..but there is no protocol configured to handle it.`);
-            return;
+            throw Error("Could not match against an alias");
         }
         const protocol = res.protocol;
         // XXX: Check if this chat already has a portal and refuse to bridge it.
@@ -100,7 +100,7 @@ export class MatrixEventHandler {
 
     public async onEvent(request: IEventRequest, context: IBridgeContext) {
         const event = request.getData();
-        const ctx = await this.store.getEntryByMatrixId(event.room_id);
+        const ctx = await this.store.getRoomEntryByMatrixId(event.room_id);
         context.rooms.matrix = ctx ? ctx.matrix : null;
         context.rooms.remote = ctx ? ctx.remote : null;
 
@@ -746,7 +746,7 @@ E.g. \`${command} ${acct.protocol.id}\` ${required.join(" ")} ${optional.join(" 
     private async getAccountForMxid(sender: string, protocol: string,
     ): Promise<{acct: IBifrostAccount, newAcct: boolean}> {
         const remoteUser = (await this.store.getRemoteUsersFromMxId(sender)).find(
-            (remote) => remote.protocolId === protocol && remote.isAccount,
+            (remote) => remote.protocolId === protocol && !remote.isRemote,
         );
         if (!remoteUser) {
             log.info(`Account not found for ${sender}`);

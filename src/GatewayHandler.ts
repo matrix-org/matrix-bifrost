@@ -242,16 +242,16 @@ export class GatewayHandler {
             throw Error(`This room is already bridged to ${roomName}`);
         }
 
-        let room = await this.store.getRoomByRemoteData({
+        const existingRoom = await this.store.getRoomByRemoteData({
             protocol_id: data.protocol_id,
             room_name: data.room_name,
         });
 
-        if (room) {
-            return room;
+        if (existingRoom) {
+            return existingRoom;
         }
 
-        room = this.store.storeRoom(roomId, MROOM_TYPE_GROUP, remoteId, {
+        const newRoom = this.store.storeRoom(roomId, MROOM_TYPE_GROUP, remoteId, {
             protocol_id: data.protocol_id,
             room_name: data.room_name,
             gateway: true,
@@ -260,6 +260,6 @@ export class GatewayHandler {
                 room_alias: data.roomAlias,
             },
         } as IRemoteGroupData);
-        return room;
+        return newRoom;
     }
 }

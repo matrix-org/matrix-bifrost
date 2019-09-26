@@ -2,12 +2,13 @@ import { Bridge, MatrixRoom, RemoteRoom, RemoteUser,
     MatrixUser, UserStore, RoomStore, Logging, AsBot } from "matrix-appservice-bridge";
 import { Util } from "../Util";
 import { MROOM_TYPES, IRoomEntry, IRemoteRoomData, IRemoteGroupData,
-    MUSER_TYPE_ACCOUNT, MUSER_TYPE_GHOST, MUSER_TYPES, MROOM_TYPE_UADMIN, MROOM_TYPE_GROUP } from "./Types";
+    MUSER_TYPE_ACCOUNT, MUSER_TYPES, MROOM_TYPE_UADMIN, MROOM_TYPE_GROUP } from "./Types";
 import { BifrostProtocol } from "../bifrost/Protocol";
 import { IAccountMinimal } from "../bifrost/Events";
 import { IStore } from "./Store";
 import { BifrostRemoteUser } from "./BifrostRemoteUser";
-const log = Logging.get("Store");
+
+const log = Logging.get("NeDBStore");
 
 export class NeDBStore implements IStore {
     private roomStore: RoomStore;
@@ -62,14 +63,23 @@ export class NeDBStore implements IStore {
         const realUserIds = userIds.filter(
             (uId) => this.asBot.isRemoteUser(uId),
         );
-        const userId = realUserIds[0] || userIds[0];
-        return new BifrostRemoteUser(remote, userId, this.asBot.isRemoteUser(userId));
+        return BifrostRemoteUser.fromRemoteUser(
+            remote,
+            this.asBot,
+            realUserIds[0] || userIds[0],
+        );
     }
 
     public async getRemoteUsersFromMxId(userId: string): Promise<BifrostRemoteUser[]> {
         return (await this.userStore.getRemoteUsersFromMatrixId(
             userId,
-        )).map((u) => new BifrostRemoteUser(u, userId, this.asBot.isRemoteUser(userId)));
+        )).map((u) =>
+            BifrostRemoteUser.fromRemoteUser(
+                u,
+                this.asBot,
+                userId,
+            ),
+        );
     }
 
     public async getRoomByRemoteData(remoteData: IRemoteRoomData|IRemoteGroupData) {
@@ -82,7 +92,7 @@ export class NeDBStore implements IStore {
         }
     }
 
-    public async getRoomByRoomId(roomId: string) {
+    public async getRoomByRoomId(roomId: string): Promise<IRoomEntry|null> {
         const entries = await this.roomStore.getEntriesByMatrixId(roomId);
         return entries[0] || null;
     }
@@ -131,7 +141,7 @@ export class NeDBStore implements IStore {
         await this.roomStore.removeEntriesByMatrixRoomId(matrixId);
     }
 
-    public async getEntryByMatrixId(roomId: string): Promise<{matrix: MatrixRoom, remote: RemoteRoom}|null> {
+    public async getRoomEntryByMatrixId(roomId: string): Promise<{matrix: MatrixRoom, remote: RemoteRoom}|null> {
         // TODO: This assumes one remote
         const entries = await this.roomStore.getEntriesByMatrixId(roomId);
         if (entries.length === 0) {
@@ -280,9 +290,12 @@ export class NeDBStore implements IStore {
             remoteUser.set("type", type);
             await this.userStore.linkUsers(mxUser, remoteUser);
             log.info(`Linked new ${type} ${userId} -> ${id}`);
-            return {remote: new BifrostRemoteUser(
-                remoteUser, userId, this.asBot.isRemoteUser(userId),
-            ), matrix: mxUser};
+            const remote = BifrostRemoteUser.fromRemoteUser(
+                remoteUser,
+                this.asBot,
+                userId,
+            );
+            return {remote, matrix: mxUser};
         } else {
             const linkedMatrixUsers = await this.userStore.getMatrixLinks(id);
             if (!linkedMatrixUsers.includes(mxUser.getId())) {
@@ -303,8 +316,11 @@ export class NeDBStore implements IStore {
             existing.set(key, extraData[key]);
         });
         await this.userStore.setRemoteUser(existing);
-        return {remote: new BifrostRemoteUser(
-            existing, userId, this.asBot.isRemoteUser(userId),
-        ), matrix: mxUser};
+        const remote = BifrostRemoteUser.fromRemoteUser(
+            existing,
+            this.asBot,
+            userId,
+        );
+        return {remote, matrix: mxUser};
     }
 }

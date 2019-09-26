@@ -1,36 +1,24 @@
-import { RemoteUser } from "matrix-appservice-bridge";
-import { MUSER_TYPE_ACCOUNT, MUSER_TYPE_GHOST } from "./Types";
+import { RemoteUser, AsBot } from "matrix-appservice-bridge";
 
 export class BifrostRemoteUser {
-    constructor(public readonly remoteUser: RemoteUser, private userIds: string, public readonly isRemote: boolean) {
-
+    public static fromRemoteUser(remoteUser: RemoteUser, asBot: AsBot, userId: string): BifrostRemoteUser {
+        return new BifrostRemoteUser(
+            remoteUser.getId(),
+            remoteUser.get("username"),
+            remoteUser.get("protocol_id") || remoteUser.get("protocolId"),
+            asBot.isRemoteUser(userId),
+            remoteUser.get("displayname"),
+            remoteUser.data,
+        );
     }
 
-    public get extraData() {
-        return this.remoteUser.data;
-    }
-
-    public get id() {
-        return this.remoteUser.getId();
-    }
-
-    public get username(): string {
-        return this.remoteUser.get("username");
-    }
-
-    public get protocolId() {
-        return this.remoteUser.get("protocol_id") || this.remoteUser.get("protocolId");
-    }
-
-    public get isAccount() {
-        return this.remoteUser.get("type") === MUSER_TYPE_ACCOUNT;
-    }
-
-    public get isGhost() {
-        return this.remoteUser.get("type") === MUSER_TYPE_GHOST;
-    }
-
-    public get displayname(): string|undefined {
-        return this.remoteUser.get("displayname");
+    constructor(
+        public readonly id: string,
+        public readonly username: string,
+        public readonly protocolId: string,
+        public readonly isRemote: boolean,
+        public readonly displayname?: string,
+        // tslint:disable-next-line: no-any
+        public readonly extraData: any = {}) {
     }
 }

@@ -5,10 +5,15 @@ import { IAccountMinimal } from "../bifrost/Events";
 import { BifrostRemoteUser } from "./BifrostRemoteUser";
 import { IConfigDatastore } from "../Config";
 import { NeDBStore } from "./NeDBStore";
+import { PgDataStore } from "./postgres/PgDatastore";
 
 export async function initiateStore(config: IConfigDatastore, bridge: Bridge): Promise<IStore> {
     if (config.engine === "nedb") {
         return new NeDBStore(bridge);
+    } else if (config.engine === "postgres") {
+        const pg = new PgDataStore(config);
+        await pg.ensureSchema();
+        return pg;
     }
     throw Error("Database engine not supported");
 }
@@ -25,9 +30,9 @@ export interface IStore {
 
     getRemoteUsersFromMxId(userId: string): Promise<BifrostRemoteUser[]>;
 
-    getRoomByRemoteData(remoteData: IRemoteRoomData|IRemoteGroupData);
+    getRoomByRemoteData(remoteData: IRemoteRoomData|IRemoteGroupData): Promise<IRoomEntry|null>;
 
-    getRoomByRoomId(roomId: string);
+    getRoomByRoomId(roomId: string): Promise<IRoomEntry|null>;
 
     getUsernameMxidForProtocol(protocol: BifrostProtocol): Promise<{[mxid: string]: string}>;
 
@@ -36,9 +41,9 @@ export interface IStore {
     storeUser(userId: string, protocol: BifrostProtocol, username: string, type: MUSER_TYPES, extraData?: any)
         : Promise<{remote: BifrostRemoteUser, matrix: MatrixUser}>;
 
-    removeRoomByRoomId(matrixId: string);
+    removeRoomByRoomId(matrixId: string): Promise<void>;
 
-    getEntryByMatrixId(roomId: string): Promise<{matrix: MatrixRoom, remote: RemoteRoom}|null>;
+    getRoomEntryByMatrixId(roomId: string): Promise<{matrix: MatrixRoom, remote: RemoteRoom}|null>;
 
     storeRoom(matrixId: string, type: MROOM_TYPES, remoteId: string, remoteData: IRemoteRoomData)
     : Promise<{remote: RemoteRoom, matrix: MatrixRoom}>;
