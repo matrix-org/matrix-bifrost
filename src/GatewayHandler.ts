@@ -2,8 +2,8 @@ import { IGatewayJoin, IGatewayRoomQuery, IGatewayPublicRoomsQuery } from "./bif
 import { IBifrostInstance } from "./bifrost/Instance";
 import { Bridge, Logging, Intent } from "matrix-appservice-bridge";
 import { Config } from "./Config";
-import { Store } from "./Store";
-import { MROOM_TYPE_GROUP, IRemoteGroupData, IRoomEntry } from "./StoreTypes";
+import { IStore } from "./store/Store";
+import { MROOM_TYPE_GROUP, IRemoteGroupData, IRoomEntry } from "./store/Types";
 import { IBridgeContext } from "./MatrixTypes";
 import { IBasicProtocolMessage } from "./MessageFormatter";
 import { ProfileSync } from "./ProfileSync";
@@ -39,7 +39,7 @@ export class GatewayHandler {
         private purple: IBifrostInstance,
         private bridge: Bridge,
         private config: Config,
-        private store: Store,
+        private store: IStore,
         private profileSync: ProfileSync,
     ) {
         if (!config.portals.enableGateway) {

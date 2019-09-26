@@ -3,11 +3,11 @@ import { Bridge, MatrixUser } from "matrix-appservice-bridge";
 import * as request from "request-promise-native";
 import { Util } from "./Util";
 import { Logging } from "matrix-appservice-bridge";
-import { Store } from "./Store";
+import { IStore } from "./store/Store";
 import { IBifrostInstance } from "./bifrost/Instance";
 import { IBifrostAccount } from "./bifrost/Account";
 import { BifrostProtocol } from "./bifrost/Protocol";
-import { MUSER_TYPE_ACCOUNT } from "./StoreTypes";
+import { MUSER_TYPE_ACCOUNT } from "./store/Types";
 const log = Logging.get("AutoRegistration");
 
 export interface IAutoRegHttpOpts {
@@ -28,7 +28,7 @@ export class AutoRegistration {
     constructor(
         private autoRegConfig: IConfigAutoReg,
         private bridge: Bridge,
-        private store: Store,
+        private store: IStore,
         private protoInstance: IBifrostInstance) {
     }
 

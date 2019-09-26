@@ -7,7 +7,7 @@ import {  IAccountEvent } from "./bifrost/Events";
 import { ProfileSync } from "./ProfileSync";
 import { IEventRequest } from "./MatrixTypes";
 import { RoomSync } from "./RoomSync";
-import { Store } from "./Store";
+import { IStore } from "./store/Store";
 import { Deduplicator } from "./Deduplicator";
 import { Config, IBridgeBotAccount } from "./Config";
 import { Util } from "./Util";
@@ -16,6 +16,7 @@ import { Metrics } from "./Metrics";
 import { AutoRegistration } from "./AutoRegistration";
 import { GatewayHandler } from "./GatewayHandler";
 import * as request from "request-promise-native";
+import { NeDBStore } from "./store/NeDBStore";
 
 const log = Logging.get("Program");
 const bridgeLog = Logging.get("bridge");
@@ -34,7 +35,7 @@ class Program {
     private profileSync: ProfileSync|undefined;
     private roomSync: RoomSync|undefined;
     private purple?: IBifrostInstance;
-    private store: Store|undefined;
+    private store: IStore|undefined;
     private cfg: Config;
     private deduplicator: Deduplicator;
 
@@ -181,7 +182,7 @@ class Program {
             Metrics.init(this.bridge);
         }
 
-        this.store = new Store(this.bridge);
+        this.store = new NeDBStore(this.bridge);
         try {
             const ignoreIntegrity = process.env.BIFROST_INTEGRITY_WRITE;
             await this.store.integrityCheck(

@@ -7,7 +7,7 @@ import { EventEmitter } from "events";
 import { IGatewayJoin } from "../src/bifrost/Events";
 import { dummyProtocol } from "./mocks/dummyprotocol";
 import { MockIntent } from "./mocks/intent";
-import { MROOM_TYPE_GROUP, IRemoteGroupData } from "../src/StoreTypes";
+import { MROOM_TYPE_GROUP, IRemoteGroupData } from "../src/store/Types";
 import { GatewayHandler } from "../src/GatewayHandler";
 const expect = Chai.expect;
 

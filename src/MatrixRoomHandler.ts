@@ -1,6 +1,6 @@
 import { Bridge, MatrixUser, Intent, Logging} from "matrix-appservice-bridge";
 import { IBifrostInstance } from "./bifrost/Instance";
-import { MROOM_TYPE_GROUP, MROOM_TYPE_IM, IRemoteGroupData, MUSER_TYPE_GHOST } from "./StoreTypes";
+import { MROOM_TYPE_GROUP, MROOM_TYPE_IM, IRemoteGroupData, MUSER_TYPE_GHOST } from "./store/Types";
 import {
     IReceivedImMsg,
     IChatInvite,
@@ -15,7 +15,7 @@ import {
 import { ProfileSync } from "./ProfileSync";
 import { Util } from "./Util";
 import { ProtoHacks } from "./ProtoHacks";
-import { Store } from "./Store";
+import { IStore } from "./store/Store";
 import { Deduplicator } from "./Deduplicator";
 import { Config } from "./Config";
 import * as entityDecode from "parse-entities";
@@ -37,7 +37,7 @@ export class MatrixRoomHandler {
     constructor(
         private purple: IBifrostInstance,
         private profileSync: ProfileSync,
-        private store: Store,
+        private store: IStore,
         private config: Config,
         private deduplicator: Deduplicator,
     ) {

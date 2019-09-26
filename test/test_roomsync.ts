@@ -3,7 +3,7 @@ import * as Chai from "chai";
 import { BifrostProtocol } from "../src/bifrost/Protocol";
 import { RoomSync } from "../src/RoomSync";
 import { Deduplicator } from "../src/Deduplicator";
-import { IRoomEntry, MROOM_TYPE_GROUP, IRemoteGroupData, MUSER_TYPE_ACCOUNT } from "../src/StoreTypes";
+import { IRoomEntry, MROOM_TYPE_GROUP, IRemoteGroupData, MUSER_TYPE_ACCOUNT } from "../src/store/Types";
 import { mockStore } from "./mocks/store";
 const expect = Chai.expect;
 

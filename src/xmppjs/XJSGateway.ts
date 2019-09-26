@@ -9,7 +9,7 @@ import { IGatewayJoin, IUserStateChanged, IStoreRemoteUser, IUserInfo } from "..
 import { IGatewayRoom } from "../bifrost/Gateway";
 import { PresenceCache } from "./PresenceCache";
 import { XHTMLIM } from "./XHTMLIM";
-import { BifrostRemoteUser } from "../Store";
+import { BifrostRemoteUser } from "../store/BifrostRemoteUser";
 import { StzaPresenceItem, StzaMessage, StzaMessageSubject,
     StzaPresenceError, StzaBase, StzaPresenceKick } from "./Stanzas";
 import { IGateway } from "../bifrost/Gateway";

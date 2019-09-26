@@ -1,47 +1,15 @@
 import { Bridge, MatrixRoom, RemoteRoom, RemoteUser,
     MatrixUser, UserStore, RoomStore, Logging, AsBot } from "matrix-appservice-bridge";
-import { Util } from "./Util";
+import { Util } from "../Util";
 import { MROOM_TYPES, IRoomEntry, IRemoteRoomData, IRemoteGroupData,
-    MUSER_TYPE_ACCOUNT, MUSER_TYPE_GHOST, MUSER_TYPES, MROOM_TYPE_UADMIN, MROOM_TYPE_GROUP } from "./StoreTypes";
-import { BifrostProtocol } from "./bifrost/Protocol";
-import { IAccountMinimal } from "./bifrost/Events";
+    MUSER_TYPE_ACCOUNT, MUSER_TYPE_GHOST, MUSER_TYPES, MROOM_TYPE_UADMIN, MROOM_TYPE_GROUP } from "./Types";
+import { BifrostProtocol } from "../bifrost/Protocol";
+import { IAccountMinimal } from "../bifrost/Events";
+import { IStore } from "./Store";
+import { BifrostRemoteUser } from "./BifrostRemoteUser";
 const log = Logging.get("Store");
 
-export class BifrostRemoteUser {
-    constructor(public readonly remoteUser: RemoteUser, private userIds: string, public readonly isRemote: boolean) {
-
-    }
-
-    public get extraData() {
-        return this.remoteUser.data;
-    }
-
-    public get id() {
-        return this.remoteUser.getId();
-    }
-
-    public get username(): string {
-        return this.remoteUser.get("username");
-    }
-
-    public get protocolId() {
-        return this.remoteUser.get("protocol_id") || this.remoteUser.get("protocolId");
-    }
-
-    public get isAccount() {
-        return this.remoteUser.get("type") === MUSER_TYPE_ACCOUNT;
-    }
-
-    public get isGhost() {
-        return this.remoteUser.get("type") === MUSER_TYPE_GHOST;
-    }
-
-    public get displayname(): string|undefined {
-        return this.remoteUser.get("displayname");
-    }
-}
-
-export class Store {
+export class NeDBStore implements IStore {
     private roomStore: RoomStore;
     private userStore: UserStore;
     private asBot: AsBot;

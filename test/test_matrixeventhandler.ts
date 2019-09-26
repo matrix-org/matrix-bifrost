@@ -6,8 +6,8 @@ import { Deduplicator } from "../src/Deduplicator";
 import { Config } from "../src/Config";
 import { IEventRequest, IBridgeContext } from "../src/MatrixTypes";
 import { dummyProtocol } from "./mocks/dummyprotocol";
-import { Store } from "../src/Store";
-import { IRemoteImData, MROOM_TYPE_IM } from "../src/StoreTypes";
+import { IStore } from "../src/store/Store";
+import { IRemoteImData, MROOM_TYPE_IM } from "../src/store/Types";
 const expect = Chai.expect;
 
 function createRequest(extraEvData: any): IEventRequest {
@@ -107,7 +107,7 @@ function createMEH() {
 describe("MatrixEventHandler", () => {
     describe("onEvent", () => {
         let meh: MatrixEventHandler;
-        let store: Store;
+        let store: IStore;
         beforeEach(() => {
             const res = createMEH();
             meh = res.meh;
