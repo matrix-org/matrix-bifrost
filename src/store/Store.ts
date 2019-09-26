@@ -1,8 +1,17 @@
-import { MatrixRoom, RemoteRoom, MatrixUser } from "matrix-appservice-bridge";
+import { MatrixRoom, RemoteRoom, MatrixUser, Bridge } from "matrix-appservice-bridge";
 import { IRemoteRoomData, IRemoteGroupData, IRoomEntry, MROOM_TYPES, MUSER_TYPES } from "./Types";
 import { BifrostProtocol } from "../bifrost/Protocol";
 import { IAccountMinimal } from "../bifrost/Events";
 import { BifrostRemoteUser } from "./BifrostRemoteUser";
+import { IConfigDatastore } from "../Config";
+import { NeDBStore } from "./NeDBStore";
+
+export async function initiateStore(config: IConfigDatastore, bridge: Bridge): Promise<IStore> {
+    if (config.engine === "nedb") {
+        return new NeDBStore(bridge);
+    }
+    throw Error("Database engine not supported");
+}
 
 export interface IStore {
 

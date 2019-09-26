@@ -7,7 +7,7 @@ import {  IAccountEvent } from "./bifrost/Events";
 import { ProfileSync } from "./ProfileSync";
 import { IEventRequest } from "./MatrixTypes";
 import { RoomSync } from "./RoomSync";
-import { IStore } from "./store/Store";
+import { IStore, initiateStore } from "./store/Store";
 import { Deduplicator } from "./Deduplicator";
 import { Config, IBridgeBotAccount } from "./Config";
 import { Util } from "./Util";
@@ -137,6 +137,14 @@ class Program {
         } else {
             Logging.configure(this.cfg.logging);
         }
+        let storeParams = {};
+        if (this.config.datastore.engine === "nedb") {
+            const path = this.config.datastore.connectionString.substr("nedb://".length);
+            storeParams = {
+                userStore: `${path}/user-store.db`,
+                roomStore: `${path}/room-store.db`,
+            };
+        }
         this.bridge = new Bridge({
           controller: {
             // onUserQuery: userQuery,
@@ -155,15 +163,20 @@ class Program {
                 bridgeLog[error ? "warn" : "debug"](msg);
             },
             onAliasQueried: (alias, roomId) => this.eventHandler!.onAliasQueried(alias, roomId),
-            // We don't handle these just yet.
-            // thirdPartyLookup: this.thirdpa.ThirdPartyLookup,
           },
           domain: this.cfg.bridge.domain,
           homeserverUrl: this.cfg.bridge.homeserverUrl,
           registration: this.cli.getRegistrationFilePath(),
-          roomStore: this.cfg.bridge.roomStoreFile,
-          userStore: this.cfg.bridge.userStoreFile,
+          ...storeParams,
         });
+        if (this.config.datastore.engine !== "nedb") {
+            // If these are undefined in the constructor, default names
+            // are used. We want to override those names so these stores
+            // will never be created.
+            this.bridge.opts.userStore = undefined;
+            this.bridge.opts.roomStore = undefined;
+            this.bridge.opts.eventStore = undefined;
+        }
         await this.bridge.run(port, this.cfg);
 
         if (this.cfg.purple.backend === "node-purple") {
@@ -182,7 +195,7 @@ class Program {
             Metrics.init(this.bridge);
         }
 
-        this.store = new NeDBStore(this.bridge);
+        this.store = await initiateStore(this.config.datastore, this.bridge);
         try {
             const ignoreIntegrity = process.env.BIFROST_INTEGRITY_WRITE;
             await this.store.integrityCheck(

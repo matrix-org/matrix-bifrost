@@ -12,8 +12,11 @@ export class Config {
         homeserverUrl: "",
         mediaserverUrl: undefined,
         userPrefix: "_bifrost_",
-        userStoreFile: "user-store.db",
-        roomStoreFile: "room-store.db",
+    };
+
+    public readonly datastore: IConfigDatastore = {
+        engine: "nedb",
+        connectionString: "nedb://.",
     };
 
     public readonly purple: IConfigPurple = {
@@ -61,11 +64,12 @@ export class Config {
         conferencePMFallbackCheck: false,
         waitOnJoinBeforePM: [],
     };
-  /**
-   * Apply a set of keys and values over the default config.
-   * @param newConfig Config keys
-   * @param configLayer Private parameter
-   */
+
+    /**
+     * Apply a set of keys and values over the default config.
+     * @param newConfig Config keys
+     * @param configLayer Private parameter
+     */
     public ApplyConfig(newConfig: {[key: string]: any}, configLayer: any = this) {
         Object.keys(newConfig).forEach((key) => {
             if (typeof(configLayer[key]) === "object" &&
@@ -91,8 +95,6 @@ export interface IConfigBridge {
     homeserverUrl: string;
     mediaserverUrl?: string;
     userPrefix: string;
-    userStoreFile?: string;
-    roomStoreFile?: string;
 }
 
 export interface IConfigPurple {
@@ -149,4 +151,9 @@ interface IConfigTuning {
     // Don't send messages from the remote protocol until we have seen them join.
     // A list of prefixes to check.
     waitOnJoinBeforePM: string[];
+}
+
+export interface IConfigDatastore {
+    engine: "nedb";
+    connectionString: string;
 }
