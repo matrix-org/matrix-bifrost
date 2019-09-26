@@ -1,5 +1,5 @@
 import { MatrixRoom, RemoteRoom, MatrixUser } from "matrix-appservice-bridge";
-import { IChatJoinProperties } from "./bifrost/Events";
+import { IChatJoinProperties } from "../bifrost/Events";
 
 export const MROOM_TYPE_UADMIN = "user-admin";
 export const MROOM_TYPE_IM = "im";

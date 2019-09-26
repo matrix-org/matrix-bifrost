@@ -4,11 +4,12 @@ import * as path from "path";
 import { BifrostProtocol } from "./bifrost/Protocol";
 import { Logging, MatrixUser, Bridge, Intent } from "matrix-appservice-bridge";
 import { Config } from "./Config";
-import { Store, BifrostRemoteUser } from "./Store";
+import { IStore} from "./store/Store";
+import { BifrostRemoteUser } from "./store/BifrostRemoteUser";
 const log = Logging.get("ProfileSync");
 
 export class ProfileSync {
-    constructor(private bridge: Bridge, private config: Config, private store: Store) {
+    constructor(private bridge: Bridge, private config: Config, private store: IStore) {
 
     }
 

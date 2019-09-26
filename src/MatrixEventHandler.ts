@@ -1,6 +1,6 @@
 import { Bridge, MatrixRoom, RemoteUser } from "matrix-appservice-bridge";
 import { IEventRequest, IBridgeContext, IEventRequestData } from "./MatrixTypes";
-import { MROOM_TYPE_UADMIN, MROOM_TYPE_IM, MROOM_TYPE_GROUP, MUSER_TYPE_ACCOUNT } from "./StoreTypes";
+import { MROOM_TYPE_UADMIN, MROOM_TYPE_IM, MROOM_TYPE_GROUP, MUSER_TYPE_ACCOUNT } from "./store/Types";
 import { BifrostProtocol } from "./bifrost/Protocol";
 import { IBifrostInstance } from "./bifrost/Instance";
 import * as marked from "marked";
@@ -10,7 +10,7 @@ import { Logging } from "matrix-appservice-bridge";
 import { Deduplicator } from "./Deduplicator";
 import { AutoRegistration } from "./AutoRegistration";
 import { Config } from "./Config";
-import { Store } from "./Store";
+import { IStore } from "./store/Store";
 import { IAccountEvent, IChatJoinProperties, IChatJoined, IConversationEvent } from "./bifrost/Events";
 import { ProtoHacks } from "./ProtoHacks";
 import { RoomAliasSet } from "./RoomAliasSet";
@@ -28,7 +28,7 @@ export class MatrixEventHandler {
     private pendingRoomAliases: Map<string, {protocol: BifrostProtocol, props: IChatJoinProperties}>;
     constructor(
         private purple: IBifrostInstance,
-        private store: Store,
+        private store: IStore,
         private deduplicator: Deduplicator,
         private config: Config,
         private gatewayHandler: GatewayHandler,

@@ -1,8 +1,8 @@
 import { Logging } from "matrix-appservice-bridge";
 import { IBifrostInstance } from "./bifrost/Instance";
 import { IAccountEvent, IChatJoinProperties } from "./bifrost/Events";
-import { Store } from "./Store";
-import { MROOM_TYPE_GROUP, IRoomEntry } from "./StoreTypes";
+import { IStore } from "./store/Store";
+import { MROOM_TYPE_GROUP, IRoomEntry } from "./store/Types";
 import { Util } from "./Util";
 import { Deduplicator } from "./Deduplicator";
 import { ProtoHacks } from "./ProtoHacks";
@@ -24,7 +24,7 @@ export class RoomSync {
     private ongoingSyncs = 0;
     constructor(
         private purple: IBifrostInstance,
-        private store: Store,
+        private store: IStore,
         private deduplicator: Deduplicator,
         private gateway: GatewayHandler,
     ) {

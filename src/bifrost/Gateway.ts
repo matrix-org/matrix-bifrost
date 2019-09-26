@@ -1,5 +1,5 @@
 import { IBasicProtocolMessage } from "../MessageFormatter";
-import { BifrostRemoteUser } from "../Store";
+import { BifrostRemoteUser } from "../store/BifrostRemoteUser";
 import { IProfileProvider } from "./Account";
 
 export interface IGateway extends IProfileProvider {
