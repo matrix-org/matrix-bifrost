@@ -29,7 +29,7 @@
     "fast-xml-parser": "^3.12.12",
     "he": "^1.2.0",
     "htmlparser2": "^4.0",
-    "leven": "^2.1.0",
+    "leven": "^3.1.0",
     "marked": "^0.7.0",
     "matrix-appservice-bridge": "^1.7.0",
     "parse-entities": "^1.2.0",
