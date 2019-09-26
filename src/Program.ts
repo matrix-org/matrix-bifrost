@@ -51,15 +51,6 @@ class Program {
         });
         this.cfg = new Config();
         this.deduplicator = new Deduplicator();
-        // For testing w/o libpurple.
-        // this.purple = new MockPurpleInstance();
-        // setTimeout(() => {
-        //     (this.purple as MockPurpleInstance).emit("received-im-msg", {
-        //         sender: "testacc@localhost/",
-        //         message: "test",
-        //         account: null,
-        //     } as IReceivedImMsg);
-        // }, 5000);
     }
 
     public get config(): Config {
@@ -261,30 +252,6 @@ class Program {
             );
         });
         log.info("Initiation of bridge complete");
-        // await this.runBotAccounts(this.cfg.bridgeBot.accounts);
-    }
-
-    private async runBotAccounts(accounts: IBridgeBotAccount[]) {
-        // Fetch accounts from config
-        accounts.forEach((account) => {
-            const acct = this.purple!.getAccount(account.name, account.protocol);
-            if (!acct) {
-                log.error(
-`${account.protocol}:${account.name} is not configured in libpurple. Ensure that accounts.xml is correct.`,
-                );
-                throw Error("Fatal error while setting up bot accounts");
-            }
-            if (acct.isEnabled === false) {
-                log.error(
-`${account.protocol}:${account.name} is not enabled, enabling.`,
-                );
-                acct.setEnabled(true);
-                // Here we should really wait for the account to come online signal.
-            }
-        });
-
-        // Check they all exist and start.
-        // If one is missing from the purple config, fail.
     }
 }
 
