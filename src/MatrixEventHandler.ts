@@ -1,6 +1,6 @@
-import { Bridge, MatrixRoom, RemoteUser, MatrixUser, RemoteRoom } from "matrix-appservice-bridge";
+import { Bridge, MatrixRoom, RemoteUser } from "matrix-appservice-bridge";
 import { IEventRequest, IBridgeContext, IEventRequestData } from "./MatrixTypes";
-import { MROOM_TYPE_UADMIN, MROOM_TYPE_IM, MROOM_TYPE_GROUP, IRemoteGroupData, MUSER_TYPE_ACCOUNT } from "./StoreTypes";
+import { MROOM_TYPE_UADMIN, MROOM_TYPE_IM, MROOM_TYPE_GROUP, MUSER_TYPE_ACCOUNT } from "./StoreTypes";
 import { BifrostProtocol } from "./bifrost/Protocol";
 import { IBifrostInstance } from "./bifrost/Instance";
 import * as marked from "marked";

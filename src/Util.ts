@@ -1,7 +1,5 @@
 import { IChatJoinProperties } from "./bifrost/Events";
-import { BifrostProtocol } from "./bifrost/Protocol";
-import { MatrixUser, Intent } from "matrix-appservice-bridge";
-import { ProtoHacks } from "./ProtoHacks";
+import { Intent } from "matrix-appservice-bridge";
 import * as crypto from "crypto";
 import { IEventRequestData } from "./MatrixTypes";
 

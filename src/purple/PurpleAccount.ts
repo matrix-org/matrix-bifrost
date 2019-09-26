@@ -3,8 +3,8 @@
  */
 
 // @ts-ignore - These are optional.
-import { helper, plugins, buddy, accounts, messaging, Buddy, Account, Conversation, notify } from "node-purple";
-import * as _fs from "fs";
+import { buddy, accounts, messaging, Buddy, Account, Conversation, notify } from "node-purple";
+import { promises as fs } from "fs";
 import { Logging } from "matrix-appservice-bridge";
 import { BifrostProtocol } from "../bifrost/Protocol";
 import { IChatJoinProperties, IUserInfo, IConversationEvent, IChatJoined } from "../bifrost/Events";
@@ -12,7 +12,6 @@ import { IBasicProtocolMessage } from "../MessageFormatter";
 import { Util } from "../Util";
 import { IBifrostInstance } from "../bifrost/Instance";
 import { IBifrostAccount } from "../bifrost/Account";
-const fs = _fs.promises;
 
 const log = Logging.get("PurpleAccount");
 
