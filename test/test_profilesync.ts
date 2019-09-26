@@ -1,11 +1,11 @@
 import * as Chai from "chai";
 import { mockStore } from "./mocks/store";
-import { PurpleProtocol } from "../src/purple/PurpleProtocol";
+import { BifrostProtocol } from "../src/bifrost/Protocol";
 import { ProfileSync } from "../src/ProfileSync";
 import { Config } from "../src/Config";
 const expect = Chai.expect;
 
-const dummyProtocol = new PurpleProtocol({
+const dummyProtocol = new BifrostProtocol({
     id: "prpl-dummy",
     name: "Dummy",
     homepage: undefined,

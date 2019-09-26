@@ -1,7 +1,7 @@
 import * as Chai from "chai";
 import { Store } from "../src/Store";
 import { mockStore } from "./mocks/store";
-import { PurpleProtocol } from "../src/purple/PurpleProtocol";
+import { BifrostProtocol } from "../src/bifrost/Protocol";
 import { MUSER_TYPE_GHOST } from "../src/StoreTypes";
 import { Util } from "../src/Util";
 import { MatrixUser, RemoteUser } from "matrix-appservice-bridge";
@@ -9,7 +9,7 @@ const expect = Chai.expect;
 
 let store: Store;
 
-const dummyProtocol = new PurpleProtocol({
+const dummyProtocol = new BifrostProtocol({
     id: "prpl-dummy",
     name: "Dummy",
     homepage: undefined,

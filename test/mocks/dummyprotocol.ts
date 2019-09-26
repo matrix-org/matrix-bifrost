@@ -1,7 +1,7 @@
-import { PurpleProtocol } from "../../src/purple/PurpleProtocol";
+import { BifrostProtocol } from "../../src/bifrost/Protocol";
 import { MatrixUser } from "matrix-appservice-bridge";
 
-class DummyProtocol extends PurpleProtocol {
+class DummyProtocol extends BifrostProtocol {
     constructor() {
         super({
             id: "dummy",

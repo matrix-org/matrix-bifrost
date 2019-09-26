@@ -1,4 +1,4 @@
-import { PurpleProtocol } from "./purple/PurpleProtocol";
+import { BifrostProtocol } from "./bifrost/Protocol";
 import { PRPL_XMPP } from "./ProtoHacks";
 import { Parser } from "htmlparser2";
 import { Logging } from "matrix-appservice-bridge";
@@ -70,7 +70,7 @@ export class MessageFormatter {
         return {body, formatted, id: event.event_id};
     }
 
-    public static async messageToMatrixEvent(msg: IBasicProtocolMessage, protocol: PurpleProtocol, intent?: any):
+    public static async messageToMatrixEvent(msg: IBasicProtocolMessage, protocol: BifrostProtocol, intent?: any):
         Promise<IMatrixMsgContents> {
         log.debug("Got message:", msg);
         const matrixMsg: IMatrixMsgContents = {

@@ -1,6 +1,6 @@
 import * as Chai from "chai";
 import { Util } from "../src/Util";
-import { PurpleProtocol } from "../src/purple/PurpleProtocol";
+import { BifrostProtocol } from "../src/bifrost/Protocol";
 import { XMPP_PROTOCOL } from "../src/xmppjs/XJSInstance";
 const expect = Chai.expect;
 
@@ -11,7 +11,7 @@ describe("Util", () => {
         });
     });
     describe("getMxIdForProtocol", () => {
-        const protocol = new PurpleProtocol({
+        const protocol = new BifrostProtocol({
             id: "prpl-protocol",
             name: "Fake Protocol",
             homepage: undefined,

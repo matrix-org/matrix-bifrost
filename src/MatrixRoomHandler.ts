@@ -1,5 +1,5 @@
 import { Bridge, MatrixUser, Intent, Logging} from "matrix-appservice-bridge";
-import { IPurpleInstance } from "./purple/IPurpleInstance";
+import { IBifrostInstance } from "./bifrost/Instance";
 import { MROOM_TYPE_GROUP, MROOM_TYPE_IM, IRemoteGroupData, MUSER_TYPE_GHOST } from "./StoreTypes";
 import {
     IReceivedImMsg,
@@ -11,7 +11,7 @@ import {
     IChatTyping,
     IStoreRemoteUser,
     IChatReadReceipt,
-} from "./purple/PurpleEvents";
+} from "./bifrost/Events";
 import { ProfileSync } from "./ProfileSync";
 import { Util } from "./Util";
 import { ProtoHacks } from "./ProtoHacks";
@@ -35,7 +35,7 @@ export class MatrixRoomHandler {
     private remoteEventIdMapping: Map<string, string>; // remote_id -> event_id
     private roomCreationLock: Map<string, Promise<void>>;
     constructor(
-        private purple: IPurpleInstance,
+        private purple: IBifrostInstance,
         private profileSync: ProfileSync,
         private store: Store,
         private config: Config,

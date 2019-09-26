@@ -1,7 +1,7 @@
-import { IPurpleAccount, IProfileProvider } from "./purple/IPurpleAccount";
+import { IBifrostAccount, IProfileProvider } from "./bifrost/Account";
 import * as _fs from "fs";
 import * as path from "path";
-import { PurpleProtocol } from "./purple/PurpleProtocol";
+import { BifrostProtocol } from "./bifrost/Protocol";
 import { Logging, MatrixUser, Bridge, Intent } from "matrix-appservice-bridge";
 import { Config } from "./Config";
 import { Store, BifrostRemoteUser } from "./Store";
@@ -13,7 +13,7 @@ export class ProfileSync {
     }
 
     public async updateProfile(
-        protocol: PurpleProtocol,
+        protocol: BifrostProtocol,
         senderId: string,
         account: IProfileProvider,
         force: boolean = false,
@@ -40,8 +40,8 @@ export class ProfileSync {
             avatar_uri: undefined,
         };
         let buddy;
-        if ((account as IPurpleAccount).getBuddy !== undefined) {
-            buddy = (account as IPurpleAccount).getBuddy(remoteUser.username);
+        if ((account as IBifrostAccount).getBuddy !== undefined) {
+            buddy = (account as IBifrostAccount).getBuddy(remoteUser.username);
         }
         if (buddy === undefined) {
             try {
@@ -97,7 +97,7 @@ export class ProfileSync {
         await this.store.setMatrixUser(matrixUser);
     }
 
-    private async getOrCreateStoreUsers(protocol: PurpleProtocol, senderId: string)
+    private async getOrCreateStoreUsers(protocol: BifrostProtocol, senderId: string)
     : Promise<{matrixUser: MatrixUser, remoteUser: BifrostRemoteUser}> {
         const userId: string = protocol.getMxIdForProtocol(
             senderId,

@@ -1,17 +1,17 @@
 import { Bridge, MatrixRoom, RemoteUser, MatrixUser, RemoteRoom } from "matrix-appservice-bridge";
 import { IEventRequest, IBridgeContext, IEventRequestData } from "./MatrixTypes";
 import { MROOM_TYPE_UADMIN, MROOM_TYPE_IM, MROOM_TYPE_GROUP, IRemoteGroupData, MUSER_TYPE_ACCOUNT } from "./StoreTypes";
-import { PurpleProtocol } from "./purple/PurpleProtocol";
-import { IPurpleInstance } from "./purple/IPurpleInstance";
+import { BifrostProtocol } from "./bifrost/Protocol";
+import { IBifrostInstance } from "./bifrost/Instance";
 import * as marked from "marked";
-import { IPurpleAccount } from "./purple/IPurpleAccount";
+import { IBifrostAccount } from "./bifrost/Account";
 import { Util } from "./Util";
 import { Logging } from "matrix-appservice-bridge";
 import { Deduplicator } from "./Deduplicator";
 import { AutoRegistration } from "./AutoRegistration";
 import { Config } from "./Config";
 import { Store } from "./Store";
-import { IAccountEvent, IChatJoinProperties, IChatJoined, IConversationEvent } from "./purple/PurpleEvents";
+import { IAccountEvent, IChatJoinProperties, IChatJoined, IConversationEvent } from "./bifrost/Events";
 import { ProtoHacks } from "./ProtoHacks";
 import { RoomAliasSet } from "./RoomAliasSet";
 import { MessageFormatter } from "./MessageFormatter";
@@ -25,9 +25,9 @@ export class MatrixEventHandler {
     private bridge: Bridge;
     private autoReg: AutoRegistration | null = null;
     private roomAliases: RoomAliasSet;
-    private pendingRoomAliases: Map<string, {protocol: PurpleProtocol, props: IChatJoinProperties}>;
+    private pendingRoomAliases: Map<string, {protocol: BifrostProtocol, props: IChatJoinProperties}>;
     constructor(
-        private purple: IPurpleInstance,
+        private purple: IBifrostInstance,
         private store: Store,
         private deduplicator: Deduplicator,
         private config: Config,
@@ -225,7 +225,7 @@ export class MatrixEventHandler {
         if (args[0] === "protocols" && args.length === 1) {
             const protocols = this.purple.getProtocols();
             let body = "Available protocols:\n";
-            body += protocols.map((plugin: PurpleProtocol) =>
+            body += protocols.map((plugin: BifrostProtocol) =>
                 ` \`${plugin.name}\` - ${plugin.summary}`,
             ).join("\n");
             await intent.sendMessage(event.room_id, {
@@ -245,7 +245,7 @@ export class MatrixEventHandler {
             body += users.map((remoteUser: RemoteUser) => {
                 const pid = remoteUser.get("protocolId");
                 const username = remoteUser.get("username");
-                let account: IPurpleAccount|null = null;
+                let account: IBifrostAccount|null = null;
                 try {
                     account = this.purple.getAccount(username, pid, event.sender);
                 } catch (ex) {
@@ -454,7 +454,7 @@ Say \`help\` for more commands.
         if (!args[1]) {
             throw new Error("You need to specify a password");
         }
-        const account = this.purple.createPurpleAccount(args[0], protocol);
+        const account = this.purple.createBifrostAccount(args[0], protocol);
         account.createNew(args[1]);
         await this.store.storeUser(event.sender, protocol, args[0], MUSER_TYPE_ACCOUNT);
         await this.bridge.getIntent().sendMessage(event.room_id, {
@@ -499,7 +499,7 @@ Say \`help\` for more commands.
 
     private async handleImMessage(context: IBridgeContext, event: IEventRequestData) {
         log.info("Handling IM message");
-        let acct: IPurpleAccount;
+        let acct: IBifrostAccount;
         const roomProtocol = context.rooms.remote.get("protocol_id");
         try {
             acct = (await this.getAccountForMxid(event.sender, roomProtocol)).acct;
@@ -569,7 +569,7 @@ Say \`help\` for more commands.
         // XXX: We are assuming here that the previous state was invite.
         const membership = event.content.membership;
         log.info(`Handling group ${event.sender} ${membership}`);
-        let acct: IPurpleAccount;
+        let acct: IBifrostAccount;
         const isGateway = context.rooms.remote.get("gateway");
         const name = context.rooms.remote.get("room_name");
         const roomProtocol = context.rooms.remote.get("protocol_id");
@@ -646,7 +646,7 @@ Say \`help\` for more commands.
         }
     }
 
-    private async getJoinParametersForCommand(acct: IPurpleAccount, args: string[], roomId: string, command: string)
+    private async getJoinParametersForCommand(acct: IBifrostAccount, args: string[], roomId: string, command: string)
     : Promise<IChatJoinProperties|null> {
         const params = acct.getChatParamsForProtocol();
         if (args.length === 1) {
@@ -718,7 +718,7 @@ E.g. \`${command} ${acct.protocol.id}\` ${required.join(" ")} ${optional.join(" 
         return paramSet;
     }
 
-    private joinOrDefer(acct: IPurpleAccount, name: string, properties: IChatJoinProperties): Promise<void> {
+    private joinOrDefer(acct: IBifrostAccount, name: string, properties: IChatJoinProperties): Promise<void> {
         if (!acct.connected) {
             log.debug("Account is not connected, deferring join until connected");
             return new Promise((resolve, reject) => {
@@ -744,7 +744,7 @@ E.g. \`${command} ${acct.protocol.id}\` ${required.join(" ")} ${optional.join(" 
     }
 
     private async getAccountForMxid(sender: string, protocol: string,
-    ): Promise<{acct: IPurpleAccount, newAcct: boolean}> {
+    ): Promise<{acct: IBifrostAccount, newAcct: boolean}> {
         const remoteUser = (await this.store.getRemoteUsersFromMxId(sender)).find(
             (remote) => remote.protocolId === protocol && remote.isAccount,
         );

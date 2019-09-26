@@ -4,9 +4,9 @@ import * as request from "request-promise-native";
 import { Util } from "./Util";
 import { Logging } from "matrix-appservice-bridge";
 import { Store } from "./Store";
-import { IPurpleInstance } from "./purple/IPurpleInstance";
-import { IPurpleAccount } from "./purple/IPurpleAccount";
-import { PurpleProtocol } from "./purple/PurpleProtocol";
+import { IBifrostInstance } from "./bifrost/Instance";
+import { IBifrostAccount } from "./bifrost/Account";
+import { BifrostProtocol } from "./bifrost/Protocol";
 import { MUSER_TYPE_ACCOUNT } from "./StoreTypes";
 const log = Logging.get("AutoRegistration");
 
@@ -29,19 +29,19 @@ export class AutoRegistration {
         private autoRegConfig: IConfigAutoReg,
         private bridge: Bridge,
         private store: Store,
-        private purple: IPurpleInstance) {
+        private protoInstance: IBifrostInstance) {
     }
 
     public isSupported(protocol: string) {
         return Object.keys(this.autoRegConfig.protocolSteps!).includes(protocol);
     }
 
-    public async registerUser(protocol: string, mxId: string): Promise<IPurpleAccount> {
+    public async registerUser(protocol: string, mxId: string): Promise<IBifrostAccount> {
         if (!this.isSupported(protocol)) {
             throw new Error("Protocol unsupported");
         }
         // We assume the caller has already validated this.
-        const proto = this.purple.getProtocol(protocol)!;
+        const proto = this.protoInstance.getProtocol(protocol)!;
         const step = this.autoRegConfig.protocolSteps![protocol];
         let res: {username: string, extraParams: any};
         if (step.type === "http") {
@@ -49,14 +49,14 @@ export class AutoRegistration {
         } else if (step.type === "implicit") {
             const params = this.generateParameters(step.parameters, mxId);
             await this.store.storeUser(mxId, proto, params.username, MUSER_TYPE_ACCOUNT);
-            return this.purple.getAccount(params.username, protocol, mxId)!;
+            return this.protoInstance.getAccount(params.username, protocol, mxId)!;
         } else {
             throw new Error(`This method of registration is unsupported (${step.type})`);
         }
         // XXX: Slight hard-code here.
-        this.purple.createPurpleAccount(res.username, proto).createNew(res.extraParams.password);
-        log.debug(`Creating purple account for ${protocol} ${res.username}`);
-        const acct = this.purple.getAccount(res.username, protocol, mxId)!;
+        this.protoInstance.createBifrostAccount(res.username, proto).createNew(res.extraParams.password);
+        log.debug(`Creating ${protocol} account for ${res.username}`);
+        const acct = this.protoInstance.getAccount(res.username, protocol, mxId)!;
         log.debug(`Enabling account`);
         acct.setEnabled(true);
         log.debug(`Storing account in bridge store`);
@@ -64,7 +64,7 @@ export class AutoRegistration {
         return acct;
     }
 
-    public async reverseRegisterUser(username: string, protocol: PurpleProtocol): Promise<IPurpleAccount> {
+    public async reverseRegisterUser(username: string, protocol: BifrostProtocol): Promise<IBifrostAccount> {
         // Fundamentally, we want to pull a mxid from the string, and then call registerUser.
         if (!this.isSupported(protocol.id)) {
             throw Error("Protocol unsupported");
@@ -121,7 +121,7 @@ export class AutoRegistration {
                 throw new Error("Protocol unsupported");
             }
             // We assume the caller has already validated this.
-            const proto = this.purple.getProtocol(protocol)!;
+            const proto = this.protoInstance.getProtocol(protocol)!;
             const step = this.autoRegConfig.protocolSteps![protocol];
             return this.generateParameters(step.parameters, mxId);
     }

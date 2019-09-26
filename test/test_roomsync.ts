@@ -1,6 +1,6 @@
 import * as Chai from "chai";
 import { Util } from "../src/Util";
-import { PurpleProtocol } from "../src/purple/PurpleProtocol";
+import { BifrostProtocol } from "../src/bifrost/Protocol";
 import { RoomSync } from "../src/RoomSync";
 import { Deduplicator } from "../src/Deduplicator";
 import { create } from "domain";
@@ -8,7 +8,7 @@ import { IRoomEntry, MROOM_TYPE_GROUP, IRemoteGroupData, MUSER_TYPE_ACCOUNT } fr
 import { mockStore } from "./mocks/store";
 const expect = Chai.expect;
 
-const dummyProtocol = new PurpleProtocol({
+const dummyProtocol = new BifrostProtocol({
     id: "prpl-dummy",
     name: "Dummy",
     homepage: undefined,

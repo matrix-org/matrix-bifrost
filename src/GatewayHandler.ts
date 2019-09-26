@@ -1,23 +1,15 @@
-import { IGatewayJoin, IGatewayRoomQuery, IGatewayPublicRoomsQuery } from "./purple/PurpleEvents";
-import { IPurpleInstance } from "./purple/IPurpleInstance";
+import { IGatewayJoin, IGatewayRoomQuery, IGatewayPublicRoomsQuery } from "./bifrost/Events";
+import { IBifrostInstance } from "./bifrost/Instance";
 import { Bridge, Logging, Intent } from "matrix-appservice-bridge";
-import { IConfigBridge, Config } from "./Config";
+import { Config } from "./Config";
 import { Store } from "./Store";
 import { MROOM_TYPE_GROUP, IRemoteGroupData, IRoomEntry } from "./StoreTypes";
-import { IEventRequest, IBridgeContext } from "./MatrixTypes";
+import { IBridgeContext } from "./MatrixTypes";
 import { IBasicProtocolMessage } from "./MessageFormatter";
 import { ProfileSync } from "./ProfileSync";
+import { IGatewayRoom } from "./bifrost/Gateway";
 
 const log = Logging.get("GatewayHandler");
-
-export interface IGatewayRoom {
-    name: string;
-    topic: string;
-    avatar?: string;
-    roomId: string;
-    membership: any[];
-    // remotes: string[];
-}
 
 /**
  * Responsible for handling querys & events on behalf of a gateway style bridge.
@@ -44,7 +36,7 @@ export class GatewayHandler {
     private roomIdCache!: Map<string, IGatewayRoom>;
 
     constructor(
-        private purple: IPurpleInstance,
+        private purple: IBifrostInstance,
         private bridge: Bridge,
         private config: Config,
         private store: Store,

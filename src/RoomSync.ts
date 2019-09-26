@@ -1,6 +1,6 @@
 import { Logging } from "matrix-appservice-bridge";
-import { IPurpleInstance } from "./purple/IPurpleInstance";
-import { IAccountEvent, IChatJoinProperties } from "./purple/PurpleEvents";
+import { IBifrostInstance } from "./bifrost/Instance";
+import { IAccountEvent, IChatJoinProperties } from "./bifrost/Events";
 import { Store } from "./Store";
 import { MROOM_TYPE_GROUP, IRoomEntry } from "./StoreTypes";
 import { Util } from "./Util";
@@ -23,7 +23,7 @@ export class RoomSync {
     private accountRoomMemberships: Map<string, IRoomMembership[]>;
     private ongoingSyncs = 0;
     constructor(
-        private purple: IPurpleInstance,
+        private purple: IBifrostInstance,
         private store: Store,
         private deduplicator: Deduplicator,
         private gateway: GatewayHandler,

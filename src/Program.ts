@@ -2,8 +2,8 @@ import { Cli, Bridge, AppServiceRegistration, Logging } from "matrix-appservice-
 import { EventEmitter } from "events";
 import { MatrixEventHandler } from "./MatrixEventHandler";
 import { MatrixRoomHandler } from "./MatrixRoomHandler";
-import { IPurpleInstance } from "./purple/IPurpleInstance";
-import {  IAccountEvent } from "./purple/PurpleEvents";
+import { IBifrostInstance } from "./bifrost/Instance";
+import {  IAccountEvent } from "./bifrost/Events";
 import { ProfileSync } from "./ProfileSync";
 import { IEventRequest } from "./MatrixTypes";
 import { RoomSync } from "./RoomSync";
@@ -33,7 +33,7 @@ class Program {
     private gatewayHandler!: GatewayHandler;
     private profileSync: ProfileSync|undefined;
     private roomSync: RoomSync|undefined;
-    private purple?: IPurpleInstance;
+    private purple?: IBifrostInstance;
     private store: Store|undefined;
     private cfg: Config;
     private deduplicator: Deduplicator;

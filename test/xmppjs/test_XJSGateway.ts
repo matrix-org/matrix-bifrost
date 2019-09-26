@@ -2,7 +2,7 @@ import * as Chai from "chai";
 import { XmppJsGateway } from "../../src/xmppjs/XJSGateway";
 import { IConfigBridge, Config } from "../../src/Config";
 import { MockXJSInstance } from "../mocks/XJSInstance";
-import { IGatewayRoom } from "../../src/GatewayHandler";
+import { IGatewayRoom } from "../../src/bifrost/Gateway";
 import { x } from "@xmpp/xml";
 import { StzaPresence, StzaBase, StzaPresenceItem } from "../../src/xmppjs/Stanzas";
 

@@ -5,14 +5,14 @@ import { Logging } from "matrix-appservice-bridge";
 import { IConfigBridge } from "../Config";
 import { IBasicProtocolMessage } from "..//MessageFormatter";
 import { Metrics } from "../Metrics";
-import { IGatewayJoin, IUserStateChanged, IStoreRemoteUser, IUserInfo } from "../purple/PurpleEvents";
-import { IGatewayRoom } from "../GatewayHandler";
+import { IGatewayJoin, IUserStateChanged, IStoreRemoteUser, IUserInfo } from "../bifrost/Events";
+import { IGatewayRoom } from "../bifrost/Gateway";
 import { PresenceCache } from "./PresenceCache";
 import { XHTMLIM } from "./XHTMLIM";
 import { BifrostRemoteUser } from "../Store";
 import { StzaPresenceItem, StzaMessage, StzaMessageSubject,
     StzaPresenceError, StzaBase, StzaPresenceKick } from "./Stanzas";
-import { IGateway } from "../purple/IGateway";
+import { IGateway } from "../bifrost/Gateway";
 import { GatewayMUCMembership, IGatewayMemberXmpp, IGatewayMemberMatrix } from "./GatewayMUCMembership";
 
 const log = Logging.get("XmppJsGateway");

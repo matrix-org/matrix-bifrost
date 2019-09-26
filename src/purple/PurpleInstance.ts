@@ -1,19 +1,18 @@
 // @ts-ignore - These are optional.
-import { helper, plugins, messaging, Protocol, Conversation } from "node-purple";
+import { helper, plugins, messaging, Conversation } from "node-purple";
 import { EventEmitter } from "events";
 import { PurpleAccount } from "./PurpleAccount";
-import { IPurpleInstance } from "./IPurpleInstance";
+import { IBifrostInstance } from "../bifrost/Instance";
 import { Logging } from "matrix-appservice-bridge";
 import * as path from "path";
 import { IConfigPurple } from "../Config";
-import { IUserInfo, IConversationEvent, IReceivedImMsg, IEventBody } from "./PurpleEvents";
-import { PurpleProtocol } from "./PurpleProtocol";
+import { IUserInfo, IConversationEvent, IEventBody } from "../bifrost/Events";
+import { BifrostProtocol } from "../bifrost/Protocol";
 import { IEventRequestData } from "../MatrixTypes";
-import { IGateway } from "./IGateway";
 const log = Logging.get("PurpleInstance");
 
-export class PurpleInstance extends EventEmitter implements IPurpleInstance {
-    private protocols: PurpleProtocol[];
+export class PurpleInstance extends EventEmitter implements IBifrostInstance {
+    private protocols: BifrostProtocol[];
     private accounts: Map<string, PurpleAccount>;
     private interval?: NodeJS.Timeout;
     constructor(private config: IConfigPurple) {
@@ -22,7 +21,7 @@ export class PurpleInstance extends EventEmitter implements IPurpleInstance {
         this.accounts = new Map();
     }
 
-    public createPurpleAccount(username, protocol: PurpleProtocol) {
+    public createBifrostAccount(username, protocol: BifrostProtocol) {
         return new PurpleAccount(username, protocol);
     }
 
@@ -41,7 +40,7 @@ export class PurpleInstance extends EventEmitter implements IPurpleInstance {
         });
         log.info("Started purple instance");
         this.protocols = plugins.get_protocols().map(
-            (data) => new PurpleProtocol(data),
+            (data) => new BifrostProtocol(data),
         );
         log.info("Got supported protocols:", this.protocols.map((p) => p.id).join(" "));
         this.interval = setInterval(this.eventHandler.bind(this), 300);
@@ -66,15 +65,15 @@ export class PurpleInstance extends EventEmitter implements IPurpleInstance {
         return acct;
     }
 
-    public getProtocol(id: string): PurpleProtocol|undefined {
+    public getProtocol(id: string): BifrostProtocol|undefined {
         return this.protocols.find((proto) => proto.id === id);
     }
 
-    public getProtocols(): PurpleProtocol[] {
+    public getProtocols(): BifrostProtocol[] {
         return this.protocols;
     }
 
-    public findProtocol(nameOrId: string): PurpleProtocol|undefined {
+    public findProtocol(nameOrId: string): BifrostProtocol|undefined {
         return this.getProtocols().find(
             (protocol) => protocol.name.toLowerCase() === nameOrId || protocol.id.toLowerCase() === nameOrId,
         );
@@ -98,7 +97,7 @@ export class PurpleInstance extends EventEmitter implements IPurpleInstance {
 
     public getUsernameFromMxid(
             mxid: string,
-            prefix: string = ""): {username: string, protocol: PurpleProtocol} {
+            prefix: string = ""): {username: string, protocol: BifrostProtocol} {
         throw Error("Not implemented yet");
     }
 

@@ -2,12 +2,12 @@ import { EventEmitter } from "events";
 import { Logging, MatrixUser, Bridge } from "matrix-appservice-bridge";
 import { Element } from "@xmpp/xml";
 import { jid, JID } from "@xmpp/jid";
-import { IPurpleInstance } from "../purple/IPurpleInstance";
+import { IBifrostInstance } from "../bifrost/Instance";
 import { Config } from "../Config";
-import { PurpleProtocol } from "../purple/PurpleProtocol";
+import { BifrostProtocol } from "../bifrost/Protocol";
 import { IXJSBackendOpts } from "./XJSBackendOpts";
 import { XmppJsAccount } from "./XJSAccount";
-import { IPurpleAccount } from "../purple/IPurpleAccount";
+import { IBifrostAccount } from "../bifrost/Account";
 import { IAccountEvent,
     IChatJoined,
     IReceivedImMsg,
@@ -18,7 +18,7 @@ import { IAccountEvent,
     IStoreRemoteUser,
     IChatReadReceipt,
     IChatStringState,
-    IEventBody} from "../purple/PurpleEvents";
+    IEventBody} from "../bifrost/Events";
 import { IBasicProtocolMessage, IMessageAttachment } from "../MessageFormatter";
 import { PresenceCache } from "./PresenceCache";
 import { Metrics } from "../Metrics";
@@ -32,13 +32,13 @@ import { Util } from "../Util";
 const xLog = Logging.get("XMPP-conn");
 const log = Logging.get("XmppJsInstance");
 
-class XmppProtocol extends PurpleProtocol {
+class XmppProtocol extends BifrostProtocol {
     constructor() {
         super({
             id: "xmpp-js",
             name: "XMPP.js Protocol Plugin",
             homepage: "N/A",
-            summary: "Fake purple protocol plugin for xmpp.js",
+            summary: "Fake bifrost protocol plugin for xmpp.js",
         }, false, false);
     }
 
@@ -59,7 +59,7 @@ class XmppProtocol extends PurpleProtocol {
 export const XMPP_PROTOCOL = new XmppProtocol();
 const SEEN_MESSAGES_SIZE = 16384;
 
-export class XmppJsInstance extends EventEmitter implements IPurpleInstance {
+export class XmppJsInstance extends EventEmitter implements IBifrostInstance {
     public readonly presenceCache: PresenceCache;
     private serviceHandler: ServiceHandler;
     private xmpp?: any;
@@ -106,7 +106,7 @@ export class XmppJsInstance extends EventEmitter implements IPurpleInstance {
         this.bridge = bridge;
     }
 
-    public createPurpleAccount(username) {
+    public createBifrostAccount(username) {
         return new XmppJsAccount(username, this.defaultRes, this, "");
     }
 
@@ -263,7 +263,7 @@ export class XmppJsInstance extends EventEmitter implements IPurpleInstance {
         return;
     }
 
-    public getAccount(username: string, protocolId: string, mxid: string): IPurpleAccount|null {
+    public getAccount(username: string, protocolId: string, mxid: string): IBifrostAccount|null {
         const j = jid(username);
         if (j.domain === this.myAddress.domain &&
             j.local.startsWith("#") &&
@@ -292,15 +292,15 @@ export class XmppJsInstance extends EventEmitter implements IPurpleInstance {
         return acct;
     }
 
-    public getProtocol(id: string): PurpleProtocol|undefined {
+    public getProtocol(id: string): BifrostProtocol|undefined {
         if (id === "xmpp-js") { return XMPP_PROTOCOL; }
     }
 
-    public getProtocols(): PurpleProtocol[] {
+    public getProtocols(): BifrostProtocol[] {
         return [XMPP_PROTOCOL];
     }
 
-    public findProtocol(nameOrId: string): PurpleProtocol|undefined {
+    public findProtocol(nameOrId: string): BifrostProtocol|undefined {
         if (nameOrId.toLowerCase() === "xmpp-js") { return XMPP_PROTOCOL; }
     }
 
@@ -318,7 +318,7 @@ export class XmppJsInstance extends EventEmitter implements IPurpleInstance {
 
     public getUsernameFromMxid(
             mxid: string,
-            prefix: string = ""): {username: string, protocol: PurpleProtocol} {
+            prefix: string = ""): {username: string, protocol: BifrostProtocol} {
         // This is for GHOST accts
         const uName = Util.unescapeUserId(new MatrixUser(mxid, false).localpart);
         const rPrefix = prefix ? `(${prefix})` : "";

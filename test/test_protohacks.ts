@@ -1,17 +1,17 @@
 import * as Chai from "chai";
 import { Util } from "../src/Util";
-import { PurpleProtocol } from "../src/purple/PurpleProtocol";
+import { BifrostProtocol } from "../src/bifrost/Protocol";
 import { ProtoHacks } from "../src/ProtoHacks";
 const expect = Chai.expect;
 
-const dummyProtocol = new PurpleProtocol({
+const dummyProtocol = new BifrostProtocol({
     id: "prpl-dummy",
     name: "Dummy",
     homepage: undefined,
     summary: undefined,
 });
 
-const XMPP = new PurpleProtocol({
+const XMPP = new BifrostProtocol({
     id: "prpl-jabber",
     name: "XMPP",
     homepage: undefined,
