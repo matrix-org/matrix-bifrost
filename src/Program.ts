@@ -16,7 +16,6 @@ import { Metrics } from "./Metrics";
 import { AutoRegistration } from "./AutoRegistration";
 import { GatewayHandler } from "./GatewayHandler";
 import * as request from "request-promise-native";
-import { NeDBStore } from "./store/NeDBStore";
 
 const log = Logging.get("Program");
 const bridgeLog = Logging.get("bridge");
@@ -35,7 +34,7 @@ class Program {
     private profileSync: ProfileSync|undefined;
     private roomSync: RoomSync|undefined;
     private purple?: IBifrostInstance;
-    private store: IStore|undefined;
+    private store!: IStore;
     private cfg: Config;
     private deduplicator: Deduplicator;
 
@@ -142,9 +141,9 @@ class Program {
           controller: {
             // onUserQuery: userQuery,
             onAliasQuery: (alias, aliasLocalpart) => this.eventHandler!.onAliasQuery(alias, aliasLocalpart),
-            onEvent: (r: IEventRequest, context) => {
+            onEvent: (r: IEventRequest) => {
                 if (this.eventHandler === undefined) {return; }
-                const p = this.eventHandler.onEvent(r, context).catch((err) => {
+                const p = this.eventHandler.onEvent(r).catch((err) => {
                     log.error("onEvent err", err);
                 }).catch(() => {
                     Metrics.requestOutcome(false, r.getDuration(), "fail");
@@ -159,6 +158,7 @@ class Program {
           },
           domain: this.cfg.bridge.domain,
           homeserverUrl: this.cfg.bridge.homeserverUrl,
+          disableContext: true,
           registration: this.cli.getRegistrationFilePath(),
           ...storeParams,
         });
@@ -187,8 +187,8 @@ class Program {
             Metrics.init(this.bridge);
         }
 
-        this.store = await initiateStore(this.config.datastore, this.bridge);
         try {
+            this.store = await initiateStore(this.config.datastore, this.bridge);
             const ignoreIntegrity = process.env.BIFROST_INTEGRITY_WRITE;
             await this.store.integrityCheck(
                 ignoreIntegrity === undefined || ignoreIntegrity !== "false");
@@ -223,6 +223,12 @@ class Program {
 
         this.eventHandler.setBridge(this.bridge, autoReg || undefined);
         this.roomHandler.setBridge(this.bridge);
+        // XXX: Hack to make onAliasQueried work
+        if (!this.bridge._roomStore) {
+            this.bridge._roomStore = {
+                setMatrixRoom: () => Promise.resolve(),
+            };
+        }
         log.info("Bridge has started.");
         try {
             if (purple instanceof XmppJsInstance) {

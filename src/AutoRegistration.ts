@@ -48,7 +48,7 @@ export class AutoRegistration {
             res = await this.handleHttpRegistration(mxId, step);
         } else if (step.type === "implicit") {
             const params = this.generateParameters(step.parameters, mxId);
-            await this.store.storeUser(mxId, proto, params.username, MUSER_TYPE_ACCOUNT);
+            await this.store.storeAccount(mxId, proto, params.username);
             return this.protoInstance.getAccount(params.username, protocol, mxId)!;
         } else {
             throw new Error(`This method of registration is unsupported (${step.type})`);
@@ -60,7 +60,7 @@ export class AutoRegistration {
         log.debug(`Enabling account`);
         acct.setEnabled(true);
         log.debug(`Storing account in bridge store`);
-        await this.store.storeUser(mxId, proto, res.username, MUSER_TYPE_ACCOUNT);
+        await this.store.storeAccount(mxId, proto, res.username);
         return acct;
     }
 

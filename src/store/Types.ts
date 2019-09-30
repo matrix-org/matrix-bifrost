@@ -12,21 +12,22 @@ export type MROOM_TYPES = "user-admin"|"im"|"group";
 export type MUSER_TYPES = "account"|"ghost";
 
 export interface IRemoteRoomData {
-    type?: MROOM_TYPES; // One of [MROOM_TYPE_UADMIN, MROOM_TYPE_IM]
     protocol_id?: string;
 }
 
 export interface IRemoteGroupData extends IRemoteRoomData {
-    type?: "group";
     room_name?: string;
     properties?: IChatJoinProperties;
     gateway?: boolean;
 }
 
 export interface IRemoteImData extends IRemoteRoomData {
-    type?: "im";
-    matrixUser?: MatrixUser;
+    matrixUser?: string;
     recipient?: string;
+}
+
+export interface IRemoteUserAdminData extends IRemoteRoomData {
+    matrixUser?: string;
 }
 
 export interface IMatrixUserData {

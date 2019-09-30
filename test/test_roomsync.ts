@@ -79,7 +79,7 @@ describe("RoomSync", () => {
             protocol_id: dummyProtocol.id,
             room_name: "abc",
         } as IRemoteGroupData);
-        await store.storeUser("@foo:bar", dummyProtocol, "foobar", MUSER_TYPE_ACCOUNT);
+        await store.storeAccount("@foo:bar", dummyProtocol, "foobar");
         await rs.sync(bot, intent);
         expect(rs.getMembershipForUser("prpl-dummy://foobar")).to.deep.equal([
             {
@@ -98,7 +98,7 @@ describe("RoomSync", () => {
             room_name: "abc",
             gateway: true,
         } as IRemoteGroupData);
-        await store.storeUser("@foo:bar", dummyProtocol, "foobar", MUSER_TYPE_ACCOUNT);
+        await store.storeAccount("@foo:bar", dummyProtocol, "foobar");
         await rs.sync(bot, intent);
         expect(rs.getMembershipForUser("prpl-dummy://foobar")).to.not.exist;
         expect(remoteJoins).to.deep.equal([

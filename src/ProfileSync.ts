@@ -116,7 +116,7 @@ export class ProfileSync {
         }
 
         if (remoteUsers.length === 0) {
-            const {remote, matrix} = await this.store.storeUser(userId, protocol, senderId, "ghost");
+            const {remote, matrix} = await this.store.storeGhost(userId, protocol, senderId);
             return {matrixUser: matrix, remoteUser: remote};
         }
         return {matrixUser: mxUser, remoteUser: remoteUsers[0]};

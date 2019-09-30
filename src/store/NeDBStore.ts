@@ -2,7 +2,7 @@ import { Bridge, MatrixRoom, RemoteRoom, RemoteUser,
     MatrixUser, UserStore, RoomStore, Logging, AsBot } from "matrix-appservice-bridge";
 import { Util } from "../Util";
 import { MROOM_TYPES, IRoomEntry, IRemoteRoomData, IRemoteGroupData,
-    MUSER_TYPE_ACCOUNT, MUSER_TYPES, MROOM_TYPE_UADMIN, MROOM_TYPE_GROUP } from "./Types";
+    MUSER_TYPE_ACCOUNT, MUSER_TYPES, MROOM_TYPE_UADMIN, MROOM_TYPE_GROUP, MUSER_TYPE_GHOST, IRemoteImData, MROOM_TYPE_IM } from "./Types";
 import { BifrostProtocol } from "../bifrost/Protocol";
 import { IAccountMinimal } from "../bifrost/Events";
 import { IStore } from "./Store";
@@ -82,6 +82,11 @@ export class NeDBStore implements IStore {
         );
     }
 
+    public async getAccountsForMatrixUser(userId: string, protocolId: string): Promise<BifrostRemoteUser[]> {
+        const users = await this.getRemoteUsersFromMxId(userId);
+        return users.filter((u) => u.isRemote === false && u.protocolId === protocolId);
+    }
+
     public async getRoomByRemoteData(remoteData: IRemoteRoomData|IRemoteGroupData) {
         const remoteEntries = await this.roomStore.getEntriesByRemoteRoomData(remoteData);
         if (remoteEntries !== null && remoteEntries.length > 0) {
@@ -92,9 +97,17 @@ export class NeDBStore implements IStore {
         }
     }
 
-    public async getRoomByRoomId(roomId: string): Promise<IRoomEntry|null> {
-        const entries = await this.roomStore.getEntriesByMatrixId(roomId);
-        return entries[0] || null;
+    public async getIMRoom(matrixUserId: string, protocolId: string, remoteUserId: string): Promise<IRoomEntry|null> {
+        const remoteEntries = await this.roomStore.getEntriesByRemoteRoomData({
+            matrixUser: matrixUserId,
+            protocol_id: protocolId,
+            recipient: remoteUserId,
+        } as IRemoteImData);
+        const suitableEntries = remoteEntries.filter((e) => e.matrix.get("type") === MROOM_TYPE_IM)[0];
+        if (!suitableEntries) {
+            return null;
+        }
+        return suitableEntries;
     }
 
     public async getUsernameMxidForProtocol(protocol: BifrostProtocol): Promise<{[mxid: string]: string}> {
@@ -119,12 +132,16 @@ export class NeDBStore implements IStore {
         return this.roomStore.getEntriesByMatrixRoomData({type});
     }
 
-    public async storeUser(userId: string, protocol: BifrostProtocol,
-                           username: string, type: MUSER_TYPES, extraData: any = {})
+    public async storeAccount(userId: string, protocol: BifrostProtocol, username: string, extraData: any = {}) {
+        const id = Util.createRemoteId(protocol.id, username);
+        await this._storeUser(userId, protocol, username, MUSER_TYPE_ACCOUNT, extraData);
+    }
+
+    public async storeGhost(userId: string, protocol: BifrostProtocol, username: string, extraData: any = {})
                             : Promise<{remote: BifrostRemoteUser, matrix: MatrixUser}> {
         const id = Util.createRemoteId(protocol.id, username);
         await this.userLock.get(id);
-        const p = this._storeUser(userId, protocol, username, type, extraData);
+        const p = this._storeUser(userId, protocol, username, MUSER_TYPE_GHOST, extraData);
         log.debug("Locking ", id);
         this.userLock.set(id, p.then(() => { /*for typing*/ }));
         const res = await p;
@@ -160,9 +177,7 @@ export class NeDBStore implements IStore {
         log.debug("with data ", remoteData);
         const mxRoom = new MatrixRoom(matrixId);
         mxRoom.set("type", type);
-        const remote = new RemoteRoom(
-            remoteId,
-        remoteData);
+        const remote = new RemoteRoom(remoteId, remoteData);
         try {
             await this.roomStore.linkRooms(mxRoom, remote);
         } catch (ex) {
@@ -280,6 +295,7 @@ export class NeDBStore implements IStore {
     private async _storeUser(userId: string, protocol: BifrostProtocol,
                              username: string, type: MUSER_TYPES, extraData: any = {})
                             : Promise<{remote: BifrostRemoteUser, matrix: MatrixUser}> {
+        let remote: BifrostRemoteUser;
         const id = Util.createRemoteId(protocol.id, username);
         const mxUser = (await this.userStore.getMatrixUser(userId)) || new MatrixUser(userId);
         const existing = await this.userStore.getRemoteUser(id);
@@ -290,7 +306,7 @@ export class NeDBStore implements IStore {
             remoteUser.set("type", type);
             await this.userStore.linkUsers(mxUser, remoteUser);
             log.info(`Linked new ${type} ${userId} -> ${id}`);
-            const remote = BifrostRemoteUser.fromRemoteUser(
+            remote = BifrostRemoteUser.fromRemoteUser(
                 remoteUser,
                 this.asBot,
                 userId,
@@ -316,7 +332,7 @@ export class NeDBStore implements IStore {
             existing.set(key, extraData[key]);
         });
         await this.userStore.setRemoteUser(existing);
-        const remote = BifrostRemoteUser.fromRemoteUser(
+        remote = BifrostRemoteUser.fromRemoteUser(
             existing,
             this.asBot,
             userId,

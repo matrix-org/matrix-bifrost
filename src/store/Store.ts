@@ -1,5 +1,5 @@
 import { MatrixRoom, RemoteRoom, MatrixUser, Bridge } from "matrix-appservice-bridge";
-import { IRemoteRoomData, IRemoteGroupData, IRoomEntry, MROOM_TYPES, MUSER_TYPES } from "./Types";
+import { IRemoteRoomData, IRemoteGroupData, IRoomEntry, MROOM_TYPES } from "./Types";
 import { BifrostProtocol } from "../bifrost/Protocol";
 import { IAccountMinimal } from "../bifrost/Events";
 import { BifrostRemoteUser } from "./BifrostRemoteUser";
@@ -30,23 +30,25 @@ export interface IStore {
 
     getRemoteUsersFromMxId(userId: string): Promise<BifrostRemoteUser[]>;
 
+    getAccountsForMatrixUser(userId: string, protocolId: string): Promise<BifrostRemoteUser[]>;
+
     getRoomByRemoteData(remoteData: IRemoteRoomData|IRemoteGroupData): Promise<IRoomEntry|null>;
 
-    getRoomByRoomId(roomId: string): Promise<IRoomEntry|null>;
+    getIMRoom(matrixUserId: string, protocolId: string, remoteUserId: string): Promise<IRoomEntry|null>;
 
     getUsernameMxidForProtocol(protocol: BifrostProtocol): Promise<{[mxid: string]: string}>;
 
     getRoomsOfType(type: MROOM_TYPES): Promise<IRoomEntry[]>;
 
-    storeUser(userId: string, protocol: BifrostProtocol, username: string, type: MUSER_TYPES, extraData?: any)
+    storeGhost(userId: string, protocol: BifrostProtocol, username: string)
         : Promise<{remote: BifrostRemoteUser, matrix: MatrixUser}>;
-
+    storeAccount(userId: string, protocol: BifrostProtocol, username: string, extraData?: any): Promise<void>;
     removeRoomByRoomId(matrixId: string): Promise<void>;
 
-    getRoomEntryByMatrixId(roomId: string): Promise<{matrix: MatrixRoom, remote: RemoteRoom}|null>;
+    getRoomEntryByMatrixId(roomId: string): Promise<IRoomEntry|null>;
 
     storeRoom(matrixId: string, type: MROOM_TYPES, remoteId: string, remoteData: IRemoteRoomData)
-    : Promise<{remote: RemoteRoom, matrix: MatrixRoom}>;
+    : Promise<IRoomEntry>;
 
     integrityCheck(canWrite: boolean): Promise<void>;
 }

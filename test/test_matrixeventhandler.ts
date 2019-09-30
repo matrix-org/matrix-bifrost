@@ -4,10 +4,10 @@ import { MatrixEventHandler } from "../src/MatrixEventHandler";
 import { mockStore } from "./mocks/store";
 import { Deduplicator } from "../src/Deduplicator";
 import { Config } from "../src/Config";
-import { IEventRequest, IBridgeContext } from "../src/MatrixTypes";
+import { IEventRequest } from "../src/MatrixTypes";
 import { dummyProtocol } from "./mocks/dummyprotocol";
 import { IStore } from "../src/store/Store";
-import { IRemoteImData, MROOM_TYPE_IM } from "../src/store/Types";
+import { IRemoteImData, MROOM_TYPE_IM, IRoomEntry } from "../src/store/Types";
 const expect = Chai.expect;
 
 function createRequest(extraEvData: any): IEventRequest {
@@ -26,26 +26,6 @@ function createRequest(extraEvData: any): IEventRequest {
         getId: () => "requestId",
         getPromise: () => Promise.resolve(),
         outcomeFrom: () => null,
-    };
-}
-
-function createContext(): IBridgeContext {
-    return {
-        senders: {
-            matrix: null,
-            remote: null,
-            remotes: [],
-        },
-        targets: {
-            matrix: null,
-            remote: null,
-            remotes: [],
-        },
-        rooms: {
-            matrix: null,
-            remote: null,
-            remotes: [],
-        },
     };
 }
 
@@ -123,7 +103,7 @@ describe("MatrixEventHandler", () => {
                 },
                 event_id: "$botinviteevent",
                 state_key: "@theboss:localhost",
-            }), createContext());
+            }));
             expect(handleInviteForBotCalledWith.event_id).to.be.equal("$botinviteevent");
         });
         it("handle new invite for ghost", async () => {
@@ -144,7 +124,7 @@ describe("MatrixEventHandler", () => {
                 },
                 event_id: "$ghostinviteevent",
                 state_key: "@definitelyremote:localhost",
-            }), createContext());
+            }));
             expect(messagesHandled).to.equal(1);
             const storeEntry = await store.getRoomByRemoteData({
                 recipient: "definitelyremote",

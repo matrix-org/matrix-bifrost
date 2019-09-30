@@ -76,12 +76,10 @@ export class MatrixRoomHandler {
         purple.on("chat-typing", this.handleTyping.bind(this));
         purple.on("store-remote-user", (storeUser: IStoreRemoteUser) => {
             log.info(`Storing remote ghost for ${storeUser.mxId} -> ${storeUser.remoteId}`);
-            this.store.storeUser(
+            this.store.storeGhost(
                 storeUser.mxId,
                 this.purple.getProtocol(storeUser.protocol_id)!,
                 storeUser.remoteId,
-                MUSER_TYPE_GHOST,
-                storeUser.data,
             );
         });
         this.remoteEventIdMapping = new Map();
@@ -113,9 +111,8 @@ export class MatrixRoomHandler {
         }
     }
 
-    private async createOrGetIMRoom(data: IReceivedImMsg, matrixUser: MatrixUser, intent: Intent) {
+    private async createOrGetIMRoom(data: IReceivedImMsg, matrixUser: MatrixUser, intent: Intent): Promise<string> {
         // Check to see if we have a room for this IM.
-        const roomStore = this.bridge.getRoomStore();
         let remoteData = {
             matrixUser: matrixUser.getId(),
             protocol_id: data.account.protocol_id,
@@ -129,17 +126,9 @@ export class MatrixRoomHandler {
             await (this.roomCreationLock.get(remoteId) || Promise.resolve());
             log.info("room was created, no longer waiting");
         }
-        // For some reason the following function wites to remoteData, so recreate it later
-        const remoteEntries = await roomStore.getEntriesByRemoteRoomData(remoteData);
-        if (remoteEntries != null && remoteEntries.length >= 1) {
-            if (remoteEntries.length === 1) {
-                return remoteEntries[0].matrix.getId();
-            }
-            log.warn(
-                `Have multiple matrix rooms assigned for IM ` +
-                `${matrixUser.getId()} <-> ${data.sender}. Using first entry`,
-            );
-            return remoteEntries[0].matrix.getId();
+        const remoteEntries = await this.store.getIMRoom(matrixUser.getId(), data.account.protocol_id, data.sender);
+        if (remoteEntries != null) {
+            return remoteEntries.matrix.getId();
         }
         // Room doesn't exist yet, create it.
         //
