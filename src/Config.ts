@@ -13,6 +13,7 @@ export class Config {
         homeserverUrl: "",
         mediaserverUrl: undefined,
         userPrefix: "_bifrost_",
+        appservicePort: 9555
     };
 
     public readonly datastore: IConfigDatastore = {
@@ -97,6 +98,7 @@ export interface IConfigBridge {
     homeserverUrl: string;
     mediaserverUrl?: string;
     userPrefix: string;
+    appservicePort?: number;
 }
 
 export interface IConfigPurple {

@@ -9,7 +9,7 @@ import { IEventRequest } from "./MatrixTypes";
 import { RoomSync } from "./RoomSync";
 import { IStore, initiateStore } from "./store/Store";
 import { Deduplicator } from "./Deduplicator";
-import { Config, IBridgeBotAccount } from "./Config";
+import { Config } from "./Config";
 import { Util } from "./Util";
 import { XmppJsInstance } from "./xmppjs/XJSInstance";
 import { Metrics } from "./Metrics";
@@ -119,8 +119,8 @@ class Program {
 
     private async runBridge(port: number, config: any) {
         const checkOnly = process.env.BIFROST_CHECK_ONLY === "true";
-        log.info("Starting purple bridge on port", port);
         this.cfg.ApplyConfig(config);
+        port = this.cfg.bridge.appservicePort || port;
         if (checkOnly && this.config.logging.console === "off") {
             // Force console if we are doing an integrity check only.
             Logging.configure({
@@ -170,6 +170,7 @@ class Program {
             this.bridge.opts.roomStore = undefined;
             this.bridge.opts.eventStore = undefined;
         }
+        log.info("Starting purple bridge on port", port);
         await this.bridge.run(port, this.cfg);
         if (this.cfg.purple.backend === "node-purple") {
             log.info("Selecting node-purple as a backend");
