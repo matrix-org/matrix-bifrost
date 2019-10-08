@@ -23,7 +23,7 @@
   },
   "homepage": "https://github.com/matrix-org/matrix-bifrost",
   "dependencies": {
-    "@types/pg": "^7.11.1",
+    "@types/pg": "^7.11.2",
     "@xmpp/component": "^0.6.1",
     "@xmpp/jid": "^0.6.0",
     "@xmpp/xml": "^0.6.2",
@@ -34,7 +34,7 @@
     "marked": "^0.7.0",
     "matrix-appservice-bridge": "^1.7.0",
     "parse-entities": "^1.2.0",
-    "pg": "^7.12.1",
+    "pg": "7.12.1",
     "prom-client": "^11.2.1",
     "request": "^2.88.0",
     "request-promise-native": "^1.0.5",
@@ -61,7 +61,7 @@
     "source-map-support": "^0.5.9",
     "ts-node": "^7.0.1",
     "tslint": "^5.11.0",
-    "typescript": "^3.0.1"
+    "typescript": "^3.6.3"
   },
   "optionalPeerDependencies": {
     "node-purple": "matrix-org/node-purple"
