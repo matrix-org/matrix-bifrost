@@ -207,7 +207,9 @@ class Program {
             this.purple!, this.profileSync, this.store, this.cfg, this.deduplicator,
         );
         this.gatewayHandler = new GatewayHandler(purple, this.bridge, this.cfg, this.store, this.profileSync);
-        this.roomSync = new RoomSync(purple, this.store, this.deduplicator, this.gatewayHandler);
+        this.roomSync = new RoomSync(
+            purple, this.store, this.deduplicator, this.gatewayHandler, this.bridge.getIntent()
+        );
         this.eventHandler = new MatrixEventHandler(
             purple, this.store, this.deduplicator, this.config, this.gatewayHandler,
         );
@@ -235,7 +237,7 @@ class Program {
                 purple.preStart(this.bridge, autoReg);
             }
             await purple.start();
-            await this.roomSync.sync(this.bridge.getBot(), this.bridge.getIntent());
+            await this.roomSync.sync(this.bridge.getBot());
             if (purple instanceof XmppJsInstance) {
                 log.debug("Signing in accounts...");
                 purple.signInAccounts(

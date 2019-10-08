@@ -241,6 +241,7 @@ export class PgDataStore implements IStore {
                 gateway: row.gateway,
                 properties: row.properties,
                 room_name: row.room_name,
+                protocol_id: row.protocol_id,
             } as IRemoteGroupData),
         }));
     }

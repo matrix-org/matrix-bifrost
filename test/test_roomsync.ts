@@ -35,7 +35,7 @@ function createBotAndIntent() {
 
 let remoteJoins: any[];
 
-function createRoomSync(rooms: IRoomEntry[] = []) {
+function createRoomSync(intent, rooms: IRoomEntry[] = []) {
     remoteJoins = [];
     // Create dummy objects, only implement needed stuff.
     const purple = {
@@ -62,25 +62,25 @@ function createRoomSync(rooms: IRoomEntry[] = []) {
     // }
 
     return {
-        rs: new RoomSync(purple as any, store, new Deduplicator(), gateway as any),
+        rs: new RoomSync(purple as any, store, new Deduplicator(), gateway as any, intent),
         store,
     };
 }
 
 describe("RoomSync", () => {
     it("constructs", () => {
-        const rs = createRoomSync();
+        const rs = createRoomSync(null);
     });
     it("should sync one room for one user", async () => {
-        const {rs, store} = createRoomSync();
         const {bot, intent} = createBotAndIntent();
+        const {rs, store} = createRoomSync(intent);
         await store.storeRoom("!abc:foobar", MROOM_TYPE_GROUP, "foobar", {
             type: MROOM_TYPE_GROUP,
             protocol_id: dummyProtocol.id,
             room_name: "abc",
         } as IRemoteGroupData);
         await store.storeAccount("@foo:bar", dummyProtocol, "foobar");
-        await rs.sync(bot, intent);
+        await rs.sync(bot);
         expect(rs.getMembershipForUser("prpl-dummy://foobar")).to.deep.equal([
             {
                 membership: "join",
@@ -90,8 +90,8 @@ describe("RoomSync", () => {
         ]);
     });
     it("should sync remote users for gateways", async () => {
-        const {rs, store} = createRoomSync();
         const {bot, intent} = createBotAndIntent();
+        const {rs, store} = createRoomSync(intent);
         await store.storeRoom("!abc:foobar", MROOM_TYPE_GROUP, "foobar", {
             type: MROOM_TYPE_GROUP,
             protocol_id: dummyProtocol.id,
@@ -99,7 +99,7 @@ describe("RoomSync", () => {
             gateway: true,
         } as IRemoteGroupData);
         await store.storeAccount("@foo:bar", dummyProtocol, "foobar");
-        await rs.sync(bot, intent);
+        await rs.sync(bot);
         expect(rs.getMembershipForUser("prpl-dummy://foobar")).to.not.exist;
         expect(remoteJoins).to.deep.equal([
             {

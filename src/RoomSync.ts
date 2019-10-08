@@ -1,4 +1,4 @@
-import { Logging } from "matrix-appservice-bridge";
+import { Logging, MatrixRoom, RemoteRoom } from "matrix-appservice-bridge";
 import { IBifrostInstance } from "./bifrost/Instance";
 import { IAccountEvent, IChatJoinProperties } from "./bifrost/Events";
 import { IStore } from "./store/Store";
@@ -23,23 +23,24 @@ export class RoomSync {
     private accountRoomMemberships: Map<string, IRoomMembership[]>;
     private ongoingSyncs = 0;
     constructor(
-        private purple: IBifrostInstance,
+        private bifrost: IBifrostInstance,
         private store: IStore,
         private deduplicator: Deduplicator,
         private gateway: GatewayHandler,
+        private intent: any,
     ) {
         this.accountRoomMemberships = new Map();
-        this.purple.on("account-signed-on", this.onAccountSignedin.bind(this));
+        this.bifrost.on("account-signed-on", this.onAccountSignedin.bind(this));
     }
 
     public getMembershipForUser(user: string): IRoomMembership[]|undefined {
         return this.accountRoomMemberships.get(user);
     }
 
-    public async sync(bot: any, intent: any) {
+    public async sync(bot: any) {
         log.info("Beginning sync");
         try {
-            await this.syncAccountsToGroupRooms(bot, intent);
+            await this.syncAccountsToGroupRooms(bot);
         } catch (err) {
             log.error("Caugh error while trying to sync group rooms", err);
             throw Error("Encountered error while syncing. Cannot continue");
@@ -71,10 +72,10 @@ export class RoomSync {
 
     /**
      * This function will collect all the members of the group rooms and decide
-     * if the libpurple side needs to "reconnect" to the rooms.
+     * if the backend side needs to "reconnect" to the rooms.
      * @return [description]
      */
-    private async syncAccountsToGroupRooms(bot: any, intent: any): Promise<void> {
+    private async syncAccountsToGroupRooms(bot: any): Promise<void> {
         const rooms = await this.store.getRoomsOfType(MROOM_TYPE_GROUP);
         log.info(`Got ${rooms.length} group rooms`);
         await Promise.all(rooms.map(async (room: IRoomEntry) => {
@@ -87,7 +88,8 @@ export class RoomSync {
                 log.warn(`Not syncing ${roomId} because it has no remote links`);
                 return;
             }
-            if (!this.purple.getProtocol(room.remote.get("protocol_id"))) {
+            const protocolId = room.remote.get("protocol_id");
+            if (!this.bifrost.getProtocol(protocolId)) {
                 log.debug(`Not syncing ${roomId} because the purple backend doesn't support this protocol`);
                 return;
             }
@@ -106,48 +108,64 @@ export class RoomSync {
                     continue;
                 }
                 const isRemote = bot.isRemoteUser(userId);
-                if (isRemote && isGateway) {
-                    try {
-                        await this.gateway.rejoinRemoteUser(userId, roomId);
-                    } catch (ex) {
-                        log.warn(`Failed to rejoin gateway user ${userId} to ${roomId}`, ex);
-                    }
-                    continue;
-                } else if ((isRemote && !isGateway) || isGateway) {
-                    // Don't handle remote non-gateway users, or matrix gateway users.
-                    continue;
+                if (isRemote) {
+                    await this.syncRemoteUser(userId, roomId, room.remote!, isGateway);
+                } else {
+                    await this.syncMatrixUser(userId, roomId, room.remote!, isGateway, members[userId].display_name);
                 }
-                const allRemotes = await this.store.getRemoteUsersFromMxId(userId);
-                const remotes = allRemotes.filter(
-                    (ruser) => ruser && !ruser.isRemote &&
-                        ruser.protocolId === room.remote.get("protocol_id"),
-                );
-                if (remotes.length === 0 && !isRemote) {
-                    log.warn(`${userId} has no remote accounts matching the rooms protocol`);
-                    continue;
-                }
-                const remoteUser = remotes[0];
-                log.info(`${remoteUser.id} will join ${room.remote.get("room_name")} on connection`);
-                const props = Util.desanitizeProperties(Object.assign({}, room.remote.get("properties")));
-                await ProtoHacks.addJoinProps(
-                    room.remote.get("protocol_id"), props, userId, members[userId].display_name || intent,
-                );
-                const acctMemberList = this.accountRoomMemberships.get(remoteUser.id) || [];
-                acctMemberList.push({
-                    room_name: room.remote.get("room_name"),
-                    params: props,
-                    membership: "join",
-                });
-                this.accountRoomMemberships.set(remoteUser.id, acctMemberList);
             }
         }));
+    }
 
+    private async syncMatrixUser(userId: string, roomId: string, remoteRoom: RemoteRoom,
+                                 isGateway: boolean, displayName: string) {
+        log.debug(`Syncing matrix ${userId} -> ${roomId}`);
+        if (isGateway) {
+            // Do nothing, as we are trying to sync a Matrix user to a matrix room :)
+            return;
+        }
+
+        // First get an account for this matrix user.
+        const protocolId = remoteRoom.get("protocol_id");
+        const remotes = await this.store.getAccountsForMatrixUser(userId, protocolId);
+        if (remotes.length === 0) {
+            log.warn(`${userId} has no remote accounts matching the rooms protocol`);
+            return;
+        }
+        const remoteUser = remotes[0];
+        log.info(`${remoteUser.id} will join ${remoteRoom.get("room_name")} on connection`);
+
+        // Get properties needed to join the room
+        const props = Util.desanitizeProperties(Object.assign({}, remoteRoom.get("properties")));
+        // Set some extra information about the user that is dynamic, e.g. handle.
+        await ProtoHacks.addJoinProps(
+            protocolId, props, userId, displayName || this.intent,
+        );
+        const acctMemberList = this.accountRoomMemberships.get(remoteUser.id) || [];
+        acctMemberList.push({
+            room_name: remoteRoom.get("room_name"),
+            params: props,
+            membership: "join",
+        });
+        this.accountRoomMemberships.set(remoteUser.id, acctMemberList);
+    }
+
+    private async syncRemoteUser(userId: string, roomId: string, remoteRoom: RemoteRoom, isGateway: boolean) {
+        log.debug(`Syncing remote ${userId} -> ${roomId}`);
+        if (isGateway) {
+            try {
+                await this.gateway.rejoinRemoteUser(userId, roomId);
+            } catch (ex) {
+                log.warn(`Failed to rejoin gateway user ${userId} to ${roomId}`, ex);
+            }
+        }
+        // Do nothing, as we are trying to sync a Remote user to a Remote room :)
     }
 
     private async onAccountSignedin(ev: IAccountEvent) {
         log.info(`${ev.account.username} signed in, checking if we need to reconnect them to some rooms`);
         const matrixUser = await this.store.getMatrixUserForAccount(ev.account);
-        const acct = this.purple.getAccount(
+        const acct = this.bifrost.getAccount(
             ev.account.username,
             ev.account.protocol_id,
             matrixUser ? matrixUser.getId() : undefined,
@@ -163,10 +181,11 @@ export class RoomSync {
                 // This can fail.
             }
 
-            log.error(`Tried to get ${ev.account.username} but libpurple found nothing. This shouldn't happen!`);
+            log.error(`Tried to get ${ev.account.username} but the backend found nothing. This shouldn't happen!`);
             return;
         }
         const remoteId = Util.createRemoteId(ev.account.protocol_id, ev.account.username);
+        console.log(this.accountRoomMemberships);
         const reconnectStack = this.accountRoomMemberships.get(remoteId) || [];
         const reconsToMake = reconnectStack.length;
         log.debug(`Found ${reconsToMake} reconnections to be made for ${remoteId} (${matrixUser.getId()})`);
@@ -178,7 +197,7 @@ export class RoomSync {
             try {
                 if (membership.membership === "join") {
                     log.info(`${i}/${reconsToMake} JOIN ${remoteId} -> ${membership.room_name}`);
-                    await acct!.joinChat(membership.params, this.purple, JOINLEAVE_TIMEOUT, false);
+                    await acct!.joinChat(membership.params, this.bifrost, JOINLEAVE_TIMEOUT, false);
                     acct!.setJoinPropertiesForRoom(membership.room_name, membership.params);
                 } else {
                     log.info(`${i}/${reconsToMake} LEAVE ${remoteId} -> ${membership.room_name}`);

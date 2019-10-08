@@ -28,9 +28,9 @@ export interface IStore {
 
     getRemoteUserBySender(sender: string, protocol: BifrostProtocol): Promise<BifrostRemoteUser|null>;
 
-    getRemoteUsersFromMxId(userId: string): Promise<BifrostRemoteUser[]>;
-
     getAccountsForMatrixUser(userId: string, protocolId: string): Promise<BifrostRemoteUser[]>;
+
+    getRemoteUsersFromMxId(userId: string): Promise<BifrostRemoteUser[]>;
 
     getRoomByRemoteData(remoteData: IRemoteRoomData|IRemoteGroupData): Promise<IRoomEntry|null>;
 
