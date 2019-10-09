@@ -185,7 +185,6 @@ export class RoomSync {
             return;
         }
         const remoteId = Util.createRemoteId(ev.account.protocol_id, ev.account.username);
-        console.log(this.accountRoomMemberships);
         const reconnectStack = this.accountRoomMemberships.get(remoteId) || [];
         const reconsToMake = reconnectStack.length;
         log.debug(`Found ${reconsToMake} reconnections to be made for ${remoteId} (${matrixUser.getId()})`);

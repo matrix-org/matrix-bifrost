@@ -217,12 +217,16 @@ export class GatewayHandler {
             // XXX: We should check to see if the room exists in our cache.
             // We have to join the room, as doing a lookup would not prompt a bridge like freenode
             // to intervene.
-            const res = await this.bridge.getIntent().getClient().publicRooms({
+            let res = await this.bridge.getIntent().getClient().publicRooms({
                 server: ev.homeserver || undefined,
                 filter: {
                     generic_search_term: ev.searchString,
                 },
             });
+            if (res === null) {
+                // Synapse apparently does this.
+                res = {chunk: []};
+            }
             ev.result(null, res);
         } catch (ex) {
             log.warn("Room not found:", ex);

@@ -7,7 +7,6 @@ import { IStore } from "./store/Store";
 import { IBifrostInstance } from "./bifrost/Instance";
 import { IBifrostAccount } from "./bifrost/Account";
 import { BifrostProtocol } from "./bifrost/Protocol";
-import { MUSER_TYPE_ACCOUNT } from "./store/Types";
 const log = Logging.get("AutoRegistration");
 
 export interface IAutoRegHttpOpts {

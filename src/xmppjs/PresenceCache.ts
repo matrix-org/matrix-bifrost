@@ -60,10 +60,6 @@ export class PresenceCache {
     }
 
     public add(stanza: xml.Element): IPresenceDelta|undefined {
-        return this._add(stanza);
-    }
-
-    private _add(stanza: xml.Element): IPresenceDelta|undefined {
         const errorElement = stanza.getChild("error");
         if (errorElement) {
             const conflict = errorElement.getChild("conflict");

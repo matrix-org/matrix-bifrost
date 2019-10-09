@@ -115,7 +115,6 @@ export class MatrixEventHandler {
             matrix: null,
             remote: null,
         });
-        console.log(ctx);
 
         if (event.type === "m.room.member" && event.content.membership === "join") {
             this.deduplicator.waitForJoinResolve(event.room_id, event.sender);
