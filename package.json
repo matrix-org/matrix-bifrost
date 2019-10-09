@@ -24,9 +24,11 @@
   "homepage": "https://github.com/matrix-org/matrix-bifrost",
   "dependencies": {
     "@types/pg": "^7.11.2",
+    "@types/yaml": "^1.2.0",
     "@xmpp/component": "^0.6.1",
     "@xmpp/jid": "^0.6.0",
     "@xmpp/xml": "^0.6.2",
+    "commander": "^3.0.2",
     "fast-xml-parser": "^3.12.12",
     "he": "^1.2.0",
     "htmlparser2": "^4.0",
@@ -41,7 +43,8 @@
     "uuid": "^3.3.2",
     "winston": "^3.0.0",
     "winston-daily-rotate-file": "^3.3.2",
-    "xmpp.js": "^0.6.1"
+    "xmpp.js": "^0.6.1",
+    "yaml": "^1.7.1"
   },
   "devDependencies": {
     "@types/chai": "^4.1.4",
