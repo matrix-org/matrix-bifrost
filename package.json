@@ -4,6 +4,7 @@
   "description": "Multi protocol bridging for Matrix.",
   "main": "index.js",
   "scripts": {
+    "postinstall": "npm run build",
     "build": "tsc",
     "lint": "tslint --project tsconfig.json --format stylish",
     "start": "node build/src/Program.js -c config.yaml",
