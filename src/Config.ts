@@ -13,7 +13,7 @@ export class Config {
         homeserverUrl: "",
         mediaserverUrl: undefined,
         userPrefix: "_bifrost_",
-        appservicePort: 9555
+        appservicePort: 9555,
     };
 
     public readonly datastore: IConfigDatastore = {
@@ -67,6 +67,8 @@ export class Config {
         conferencePMFallbackCheck: false,
         waitOnJoinBeforePM: [],
     };
+
+    public readonly access: IConfigAccessControl = { };
 
     /**
      * Apply a set of keys and values over the default config.
@@ -135,6 +137,12 @@ export interface IConfigPortals {
 export interface IConfigProvisioning {
     enablePlumbing: boolean;
     requiredUserPL: number;
+}
+
+export interface IConfigAccessControl {
+    accountCreation?: {
+        whitelist?: string[],
+    };
 }
 
 interface IConfigMetrics {

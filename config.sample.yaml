@@ -58,6 +58,12 @@ autoRegistration:
     parameters:
       username: "<T_LOCALPART>@matrix.localhost"
 
+# Set up access controls for the bridge
+# access:
+#   accountCreation:
+#     whitelist:
+#       - "^@.*:yourdomain$"
+
 # Available subsitution variables for parameters:
 # <T_MXID> - The users mxid.
 # <T_MXID_SANE> - The users mxid, with an : replaced with _ and the @ discarded.
