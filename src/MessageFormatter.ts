@@ -15,7 +15,10 @@ export interface IMatrixMsgContents {
     "m.relates_to"?: {
         "event_id": string,
         rel_type: "m.replace",
-    },
+    };
+    "m.new_content"?: IMatrixMsgContents;
+    formatted_body?: string;
+    format?: "org.matrix.custom.html";
     [key: string]: any|undefined;
 }
 
@@ -177,6 +180,14 @@ export class MessageFormatter {
                 }
             } catch (ex) {
                 log.warn("Failed to handle attachment:", ex);
+            }
+        }
+
+        if (msg.reply_to) {
+            matrixMsg["m.new_content"] = matrixMsg;
+            matrixMsg.body = ` * ${matrixMsg.body}`;
+            if (matrixMsg.formatted_body) {
+                matrixMsg.formatted_body = ` * ${matrixMsg.formatted_body}`;
             }
         }
 
