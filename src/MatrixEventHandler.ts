@@ -764,15 +764,6 @@ E.g. \`${command} ${acct.protocol.id}\` ${required.join(" ")} ${optional.join(" 
             if (!this.autoReg) {
                 throw Error("Autoregistration of accounts not supported");
             }
-            if (!this.autoReg.isSupported(protocol)) {
-                throw Error(`${protocol} cannot be autoregistered`);
-            }
-            if (this.config.access.accountCreation) {
-                const whitelist = this.config.access.accountCreation.whitelist || [];
-                if (!whitelist.find((r) => new RegExp(r).exec(sender) !== null)) {
-                    throw Error("This user is not present in the whitelist");
-                }
-            }
             return {
                 acct: await this.autoReg.registerUser(protocol, sender),
                 newAcct: true,

@@ -1,4 +1,4 @@
-import { IConfigAutoReg } from "./Config";
+import { IConfigAutoReg, IConfigAccessControl } from "./Config";
 import { Bridge, MatrixUser } from "matrix-appservice-bridge";
 import * as request from "request-promise-native";
 import { Util } from "./Util";
@@ -26,6 +26,7 @@ export interface IAutoRegStep {
 export class AutoRegistration {
     constructor(
         private autoRegConfig: IConfigAutoReg,
+        private accessConfig: IConfigAccessControl,
         private bridge: Bridge,
         private store: IStore,
         private protoInstance: IBifrostInstance) {
@@ -36,6 +37,12 @@ export class AutoRegistration {
     }
 
     public async registerUser(protocol: string, mxId: string): Promise<IBifrostAccount> {
+        if (this.accessConfig.accountCreation) {
+            const whitelist = this.accessConfig.accountCreation.whitelist || [];
+            if (!whitelist.find((r) => new RegExp(r).exec(mxId) !== null)) {
+                throw Error("This user is not present in the whitelist");
+            }
+        }
         if (!this.isSupported(protocol)) {
             throw new Error("Protocol unsupported");
         }
