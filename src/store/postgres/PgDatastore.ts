@@ -45,7 +45,7 @@ const TableToRoomType = {
 };
 
 export class PgDataStore implements IStore {
-    public static LATEST_SCHEMA = 1;
+    public static LATEST_SCHEMA = 2;
 
     private static BuildUpsertStatement(table: string, constraint: string, keyNames: string[]): string {
         const keys = keyNames.join(", ");
@@ -385,6 +385,30 @@ export class PgDataStore implements IStore {
         await this.pgPool.query(statement, Object.values(props));
         log.debug("Stored room", matrixId);
         return res;
+    }
+
+    public async getMatrixEventId(roomId: string, remoteEventId: string) {
+        const ev = await this.pgPool.query(
+            "SELECT matrix_id FROM events WHERE room_id = $1 AND remote_id = $2", [roomId, remoteEventId],
+        );
+        if (ev.rowCount) {
+            return ev.rows[0].matrix_id;
+        }
+        return null;
+    }
+
+    public async getRemoteEventId(roomId: string, matrixEventId: string) {
+        const ev = await this.pgPool.query(
+            "SELECT matrix_id FROM events WHERE room_id = $1 AND matrix_id = $2", [roomId, matrixEventId],
+        );
+        if (ev.rowCount) {
+            return ev.rows[0].remote_id;
+        }
+        return null;
+    }
+
+    public async storeRoomEvent(roomId: string, matrixEventId: string, remoteEventId: string) {
+        await this.pgPool.query("INSERT INTO events VALUES ($1, $2, $3)", [roomId, matrixEventId, remoteEventId]);
     }
 
     public async integrityCheck(canWrite: boolean): Promise<void> {

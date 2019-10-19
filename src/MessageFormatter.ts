@@ -12,6 +12,10 @@ export interface IMatrixMsgContents {
     body: string;
     remote_id?: string;
     info?: {mimetype: string, size: number};
+    "m.relates_to"?: {
+        "event_id": string,
+        rel_type: "m.replace",
+    },
     [key: string]: any|undefined;
 }
 
@@ -24,6 +28,7 @@ export interface IBasicProtocolMessage {
     body: string;
     formatted?: Array<{type: string, body: string}>;
     id?: string;
+    reply_to?: string;
     opts?: {
         attachments?: IMessageAttachment[];
     };
@@ -79,6 +84,12 @@ export class MessageFormatter {
         };
         if (msg.id) {
             matrixMsg.remote_id = msg.id;
+        }
+        if (msg.reply_to) {
+            matrixMsg["m.relates_to"] = {
+                event_id: msg.reply_to,
+                rel_type: "m.replace",
+            };
         }
         const hasAttachment = msg.opts && msg.opts.attachments && msg.opts.attachments.length;
         if (protocol.id === PRPL_XMPP) {

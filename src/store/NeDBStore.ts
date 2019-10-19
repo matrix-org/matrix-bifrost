@@ -187,6 +187,18 @@ export class NeDBStore implements IStore {
         return {matrix: mxRoom, remote};
     }
 
+    public async getMatrixEventId(roomId: string, remoteEventId: string) {
+        return null;
+    }
+
+    public async getRemoteEventId(roomId: string, matrixEventId: string) {
+        return null;
+    }
+
+    public async storeRoomEvent(roomId: string, matrixEventId: string, remoteEventId: string) {
+        /* stub */
+    }
+
     /**
      * This will check to see if there are multiple instances of a user or room.
      * @return [description]
