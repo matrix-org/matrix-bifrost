@@ -22,11 +22,6 @@ export interface IMatrixMsgContents {
     [key: string]: any|undefined;
 }
 
-export interface IMatrixMsgContentsFormatted extends IMatrixMsgContents {
-    formatted_body: string;
-    format: string;
-}
-
 export interface IBasicProtocolMessage {
     body: string;
     formatted?: Array<{type: string, body: string}>;
