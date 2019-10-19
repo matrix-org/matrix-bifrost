@@ -6,3 +6,4 @@ config.yaml
 purple-registration.yaml
 *.log*
 data/
+.nyc/
