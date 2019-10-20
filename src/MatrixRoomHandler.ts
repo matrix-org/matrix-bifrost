@@ -313,7 +313,7 @@ export class MatrixRoomHandler {
                 const keyArr = [...this.remoteEventIdMapping.keys()].slice(0, 50);
                 keyArr.forEach(this.remoteEventIdMapping.delete.bind(this.remoteEventIdMapping));
             }
-            this.store.storeRoomEvent(roomId, event_id, data.message.id).catch((ev) => {
+            await this.store.storeRoomEvent(roomId, event_id, data.message.id).catch((ev) => {
                 log.warn("Failed to store event mapping:", ev);
             });
         }
@@ -378,7 +378,12 @@ export class MatrixRoomHandler {
             data.message.reply_to = (await this.store.getMatrixEventId(roomId, data.message.reply_to)) || undefined;
         }
         const content = await MessageFormatter.messageToMatrixEvent(data.message, protocol, intent);
-        await intent.sendMessage(roomId, content);
+        const {event_id} = await intent.sendMessage(roomId, content);
+        if (data.message.id) {
+            await this.store.storeRoomEvent(roomId, event_id, data.message.id).catch((ev) => {
+                log.warn("Failed to store event mapping:", ev);
+            });
+        }
     }
 
     private async handleChatInvite(data: IChatInvite) {
