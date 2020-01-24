@@ -177,17 +177,21 @@ export class MessageFormatter {
                 log.warn("Failed to handle attachment:", ex);
             }
         }
-
+        let finalMsg;
         if (msg.reply_to) {
-            matrixMsg["m.new_content"] = matrixMsg;
-            matrixMsg.body = ` * ${matrixMsg.body}`;
-            if (matrixMsg.formatted_body) {
-                matrixMsg.formatted_body = ` * ${matrixMsg.formatted_body}`;
-            }
+            finalMsg = {
+                "m.new_content": matrixMsg,
+                "body": ` * ${matrixMsg.body}`,
+                "msgtype": matrixMsg.msgtype,
+                "formatted_body": ` * ${matrixMsg.formatted_body}`,
+                "format": matrixMsg.format,
+            };
+        } else {
+            finalMsg = matrixMsg;
         }
 
-        log.debug("Resulting matrix event :", matrixMsg);
-        return matrixMsg;
+        log.debug("Resulting matrix event :", finalMsg);
+        return finalMsg;
     }
 
     private static parseHTMLIntoMatrixFormat(msg: string): {html: string, markdown: string} {
