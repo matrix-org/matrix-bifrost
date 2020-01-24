@@ -10,6 +10,7 @@
     "start": "node build/src/Program.js -c config.yaml",
     "genreg": "node build/src/Program.js -r -c config.yaml",
     "test": "npm run build && mocha --recursive build/test",
+    "changelog": "scripts/towncrier.sh",
     "coverage": "nyc mocha --require ts-node/register --require source-map-support/register --full-trace --bail test/**/*.ts test/*.ts"
   },
   "repository": {
