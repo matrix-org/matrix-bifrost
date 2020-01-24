@@ -99,6 +99,7 @@ export class ServiceHandler {
                 } else {
                     await this.xmpp.xmppSend(new SztaIqError(to, from, id, "cancel", null, "not-acceptable", chatName));
                 }
+                return;
             }
         }
 
