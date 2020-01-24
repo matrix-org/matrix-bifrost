@@ -218,6 +218,7 @@ class Program {
         if (this.config.autoRegistration.enabled && this.config.autoRegistration.protocolSteps !== undefined) {
             autoReg = new AutoRegistration(
                 this.config.autoRegistration,
+                this.config.access,
                 this.bridge,
                 this.store,
                 purple,

@@ -50,5 +50,11 @@ export interface IStore {
     storeRoom(matrixId: string, type: MROOM_TYPES, remoteId: string, remoteData: IRemoteRoomData)
     : Promise<IRoomEntry>;
 
+    getMatrixEventId(roomId: string, remoteEventId: string): Promise<string|null>;
+
+    getRemoteEventId(roomId: string, matrixEventId: string): Promise<string|null>;
+
+    storeRoomEvent(roomId: string, matrixEventId: string, remoteEventId: string): Promise<void>;
+
     integrityCheck(canWrite: boolean): Promise<void>;
 }

@@ -763,9 +763,6 @@ E.g. \`${command} ${acct.protocol.id}\` ${required.join(" ")} ${optional.join(" 
             if (!this.autoReg) {
                 throw Error("Autoregistration of accounts not supported");
             }
-            if (!this.autoReg.isSupported(protocol)) {
-                throw Error(`${protocol} cannot be autoregistered`);
-            }
             return {
                 acct: await this.autoReg.registerUser(protocol, sender),
                 newAcct: true,

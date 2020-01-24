@@ -68,6 +68,8 @@ export class Config {
         waitOnJoinBeforePM: [],
     };
 
+    public readonly access: IConfigAccessControl = { };
+
     /**
      * Apply a set of keys and values over the default config.
      * @param newConfig Config keys
@@ -135,6 +137,12 @@ export interface IConfigPortals {
 export interface IConfigProvisioning {
     enablePlumbing: boolean;
     requiredUserPL: number;
+}
+
+export interface IConfigAccessControl {
+    accountCreation?: {
+        whitelist?: string[],
+    };
 }
 
 interface IConfigMetrics {
