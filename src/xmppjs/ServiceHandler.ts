@@ -5,7 +5,7 @@ import { Logging } from "matrix-appservice-bridge";
 import * as request from "request-promise-native";
 import { IGatewayRoom } from "../bifrost/Gateway";
 import { IGatewayRoomQuery, IGatewayPublicRoomsQuery } from "../bifrost/Events";
-import { StzaIqDiscoInfo, StzaIqPing, StzaIqDiscoItems, StzaIqSearchFields } from "./Stanzas";
+import { StzaIqDiscoInfo, StzaIqPing, StzaIqDiscoItems, StzaIqSearchFields, SztaIqError } from "./Stanzas";
 import { IPublicRoomsResponse } from "../MatrixTypes";
 import { IConfigBridge } from "../Config";
 
@@ -95,22 +95,9 @@ export class ServiceHandler {
                 const chatName = `${toJid.local}@${toJid.domain}`;
                 const exists = !!this.xmpp.gateway.getAnonIDForJID(chatName, stanza.attrs.from);
                 if (exists) {
-                    return this.xmpp.xmppSend(new StzaIqPing(to, from, id, "result"));
+                    await this.xmpp.xmppSend(new StzaIqPing(to, from, id, "result"));
                 } else {
-                    return this.xmpp.xmppWriteToStream(x("iq", {
-                        type: "error",
-                        from: to,
-                        to: from,
-                        id,
-                    }, x("error", {
-                                type: "cancel",
-                                by: chatName,
-                            },
-                            x("not-acceptable", {
-                                xmlns: "urn:ietf:params:xml:ns:xmpp-stanzas",
-                            }),
-                        ),
-                    ));
+                    await this.xmpp.xmppSend(new SztaIqError(to, from, id, "cancel", null, "not-acceptable", chatName));
                 }
             }
         }
@@ -170,11 +157,11 @@ export class ServiceHandler {
         ));
     }
 
-    private handleDiscoInfo(to: string, from: string, id: string): Promise<void> {
+    private async handleDiscoInfo(to: string, from: string, id: string) {
         this.discoInfo.to = to;
         this.discoInfo.from = from;
         this.discoInfo.id = id;
-        return this.xmpp.xmppSend(this.discoInfo);
+        await this.xmpp.xmppSend(this.discoInfo);
     }
 
     private async handleDiscoItems(to: string, from: string, id: string, type: string,
@@ -187,7 +174,7 @@ export class ServiceHandler {
             if (type === "get") {
                 log.debug("Responding with search fields");
                 // Getting search fields.
-                return this.xmpp.xmppSend(
+                await this.xmpp.xmppSend(
                     new StzaIqSearchFields(
                         from,
                         to,
@@ -237,20 +224,8 @@ export class ServiceHandler {
             log.warn(`Failed to search rooms: ${ex}`);
             // XXX: There isn't a very good way to explain why it failed,
             // so we use service unavailable.
-            return this.xmpp.xmppWriteToStream(x("iq", {
-                type: "error",
-                from,
-                to,
-                id,
-            }, x("error", {
-                        type: "cancel",
-                        code: "503",
-                    },
-                    x("service-unavailable", {
-                        xmlns: "urn:ietf:params:xml:ns:xmpp-stanzas",
-                    }),
-                ),
-            ));
+            await this.xmpp.xmppSend(new SztaIqError(from, to, id, "cancel", 503, "service-unavailable"));
+            return;
         }
 
         rooms.chunk.forEach((room) => {
@@ -263,7 +238,7 @@ export class ServiceHandler {
             }
             response.addItem(j, room.name || room.canonical_alias);
         });
-        return this.xmpp.xmppSend(response);
+        await this.xmpp.xmppSend(response);
     }
 
     private queryRoom(roomAlias: string, onlyCheck: boolean = false): Promise<string|IGatewayRoom> {
@@ -320,24 +295,7 @@ export class ServiceHandler {
                 ),
             );
         } catch (ex) {
-            await this.xmpp.xmppWriteToStream(
-                x("iq", {
-                    type: "error",
-                    to: from,
-                    from: toStr,
-                    id,
-                }, x("query", {
-                        xmlns: "http://jabber.org/protocol/disco#info",
-                    },
-                    x("error", {
-                            type: "cancel",
-                            code: "404",
-                        },
-                        x("item-not-found", {
-                            xmlns: "urn:ietf:params:xml:ns:xmpp-stanzas",
-                        }),
-                    ),
-                )));
+            await this.xmpp.xmppSend(new SztaIqError(toStr, from, id, "cancel", 404, "item-not-found"));
         }
     }
 
