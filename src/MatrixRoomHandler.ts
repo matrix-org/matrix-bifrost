@@ -302,7 +302,9 @@ export class MatrixRoomHandler {
 
         log.info(`Sending IM to ${roomId} as ${senderMatrixUser.getId()}`);
         if (data.message.original_message) {
-            data.message.original_message = (await this.store.getMatrixEventId(roomId, data.message.original_message)) || undefined;
+            data.message.original_message = (
+                await this.store.getMatrixEventId(roomId, data.message.original_message)
+            ) || undefined;
         }
         const content = await MessageFormatter.messageToMatrixEvent(data.message, protocol, intent);
         const {event_id} = await intent.sendMessage(roomId, content);
@@ -375,7 +377,9 @@ export class MatrixRoomHandler {
             return;
         }
         if (data.message.original_message) {
-            data.message.original_message = (await this.store.getMatrixEventId(roomId, data.message.original_message)) || undefined;
+            data.message.original_message = (
+                await this.store.getMatrixEventId(roomId, data.message.original_message)
+            ) || undefined;
         }
         const content = await MessageFormatter.messageToMatrixEvent(data.message, protocol, intent);
         const {event_id} = await intent.sendMessage(roomId, content);

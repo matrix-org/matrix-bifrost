@@ -1,6 +1,6 @@
 import * as Chai from "chai";
 import { StzaPresenceItem, StzaPresenceError, StzaMessageSubject,
-    StzaMessage, StzaPresencePart, StzaPresenceKick } from "../../src/xmppjs/Stanzas";
+    StzaMessage, StzaPresencePart, StzaPresenceKick, SztaIqError } from "../../src/xmppjs/Stanzas";
 import * as parser from "fast-xml-parser";
 const expect = Chai.expect;
 
@@ -106,6 +106,17 @@ describe("Stanzas", () => {
             expect(xml).to.equal(
                 "<message from=\"foo@bar\" to=\"baz@bar\" id=\"someid\" type='groupchat'>"
                 + "<subject>This is a subject</subject></message>",
+            );
+        });
+    });
+    describe("StzaMessage", () => {
+        it("should create a valid stanza", () => {
+            const xml = new SztaIqError("foo@bar", "baz@bar", "someid", "cancel", null, "not-acceptable", "foo").xml;
+            assertXML(xml);
+            expect(xml).to.equal(
+                "<iq from='foo@bar' to='baz@bar' id='someid' type='error' xml:lang='en'>" +
+                 "<error type='cancel' by='foo'><not-acceptable xmlns='urn:ietf:params:xml:ns:xmpp-stanzas'/>" +
+                 "</error></iq>",
             );
         });
     });

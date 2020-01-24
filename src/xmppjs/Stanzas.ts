@@ -381,10 +381,10 @@ export class SztaIqError extends StzaBase {
     get xml(): string {
         let errorParams = "";
         if (this.errorCode) {
-            errorParams += ` code='${this.errorCode}`;
+            errorParams += ` code='${this.errorCode}'`;
         }
         if (this.by) {
-            errorParams += ` by='${this.by}`;
+            errorParams += ` by='${this.by}'`;
         }
         return `<iq from='${this.from}' to='${this.to}' id='${this.id}' type='error' xml:lang='en'>`
         + `<error type='${this.errorType}'${errorParams}><${this.innerError} ` +
