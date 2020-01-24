@@ -120,7 +120,7 @@ export class XmppJsInstance extends EventEmitter implements IBifrostInstance {
         return p;
     }
 
-    public xmppSend(xmlMsg: IStza) {
+    public xmppSend(xmlMsg: IStza): Promise<unknown> {
         if (this.canWrite) {
             return this.xmpp.write(xmlMsg.xml);
         }

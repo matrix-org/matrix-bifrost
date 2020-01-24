@@ -209,7 +209,7 @@ class Program {
         );
         this.gatewayHandler = new GatewayHandler(purple, this.bridge, this.cfg, this.store, this.profileSync);
         this.roomSync = new RoomSync(
-            purple, this.store, this.deduplicator, this.gatewayHandler, this.bridge.getIntent()
+            purple, this.store, this.deduplicator, this.gatewayHandler, this.bridge.getIntent(),
         );
         this.eventHandler = new MatrixEventHandler(
             purple, this.store, this.deduplicator, this.config, this.gatewayHandler,
