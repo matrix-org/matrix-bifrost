@@ -294,5 +294,29 @@ body: `<html xmlns='http://jabber.org/protocol/xhtml-im'>
                 body: "## hello halfshot!",
             });
         });
+        it("should transform an edited message", async () => {
+            const contents = await MessageFormatter.messageToMatrixEvent(
+                {
+                    body: "This is an edited message",
+                    original_message: "This is the original message",
+                },
+            dummyProtocol);
+            expect(
+                contents,
+            ).to.deep.equal({
+                "msgtype": "m.text",
+                "body": " * This is an edited message",
+                "format": undefined,
+                "formatted_body": undefined,
+                "m.new_content": {
+                  "body": "This is an edited message",
+                  "m.relates_to": {
+                    event_id: "This is the original message",
+                    rel_type: "m.replace",
+                  },
+                  "msgtype": "m.text",
+                },
+            });
+        });
     });
 });

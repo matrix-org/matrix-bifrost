@@ -26,7 +26,7 @@ export interface IBasicProtocolMessage {
     body: string;
     formatted?: Array<{type: string, body: string}>;
     id?: string;
-    reply_to?: string;
+    original_message?: string;
     opts?: {
         attachments?: IMessageAttachment[];
     };
@@ -83,9 +83,9 @@ export class MessageFormatter {
         if (msg.id) {
             matrixMsg.remote_id = msg.id;
         }
-        if (msg.reply_to) {
+        if (msg.original_message) {
             matrixMsg["m.relates_to"] = {
-                event_id: msg.reply_to,
+                event_id: msg.original_message,
                 rel_type: "m.replace",
             };
         }
@@ -177,17 +177,21 @@ export class MessageFormatter {
                 log.warn("Failed to handle attachment:", ex);
             }
         }
-
-        if (msg.reply_to) {
-            matrixMsg["m.new_content"] = matrixMsg;
-            matrixMsg.body = ` * ${matrixMsg.body}`;
-            if (matrixMsg.formatted_body) {
-                matrixMsg.formatted_body = ` * ${matrixMsg.formatted_body}`;
-            }
+        let finalMsg;
+        if (msg.original_message) {
+            finalMsg = {
+                "m.new_content": matrixMsg,
+                "body": ` * ${matrixMsg.body}`,
+                "msgtype": matrixMsg.msgtype,
+                "formatted_body": matrixMsg.formatted_body ? ` * ${matrixMsg.formatted_body}` : undefined,
+                "format": matrixMsg.format,
+            };
+        } else {
+            finalMsg = matrixMsg;
         }
 
-        log.debug("Resulting matrix event :", matrixMsg);
-        return matrixMsg;
+        log.debug("Resulting matrix event :", finalMsg);
+        return finalMsg;
     }
 
     private static parseHTMLIntoMatrixFormat(msg: string): {html: string, markdown: string} {
