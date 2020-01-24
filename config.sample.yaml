@@ -4,14 +4,19 @@ bridge:
   # A internally reachable endpoint for the CS api of the homeserver.
   homeserverUrl: "http://localhost:8008"
   # Prefix of all users of the bridge.
-  userPrefix: "_purple_"
+  userPrefix: "_bifrost_"
   # If homeserverUrl is not reachable publically, the public address that media can be reached on.
   # mediaserverUrl: "http://example.com:8008"
+  # Set this to the port you want the bridge to listen on.
+  appservicePort: 9555
 
 datastore:
-  # The datastore engine to use, currently only nedb is supported.
+  # The datastore engine to use, either "nedb" or "postgres"
   # engine: "nedb"
-  # Location of the user and room database files, by default will be stored in the working directory.
+  # For NeDB:
+  #   Location of the user and room database files, by default will be stored in the working directory.
+  # For Postgres:
+  #   A postgres style connection string, e.g. "postgres://postgres:pass@localhost/bifrost"
   # connectionString: "nedb://."
 
 purple:
