@@ -44,7 +44,7 @@ class Program {
             affectsRegistration: true,
             schema: "./config/config.schema.yaml",
           },
-          registrationPath: "purple-registration.yaml",
+          registrationPath: "bifrost-registration.yaml",
           generateRegistration: this.generateRegistration,
           run: this.runBridge.bind(this),
         });
