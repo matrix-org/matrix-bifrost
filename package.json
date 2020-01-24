@@ -33,7 +33,7 @@
     "htmlparser2": "^4.0",
     "leven": "^3.1.0",
     "marked": "^0.7.0",
-    "matrix-appservice-bridge": "^1.7.0",
+    "matrix-appservice-bridge": "^1.11.1",
     "parse-entities": "^1.2.0",
     "pg": "7.12.1",
     "prom-client": "^11.2.1",
