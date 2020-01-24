@@ -632,7 +632,7 @@ export class XmppJsInstance extends EventEmitter implements IBifrostInstance {
             body,
             formatted: [ ],
             id: stanza.attrs.id,
-            reply_to: replace ? replace.getAttr("id") : undefined,
+            original_message: replace ? replace.getAttr("id") : undefined,
             opts: {
                 attachments,
             },
