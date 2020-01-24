@@ -1,19 +1,20 @@
-import { IPurpleAccount, IProfileProvider } from "./purple/IPurpleAccount";
+import { IBifrostAccount, IProfileProvider } from "./bifrost/Account";
 import * as _fs from "fs";
 import * as path from "path";
-import { PurpleProtocol } from "./purple/PurpleProtocol";
+import { BifrostProtocol } from "./bifrost/Protocol";
 import { Logging, MatrixUser, Bridge, Intent } from "matrix-appservice-bridge";
 import { Config } from "./Config";
-import { Store, BifrostRemoteUser } from "./Store";
+import { IStore} from "./store/Store";
+import { BifrostRemoteUser } from "./store/BifrostRemoteUser";
 const log = Logging.get("ProfileSync");
 
 export class ProfileSync {
-    constructor(private bridge: Bridge, private config: Config, private store: Store) {
+    constructor(private bridge: Bridge, private config: Config, private store: IStore) {
 
     }
 
     public async updateProfile(
-        protocol: PurpleProtocol,
+        protocol: BifrostProtocol,
         senderId: string,
         account: IProfileProvider,
         force: boolean = false,
@@ -40,8 +41,8 @@ export class ProfileSync {
             avatar_uri: undefined,
         };
         let buddy;
-        if ((account as IPurpleAccount).getBuddy !== undefined) {
-            buddy = (account as IPurpleAccount).getBuddy(remoteUser.username);
+        if ((account as IBifrostAccount).getBuddy !== undefined) {
+            buddy = (account as IBifrostAccount).getBuddy(remoteUser.username);
         }
         if (buddy === undefined) {
             try {
@@ -97,7 +98,7 @@ export class ProfileSync {
         await this.store.setMatrixUser(matrixUser);
     }
 
-    private async getOrCreateStoreUsers(protocol: PurpleProtocol, senderId: string)
+    private async getOrCreateStoreUsers(protocol: BifrostProtocol, senderId: string)
     : Promise<{matrixUser: MatrixUser, remoteUser: BifrostRemoteUser}> {
         const userId: string = protocol.getMxIdForProtocol(
             senderId,
@@ -115,7 +116,7 @@ export class ProfileSync {
         }
 
         if (remoteUsers.length === 0) {
-            const {remote, matrix} = await this.store.storeUser(userId, protocol, senderId, "ghost");
+            const {remote, matrix} = await this.store.storeGhost(userId, protocol, senderId);
             return {matrixUser: matrix, remoteUser: remote};
         }
         return {matrixUser: mxUser, remoteUser: remoteUsers[0]};

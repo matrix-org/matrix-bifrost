@@ -3,16 +3,15 @@
  */
 
 // @ts-ignore - These are optional.
-import { helper, plugins, buddy, accounts, messaging, Buddy, Account, Conversation, notify } from "node-purple";
-import * as _fs from "fs";
+import { buddy, accounts, messaging, Buddy, Account, Conversation, notify } from "node-purple";
+import { promises as fs } from "fs";
 import { Logging } from "matrix-appservice-bridge";
-import { PurpleProtocol } from "./PurpleProtocol";
-import { IChatJoinProperties, IUserInfo, IConversationEvent, IChatJoined } from "./PurpleEvents";
+import { BifrostProtocol } from "../bifrost/Protocol";
+import { IChatJoinProperties, IUserInfo, IConversationEvent, IChatJoined } from "../bifrost/Events";
 import { IBasicProtocolMessage } from "../MessageFormatter";
 import { Util } from "../Util";
-import { IPurpleInstance } from "./IPurpleInstance";
-import { IPurpleAccount } from "./IPurpleAccount";
-const fs = _fs.promises;
+import { IBifrostInstance } from "../bifrost/Instance";
+import { IBifrostAccount } from "../bifrost/Account";
 
 const log = Logging.get("PurpleAccount");
 
@@ -32,13 +31,13 @@ export interface IChatJoinOptions {
     required: boolean;
 }
 
-export class PurpleAccount implements IPurpleAccount {
+export class PurpleAccount implements IBifrostAccount {
     private acctData: Account | undefined;
     private enabled: boolean;
     private waitingJoinRoomProperties: IChatJoinProperties | undefined;
     private joinPropertiesForRooms: Map<string, IChatJoinProperties>;
     private userAccountInfoPromises: Map<string, () => any>;
-    constructor(private username: string, public readonly protocol: PurpleProtocol) {
+    constructor(private username: string, public readonly protocol: BifrostProtocol) {
         this.enabled = false;
         this.userAccountInfoPromises = new Map();
         this.joinPropertiesForRooms = new Map();
@@ -121,7 +120,7 @@ export class PurpleAccount implements IPurpleAccount {
 
     public joinChat(
         components: IChatJoinProperties,
-        purple?: IPurpleInstance,
+        purple?: IBifrostInstance,
         timeout: number = 1000,
         setWaiting: boolean = true)
         : Promise<IConversationEvent|void> {
@@ -188,8 +187,4 @@ export class PurpleAccount implements IPurpleAccount {
             data: await fs.readFile(iconPath),
         };
     }
-
-    // connect() {
-    //     accounts.connect(this.username, this.protocol.id);
-    // }
 }

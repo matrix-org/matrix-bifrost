@@ -2,6 +2,7 @@ import { IAutoRegStep } from "./AutoRegistration";
 import { IRoomAlias } from "./RoomAliasSet";
 import { IXJSBackendOpts } from "./xmppjs/XJSBackendOpts";
 import { Logging } from "matrix-appservice-bridge";
+import { PgDataStoreOpts } from "./store/postgres/PgDatastore";
 
 const log = Logging.get("Config");
 
@@ -11,9 +12,14 @@ export class Config {
         domain: "",
         homeserverUrl: "",
         mediaserverUrl: undefined,
-        userPrefix: "_purple_",
-        userStoreFile: "user-store.db",
-        roomStoreFile: "room-store.db",
+        userPrefix: "_bifrost_",
+        appservicePort: 9555,
+    };
+
+    public readonly datastore: IConfigDatastore = {
+        engine: "nedb",
+        connectionString: "nedb://.",
+        opts: undefined,
     };
 
     public readonly purple: IConfigPurple = {
@@ -61,11 +67,14 @@ export class Config {
         conferencePMFallbackCheck: false,
         waitOnJoinBeforePM: [],
     };
-  /**
-   * Apply a set of keys and values over the default config.
-   * @param newConfig Config keys
-   * @param configLayer Private parameter
-   */
+
+    public readonly access: IConfigAccessControl = { };
+
+    /**
+     * Apply a set of keys and values over the default config.
+     * @param newConfig Config keys
+     * @param configLayer Private parameter
+     */
     public ApplyConfig(newConfig: {[key: string]: any}, configLayer: any = this) {
         Object.keys(newConfig).forEach((key) => {
             if (typeof(configLayer[key]) === "object" &&
@@ -91,13 +100,12 @@ export interface IConfigBridge {
     homeserverUrl: string;
     mediaserverUrl?: string;
     userPrefix: string;
-    userStoreFile?: string;
-    roomStoreFile?: string;
+    appservicePort?: number;
 }
 
 export interface IConfigPurple {
     backendOpts: {}|IXJSBackendOpts|undefined;
-    backend: "node-purple"|"xmpp.js";
+    backend: "node-purple"|"xmpp-js";
     enableDebug: boolean;
     pluginDir: string;
 }
@@ -131,6 +139,12 @@ export interface IConfigProvisioning {
     requiredUserPL: number;
 }
 
+export interface IConfigAccessControl {
+    accountCreation?: {
+        whitelist?: string[],
+    };
+}
+
 interface IConfigMetrics {
     enable: boolean;
 }
@@ -149,4 +163,10 @@ interface IConfigTuning {
     // Don't send messages from the remote protocol until we have seen them join.
     // A list of prefixes to check.
     waitOnJoinBeforePM: string[];
+}
+
+export interface IConfigDatastore {
+    engine: "nedb"|"postgres";
+    connectionString: string;
+    opts: undefined|PgDataStoreOpts;
 }

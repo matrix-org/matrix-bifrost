@@ -29,6 +29,7 @@
     "no-unused-expression": false,
     "prefer-const": true,
     "indent": [true, "spaces", 4],
-    "radix": false
+    "radix": false,
+    "interface-name": false
   }
 }

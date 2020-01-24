@@ -2,14 +2,14 @@ import { Cli, Bridge, AppServiceRegistration, Logging } from "matrix-appservice-
 import { EventEmitter } from "events";
 import { MatrixEventHandler } from "./MatrixEventHandler";
 import { MatrixRoomHandler } from "./MatrixRoomHandler";
-import { IPurpleInstance } from "./purple/IPurpleInstance";
-import {  IAccountEvent } from "./purple/PurpleEvents";
+import { IBifrostInstance } from "./bifrost/Instance";
+import {  IAccountEvent } from "./bifrost/Events";
 import { ProfileSync } from "./ProfileSync";
 import { IEventRequest } from "./MatrixTypes";
 import { RoomSync } from "./RoomSync";
-import { Store } from "./Store";
+import { IStore, initiateStore } from "./store/Store";
 import { Deduplicator } from "./Deduplicator";
-import { Config, IBridgeBotAccount } from "./Config";
+import { Config } from "./Config";
 import { Util } from "./Util";
 import { XmppJsInstance } from "./xmppjs/XJSInstance";
 import { Metrics } from "./Metrics";
@@ -33,8 +33,8 @@ class Program {
     private gatewayHandler!: GatewayHandler;
     private profileSync: ProfileSync|undefined;
     private roomSync: RoomSync|undefined;
-    private purple?: IPurpleInstance;
-    private store: Store|undefined;
+    private purple?: IBifrostInstance;
+    private store!: IStore;
     private cfg: Config;
     private deduplicator: Deduplicator;
 
@@ -44,21 +44,12 @@ class Program {
             affectsRegistration: true,
             schema: "./config/config.schema.yaml",
           },
-          registrationPath: "purple-registration.yaml",
+          registrationPath: "bifrost-registration.yaml",
           generateRegistration: this.generateRegistration,
           run: this.runBridge.bind(this),
         });
         this.cfg = new Config();
         this.deduplicator = new Deduplicator();
-        // For testing w/o libpurple.
-        // this.purple = new MockPurpleInstance();
-        // setTimeout(() => {
-        //     (this.purple as MockPurpleInstance).emit("received-im-msg", {
-        //         sender: "testacc@localhost/",
-        //         message: "test",
-        //         account: null,
-        //     } as IReceivedImMsg);
-        // }, 5000);
     }
 
     public get config(): Config {
@@ -104,15 +95,17 @@ class Program {
         const intent = this.bridge.getIntent();
         intent.opts.registered = false;
         await intent._ensureRegistered();
+        const botUserId = this.bridge.getBot().getUserId();
         // Set a profile for the bridge user.
         try {
-            const currentName = (await intent.getProfileInfo(this.bridge.getBot().getUserId())).displayname;
+            const currentName = (await intent.getProfileInfo(botUserId, "displayname")).displayname;
             if (this.config.bridgeBot.displayname !== currentName) {
                 await intent.setDisplayName(this.config.bridgeBot.displayname);
                 log.debug("Changed bridge bot name to:", this.config.bridgeBot.displayname);
             }
         } catch (ex) {
-            if (ex.errcode === "M_NOT_FOUND") {
+            // Synapse loooove to send us M_UNKNOWN
+            if (ex.errcode === "M_NOT_FOUND" || ex.errcode === "M_UNKNOWN") {
                 return intent.setDisplayName(this.config.bridgeBot.displayname).catch((err) => {
                     log.error("Failed to update profile: ", ex);
                     process.exit(1);
@@ -126,8 +119,8 @@ class Program {
 
     private async runBridge(port: number, config: any) {
         const checkOnly = process.env.BIFROST_CHECK_ONLY === "true";
-        log.info("Starting purple bridge on port", port);
         this.cfg.ApplyConfig(config);
+        port = this.cfg.bridge.appservicePort || port;
         if (checkOnly && this.config.logging.console === "off") {
             // Force console if we are doing an integrity check only.
             Logging.configure({
@@ -136,13 +129,21 @@ class Program {
         } else {
             Logging.configure(this.cfg.logging);
         }
+        let storeParams = {};
+        if (this.config.datastore.engine === "nedb") {
+            const path = this.config.datastore.connectionString.substr("nedb://".length);
+            storeParams = {
+                userStore: `${path}/user-store.db`,
+                roomStore: `${path}/room-store.db`,
+            };
+        }
         this.bridge = new Bridge({
           controller: {
             // onUserQuery: userQuery,
             onAliasQuery: (alias, aliasLocalpart) => this.eventHandler!.onAliasQuery(alias, aliasLocalpart),
-            onEvent: (r: IEventRequest, context) => {
+            onEvent: (r: IEventRequest) => {
                 if (this.eventHandler === undefined) {return; }
-                const p = this.eventHandler.onEvent(r, context).catch((err) => {
+                const p = this.eventHandler.onEvent(r).catch((err) => {
                     log.error("onEvent err", err);
                 }).catch(() => {
                     Metrics.requestOutcome(false, r.getDuration(), "fail");
@@ -154,22 +155,28 @@ class Program {
                 bridgeLog[error ? "warn" : "debug"](msg);
             },
             onAliasQueried: (alias, roomId) => this.eventHandler!.onAliasQueried(alias, roomId),
-            // We don't handle these just yet.
-            // thirdPartyLookup: this.thirdpa.ThirdPartyLookup,
           },
           domain: this.cfg.bridge.domain,
           homeserverUrl: this.cfg.bridge.homeserverUrl,
+          disableContext: true,
           registration: this.cli.getRegistrationFilePath(),
-          roomStore: this.cfg.bridge.roomStoreFile,
-          userStore: this.cfg.bridge.userStoreFile,
+          ...storeParams,
         });
+        if (this.config.datastore.engine !== "nedb") {
+            // If these are undefined in the constructor, default names
+            // are used. We want to override those names so these stores
+            // will never be created.
+            this.bridge.opts.userStore = undefined;
+            this.bridge.opts.roomStore = undefined;
+            this.bridge.opts.eventStore = undefined;
+        }
+        log.info("Starting purple bridge on port", port);
         await this.bridge.run(port, this.cfg);
-
         if (this.cfg.purple.backend === "node-purple") {
             log.info("Selecting node-purple as a backend");
             this.purple = new (require("./purple/PurpleInstance").PurpleInstance)(this.cfg.purple);
-        } else if (this.cfg.purple.backend === "xmpp.js") {
-            log.info("Selecting xmpp.js as a backend");
+        } else if (this.cfg.purple.backend === "xmpp-js") {
+            log.info("Selecting xmpp-js as a backend");
             this.purple = new (require("./xmppjs/XJSInstance").XmppJsInstance)(this.cfg);
         } else {
             throw new Error(`Backend ${this.cfg.purple.backend} not supported`);
@@ -181,8 +188,8 @@ class Program {
             Metrics.init(this.bridge);
         }
 
-        this.store = new Store(this.bridge);
         try {
+            this.store = await initiateStore(this.config.datastore, this.bridge);
             const ignoreIntegrity = process.env.BIFROST_INTEGRITY_WRITE;
             await this.store.integrityCheck(
                 ignoreIntegrity === undefined || ignoreIntegrity !== "false");
@@ -201,7 +208,9 @@ class Program {
             this.purple!, this.profileSync, this.store, this.cfg, this.deduplicator,
         );
         this.gatewayHandler = new GatewayHandler(purple, this.bridge, this.cfg, this.store, this.profileSync);
-        this.roomSync = new RoomSync(purple, this.store, this.deduplicator, this.gatewayHandler);
+        this.roomSync = new RoomSync(
+            purple, this.store, this.deduplicator, this.gatewayHandler, this.bridge.getIntent(),
+        );
         this.eventHandler = new MatrixEventHandler(
             purple, this.store, this.deduplicator, this.config, this.gatewayHandler,
         );
@@ -209,6 +218,7 @@ class Program {
         if (this.config.autoRegistration.enabled && this.config.autoRegistration.protocolSteps !== undefined) {
             autoReg = new AutoRegistration(
                 this.config.autoRegistration,
+                this.config.access,
                 this.bridge,
                 this.store,
                 purple,
@@ -217,13 +227,19 @@ class Program {
 
         this.eventHandler.setBridge(this.bridge, autoReg || undefined);
         this.roomHandler.setBridge(this.bridge);
+        // XXX: Hack to make onAliasQueried work
+        if (!this.bridge._roomStore) {
+            this.bridge._roomStore = {
+                setMatrixRoom: () => Promise.resolve(),
+            };
+        }
         log.info("Bridge has started.");
         try {
             if (purple instanceof XmppJsInstance) {
                 purple.preStart(this.bridge, autoReg);
             }
             await purple.start();
-            await this.roomSync.sync(this.bridge.getBot(), this.bridge.getIntent());
+            await this.roomSync.sync(this.bridge.getBot());
             if (purple instanceof XmppJsInstance) {
                 log.debug("Signing in accounts...");
                 purple.signInAccounts(
@@ -247,30 +263,6 @@ class Program {
             );
         });
         log.info("Initiation of bridge complete");
-        // await this.runBotAccounts(this.cfg.bridgeBot.accounts);
-    }
-
-    private async runBotAccounts(accounts: IBridgeBotAccount[]) {
-        // Fetch accounts from config
-        accounts.forEach((account) => {
-            const acct = this.purple!.getAccount(account.name, account.protocol);
-            if (!acct) {
-                log.error(
-`${account.protocol}:${account.name} is not configured in libpurple. Ensure that accounts.xml is correct.`,
-                );
-                throw Error("Fatal error while setting up bot accounts");
-            }
-            if (acct.isEnabled === false) {
-                log.error(
-`${account.protocol}:${account.name} is not enabled, enabling.`,
-                );
-                acct.setEnabled(true);
-                // Here we should really wait for the account to come online signal.
-            }
-        });
-
-        // Check they all exist and start.
-        // If one is missing from the purple config, fail.
     }
 }
 

@@ -360,3 +360,34 @@ export class StzaIqSearchFields extends StzaBase {
         + `${fields}</query></iq>`;
     }
 }
+
+export class SztaIqError extends StzaBase {
+    constructor(
+        from: string,
+        to: string,
+        id: string,
+        private errorType: string,
+        private errorCode: number|null,
+        private innerError: string,
+        private by: string|null = null,
+    ) {
+        super(from, to, id);
+    }
+
+    get type(): string {
+        return "iq";
+    }
+
+    get xml(): string {
+        let errorParams = "";
+        if (this.errorCode) {
+            errorParams += ` code='${this.errorCode}`;
+        }
+        if (this.by) {
+            errorParams += ` by='${this.by}`;
+        }
+        return `<iq from='${this.from}' to='${this.to}' id='${this.id}' type='error' xml:lang='en'>`
+        + `<error type='${this.errorType}'${errorParams}><${this.innerError} ` +
+          "xmlns='urn:ietf:params:xml:ns:xmpp-stanzas'></error></iq>";
+    }
+}

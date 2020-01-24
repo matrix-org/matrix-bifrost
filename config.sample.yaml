@@ -4,28 +4,32 @@ bridge:
   # A internally reachable endpoint for the CS api of the homeserver.
   homeserverUrl: "http://localhost:8008"
   # Prefix of all users of the bridge.
-  userPrefix: "_purple_"
+  userPrefix: "_bifrost_"
   # If homeserverUrl is not reachable publically, the public address that media can be reached on.
   # mediaserverUrl: "http://example.com:8008"
-  # Location of the user and room database files, by default will be stored in the working directory.
-  userStoreFile: "user-store.db"
-  roomStoreFile: "room-store.db"
+  # Set this to the port you want the bridge to listen on.
+  appservicePort: 9555
+
+datastore:
+  # The datastore engine to use, either "nedb" or "postgres"
+  # engine: "nedb"
+  # For NeDB:
+  #   Location of the user and room database files, by default will be stored in the working directory.
+  # For Postgres:
+  #   A postgres style connection string, e.g. "postgres://postgres:pass@localhost/bifrost"
+  # connectionString: "nedb://."
 
 purple:
   # For selecting a specific backend. One of "node-purple", "xmpp.js". Defaults to "node-purple"
-  backend: "node-purple"
-  # For node-purple, whether to debug to stdout. Usually not needed.
-  enableDebug: false
-  # For node-purple, a directory containing plugins to load.
-  pluginDir: "./node_modules/node-purple/deps/libpurple/"
+  backend: "xmpp.js"
 # -- For xmpp.js - You need an existing xmpp server for this to work.
-#  backendOpts:
-     # endpoint to reach the component on. The default port is 5347
-     #service: "xmpp://localhost:5347"
-     # domin assigned to the component.
-     #domain: "matrix.localhost"
-     # password needed by the component.
-     #password: "jam"
+  backendOpts:
+    # endpoint to reach the component on. The default port is 5347
+    service: "xmpp://localhost:5347"
+    # domin assigned to the component.
+    domain: "matrix.localhost"
+    # password needed by the component.
+    password: "jam"
 
 # Matrix forwards room aliases join requests matching a regex in the
 # registration file to the owner's bridge, if the room doesn't exist.
@@ -51,13 +55,19 @@ portals:
 # a room with a protocol they are not bound to.
 # This is REQUIRED for xmpp.js to work.
 autoRegistration:
-  enabled: false
+  enabled: true
   protocolSteps:
 # For xmpp.js, please use:
-#   xmpp-js:
-#     type: "implicit"
-#     parameters:
-#       username: "<T_LOCALPART>_<T_DOMAIN>@matrix.localhost"
+  xmpp-js:
+    type: "implicit"
+    parameters:
+      username: "<T_LOCALPART>@matrix.localhost"
+
+# Set up access controls for the bridge
+# access:
+#   accountCreation:
+#     whitelist:
+#       - "^@.*:yourdomain$"
 
 # Available subsitution variables for parameters:
 # <T_MXID> - The users mxid.
@@ -90,11 +100,11 @@ autoRegistration:
 # Enable prometheus metrics reporting.
 # This will report metrics on /metrics on the same port as the bridge.
 metrics:
-  enabled: false
+  enabled: true
 
 provisioning:
   # Can users use ""!purple" in a room to bridge it to a group.
-  enablePlumbing: true
+  enablePlumbing: false
   # Required power level to bridge a room into a group.
   requiredUserPL: 100
 

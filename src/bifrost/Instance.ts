@@ -1,5 +1,5 @@
-import { PurpleProtocol } from "./PurpleProtocol";
-import { IPurpleAccount } from "./IPurpleAccount";
+import { BifrostProtocol } from "./Protocol";
+import { IBifrostAccount } from "./Account";
 import { IEventBody,
     IAccountEvent,
     IChatJoined,
@@ -14,21 +14,21 @@ import { IEventBody,
     IStoreRemoteUser,
     IChatReadReceipt,
     IGatewayPublicRoomsQuery,
-} from "./PurpleEvents";
+} from "./Events";
 import { EventEmitter } from "events";
-import { IGateway } from "./IGateway";
+import { IGateway } from "./Gateway";
 
-export interface IPurpleInstance extends EventEmitter {
+export interface IBifrostInstance extends EventEmitter {
     gateway: IGateway|null;
-    createPurpleAccount(username, protocol: PurpleProtocol): IPurpleAccount;
+    createBifrostAccount(username, protocol: BifrostProtocol): IBifrostAccount;
     getBuddyFromChat(conv: any, buddy: string): any;
     start(): Promise<void>;
-    getAccount(username: string, protocolId: string, mxid?: string): IPurpleAccount|null;
-    getProtocol(id: string): PurpleProtocol|undefined;
-    getProtocols(): PurpleProtocol[];
-    findProtocol(nameOrId: string): PurpleProtocol|undefined;
+    getAccount(username: string, protocolId: string, mxid?: string): IBifrostAccount|null;
+    getProtocol(id: string): BifrostProtocol|undefined;
+    getProtocols(): BifrostProtocol[];
+    findProtocol(nameOrId: string): BifrostProtocol|undefined;
     getNickForChat(conv: any): string;
-    getUsernameFromMxid(mxid: string, prefix: string): {username: string, protocol: PurpleProtocol};
+    getUsernameFromMxid(mxid: string, prefix: string): {username: string, protocol: BifrostProtocol};
     on(name: string, cb: (ev: IEventBody) => void);
     on(
         name: "account-connection-error"|"account-signed-on"|"account-signed-off",
@@ -51,5 +51,5 @@ export interface IPurpleInstance extends EventEmitter {
     needsDedupe(): boolean;
     needsAccountLock(): boolean;
     // getMXIDForSender(sender: string, domain: string, prefix: string, protocol: Protocol);
-    // parseMxIdForSender(mxid: string): {protocol: PurpleProtocol, sender: string};
+    // parseMxIdForSender(mxid: string): {protocol: BifrostProtocol, sender: string};
 }

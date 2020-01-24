@@ -1,3 +1,9 @@
+import { Logging } from "matrix-appservice-bridge";
+import leven from "leven";
+const log = Logging.get("Deduplicator");
+
+const LEVEN_THRESHOLD = 0.1;
+
 /**
  * This is another bodge class to determine whether messages are duplicates in the UI.
  * Simply put, Pidgin is designed as a client-side app so that messages will usuaully
@@ -9,14 +15,6 @@
  * system of "the chosen one" (as our own messages get echoed back to us), we have to hash
  * the sent message with the room name and check it against a table.
  */
-
-import { Logging } from "matrix-appservice-bridge";
-const log = Logging.get("Deduplicator");
-// This is a little lazy, but it's typed :).
-// tslint:disable-next-line:no-var-requires
-const leven = require("leven") as (a: string, b: string) => number;
-
-const LEVEN_THRESHOLD = 0.1;
 
 export class Deduplicator {
     public static hashMessage(roomName: string, sender: string, body: string): string {

@@ -1,5 +1,5 @@
 # Builder
-FROM node:10-slim as builder
+FROM node:12-slim as builder
 
 COPY ./package.json ./package.json
 COPY ./package-lock.json ./package-lock.json

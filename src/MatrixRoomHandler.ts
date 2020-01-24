@@ -1,6 +1,6 @@
 import { Bridge, MatrixUser, Intent, Logging} from "matrix-appservice-bridge";
-import { IPurpleInstance } from "./purple/IPurpleInstance";
-import { MROOM_TYPE_GROUP, MROOM_TYPE_IM, IRemoteGroupData, MUSER_TYPE_GHOST } from "./StoreTypes";
+import { IBifrostInstance } from "./bifrost/Instance";
+import { MROOM_TYPE_GROUP, MROOM_TYPE_IM, IRemoteGroupData, MUSER_TYPE_GHOST } from "./store/Types";
 import {
     IReceivedImMsg,
     IChatInvite,
@@ -11,11 +11,11 @@ import {
     IChatTyping,
     IStoreRemoteUser,
     IChatReadReceipt,
-} from "./purple/PurpleEvents";
+} from "./bifrost/Events";
 import { ProfileSync } from "./ProfileSync";
 import { Util } from "./Util";
 import { ProtoHacks } from "./ProtoHacks";
-import { Store } from "./Store";
+import { IStore } from "./store/Store";
 import { Deduplicator } from "./Deduplicator";
 import { Config } from "./Config";
 import * as entityDecode from "parse-entities";
@@ -35,9 +35,9 @@ export class MatrixRoomHandler {
     private remoteEventIdMapping: Map<string, string>; // remote_id -> event_id
     private roomCreationLock: Map<string, Promise<void>>;
     constructor(
-        private purple: IPurpleInstance,
+        private purple: IBifrostInstance,
         private profileSync: ProfileSync,
-        private store: Store,
+        private store: IStore,
         private config: Config,
         private deduplicator: Deduplicator,
     ) {
@@ -76,12 +76,10 @@ export class MatrixRoomHandler {
         purple.on("chat-typing", this.handleTyping.bind(this));
         purple.on("store-remote-user", (storeUser: IStoreRemoteUser) => {
             log.info(`Storing remote ghost for ${storeUser.mxId} -> ${storeUser.remoteId}`);
-            this.store.storeUser(
+            this.store.storeGhost(
                 storeUser.mxId,
                 this.purple.getProtocol(storeUser.protocol_id)!,
                 storeUser.remoteId,
-                MUSER_TYPE_GHOST,
-                storeUser.data,
             );
         });
         this.remoteEventIdMapping = new Map();
@@ -113,9 +111,8 @@ export class MatrixRoomHandler {
         }
     }
 
-    private async createOrGetIMRoom(data: IReceivedImMsg, matrixUser: MatrixUser, intent: Intent) {
+    private async createOrGetIMRoom(data: IReceivedImMsg, matrixUser: MatrixUser, intent: Intent): Promise<string> {
         // Check to see if we have a room for this IM.
-        const roomStore = this.bridge.getRoomStore();
         let remoteData = {
             matrixUser: matrixUser.getId(),
             protocol_id: data.account.protocol_id,
@@ -129,17 +126,9 @@ export class MatrixRoomHandler {
             await (this.roomCreationLock.get(remoteId) || Promise.resolve());
             log.info("room was created, no longer waiting");
         }
-        // For some reason the following function wites to remoteData, so recreate it later
-        const remoteEntries = await roomStore.getEntriesByRemoteRoomData(remoteData);
-        if (remoteEntries != null && remoteEntries.length >= 1) {
-            if (remoteEntries.length === 1) {
-                return remoteEntries[0].matrix.getId();
-            }
-            log.warn(
-                `Have multiple matrix rooms assigned for IM ` +
-                `${matrixUser.getId()} <-> ${data.sender}. Using first entry`,
-            );
-            return remoteEntries[0].matrix.getId();
+        const remoteEntries = await this.store.getIMRoom(matrixUser.getId(), data.account.protocol_id, data.sender);
+        if (remoteEntries != null) {
+            return remoteEntries.matrix.getId();
         }
         // Room doesn't exist yet, create it.
         //
@@ -283,7 +272,6 @@ export class MatrixRoomHandler {
             data.sender,
             this.config.bridge.domain,
             this.config.bridge.userPrefix,
-            false,
         );
 
         // Update the user if needed.
@@ -313,6 +301,9 @@ export class MatrixRoomHandler {
         }
 
         log.info(`Sending IM to ${roomId} as ${senderMatrixUser.getId()}`);
+        if (data.message.reply_to) {
+            data.message.reply_to = (await this.store.getMatrixEventId(roomId, data.message.reply_to)) || undefined;
+        }
         const content = await MessageFormatter.messageToMatrixEvent(data.message, protocol, intent);
         const {event_id} = await intent.sendMessage(roomId, content);
         if (data.message.id) {
@@ -322,6 +313,9 @@ export class MatrixRoomHandler {
                 const keyArr = [...this.remoteEventIdMapping.keys()].slice(0, 50);
                 keyArr.forEach(this.remoteEventIdMapping.delete.bind(this.remoteEventIdMapping));
             }
+            await this.store.storeRoomEvent(roomId, event_id, data.message.id).catch((ev) => {
+                log.warn("Failed to store event mapping:", ev);
+            });
         }
     }
 
@@ -359,7 +353,6 @@ export class MatrixRoomHandler {
             data.sender,
             this.config.bridge.domain,
             this.config.bridge.userPrefix,
-            true,
         );
         const account = this.purple.getAccount(data.account.username, data.account.protocol_id);
         if (account) {
@@ -381,8 +374,16 @@ export class MatrixRoomHandler {
             log.error(`Failed to get/create room for this chat:`, e);
             return;
         }
+        if (data.message.reply_to) {
+            data.message.reply_to = (await this.store.getMatrixEventId(roomId, data.message.reply_to)) || undefined;
+        }
         const content = await MessageFormatter.messageToMatrixEvent(data.message, protocol, intent);
-        await intent.sendMessage(roomId, content);
+        const {event_id} = await intent.sendMessage(roomId, content);
+        if (data.message.id) {
+            await this.store.storeRoomEvent(roomId, event_id, data.message.id).catch((ev) => {
+                log.warn("Failed to store event mapping:", ev);
+            });
+        }
     }
 
     private async handleChatInvite(data: IChatInvite) {
@@ -401,7 +402,6 @@ export class MatrixRoomHandler {
             data.sender,
             this.config.bridge.domain,
             this.config.bridge.userPrefix,
-            true,
         );
         const intent = this.bridge.getIntent(senderMatrixUser.getId());
         let roomId;
@@ -439,13 +439,11 @@ export class MatrixRoomHandler {
             data.sender,
             this.config.bridge.domain,
             this.config.bridge.userPrefix,
-            true,
         );
         const intentUser = data.kicker ? protocol.getMxIdForProtocol(
             data.kicker,
             this.config.bridge.domain,
             this.config.bridge.userPrefix,
-            true,
         ) : senderMatrixUser;
         const intent = this.bridge.getIntent(intentUser.userId);
         const roomId = await this.createOrGetGroupChatRoom(data, intent, true);
@@ -506,7 +504,6 @@ export class MatrixRoomHandler {
             data.sender,
             this.config.bridge.domain,
             this.config.bridge.userPrefix,
-            true,
         ).userId);
         const roomId = await this.createOrGetGroupChatRoom(data, intent, true);
         await intent.sendTyping(roomId, data.typing);
@@ -517,7 +514,6 @@ export class MatrixRoomHandler {
             data.sender,
             this.config.bridge.domain,
             this.config.bridge.userPrefix,
-            true,
         ).userId);
         const roomId = await this.createOrGetGroupChatRoom(data, intent, true);
         const eventId = data.originIsMatrix ? data.messageId : this.remoteEventIdMapping.get(data.messageId);

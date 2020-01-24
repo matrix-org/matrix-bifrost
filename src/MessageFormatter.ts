@@ -1,4 +1,4 @@
-import { PurpleProtocol } from "./purple/PurpleProtocol";
+import { BifrostProtocol } from "./bifrost/Protocol";
 import { PRPL_XMPP } from "./ProtoHacks";
 import { Parser } from "htmlparser2";
 import { Logging } from "matrix-appservice-bridge";
@@ -12,18 +12,21 @@ export interface IMatrixMsgContents {
     body: string;
     remote_id?: string;
     info?: {mimetype: string, size: number};
+    "m.relates_to"?: {
+        "event_id": string,
+        rel_type: "m.replace",
+    };
+    "m.new_content"?: IMatrixMsgContents;
+    formatted_body?: string;
+    format?: "org.matrix.custom.html";
     [key: string]: any|undefined;
-}
-
-export interface IMatrixMsgContentsFormatted extends IMatrixMsgContents {
-    formatted_body: string;
-    format: string;
 }
 
 export interface IBasicProtocolMessage {
     body: string;
     formatted?: Array<{type: string, body: string}>;
     id?: string;
+    reply_to?: string;
     opts?: {
         attachments?: IMessageAttachment[];
     };
@@ -70,7 +73,7 @@ export class MessageFormatter {
         return {body, formatted, id: event.event_id};
     }
 
-    public static async messageToMatrixEvent(msg: IBasicProtocolMessage, protocol: PurpleProtocol, intent?: any):
+    public static async messageToMatrixEvent(msg: IBasicProtocolMessage, protocol: BifrostProtocol, intent?: any):
         Promise<IMatrixMsgContents> {
         log.debug("Got message:", msg);
         const matrixMsg: IMatrixMsgContents = {
@@ -79,6 +82,12 @@ export class MessageFormatter {
         };
         if (msg.id) {
             matrixMsg.remote_id = msg.id;
+        }
+        if (msg.reply_to) {
+            matrixMsg["m.relates_to"] = {
+                event_id: msg.reply_to,
+                rel_type: "m.replace",
+            };
         }
         const hasAttachment = msg.opts && msg.opts.attachments && msg.opts.attachments.length;
         if (protocol.id === PRPL_XMPP) {
@@ -166,6 +175,14 @@ export class MessageFormatter {
                 }
             } catch (ex) {
                 log.warn("Failed to handle attachment:", ex);
+            }
+        }
+
+        if (msg.reply_to) {
+            matrixMsg["m.new_content"] = matrixMsg;
+            matrixMsg.body = ` * ${matrixMsg.body}`;
+            if (matrixMsg.formatted_body) {
+                matrixMsg.formatted_body = ` * ${matrixMsg.formatted_body}`;
             }
         }
 

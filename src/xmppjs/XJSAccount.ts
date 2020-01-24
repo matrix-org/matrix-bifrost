@@ -1,9 +1,9 @@
 import { IChatJoinProperties,
-    IUserInfo, IConversationEvent, IChatJoined, IAccountMinimal, IStoreRemoteUser } from "../purple/PurpleEvents";
+    IUserInfo, IConversationEvent, IChatJoined, IAccountMinimal, IStoreRemoteUser } from "../bifrost/Events";
 import { XmppJsInstance, XMPP_PROTOCOL } from "./XJSInstance";
-import { IPurpleAccount, IChatJoinOptions } from "../purple/IPurpleAccount";
-import { IPurpleInstance } from "../purple/IPurpleInstance";
-import { PurpleProtocol } from "../purple/PurpleProtocol";
+import { IBifrostAccount, IChatJoinOptions } from "../bifrost/Account";
+import { IBifrostInstance } from "../bifrost/Instance";
+import { BifrostProtocol } from "../bifrost/Protocol";
 import { Element, x } from "@xmpp/xml";
 import { jid, JID } from "@xmpp/jid";
 import { IBasicProtocolMessage } from "../MessageFormatter";
@@ -19,7 +19,7 @@ const LASTSTANZA_CHECK_MS = 2 * 60000;
 const LASTSTANZA_MAXDURATION = 10 * 60000;
 const log = Logging.get("XmppJsAccount");
 
-export class XmppJsAccount implements IPurpleAccount {
+export class XmppJsAccount implements IBifrostAccount {
 
     get _waitingJoinRoomProps(): IChatJoinProperties|undefined {
         return undefined;
@@ -29,7 +29,7 @@ export class XmppJsAccount implements IPurpleAccount {
         return this.remoteId;
     }
 
-    get protocol(): PurpleProtocol {
+    get protocol(): BifrostProtocol {
         return XMPP_PROTOCOL;
     }
     public readonly waitingToJoin: Set<string>;
@@ -213,7 +213,7 @@ export class XmppJsAccount implements IPurpleAccount {
 
     public async joinChat(
         components: IChatJoinProperties,
-        instance?: IPurpleInstance,
+        instance?: IBifrostInstance,
         timeout: number = 5000,
         setWaiting: boolean = true)
         : Promise<IConversationEvent|void> {

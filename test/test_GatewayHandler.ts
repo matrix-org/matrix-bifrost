@@ -1,12 +1,14 @@
+// tslint:disable: no-any
 import * as Chai from "chai";
-import { GatewayHandler, IGatewayRoom } from "../src/GatewayHandler";
+import { IGatewayRoom } from "../src/bifrost/Gateway";
 import { Config } from "../src/Config";
 import { mockStore } from "./mocks/store";
 import { EventEmitter } from "events";
-import { IGatewayJoin } from "../src/purple/PurpleEvents";
+import { IGatewayJoin } from "../src/bifrost/Events";
 import { dummyProtocol } from "./mocks/dummyprotocol";
 import { MockIntent } from "./mocks/intent";
-import { MROOM_TYPE_GROUP, IRemoteGroupData } from "../src/StoreTypes";
+import { MROOM_TYPE_GROUP, IRemoteGroupData } from "../src/store/Types";
+import { GatewayHandler } from "../src/GatewayHandler";
 const expect = Chai.expect;
 
 function createGH() {

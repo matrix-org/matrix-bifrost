@@ -29,24 +29,6 @@ export interface IEventRequestData {
     state_key?: string;
 }
 
-export interface IBridgeContext {
-    senders: {
-        matrix: MatrixUser|null,
-        remote: RemoteUser|null,
-        remotes: RemoteUser[],
-    };
-    targets: {
-        matrix: MatrixUser|null,
-        remote: RemoteUser|null,
-        remotes: RemoteUser[],
-    };
-    rooms: {
-        matrix: MatrixRoom|null,
-        remote: RemoteRoom|null,
-        remotes: RemoteRoom[],
-    };
-}
-
 export interface IPublicRoomsResponse {
     total_room_count_estimate: number;
     chunk: IPublicRoom[];

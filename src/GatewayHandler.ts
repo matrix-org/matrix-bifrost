@@ -1,23 +1,14 @@
-import { IGatewayJoin, IGatewayRoomQuery, IGatewayPublicRoomsQuery } from "./purple/PurpleEvents";
-import { IPurpleInstance } from "./purple/IPurpleInstance";
+import { IGatewayJoin, IGatewayRoomQuery, IGatewayPublicRoomsQuery } from "./bifrost/Events";
+import { IBifrostInstance } from "./bifrost/Instance";
 import { Bridge, Logging, Intent } from "matrix-appservice-bridge";
-import { IConfigBridge, Config } from "./Config";
-import { Store } from "./Store";
-import { MROOM_TYPE_GROUP, IRemoteGroupData, IRoomEntry } from "./StoreTypes";
-import { IEventRequest, IBridgeContext } from "./MatrixTypes";
+import { Config } from "./Config";
+import { IStore } from "./store/Store";
+import { MROOM_TYPE_GROUP, IRemoteGroupData, IRoomEntry } from "./store/Types";
 import { IBasicProtocolMessage } from "./MessageFormatter";
 import { ProfileSync } from "./ProfileSync";
+import { IGatewayRoom } from "./bifrost/Gateway";
 
 const log = Logging.get("GatewayHandler");
-
-export interface IGatewayRoom {
-    name: string;
-    topic: string;
-    avatar?: string;
-    roomId: string;
-    membership: any[];
-    // remotes: string[];
-}
 
 /**
  * Responsible for handling querys & events on behalf of a gateway style bridge.
@@ -44,10 +35,10 @@ export class GatewayHandler {
     private roomIdCache!: Map<string, IGatewayRoom>;
 
     constructor(
-        private purple: IPurpleInstance,
+        private purple: IBifrostInstance,
         private bridge: Bridge,
         private config: Config,
-        private store: Store,
+        private store: IStore,
         private profileSync: ProfileSync,
     ) {
         if (!config.portals.enableGateway) {
@@ -85,19 +76,19 @@ export class GatewayHandler {
     }
 
     public async sendMatrixMessage(
-        chatName: string, sender: string, body: IBasicProtocolMessage, context: IBridgeContext) {
+        chatName: string, sender: string, body: IBasicProtocolMessage, context: IRoomEntry) {
         if (!this.purple.gateway) {
             return;
         }
-        const room = await this.getVirtualRoom(context.rooms.matrix.getId(), this.bridge.getIntent());
+        const room = await this.getVirtualRoom(context.matrix.getId(), this.bridge.getIntent());
         this.purple.gateway.sendMatrixMessage(chatName, sender, body, room);
     }
 
-    public async sendStateEvent(chatName: string, sender: string, ev: any , context: IBridgeContext) {
+    public async sendStateEvent(chatName: string, sender: string, ev: any , context: IRoomEntry) {
         if (!this.purple.gateway) {
             return;
         }
-        const room = await this.getVirtualRoom(context.rooms.matrix.getId(), this.bridge.getIntent());
+        const room = await this.getVirtualRoom(context.matrix.getId(), this.bridge.getIntent());
         if (ev.type === "m.room.name") {
             log.info("Handing room name change for gateway");
             room.name = ev.content.name;
@@ -114,12 +105,12 @@ export class GatewayHandler {
     }
 
     public async sendMatrixMembership(
-        chatName: string, sender: string, displayname: string, membership: string, context: IBridgeContext,
+        chatName: string, sender: string, displayname: string, membership: string, context: IRoomEntry,
     ) {
         if (!this.purple.gateway) {
             return;
         }
-        const room = await this.getVirtualRoom(context.rooms.matrix.getId(), this.bridge.getIntent());
+        const room = await this.getVirtualRoom(context.matrix.getId(), this.bridge.getIntent());
         const existingMembership = room.membership.find((ev) => ev.sender === sender);
         if (existingMembership) {
             if (existingMembership.membership === membership) {
@@ -136,7 +127,7 @@ export class GatewayHandler {
                     displayname,
                 },
             });
-            this.roomIdCache.set(context.rooms.matrix.getId(), room);
+            this.roomIdCache.set(context.matrix.getId(), room);
         }
         log.info(`Updating membership for ${sender} in ${chatName}`);
         this.purple.gateway.sendMatrixMembership(chatName, sender, displayname, membership, room);
@@ -164,7 +155,6 @@ export class GatewayHandler {
             data.sender,
             this.config.bridge.domain,
             this.config.bridge.userPrefix,
-            true,
         );
         log.info(`${intentUser.userId} is attempting to join ${data.roomAlias}`);
         const intent = this.bridge.getIntent(intentUser.userId);
@@ -227,12 +217,16 @@ export class GatewayHandler {
             // XXX: We should check to see if the room exists in our cache.
             // We have to join the room, as doing a lookup would not prompt a bridge like freenode
             // to intervene.
-            const res = await this.bridge.getIntent().getClient().publicRooms({
+            let res = await this.bridge.getIntent().getClient().publicRooms({
                 server: ev.homeserver || undefined,
                 filter: {
                     generic_search_term: ev.searchString,
                 },
             });
+            if (res === null) {
+                // Synapse apparently does this.
+                res = {chunk: []};
+            }
             ev.result(null, res);
         } catch (ex) {
             log.warn("Room not found:", ex);
@@ -245,23 +239,24 @@ export class GatewayHandler {
             `${data.protocol_id}:${data.room_name}`,
         ).toString("base64");
         // Check if we have bridged this already.
-        const exists = (await this.store.getRoomByRoomId(roomId));
+        const exists = (await this.store.getRoomEntryByMatrixId(roomId));
         if (exists && !exists.remote.data.gateway) {
             const roomName = exists.remote.data.room_name;
             throw Error(`This room is already bridged to ${roomName}`);
         }
 
-        let room = await this.store.getRoomByRemoteData({
+        const existingRoom = await this.store.getRoomByRemoteData({
             protocol_id: data.protocol_id,
             room_name: data.room_name,
         });
 
-        if (room) {
-            return room;
+        if (existingRoom) {
+            return existingRoom;
         }
 
-        room = this.store.storeRoom(roomId, MROOM_TYPE_GROUP, remoteId, {
+        const newRoom = this.store.storeRoom(roomId, MROOM_TYPE_GROUP, remoteId, {
             protocol_id: data.protocol_id,
+            type: MROOM_TYPE_GROUP,
             room_name: data.room_name,
             gateway: true,
             properties: {
@@ -269,6 +264,6 @@ export class GatewayHandler {
                 room_alias: data.roomAlias,
             },
         } as IRemoteGroupData);
-        return room;
+        return newRoom;
     }
 }

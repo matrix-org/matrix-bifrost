@@ -1,8 +1,7 @@
+// tslint:disable: no-any
 import * as Chai from "chai";
-import { XmppJsInstance, XMPP_PROTOCOL } from "../../src/xmppjs/XJSInstance";
 import { XmppJsAccount } from "../../src/xmppjs/XJSAccount";
 import { IBasicProtocolMessage } from "../../src/MessageFormatter";
-import { IStza } from "../../src/xmppjs/Stanzas";
 import { MockXJSInstance } from "../mocks/XJSInstance";
 
 const expect = Chai.expect;

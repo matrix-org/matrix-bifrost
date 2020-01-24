@@ -1,3 +1,4 @@
+// tslint:disable: no-any
 import * as Chai from "chai";
 import { AutoRegistration } from "../src/AutoRegistration";
 const expect = Chai.expect;
@@ -8,6 +9,7 @@ function createAR() {
     const purple = {};
     return new AutoRegistration(
         {} as any,
+        {},
         bridge as any,
         store as any,
         purple as any,

@@ -1,6 +1,6 @@
 import * as Chai from "chai";
 import { Util } from "../src/Util";
-import { PurpleProtocol } from "../src/purple/PurpleProtocol";
+import { BifrostProtocol } from "../src/bifrost/Protocol";
 import { XMPP_PROTOCOL } from "../src/xmppjs/XJSInstance";
 const expect = Chai.expect;
 
@@ -11,7 +11,7 @@ describe("Util", () => {
         });
     });
     describe("getMxIdForProtocol", () => {
-        const protocol = new PurpleProtocol({
+        const protocol = new BifrostProtocol({
             id: "prpl-protocol",
             name: "Fake Protocol",
             homepage: undefined,
@@ -76,7 +76,9 @@ describe("Util", () => {
                 "my.wonderful.property": "foo",
                 "normal_property": "bar",
             })).to.deep.equal({
+                // tslint:disable-next-line: object-literal-key-quotes
                 "my·wonderful·property": "foo",
+                // tslint:disable-next-line: object-literal-key-quotes
                 "normal_property": "bar",
             });
         });
@@ -84,7 +86,9 @@ describe("Util", () => {
     describe("desanitizeProperties", () => {
         it("should desanitize properties", () => {
             expect(Util.desanitizeProperties({
+                // tslint:disable-next-line: object-literal-key-quotes
                 "my·wonderful·property": "foo",
+                // tslint:disable-next-line: object-literal-key-quotes
                 "normal_property": "bar",
             })).to.deep.equal({
                 "my.wonderful.property": "foo",

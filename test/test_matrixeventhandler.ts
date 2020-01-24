@@ -1,12 +1,13 @@
+// tslint:disable: no-any
 import * as Chai from "chai";
 import { MatrixEventHandler } from "../src/MatrixEventHandler";
 import { mockStore } from "./mocks/store";
 import { Deduplicator } from "../src/Deduplicator";
 import { Config } from "../src/Config";
-import { IEventRequest, IBridgeContext } from "../src/MatrixTypes";
+import { IEventRequest } from "../src/MatrixTypes";
 import { dummyProtocol } from "./mocks/dummyprotocol";
-import { Store } from "../src/Store";
-import { IRemoteImData, MROOM_TYPE_IM } from "../src/StoreTypes";
+import { IStore } from "../src/store/Store";
+import { IRemoteImData, MROOM_TYPE_IM, IRoomEntry } from "../src/store/Types";
 const expect = Chai.expect;
 
 function createRequest(extraEvData: any): IEventRequest {
@@ -25,26 +26,6 @@ function createRequest(extraEvData: any): IEventRequest {
         getId: () => "requestId",
         getPromise: () => Promise.resolve(),
         outcomeFrom: () => null,
-    };
-}
-
-function createContext(): IBridgeContext {
-    return {
-        senders: {
-            matrix: null,
-            remote: null,
-            remotes: [],
-        },
-        targets: {
-            matrix: null,
-            remote: null,
-            remotes: [],
-        },
-        rooms: {
-            matrix: null,
-            remote: null,
-            remotes: [],
-        },
     };
 }
 
@@ -71,9 +52,7 @@ function createMEH() {
             opts: {
 
             },
-            join: () => {
-
-            },
+            join: () => { /* empty */ },
             getClient: () => ({
                 getUserId: () => userId,
                 _createMessagesRequest: () => Promise.resolve({
@@ -108,7 +87,7 @@ function createMEH() {
 describe("MatrixEventHandler", () => {
     describe("onEvent", () => {
         let meh: MatrixEventHandler;
-        let store: Store;
+        let store: IStore;
         beforeEach(() => {
             const res = createMEH();
             meh = res.meh;
@@ -124,7 +103,7 @@ describe("MatrixEventHandler", () => {
                 },
                 event_id: "$botinviteevent",
                 state_key: "@theboss:localhost",
-            }), createContext());
+            }));
             expect(handleInviteForBotCalledWith.event_id).to.be.equal("$botinviteevent");
         });
         it("handle new invite for ghost", async () => {
@@ -145,16 +124,16 @@ describe("MatrixEventHandler", () => {
                 },
                 event_id: "$ghostinviteevent",
                 state_key: "@definitelyremote:localhost",
-            }), createContext());
+            }));
             expect(messagesHandled).to.equal(1);
             const storeEntry = await store.getRoomByRemoteData({
                 recipient: "definitelyremote",
                 matrixUser: "@alice:localhost",
                 protocol_id: dummyProtocol.id,
             } as IRemoteImData);
-            expect(storeEntry).to.exist;
-            expect(storeEntry.matrix.getId()).to.equal("!12345:localhost");
-            expect(storeEntry.matrix.get("type")).to.equal(MROOM_TYPE_IM);
+            expect(storeEntry).to.not.be.null;
+            expect(storeEntry!.matrix.getId()).to.equal("!12345:localhost");
+            expect(storeEntry!.matrix.get("type")).to.equal(MROOM_TYPE_IM);
         });
     });
 });

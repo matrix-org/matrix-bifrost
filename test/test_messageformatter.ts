@@ -1,10 +1,10 @@
 import * as Chai from "chai";
-import { PurpleProtocol } from "../src/purple/PurpleProtocol";
+import { BifrostProtocol } from "../src/bifrost/Protocol";
 import { MessageFormatter } from "../src/MessageFormatter";
 import { dummyProtocol } from "./mocks/dummyprotocol";
 const expect = Chai.expect;
 
-const XMPP = new PurpleProtocol({
+const XMPP = new BifrostProtocol({
     id: "prpl-jabber",
     name: "XMPP",
     homepage: undefined,

@@ -1,11 +1,12 @@
+// tslint:disable: no-any
 import * as Chai from "chai";
 import { mockStore } from "./mocks/store";
-import { PurpleProtocol } from "../src/purple/PurpleProtocol";
+import { BifrostProtocol } from "../src/bifrost/Protocol";
 import { ProfileSync } from "../src/ProfileSync";
 import { Config } from "../src/Config";
 const expect = Chai.expect;
 
-const dummyProtocol = new PurpleProtocol({
+const dummyProtocol = new BifrostProtocol({
     id: "prpl-dummy",
     name: "Dummy",
     homepage: undefined,
@@ -43,6 +44,7 @@ function createProfileSync(userInfo?: {}) {
         },
     };
     const config = new Config();
+    config.bridge.userPrefix = "_bifrost_";
     config.bridge.domain = "localhost";
     const account = {
         getBuddy: () => undefined,
@@ -81,7 +83,7 @@ describe("ProfileSync", () => {
         const {profileSync, account, values, store} = createProfileSync();
         await profileSync.updateProfile(dummyProtocol, "alice@foobar.com", account as any, false);
         expect(values.displayname).to.equal("alice@foobar.com");
-        expect(values.userId).to.equal("@_purple_dummy_alice=40foobar.com:localhost");
+        expect(values.userId).to.equal("@_bifrost_dummy_alice=40foobar.com:localhost");
         const matrixUser = await store.getMatrixUser(values.userId);
         expect(matrixUser.get("last_check")).to.be.above(time);
         expect(matrixUser.get("displayname")).to.be.equal(values.displayname);
@@ -94,7 +96,7 @@ describe("ProfileSync", () => {
         });
         await profileSync.updateProfile(dummyProtocol, "alice@foobar.com", account as any, false);
         expect(values.displayname).to.equal("alice@foobar.com");
-        expect(values.userId).to.equal("@_purple_dummy_alice=40foobar.com:localhost");
+        expect(values.userId).to.equal("@_bifrost_dummy_alice=40foobar.com:localhost");
         const matrixUser = await store.getMatrixUser(values.userId);
         expect(matrixUser.get("last_check")).to.be.above(time);
         expect(matrixUser.get("displayname")).to.be.equal(values.displayname);
@@ -107,7 +109,7 @@ describe("ProfileSync", () => {
         });
         await profileSync.updateProfile(dummyProtocol, "alice@foobar.com", account as any, false);
         expect(values.displayname).to.equal("SuperAlice");
-        expect(values.userId).to.equal("@_purple_dummy_alice=40foobar.com:localhost");
+        expect(values.userId).to.equal("@_bifrost_dummy_alice=40foobar.com:localhost");
         const matrixUser = await store.getMatrixUser(values.userId);
         expect(matrixUser.get("last_check")).to.be.above(time);
         expect(matrixUser.get("displayname")).to.be.equal("SuperAlice");
@@ -120,7 +122,7 @@ describe("ProfileSync", () => {
         });
         await profileSync.updateProfile(dummyProtocol, "alice@foobar.com", account as any, false);
         expect(values.displayname).to.equal("alice@foobar.com");
-        expect(values.userId).to.equal("@_purple_dummy_alice=40foobar.com:localhost");
+        expect(values.userId).to.equal("@_bifrost_dummy_alice=40foobar.com:localhost");
         const matrixUser = await store.getMatrixUser(values.userId);
         expect(matrixUser.get("last_check")).to.be.above(time);
         expect(matrixUser.get("displayname")).to.be.equal("alice@foobar.com");
