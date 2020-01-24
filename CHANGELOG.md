@@ -1,4 +1,13 @@
- 0.1.2 (2020-01-24)
+ 0.1.3 (2020-01-24)
+===================
+
+Bugfixes
+--------
+
+- Fix bug where docker would not build using `yarn` ([\#89](https://github.com/matrix-org/matrix-bifrost/issues/89))
+
+
+0.1.2 (2020-01-24)
 ===================
 
 Features
