@@ -301,7 +301,6 @@ body: `<html xmlns='http://jabber.org/protocol/xhtml-im'>
                     original_message: "This is the original message",
                 },
             dummyProtocol);
-            console.log(contents);
             expect(
                 contents,
             ).to.deep.equal({
@@ -316,7 +315,7 @@ body: `<html xmlns='http://jabber.org/protocol/xhtml-im'>
                     rel_type: "m.replace",
                   },
                   "msgtype": "m.text",
-                }
+                },
             });
         });
     });
