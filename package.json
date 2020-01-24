@@ -10,6 +10,7 @@
     "start": "node build/src/Program.js -c config.yaml",
     "genreg": "node build/src/Program.js -r -c config.yaml",
     "test": "npm run build && mocha --recursive build/test",
+    "changelog": "scripts/towncrier.sh",
     "coverage": "nyc mocha --require ts-node/register --require source-map-support/register --full-trace --bail test/**/*.ts test/*.ts"
   },
   "repository": {
@@ -33,7 +34,7 @@
     "htmlparser2": "^4.0",
     "leven": "^3.1.0",
     "marked": "^0.7.0",
-    "matrix-appservice-bridge": "^1.7.0",
+    "matrix-appservice-bridge": "^1.11.1",
     "parse-entities": "^1.2.0",
     "pg": "7.12.1",
     "prom-client": "^11.2.1",
