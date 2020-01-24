@@ -301,8 +301,8 @@ export class MatrixRoomHandler {
         }
 
         log.info(`Sending IM to ${roomId} as ${senderMatrixUser.getId()}`);
-        if (data.message.reply_to) {
-            data.message.reply_to = (await this.store.getMatrixEventId(roomId, data.message.reply_to)) || undefined;
+        if (data.message.original_message) {
+            data.message.original_message = (await this.store.getMatrixEventId(roomId, data.message.original_message)) || undefined;
         }
         const content = await MessageFormatter.messageToMatrixEvent(data.message, protocol, intent);
         const {event_id} = await intent.sendMessage(roomId, content);
@@ -374,8 +374,8 @@ export class MatrixRoomHandler {
             log.error(`Failed to get/create room for this chat:`, e);
             return;
         }
-        if (data.message.reply_to) {
-            data.message.reply_to = (await this.store.getMatrixEventId(roomId, data.message.reply_to)) || undefined;
+        if (data.message.original_message) {
+            data.message.original_message = (await this.store.getMatrixEventId(roomId, data.message.original_message)) || undefined;
         }
         const content = await MessageFormatter.messageToMatrixEvent(data.message, protocol, intent);
         const {event_id} = await intent.sendMessage(roomId, content);
