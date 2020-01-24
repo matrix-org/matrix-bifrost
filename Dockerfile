@@ -2,24 +2,24 @@
 FROM node:12-slim as builder
 
 COPY ./package.json ./package.json
-COPY ./package-lock.json ./package-lock.json
+COPY ./yarn.lock ./yarn.lock
 COPY ./src ./src
 COPY ./tsconfig.json ./tsconfig.json
 
-RUN npm install
+RUN yarn install
 # Compile Typescript
-RUN npm run build
+RUN yarn build
 
 # App
-FROM node:10-slim
+FROM node:12-slim
 
 RUN mkdir app
 WORKDIR /app
 
 COPY ./package.json /app/package.json
-COPY ./package-lock.json /app/package-lock.json
+COPY ./yarn.lock /app/yarn.lock
 # Don't install devDependencies
-RUN npm install --production 
+RUN yarn install --production --ignore-scripts 
 # Copy compiled JS only
 COPY --from=builder ./build /app/src
 COPY ./config/config.schema.yaml ./config/config.schema.yaml
