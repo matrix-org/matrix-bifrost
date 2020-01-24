@@ -388,6 +388,6 @@ export class SztaIqError extends StzaBase {
         }
         return `<iq from='${this.from}' to='${this.to}' id='${this.id}' type='error' xml:lang='en'>`
         + `<error type='${this.errorType}'${errorParams}><${this.innerError} ` +
-          "xmlns='urn:ietf:params:xml:ns:xmpp-stanzas'></error></iq>";
+          "xmlns='urn:ietf:params:xml:ns:xmpp-stanzas'/></error></iq>";
     }
 }
