@@ -54,7 +54,7 @@ export class Config {
     };
 
     public readonly metrics: IConfigMetrics = {
-        enable: false,
+        enabled: false,
     };
 
     public readonly provisioning: IConfigProvisioning = {
@@ -146,7 +146,7 @@ export interface IConfigAccessControl {
 }
 
 interface IConfigMetrics {
-    enable: boolean;
+    enabled: boolean;
 }
 
 interface IConfigLogging {
