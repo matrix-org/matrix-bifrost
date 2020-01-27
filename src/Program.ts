@@ -183,7 +183,7 @@ class Program {
         }
         const purple = this.purple!;
 
-        if (this.cfg.metrics.enable) {
+        if (this.cfg.metrics.enabled) {
             log.info("Enabling metrics");
             Metrics.init(this.bridge);
         }
