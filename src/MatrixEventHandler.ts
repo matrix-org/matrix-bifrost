@@ -586,10 +586,8 @@ Say \`help\` for more commands.
         const name = context.remote.get("room_name");
         const roomProtocol = context.remote.get("protocol_id");
         if (isGateway) {
-            const displayname = event.content.displayname ||
-                (await this.bridge.getIntent().getProfileInfo(event.sender)).displayname;
             this.gatewayHandler.sendMatrixMembership(
-                name, event.sender, displayname, membership, context,
+                name, event, context,
             );
             return;
         }

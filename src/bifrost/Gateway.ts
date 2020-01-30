@@ -8,7 +8,7 @@ export interface IGateway extends IProfileProvider {
         sender: string, body: IBasicProtocolMessage, room: IGatewayRoom,
     ): void;
     sendMatrixMembership(
-        chatName: string, sender: string, displayname: string, membership: string, room: IGatewayRoom,
+        chatName: string, event: any, room: IGatewayRoom,
     ): void;
     sendStateChange(
         chatName: string, sender: string, type: "topic"|"name"|"avatar", room: IGatewayRoom,

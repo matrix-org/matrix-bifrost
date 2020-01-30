@@ -39,6 +39,7 @@ class XmppProtocol extends BifrostProtocol {
             name: "XMPP.js Protocol Plugin",
             homepage: "N/A",
             summary: "Fake bifrost protocol plugin for xmpp.js",
+            displayname: "XMPP",
         }, false, false);
     }
 
@@ -53,6 +54,11 @@ class XmppProtocol extends BifrostProtocol {
            of a user which is more important than the localpart. */
         const resource = j.resource ? j.resource + "/" : "";
         return new MatrixUser(`@${prefix}${resource}${j.local}@${j.domain}:${domain}`);
+    }
+
+    public getProtocolIconMXC() {
+        // TODO: This should be in the config.
+        return "mxc://half-shot.uk/742779fb3ccf5da1baa189ae4a773decb6b13918";
     }
 }
 

@@ -5,12 +5,14 @@ export class BifrostProtocol {
     public readonly name: string;
     public readonly summary?: string;
     public readonly homepage?: string;
+    public readonly displayname: string;
     constructor(
-        data: { name: string, summary?: string, homepage?: string, id: string},
+        data: { name: string, displayname?: string, summary?: string, homepage?: string, id: string},
         public readonly canAddExisting: boolean = true,
         public readonly canCreateNew: boolean = true,
         ) {
         this.name = data.name;
+        this.displayname = data.displayname || data.name;
         this.summary = data.summary;
         this.homepage = data.homepage;
         this.id = data.id;
@@ -25,5 +27,13 @@ export class BifrostProtocol {
         // senderId containing : can mess things up
         senderId = senderId.replace(/\:/g, "=3a");
         return new MatrixUser(`@${prefix}${protocolName}_${senderId}:${domain}`);
+    }
+
+    public getProtocolIconMXC(): string|null {
+        return null;
+    }
+
+    public getNetworkChannelForRoomName(roomName: string): {network?: string, channel: string} {
+        return { network: undefined, channel: roomName };
     }
 }

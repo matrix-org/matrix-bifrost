@@ -105,32 +105,29 @@ export class GatewayHandler {
     }
 
     public async sendMatrixMembership(
-        chatName: string, sender: string, displayname: string, membership: string, context: IRoomEntry,
+        chatName: string, event: any, context: IRoomEntry,
     ) {
         if (!this.purple.gateway) {
             return;
         }
         const room = await this.getVirtualRoom(context.matrix.getId(), this.bridge.getIntent());
-        const existingMembership = room.membership.find((ev) => ev.sender === sender);
+        const existingMembership = room.membership.find((ev) => ev.sender === event.sender);
         if (existingMembership) {
-            if (existingMembership.membership === membership) {
+            if (existingMembership.membership === event.content.membership) {
                 return;
             } else {
-                existingMembership.membership = membership;
-                existingMembership.content.displayname = displayname;
+                existingMembership.membership = event.content.membership;
+                existingMembership.content = event.content;
             }
         } else {
             room.membership.push({
-                membership,
-                sender,
-                content: {
-                    displayname,
-                },
+                membership: event.content.membership,
+                ...event,
             });
             this.roomIdCache.set(context.matrix.getId(), room);
         }
-        log.info(`Updating membership for ${sender} in ${chatName}`);
-        this.purple.gateway.sendMatrixMembership(chatName, sender, displayname, membership, room);
+        log.info(`Updating membership for ${event.sender} in ${chatName}`);
+        this.purple.gateway.sendMatrixMembership(chatName, event, room);
     }
 
     public async rejoinRemoteUser(mxid: string, roomid: string) {

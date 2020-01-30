@@ -14,6 +14,7 @@ import { StzaPresenceItem, StzaMessage, StzaMessageSubject,
     StzaPresenceError, StzaBase, StzaPresenceKick } from "./Stanzas";
 import { IGateway } from "../bifrost/Gateway";
 import { GatewayMUCMembership, IGatewayMemberXmpp, IGatewayMemberMatrix } from "./GatewayMUCMembership";
+import { StatusCodes } from "./StatusCodes";
 
 const log = Logging.get("XmppJsGateway");
 
@@ -149,14 +150,16 @@ export class XmppJsGateway implements IGateway {
         if (!member) {
             log.warn(`${stanza.attrs.from} is not part of this room.`);
             // Send the sender an error.
+            const stza = new StzaPresenceKick(
+                stanza.attrs.to,
+                stanza.attrs.from,
+                "Dropped connection to the gateway, please rejoin",
+                "Bifrost",
+                true,
+            );
+            stza.statusCodes.add(StatusCodes.KickTechnicalDifficulties);
             this.xmpp.xmppSend(
-                new StzaPresenceKick(
-                    stanza.attrs.to,
-                    stanza.attrs.from,
-                    "Dropped connection to the gateway, please rejoin",
-                    "Bifrost",
-                    true,
-                ),
+                stza,
             );
             return false;
         }
@@ -208,20 +211,28 @@ export class XmppJsGateway implements IGateway {
     }
 
     public sendMatrixMembership(
-        chatName: string, sender: string, displayname: string, membership: "join"|"leave",
+        chatName: string, event: any,
     ) {
-        log.info(`Got new ${membership} for ${sender} in ${chatName}`);
+        const membership = event.content.membership;
+        const stateKey = event.state_key;
+        const displayname = event.content.displayname;
+        const sender = event.sender;
+        const reason = event.reason;
+        log.info(`Got new ${membership} for ${stateKey} in ${chatName}`);
         // Iterate around each joined member and add the new presence step.
-        const from = `${chatName}/` + (displayname || sender);
+        const from = `${chatName}/` + (displayname || stateKey);
         const users = this.members.getXmppMembers(chatName);
+
         if (users.length === 0) {
             log.warn("No users found for gateway room!");
         }
+
         if (membership === "join") {
-            this.members.addMatrixMember(chatName, sender, jid(from));
+            this.members.addMatrixMember(chatName, stateKey, jid(from));
         } else {
-            this.members.removeMatrixMember(chatName, sender);
+            this.members.removeMatrixMember(chatName, stateKey);
         }
+
         let affiliation = "";
         let role = "";
         let type = "";
@@ -233,14 +244,24 @@ export class XmppJsGateway implements IGateway {
             role = "none";
             type = "unavailable";
         }
+
+        let stza: StzaPresenceItem;
+        if (stateKey !== sender) {
+            // Avast! a kick.
+            // Lazy kick nick.
+            const nick = sender.substr(1).split(":")[0];
+            stza = new StzaPresenceKick(from, "", reason || "No reason given", nick);
+        } else {
+            stza = new StzaPresenceItem(
+                from, "", undefined, affiliation,
+                role, false, undefined, type,
+            );
+        }
+
         users.forEach((user) => {
             user.devices!.forEach((device) => {
-                this.xmpp.xmppSend(
-                    new StzaPresenceItem(
-                        from, device.toString(), undefined, affiliation,
-                        role, false, undefined, type,
-                    ),
-                );
+                stza.to = device.toString();
+                this.xmpp.xmppSend(stza);
             });
         });
     }
@@ -363,15 +384,18 @@ export class XmppJsGateway implements IGateway {
 
         log.debug("Emitting membership of self");
         // 2. self presence
+        const selfPresenceStza = new StzaPresenceItem(
+            stanza.attrs.to,
+            stanza.attrs.from,
+            undefined,
+            "member",
+            "participant",
+            true,
+        );
+        selfPresenceStza.statusCodes.add(StatusCodes.RoomLogged);
+
         this.xmpp.xmppSend(
-            new StzaPresenceItem(
-                stanza.attrs.to,
-                stanza.attrs.from,
-                undefined,
-                "member",
-                "participant",
-                true,
-            ),
+            selfPresenceStza,
         );
         this.reflectXMPPMessage(chatName, x("presence", {
                 from: stanza.attrs.from,
@@ -383,6 +407,7 @@ export class XmppJsGateway implements IGateway {
                     x("item", {affiliation: "member", role: "participant"}),
                 ]),
         ));
+
         // 3. Room history
         log.debug("Emitting history");
         const history = this.roomHistory.get(room.roomId) || [];
@@ -391,6 +416,7 @@ export class XmppJsGateway implements IGateway {
             // TODO: Add delay info to this.
             this.xmpp.xmppWriteToStream(e);
         });
+
         log.debug("Emitting subject");
         // 4. The room subject
         this.xmpp.xmppSend(new StzaMessageSubject(chatName, stanza.attrs.from, undefined,
