@@ -1,6 +1,7 @@
 import * as uuid from "uuid/v4";
 import * as he from "he";
 import { IBasicProtocolMessage } from "../MessageFormatter";
+import { StatusCodes } from "./StatusCodes";
 
 export interface IStza {
     type: string;
@@ -74,7 +75,7 @@ export class StzaPresence extends StzaBase {
 }
 
 export class StzaPresenceItem extends StzaPresence {
-    protected statusCodes: Set<string>;
+    public statusCodes: Set<StatusCodes>;
     constructor(
         from: string,
         to: string,
@@ -91,7 +92,7 @@ export class StzaPresenceItem extends StzaPresence {
     }
 
     set self(isSelf: boolean) {
-        this.statusCodes[isSelf ? "add" : "delete"]("110");
+        this.statusCodes[isSelf ? "add" : "delete"](StatusCodes.OccupantPresence);
     }
 
     get itemContents(): string { return ""; }
@@ -165,7 +166,7 @@ export class StzaPresenceKick extends StzaPresenceItem {
         self: boolean = false,
     ) {
         super(from, to, undefined, "none", "none", self, undefined, "unavailable");
-        this.statusCodes.add("307");
+        this.statusCodes.add(StatusCodes.Kick);
     }
 
     get itemContents(): string {
