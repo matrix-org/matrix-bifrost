@@ -141,7 +141,7 @@ export class GatewayHandler {
         const room = await this.getVirtualRoom(roomid, this.bridge.getIntent());
         log.info(`Reconnecting ${mxid} to ${roomid}`);
         const user = (await this.store.getRemoteUsersFromMxId(mxid))[0];
-        if (!user) {
+        if (!user || user.extraData) {
             log.warn("Cannot reconnect a user without a remote user stored");
             return;
         }
