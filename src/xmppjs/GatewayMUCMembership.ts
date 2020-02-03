@@ -8,7 +8,7 @@ interface IGatewayMember {
 export interface IGatewayMemberXmpp extends IGatewayMember {
     type: "xmpp";
     realJid: JID;
-    devices: JID[];
+    devices: Set<string>;
 }
 
 export interface IGatewayMemberMatrix extends IGatewayMember {
@@ -39,12 +39,6 @@ export class GatewayMUCMembership {
         const j = jid(realJid);
         const strippedJid = `${j.local}@${j.domain}`;
         const member = this.getXmppMembers(chatName).find((user) => user.realJid!.toString() === strippedJid);
-        if (member && member.devices) {
-            // We found the member, but the device may not exist.
-            if (!member.devices.find((device) => device.toString() === realJid)) {
-                member.devices.push(j);
-            }
-        }
         return member;
     }
 
@@ -77,7 +71,9 @@ export class GatewayMUCMembership {
     }
 
     public addXmppMember(chatName: string, realJid: JID, anonymousJid: JID): boolean {
-        if (this.getXmppMemberByRealJid(chatName, realJid.toString())) {
+        const member = this.getXmppMemberByRealJid(chatName, realJid.toString());
+        if (member) {
+            member.devices.add(realJid.toString());
             return false;
         }
         const set = this.members.get(chatName) || new Set();
@@ -85,7 +81,7 @@ export class GatewayMUCMembership {
             type: "xmpp",
             anonymousJid,
             realJid: jid(`${realJid.local}@${realJid.domain}`),
-            devices: [realJid],
+            devices: new Set([realJid.toString()]),
         } as IGatewayMemberXmpp);
         this.members.set(chatName, set);
         return true;
@@ -105,8 +101,11 @@ export class GatewayMUCMembership {
         if (!member) {
             return false;
         }
-        const set = this.members.get(chatName) || new Set();
+        member.devices.delete(realJid.toString());
+        if (member.devices.size) {
+            return false;
+        }
+        const set = this.members.get(chatName)!;
         return set.delete(member);
     }
-
 }

@@ -202,7 +202,7 @@ export class XmppJsGateway implements IGateway {
             return;
         }
         stanza.attrs.from = sender.anonymousJid.toString();
-        stanza.attrs.to = recipient.devices[recipient.devices.length - 1].toString();
+        stanza.attrs.to = recipient.devices[recipient.devices.size - 1].toString();
         log.info(`Reflecting PM message ${stanza.attrs.from} -> ${stanza.attrs.to}`);
         this.xmpp.xmppWriteToStream(stanza);
     }
@@ -307,7 +307,7 @@ export class XmppJsGateway implements IGateway {
             const existingXmppMember = existingMember as IGatewayMemberXmpp;
             const existingUserId = `${existingXmppMember.realJid!.local}@${existingXmppMember.realJid!.domain}`;
             const currentUserId = `${from.local}@${from.domain}`;
-            if (existingXmppMember.devices.find((s) => s.toString() === stanza.attrs.from)) {
+            if (existingXmppMember.devices.has(stanza.attrs.from)) {
                 log.debug("Existing device has requested a join");
                 // An existing device has reconnected, so fall through here.
             } else if (existingUserId === currentUserId) {
@@ -459,7 +459,7 @@ export class XmppJsGateway implements IGateway {
             throw Error("Couldn't find the senders anonymous jid for a MUC PM over the gateway");
         }
         return {
-            recipient: recipient.devices![recipient!.devices!.length - 1].toString(),
+            recipient: recipient.devices![recipient!.devices!.size - 1].toString(),
             sender: sender.anonymousJid.toString(),
         };
     }
