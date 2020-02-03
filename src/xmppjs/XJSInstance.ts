@@ -253,13 +253,15 @@ export class XmppJsInstance extends EventEmitter implements IBifrostInstance {
         });
     }
 
-    public getAccountForJid(aJid: JID): XmppJsAccount|undefined {
-        log.debug(aJid);
+    public getAccountForJid(aJid: JID): {mxId: string}|undefined {
+        const gatewayMxid = this.gateway?.getMatrixIDForJID(`${aJid.local}@${aJid.domain}`, aJid);
+        if (gatewayMxid) {
+            return {mxId: gatewayMxid};
+        }
         if (aJid.domain === this.myAddress.domain) {
             log.debug(aJid.local, [...this.accounts.keys()]);
             return this.accounts.get(aJid.toString());
         }
-        // TODO: Handle MUC based JIDs?
         return;
     }
 
