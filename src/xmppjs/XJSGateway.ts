@@ -501,6 +501,7 @@ export class XmppJsGateway implements IGateway {
             true,
             stanza.attrs.from,
         );
+        leaveStza.presenceType = "unavailable";
         this.xmpp.xmppWriteToStream(leaveStza);
         leaveStza.self = false;
         this.reflectXMPPStanza(chatName, leaveStza);
