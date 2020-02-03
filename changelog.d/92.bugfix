@@ -1,1 +1,0 @@
-`config.metrics.enable` should be `config.metrics.enabled`. Please update config files to match.

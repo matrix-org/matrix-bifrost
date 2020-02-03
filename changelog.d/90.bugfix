@@ -1,1 +1,0 @@
-Fix issue where XMPP message corrections would not get sent to Matrix.

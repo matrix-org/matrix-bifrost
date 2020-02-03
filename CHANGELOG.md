@@ -1,4 +1,15 @@
- 0.1.3 (2020-01-24)
+ 0.1.4 (2020-02-03)
+===================
+
+Bugfixes
+--------
+
+- Fix issue where XMPP message corrections would not get sent to Matrix. ([\#90](https://github.com/matrix-org/matrix-bifrost/issues/90))
+- `config.metrics.enable` should be `config.metrics.enabled`. Please update config files to match. ([\#92](https://github.com/matrix-org/matrix-bifrost/issues/92))
+- Fix issue where sending content from a remote network will use the JSON body for the `url`.
+- Fix self pings not quite working on XMPP.
+
+0.1.3 (2020-01-24)
 ===================
 
 Bugfixes
