@@ -14,7 +14,7 @@ function createGateway(config?: IConfigBridge) {
     if (!config) {
         config = new Config().bridge;
     }
-    return {gw: new XmppJsGateway(mockXmpp as any, config), mockXmpp};
+    return {gw: new XmppJsGateway(mockXmpp as any, {} as any, config), mockXmpp};
 }
 
 function createMember(stateKey: string, displayname?: string, membership: string = "join") {

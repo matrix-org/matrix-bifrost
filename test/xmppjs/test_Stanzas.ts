@@ -57,23 +57,13 @@ describe("Stanzas", () => {
         });
     });
     describe("StzaMessage", () => {
-        it("should create a valid stanza", () => {
-            const xml = new StzaMessageSubject("foo@bar", "baz@bar", "someid", "This is a subject").xml;
-            assertXML(xml);
-            expect(xml).to.equal(
-                "<message from=\"foo@bar\" to=\"baz@bar\" id=\"someid\" type='groupchat'>"
-                + "<subject>This is a subject</subject></message>",
-            );
-        });
-    });
-    describe("StzaMessageSubject", () => {
         it("should create a valid stanza for a simple plain message", () => {
             const stanza = new StzaMessage("foo@bar", "baz@bar", "someid", "groupchat");
             stanza.body = "Viva la matrix̭";
             assertXML(stanza.xml);
             expect(stanza.xml).to.equal(
                 "<message from=\"foo@bar\" to=\"baz@bar\" id=\"someid\" type='groupchat'>"
-                + "<body>Viva la matrix&#x32D;</body></message>",
+                + "<body>Viva la matrix&#x32D;</body><markable xmlns='urn:xmpp:chat-markers:0'/></message>",
             );
         });
         it("should create a valid stanza for a html message", () => {
@@ -83,7 +73,8 @@ describe("Stanzas", () => {
             assertXML(stanza.xml);
             expect(stanza.xml).to.equal(
                 "<message from=\"foo@bar\" to=\"baz@bar\" id=\"someid\" type='groupchat'><html><p>"
-                + "<strong>Viva la</strong> matrix&#x32D;</p></html><body>Viva la matrix&#x32D;</body></message>",
+                + "<strong>Viva la</strong> matrix&#x32D;</p></html><body>Viva la matrix&#x32D;</body>"
+                + "<markable xmlns='urn:xmpp:chat-markers:0'/></message>",
             );
         });
         it("should create a valid stanza for a message with attachments", () => {
@@ -95,11 +86,12 @@ describe("Stanzas", () => {
             expect(stanza.xml).to.equal(
                 "<message from=\"foo@bar\" to=\"baz@bar\" id=\"someid\" type='groupchat'><html><p>"
                 + "<strong>Viva la</strong> matrix&#x32D;</p></html><body>http://matrix.org</body>"
-                + "<x xmlns='jabber:x:oob'><url>http://matrix.org</url></x></message>",
+                + "<x xmlns='jabber:x:oob'><url>http://matrix.org</url></x>"
+                + "<markable xmlns='urn:xmpp:chat-markers:0'/></message>",
             );
         });
     });
-    describe("StzaMessage", () => {
+    describe("StzaMessageSubject", () => {
         it("should create a valid stanza", () => {
             const xml = new StzaMessageSubject("foo@bar", "baz@bar", "someid", "This is a subject").xml;
             assertXML(xml);
@@ -109,7 +101,7 @@ describe("Stanzas", () => {
             );
         });
     });
-    describe("StzaMessage", () => {
+    describe("SztaIqError", () => {
         it("should create a valid stanza", () => {
             const xml = new SztaIqError("foo@bar", "baz@bar", "someid", "cancel", null, "not-acceptable", "foo").xml;
             assertXML(xml);

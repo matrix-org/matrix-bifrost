@@ -1,6 +1,7 @@
 import * as xml from "@xmpp/xml";
 import * as jid from "@xmpp/jid";
 import { Logging } from "matrix-appservice-bridge";
+import { XMPPStatusCode } from "./StatusCodes";
 
 const log = Logging.get("PresenceCache");
 
@@ -91,9 +92,9 @@ export class PresenceCache {
             return;
         }
         const mucUser = stanza.getChild("x", "http://jabber.org/protocol/muc#user");
-        const isSelf = !!(mucUser && mucUser.getChildByAttr("code", "110"));
-        const isKick = !!(mucUser && mucUser.getChildByAttr("code", "307"));
-        const isTechnicalRemoval = !!(mucUser && mucUser.getChildByAttr("code", "333"));
+        const isSelf = !!(mucUser && mucUser.getChildByAttr("code", XMPPStatusCode.SelfPresence));
+        const isKick = !!(mucUser && mucUser.getChildByAttr("code", XMPPStatusCode.SelfKicked));
+        const isTechnicalRemoval = !!(mucUser && mucUser.getChildByAttr("code", XMPPStatusCode.SelfKickedTechnical));
         const newUser = !this.presence.get(from.toString());
         const currentPresence = this.presence.get(from.toString()) || {
             resource: from.resource,
