@@ -127,7 +127,6 @@ export class AutoRegistration {
                 throw new Error("Protocol unsupported");
             }
             // We assume the caller has already validated this.
-            const proto = this.protoInstance.getProtocol(protocol)!;
             const step = this.autoRegConfig.protocolSteps![protocol];
             return this.generateParameters(step.parameters, mxId);
     }
