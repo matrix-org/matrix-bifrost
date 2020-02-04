@@ -1,0 +1,1 @@
+XMPP and Matrix users are no longer anonymous over the gateway. This is to keep in line with Matrix's own identity visibility.

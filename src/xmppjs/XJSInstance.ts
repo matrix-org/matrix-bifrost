@@ -173,7 +173,10 @@ export class XmppJsInstance extends EventEmitter implements IBifrostInstance {
             throw Error("Missing opts for xmpp: service, domain, password");
         }
         if (this.config.portals.enableGateway === true) {
-            this.xmppGateway = new XmppJsGateway(this, this.config.bridge);
+            if (!this.autoRegister) {
+                throw Error("Autoregistration must be enabled for gateways to work!");
+            }
+            this.xmppGateway = new XmppJsGateway(this, this.autoRegister, this.config.bridge);
         }
         this.defaultRes = opts.defaultResource ? opts.defaultResource : "matrix-bridge";
         log.info(`Starting new XMPP component instance to ${opts.service} using domain ${opts.domain}`);
@@ -253,13 +256,15 @@ export class XmppJsInstance extends EventEmitter implements IBifrostInstance {
         });
     }
 
-    public getAccountForJid(aJid: JID): XmppJsAccount|undefined {
-        log.debug(aJid);
+    public getAccountForJid(aJid: JID): {mxId: string}|undefined {
+        const gatewayMxid = this.gateway?.getMatrixIDForJID(`${aJid.local}@${aJid.domain}`, aJid);
+        if (gatewayMxid) {
+            return {mxId: gatewayMxid};
+        }
         if (aJid.domain === this.myAddress.domain) {
             log.debug(aJid.local, [...this.accounts.keys()]);
             return this.accounts.get(aJid.toString());
         }
-        // TODO: Handle MUC based JIDs?
         return;
     }
 
@@ -453,13 +458,9 @@ export class XmppJsInstance extends EventEmitter implements IBifrostInstance {
                     log.warn(`Message could not be sent, not forwarding to Matrix`);
                     return;
                 }
-                stanza.attrs.from = this.gateway!.getAnonIDForJID(
-                    convName, stanza.attrs.from) || false;
-                if (stanza.attrs.from === false) {
-                    log.warn(`Couldn't find a user for ${from.toString()} reflect message with, dropping`);
-                    return;
-                }
-                from = jid(stanza.attrs.from);
+                // We deliberately do not anonymize the JID here.
+                // We do however strip the resource
+                from = jid(`${from.local}@${from.domain}`);
             } else {
                 // This is a PM, then.
                 convName = `${to.local}@${to.domain}`;
@@ -548,20 +549,20 @@ export class XmppJsInstance extends EventEmitter implements IBifrostInstance {
                         protocol_id: XMPP_PROTOCOL.id,
                         username: localAcct.remoteId,
                     },
-                    sender: stanza.attrs.from,
+                    sender: from.toString(),
                     typing: chatState.is("composing"),
                 } as IChatTyping);
             }
 
             if (chatState.is("active")) {
                 // TODO: Should this expire.
-                this.activeMUCUsers.add(stanza.attrs.from);
+                this.activeMUCUsers.add(from.toString());
                 const readMsg = this.lastMessageInMUC.get(convName);
                 if (readMsg) {
-                    log.info(`${stanza.attrs.from} became active, updating RR with ${readMsg.id}`);
+                    log.info(`${from.toString()} became active, updating RR with ${readMsg.id}`);
                     this.emit("read-receipt", {
                         eventName: "read-receipt",
-                        sender: stanza.attrs.from,
+                        sender: from.toString(),
                         messageId: readMsg.id,
                         conv: {
                             // Don't include the handle
@@ -576,8 +577,8 @@ export class XmppJsInstance extends EventEmitter implements IBifrostInstance {
                     } as IChatReadReceipt);
                 }
             } else if (chatState.is("inactive")) {
-                log.info(`${stanza.attrs.from} became inactive`);
-                this.activeMUCUsers.delete(stanza.attrs.from);
+                log.info(`${from.toString()} became inactive`);
+                this.activeMUCUsers.delete(from.toString());
             }
         }
 
@@ -597,7 +598,7 @@ export class XmppJsInstance extends EventEmitter implements IBifrostInstance {
                     protocol_id: XMPP_PROTOCOL.id,
                     username: localAcct.remoteId,
                 },
-                sender: stanza.attrs.from,
+                sender: from.toString(),
                 string: subject,
                 isGateway: false,
             } as IChatStringState);
@@ -608,7 +609,7 @@ export class XmppJsInstance extends EventEmitter implements IBifrostInstance {
             log.debug("Don't know how to handle a message without children");
             return;
         }
-        this.handleTextMessage(stanza, localAcct, from, convName, alias != null);
+        return this.handleTextMessage(stanza, localAcct, from, convName, alias != null);
     }
 
     private handleTextMessage(stanza: Element, localAcct: XmppJsAccount, from: JID,
@@ -651,7 +652,7 @@ export class XmppJsInstance extends EventEmitter implements IBifrostInstance {
             log.debug("Emitting group message", message);
             this.emit("received-chat-msg", {
                 eventName: "received-chat-msg",
-                sender: stanza.attrs.from,
+                sender: from.toString(),
                 message,
                 conv: {
                     // Don't include the handle
