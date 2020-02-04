@@ -1,6 +1,7 @@
 import * as uuid from "uuid/v4";
 import * as he from "he";
 import { IBasicProtocolMessage } from "../MessageFormatter";
+import { XMPPStatusCode } from "./StatusCodes";
 
 export interface IStza {
     type: string;
@@ -74,7 +75,7 @@ export class StzaPresence extends StzaBase {
 }
 
 export class StzaPresenceItem extends StzaPresence {
-    protected statusCodes: Set<string>;
+    public statusCodes: Set<XMPPStatusCode>;
     constructor(
         from: string,
         to: string,
@@ -91,7 +92,7 @@ export class StzaPresenceItem extends StzaPresence {
     }
 
     set self(isSelf: boolean) {
-        this.statusCodes[isSelf ? "add" : "delete"]("110");
+        this.statusCodes[isSelf ? "add" : "delete"](XMPPStatusCode.SelfPresence);
     }
 
     get itemContents(): string { return ""; }
@@ -165,7 +166,7 @@ export class StzaPresenceKick extends StzaPresenceItem {
         self: boolean = false,
     ) {
         super(from, to, undefined, "none", "none", self, undefined, "unavailable");
-        this.statusCodes.add("307");
+        this.statusCodes.add(XMPPStatusCode.SelfKicked);
     }
 
     get itemContents(): string {
@@ -177,6 +178,7 @@ export class StzaPresenceKick extends StzaPresenceItem {
 export class StzaMessage extends StzaBase {
     public html: string = "";
     public body: string = "";
+    public markable: boolean = true;
     public attachments: string[] = [];
     constructor(
         from: string,
@@ -215,8 +217,10 @@ export class StzaMessage extends StzaBase {
             // For reasons unclear to me, XMPP reccomend we make the body == attachment url to make them show up inline.
             this.body = this.attachments[0];
         }
+        // XEP-0333
+        const markable = this.markable ? "<markable xmlns='urn:xmpp:chat-markers:0'/>" : "";
         return `<message from="${this.from}" to="${this.to}" id="${this.id}" ${type}>`
-             + `${this.html}<body>${he.encode(this.body)}</body>${attachments}</message>`;
+             + `${this.html}<body>${he.encode(this.body)}</body>${attachments}${markable}</message>`;
     }
 }
 

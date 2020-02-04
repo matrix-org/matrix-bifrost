@@ -6,6 +6,7 @@ import { MockXJSInstance } from "../mocks/XJSInstance";
 import { IGatewayRoom } from "../../src/bifrost/Gateway";
 import { x } from "@xmpp/xml";
 import { StzaBase, StzaPresenceItem } from "../../src/xmppjs/Stanzas";
+import { XMPPStatusCode } from "../../src/xmppjs/StatusCodes";
 
 const expect = Chai.expect;
 
@@ -14,7 +15,11 @@ function createGateway(config?: IConfigBridge) {
     if (!config) {
         config = new Config().bridge;
     }
-    return {gw: new XmppJsGateway(mockXmpp as any, config), mockXmpp};
+    return {gw: new XmppJsGateway(mockXmpp as any, {
+        generateParametersFor(protocol: string, mxId: string) {
+            return mxId.replace(/@/, "").replace(/:/g, "_") + "@bar";
+        },
+    } as any, config), mockXmpp};
 }
 
 function createMember(stateKey: string, displayname?: string, membership: string = "join") {
@@ -97,21 +102,29 @@ describe("XJSGateway", () => {
                 m.id = undefined;
                 return m;
             });
-            expect(messages[0].from).to.equal("#matrix#bar@conference.localhost/@foo1:bar");
-            expect(messages[0].to).to.equal("frogman@froguniverse/frogdevice");
-            expect((messages[0] as StzaPresenceItem).affiliation).to.equal("member");
-            expect((messages[0] as StzaPresenceItem).role).to.equal("participant");
+            expect(messages[0]).to.include({
+                hFrom: "#matrix#bar@conference.localhost/@foo1:bar",
+                hTo: "frogman@froguniverse/frogdevice",
+                affiliation: "member",
+                role: "participant",
+            });
 
-            expect(messages[1].from).to.equal("#matrix#bar@conference.localhost/Mr Foo2");
-            expect(messages[1].to).to.equal("frogman@froguniverse/frogdevice");
-            expect((messages[1] as StzaPresenceItem).affiliation).to.equal("member");
-            expect((messages[1] as StzaPresenceItem).role).to.equal("participant");
+            expect(messages[1]).to.include({
+                hFrom: "#matrix#bar@conference.localhost/Mr Foo2",
+                hTo: "frogman@froguniverse/frogdevice",
+                affiliation: "member",
+                role: "participant",
+            });
 
-            expect(messages[2].from).to.equal("#matrix#bar@conference.localhost/frognick");
-            expect(messages[2].to).to.equal("frogman@froguniverse/frogdevice");
-            expect((messages[2] as StzaPresenceItem).affiliation).to.equal("member");
-            expect((messages[2] as StzaPresenceItem).role).to.equal("participant");
-            expect((messages[2] as any).statusCodes).to.contain("110");
+            expect(messages[2]).to.include({
+                hFrom: "#matrix#bar@conference.localhost/frognick",
+                hTo: "frogman@froguniverse/frogdevice",
+                affiliation: "member",
+                role: "participant",
+            });
+            expect((messages[2] as StzaPresenceItem).statusCodes).contains(XMPPStatusCode.SelfPresence);
+            expect((messages[2] as StzaPresenceItem).statusCodes).contains(XMPPStatusCode.RoomNonAnonymous);
+            expect((messages[2] as StzaPresenceItem).statusCodes).contains(XMPPStatusCode.RoomLoggingEnabled);
 
             expect(messages[3]).to.deep.equal({
                 hFrom: "#matrix#bar@conference.localhost",

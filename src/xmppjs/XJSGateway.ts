@@ -4,7 +4,6 @@ import { jid, JID } from "@xmpp/jid";
 import { Logging } from "matrix-appservice-bridge";
 import { IConfigBridge } from "../Config";
 import { IBasicProtocolMessage } from "..//MessageFormatter";
-import { Metrics } from "../Metrics";
 import { IGatewayJoin, IUserStateChanged, IStoreRemoteUser, IUserInfo } from "../bifrost/Events";
 import { IGatewayRoom } from "../bifrost/Gateway";
 import { PresenceCache } from "./PresenceCache";
@@ -14,6 +13,8 @@ import { StzaPresenceItem, StzaMessage, StzaMessageSubject,
     StzaPresenceError, StzaBase, StzaPresenceKick } from "./Stanzas";
 import { IGateway } from "../bifrost/Gateway";
 import { GatewayMUCMembership, IGatewayMemberXmpp, IGatewayMemberMatrix } from "./GatewayMUCMembership";
+import { XMPPStatusCode } from "./StatusCodes";
+import { AutoRegistration } from "../AutoRegistration";
 
 const log = Logging.get("XmppJsGateway");
 
@@ -30,7 +31,7 @@ export class XmppJsGateway implements IGateway {
     private presenceCache: PresenceCache;
     // Storing every XMPP user and their anonymous.
     private members: GatewayMUCMembership;
-    constructor(private xmpp: XmppJsInstance, private config: IConfigBridge) {
+    constructor(private xmpp: XmppJsInstance, private registration: AutoRegistration, private config: IConfigBridge) {
         this.roomHistory = new Map();
         this.stanzaCache = new Map();
         this.members = new GatewayMUCMembership();
@@ -78,7 +79,7 @@ export class XmppJsGateway implements IGateway {
                     protocol_id: XMPP_PROTOCOL.id,
                     username: convName,
                 },
-                sender: member.anonymousJid.toString(),
+                sender: member.realJid.toString(),
                 state: "left",
                 kicker,
                 reason: wasKicked ? wasKicked.reason : delta.status!.status,
@@ -350,6 +351,14 @@ export class XmppJsGateway implements IGateway {
                     log.warn("Drain didn't arrive, oh well");
                 }
             }
+            let realJid;
+            if ((member as IGatewayMemberXmpp).realJid) {
+                realJid = (member as IGatewayMemberXmpp).realJid.toString();
+            } else {
+                realJid = this.registration.generateParametersFor(
+                    XMPP_PROTOCOL.id, (member as IGatewayMemberMatrix).matrixId,
+                ).username;
+            }
             this.xmpp.xmppSend(
                 new StzaPresenceItem(
                     member.anonymousJid.toString(),
@@ -357,22 +366,27 @@ export class XmppJsGateway implements IGateway {
                     undefined,
                     "member",
                     "participant",
+                    false,
+                    realJid,
                 ),
             );
         }
 
         log.debug("Emitting membership of self");
         // 2. self presence
-        this.xmpp.xmppSend(
-            new StzaPresenceItem(
-                stanza.attrs.to,
-                stanza.attrs.from,
-                undefined,
-                "member",
-                "participant",
-                true,
-            ),
+        const selfPresence = new StzaPresenceItem(
+            stanza.attrs.to,
+            stanza.attrs.from,
+            undefined,
+            "member",
+            "participant",
+            true,
         );
+
+        // Matrix is non-anon, and matrix logs.
+        selfPresence.statusCodes.add(XMPPStatusCode.RoomNonAnonymous);
+        selfPresence.statusCodes.add(XMPPStatusCode.RoomLoggingEnabled);
+        this.xmpp.xmppSend(selfPresence);
         this.reflectXMPPMessage(chatName, x("presence", {
                 from: stanza.attrs.from,
                 to: null,
