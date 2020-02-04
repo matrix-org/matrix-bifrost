@@ -238,7 +238,7 @@ export class StzaMessageSubject extends StzaBase {
 
     get xml(): string {
         return `<message from="${this.from}" to="${this.to}" id="${this.id}" type='groupchat'>`
-             + `<subject>${this.subject}</subject></message>`;
+             + `<subject>${he.encode(this.subject)}</subject></message>`;
     }
 }
 
