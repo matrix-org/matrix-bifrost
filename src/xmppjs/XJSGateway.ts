@@ -356,7 +356,7 @@ export class XmppJsGateway implements IGateway {
                 realJid = (member as IGatewayMemberXmpp).realJid.toString();
             } else {
                 realJid = this.registration.generateParametersFor(
-                    XMPP_PROTOCOL.id, (member as IGatewayMemberMatrix).matrixId
+                    XMPP_PROTOCOL.id, (member as IGatewayMemberMatrix).matrixId,
                 ).username;
             }
             this.xmpp.xmppSend(
