@@ -28,7 +28,7 @@ import { AutoRegistration } from "../AutoRegistration";
 import { XmppJsGateway } from "./XJSGateway";
 import { IStza, StzaIqVcardRequest } from "./Stanzas";
 import { Util } from "../Util";
-import uuid from "uuid/v4";
+import * as uuid from "uuid/v4";
 
 const xLog = Logging.get("XMPP-conn");
 const log = Logging.get("XmppJsInstance");
@@ -382,14 +382,12 @@ export class XmppJsInstance extends EventEmitter implements IBifrostInstance {
 
     public async getVCard(who: string, sender?: string): Promise<Element> {
         const id = uuid();
+        const whoJid = jid(who);
+        who = `${whoJid.local}@${whoJid.domain}`;
         log.info(`Fetching vCard for ${who}`);
-        const p = this.xmpp.xmppSend(
-            new StzaIqVcardRequest(sender || this.xmppAddress.toString(), who),
-        );
-        Metrics.remoteCall("xmpp.iq.vc2");
         const res = new Promise((resolve: (e: Element) => void, reject) => {
             const timeout = setTimeout(() => reject(Error("Timeout")), 5000);
-            this.xmpp.once("iq." + id, (stanza: Element) => {
+            this.once(`iq.${id}`, (stanza: Element) => {
                 clearTimeout(timeout);
                 const vCard = (stanza.getChild("vCard") as unknown as Element); // Bad typigns.
                 if (vCard) {
@@ -398,7 +396,11 @@ export class XmppJsInstance extends EventEmitter implements IBifrostInstance {
                 reject(Error("No vCard given"));
             });
         });
-        await p;
+        // Remove the resource
+        await this.xmppSend(
+            new StzaIqVcardRequest(sender || this.xmppAddress.toString(), who, id),
+        );
+        Metrics.remoteCall("xmpp.iq.vc2");
         return res;
     }
 

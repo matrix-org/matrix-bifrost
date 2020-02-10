@@ -57,6 +57,8 @@ export class ServiceHandler {
         const id = stanza.getAttr("id");
         const from = stanza.getAttr("from");
         const to = stanza.getAttr("to");
+        const type = stanza.getAttr("type");
+
 
         log.info("Handling iq request");
 
@@ -70,11 +72,9 @@ export class ServiceHandler {
             return this.handleDiscoInfo(from, to, id);
         }
 
-        if (stanza.getChildByAttr("xmlns", "vcard-temp")) {
+        if (stanza.getChildByAttr("xmlns", "vcard-temp") && type === "get") {
             return this.handleVcard(from, to, id, intent);
         }
-
-        const type = stanza.getAttr("type");
 
         if (stanza.getChildByAttr("xmlns", "urn:xmpp:ping") && type === "get") {
             return this.handlePing(from, to, id);

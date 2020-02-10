@@ -277,9 +277,7 @@ export class MatrixRoomHandler {
         // Update the user if needed.
         const account = this.purple.getAccount(data.account.username, data.account.protocol_id, matrixUser.getId());
         if (account) {
-            await this.profileSync.updateProfile(protocol, data.sender,
-                account,
-            );
+            await this.profileSync.updateProfile(protocol, data.sender, account);
         }
 
         const intent = this.bridge.getIntent(senderMatrixUser.getId());
@@ -514,13 +512,15 @@ export class MatrixRoomHandler {
     }
 
     private async handleReadReceipt(data: IChatReadReceipt) {
-        const intent = this.bridge.getIntent(this.purple.getProtocol(data.account.protocol_id)!.getMxIdForProtocol(
+        const userId = this.purple.getProtocol(data.account.protocol_id)!.getMxIdForProtocol(
             data.sender,
             this.config.bridge.domain,
             this.config.bridge.userPrefix,
-        ).userId);
+        ).userId;
+        const intent = this.bridge.getIntent(userId);
         const roomId = await this.createOrGetGroupChatRoom(data, intent, true);
         const eventId = data.originIsMatrix ? data.messageId : this.remoteEventIdMapping.get(data.messageId);
         await intent.sendReadReceipt(roomId, eventId);
+        log.debug(`Updated read reciept for ${userId} in ${roomId}`);
     }
 }

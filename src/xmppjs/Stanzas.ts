@@ -161,7 +161,7 @@ export class StzaPresenceKick extends StzaPresenceItem {
     constructor(
         from: string,
         to: string,
-        public reason: string,
+        public reason?: string,
         public actorNick?: string,
         self: boolean = false,
     ) {
@@ -171,7 +171,8 @@ export class StzaPresenceKick extends StzaPresenceItem {
 
     get itemContents(): string {
         const actor = this.actorNick ? `<actor nick='${he.encode(this.actorNick)}'/>` : "";
-        return `${actor}<reason>${he.encode(this.reason)}</reason>`;
+        const reason = this.reason ? `<reason>${he.encode(this.reason)}</reason>` : "";
+        return `${actor}${reason}`;
     }
 
 }
@@ -413,8 +414,8 @@ export class SztaIqError extends StzaBase {
 
 export class StzaIqVcardRequest extends StzaBase {
 
-    constructor(from: string, to: string) {
-        super(from, to);
+    constructor(from: string, to: string, id) {
+        super(from, to, id);
     }
 
     get type(): string {
@@ -422,7 +423,7 @@ export class StzaIqVcardRequest extends StzaBase {
     }
 
     get xml(): string {
-        return `<iq from='${this.from}' to='${this.to}' id='v1' type='get'>` +
+        return `<iq from='${this.from}' to='${this.to}' id='${this.id}' type='get'>` +
             "<vCard xmlns='vcard-temp'/>" +
         "</iq>";
     }

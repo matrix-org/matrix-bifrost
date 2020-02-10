@@ -64,7 +64,7 @@ export interface IChatStringState extends IConversationEvent {
 }
 
 export interface IUserInfo extends IAccountEvent {
-    [key: string]: string|IAccountMinimal;
+    [key: string]: string|IAccountMinimal|undefined;
     who: string;
 }
 
@@ -100,6 +100,7 @@ export interface IGatewayJoin {
     sender: string;
     protocol_id: string;
     join_id: string;
+    nick: string;
     roomAlias: string;
     room_name: string;
 }

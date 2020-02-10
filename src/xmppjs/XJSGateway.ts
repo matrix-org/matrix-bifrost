@@ -51,10 +51,14 @@ export class XmppJsGateway implements IGateway {
         if ((delta.changed.includes("online") || delta.changed.includes("newdevice")) && isMucType) {
             this.addStanzaToCache(stanza);
             // Gateways are special.
+            // We also want to drop the resource from the sender.
+            const from = jid(stanza.attrs.from);
+            const sender = `${from.local}@${from.domain}`;
             this.xmpp.emit("gateway-joinroom", {
                 join_id: stanza.attrs.id,
                 roomAlias: gatewayAlias,
-                sender: stanza.attrs.to,
+                sender,
+                nick: to.resource,
                 protocol_id: XMPP_PROTOCOL.id,
                 room_name: `${to.local}@${to.domain}`,
             } as IGatewayJoin);
@@ -150,15 +154,14 @@ export class XmppJsGateway implements IGateway {
         if (!member) {
             log.warn(`${stanza.attrs.from} is not part of this room.`);
             // Send the sender an error.
-            this.xmpp.xmppSend(
-                new StzaPresenceKick(
-                    stanza.attrs.to,
-                    stanza.attrs.from,
-                    "Dropped connection to the gateway, please rejoin",
-                    "Bifrost",
-                    true,
-                ),
+            const kick = new StzaPresenceKick(
+                stanza.attrs.to,
+                stanza.attrs.from
             );
+            kick.statusCodes.add(XMPPStatusCode.SelfPresence);
+            kick.statusCodes.add(XMPPStatusCode.SelfKicked);
+            kick.statusCodes.add(XMPPStatusCode.SelfKickedTechnical);
+            this.xmpp.xmppSend(kick);
             return false;
         }
         const preserveFrom = stanza.attrs.from;
@@ -449,13 +452,21 @@ export class XmppJsGateway implements IGateway {
 
     public async getUserInfo(who: string): Promise<IUserInfo> {
         const j = jid(who);
+        let nickname = j.resource || j.local;
+        let photo: string|undefined;
         try {
             const res = await this.xmpp.getVCard(who);
+            nickname = res.getChild("NICKNAME")?.getText() || nickname;
+            const photoElement = res.getChild("PHOTO");
+            if (photoElement) {
+                photo = `${photoElement.getChildText("TYPE")}|${photoElement.getChildText("BINVAL")}`;
+            }
         } catch (ex) {
             log.warn("Failed to fetch VCard", ex);
         }
         const ui: IUserInfo = {
             Nickname: j.resource || j.local,
+            Avatar: photo,
             eventName: "meh",
             who,
             account: {
@@ -466,8 +477,14 @@ export class XmppJsGateway implements IGateway {
         return ui;
     }
 
-    public getAvatarBuffer(uri: string, senderId: string): Promise<{ type: string; data: Buffer; }> {
-        throw new Error("Method not implemented.");
+    public async getAvatarBuffer(uri: string, senderId: string): Promise<{ type: string; data: Buffer; }> {
+        // The URI is the base64 value of the data prefixed by the type.
+        const [type, dataBase64] = uri.split("|");
+        if (!type || !type.includes("/") || !dataBase64) {
+            throw Error("Avatar uri was malformed");
+        }
+        const data = Buffer.from(dataBase64, "base64");
+        return { type, data };
     }
 
     public maskPMSenderRecipient(senderMxid: string, recipientJid: string)
@@ -527,6 +544,7 @@ export class XmppJsGateway implements IGateway {
             true,
             stanza.attrs.from,
         );
+        leaveStza.presenceType = "unavailable"
         this.xmpp.xmppWriteToStream(leaveStza);
         leaveStza.self = false;
         this.reflectXMPPStanza(chatName, leaveStza);
