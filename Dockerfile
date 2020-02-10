@@ -19,7 +19,7 @@ WORKDIR /app
 COPY ./package.json /app/package.json
 COPY ./yarn.lock /app/yarn.lock
 # Don't install devDependencies
-RUN yarn install --production --ignore-scripts 
+RUN yarn install --production --ignore-scripts
 # Copy compiled JS only
 COPY --from=builder ./build /app/src
 COPY ./config/config.schema.yaml ./config/config.schema.yaml

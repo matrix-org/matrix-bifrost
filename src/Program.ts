@@ -20,6 +20,10 @@ import * as request from "request-promise-native";
 const log = Logging.get("Program");
 const bridgeLog = Logging.get("bridge");
 
+import { install as installSMS } from "source-map-support";
+
+installSMS();
+
 EventEmitter.defaultMaxListeners = 50;
 
 /**
@@ -56,7 +60,7 @@ class Program {
         return this.cfg;
     }
 
-    public start(): any {
+    public start() {
         Logging.configure({console: "debug"});
 
         try {
