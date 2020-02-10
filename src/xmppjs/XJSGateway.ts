@@ -441,7 +441,11 @@ export class XmppJsGateway implements IGateway {
 
     public async getUserInfo(who: string): Promise<IUserInfo> {
         const j = jid(who);
-        // const status = this.xmpp.presenceCache.getStatus(who);
+        try {
+            const res = await this.xmpp.getVCard(who);
+        } catch (ex) {
+            log.warn("Failed to fetch VCard", ex);
+        }
         const ui: IUserInfo = {
             Nickname: j.resource || j.local,
             eventName: "meh",
