@@ -247,6 +247,7 @@ export class StzaMessageSubject extends StzaBase {
 }
 
 export class StzaIqPing extends StzaBase {
+    protected extraContent: string = "";
     constructor(
         from: string,
         to: string,
@@ -262,7 +263,21 @@ export class StzaIqPing extends StzaBase {
 
     get xml(): string {
         return `<iq from='${this.from}' to='${this.to}' id='${this.id}' type='${this.responseType}'>`
-               + "<ping xmlns='urn:xmpp:ping'/></iq>";
+               + `<ping xmlns='urn:xmpp:ping'/>${this.extraContent}</iq>`;
+    }
+}
+
+export class StzaIqPingError extends StzaIqPing {
+    constructor(
+        from: string,
+        to: string,
+        id: string,
+        private eType: "service-unavailable"|"not-acceptable",
+        private by?: string,
+    ) {
+        super(from, to, id, "error");
+        this.extraContent = `<error type='cancel'${this.by ? ` by='${this.by}'` : ""}>`
+        + `<${this.eType} xmlns='urn:ietf:params:xml:ns:xmpp-stanzas'/></error>`;
     }
 }
 
