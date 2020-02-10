@@ -54,7 +54,7 @@ export class XmppJsGateway implements IGateway {
             this.xmpp.emit("gateway-joinroom", {
                 join_id: stanza.attrs.id,
                 roomAlias: gatewayAlias,
-                sender: stanza.attrs.to,
+                sender: stanza.attrs.from,
                 protocol_id: XMPP_PROTOCOL.id,
                 room_name: `${to.local}@${to.domain}`,
             } as IGatewayJoin);
@@ -150,15 +150,15 @@ export class XmppJsGateway implements IGateway {
         if (!member) {
             log.warn(`${stanza.attrs.from} is not part of this room.`);
             // Send the sender an error.
-            this.xmpp.xmppSend(
-                new StzaPresenceKick(
-                    stanza.attrs.to,
-                    stanza.attrs.from,
-                    "Dropped connection to the gateway, please rejoin",
-                    "Bifrost",
-                    true,
-                ),
+            const kick = new StzaPresenceKick(
+                stanza.attrs.to,
+                stanza.attrs.from,
+                "Dropped connection to the gateway.",
             );
+            kick.statusCodes.add(XMPPStatusCode.SelfPresence);
+            kick.statusCodes.add(XMPPStatusCode.SelfKicked);
+            kick.statusCodes.add(XMPPStatusCode.SelfKickedTechnical);
+            this.xmpp.xmppSend(kick);
             return false;
         }
         const preserveFrom = stanza.attrs.from;
