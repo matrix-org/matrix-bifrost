@@ -5,7 +5,7 @@ import { Logging } from "matrix-appservice-bridge";
 import * as request from "request-promise-native";
 import { IGatewayRoom } from "../bifrost/Gateway";
 import { IGatewayRoomQuery, IGatewayPublicRoomsQuery } from "../bifrost/Events";
-import { StzaIqDiscoInfo, StzaIqPing, StzaIqDiscoItems, StzaIqSearchFields, SztaIqError } from "./Stanzas";
+import { StzaIqDiscoInfo, StzaIqPing, StzaIqDiscoItems, StzaIqSearchFields, SztaIqError, StzaIqPingError } from "./Stanzas";
 import { IPublicRoomsResponse } from "../MatrixTypes";
 import { IConfigBridge } from "../Config";
 
@@ -74,6 +74,12 @@ export class ServiceHandler {
             return this.handleVcard(from, to, id, intent);
         }
 
+        const type = stanza.getAttr("type");
+
+        if (stanza.getChildByAttr("xmlns", "urn:xmpp:ping") && type === "get") {
+            return this.handlePing(from, to, id);
+        }
+
         if (this.xmpp.gateway) {
             const searchQuery = stanza.getChildByAttr("xmlns", "jabber:iq:search");
             if (stanza.getChildByAttr("xmlns", "http://jabber.org/protocol/disco#items") &&
@@ -88,18 +94,6 @@ export class ServiceHandler {
 
             if (stanza.getChildByAttr("xmlns", "http://jabber.org/protocol/disco#info") && local) {
                  return this.handleRoomDiscovery(to, from, id);
-            }
-            if (stanza.getChildByAttr("xmlns", "urn:xmpp:ping")) {
-                log.debug(`Got self ping request: ${to}`);
-                const toJid = jid(to);
-                const chatName = `${toJid.local}@${toJid.domain}`;
-                const exists = !!this.xmpp.gateway.getAnonIDForJID(chatName, stanza.attrs.from);
-                if (exists) {
-                    await this.xmpp.xmppSend(new StzaIqPing(to, from, id, "result"));
-                } else {
-                    await this.xmpp.xmppSend(new SztaIqError(to, from, id, "cancel", null, "not-acceptable", chatName));
-                }
-                return;
             }
         }
 
@@ -384,5 +378,41 @@ export class ServiceHandler {
                 vCard,
             ),
         ));
+    }
+
+    private async handlePing(from: string, to: string, id: string) {
+        const toJid = jid(to);
+        log.debug(`Got ping from=${from} to=${to} id=${id}`);
+        // https://xmpp.org/extensions/xep-0199.html
+        if (to === this.xmpp.xmppAddress.domain) {
+            // Server-To-Server pings
+            if (jid(from).domain === from) {
+                log.debug(`S2S ping result sent to ${from}`);
+                await this.xmpp.xmppSend(new StzaIqPing(to, from, id, "result"));
+            }
+            // If the 'from' part is not a domain, this is not a S2S ping.
+        }
+
+        // https://xmpp.org/extensions/xep-0410.html
+        if (toJid.local && toJid.resource) {
+            // Self ping
+            if (!this.xmpp.gateway) {
+                // No gateways configured, not pinging.
+                return;
+            }
+            const chatName = `${toJid.local}@${toJid.domain}`;
+            const result = !!this.xmpp.gateway.getAnonIDForJID(chatName, toJid);
+            log.debug(`Self ping result sent to ${from} (result=${result})`);
+            if (result) {
+                await this.xmpp.xmppSend(new StzaIqPing(to, from, id, "result"));
+            } else {
+                await this.xmpp.xmppSend(new StzaIqPingError(to, from, id, "not-acceptable", chatName));
+            }
+            log.debug(`Self ping ping result sent to ${from}`);
+            return;
+        }
+
+        // All other pings are invalid in this context and will be ignored.
+        await this.xmpp.xmppSend(new StzaIqPingError(to, from, id, "service-unavailable"));
     }
 }
