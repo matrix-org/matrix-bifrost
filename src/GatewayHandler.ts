@@ -31,8 +31,8 @@ const log = Logging.get("GatewayHandler");
  * for XMPP.js).
  */
 export class GatewayHandler {
-    private aliasCache!: Map<string, IGatewayRoom>;
-    private roomIdCache!: Map<string, IGatewayRoom>;
+    private aliasCache: Map<string, IGatewayRoom> = new Map();
+    private roomIdCache: Map<string, IGatewayRoom> = new Map();
 
     constructor(
         private purple: IBifrostInstance,
@@ -47,8 +47,6 @@ export class GatewayHandler {
         purple.on("gateway-queryroom", this.handleRoomQuery.bind(this));
         purple.on("gateway-joinroom", this.handleRoomJoin.bind(this));
         purple.on("gateway-publicrooms", this.handlePublicRooms.bind(this));
-        this.aliasCache = new Map();
-        this.roomIdCache = new Map();
     }
 
     public async getVirtualRoom(roomId: string, intent: Intent): Promise<IGatewayRoom> {
@@ -150,24 +148,23 @@ export class GatewayHandler {
 
     private async handleRoomJoin(data: IGatewayJoin) {
         // Attempt to join the user, and create the room mapping if successful.
+        if (!this.purple.gateway) {
+            throw Error("Cannot handle gateway join because gateway is not setup");
+        }
         const protocol = this.purple.getProtocol(data.protocol_id)!;
-        const intentUser = protocol.getMxIdForProtocol(
-            data.sender,
-            this.config.bridge.domain,
-            this.config.bridge.userPrefix,
-        );
-        log.info(`${intentUser.userId} is attempting to join ${data.roomAlias}`);
-        const intent = this.bridge.getIntent(intentUser.userId);
+        const intentUser = this.purple.gateway.getMxidForRemote(data.sender);
+        log.info(`${intentUser} is attempting to join ${data.roomAlias}`);
+        const intent = this.bridge.getIntent(intentUser);
         let roomId: string|null = null;
         try {
             // XXX: We don't get the room_id from the join call, because Intents are made of fail.
             await intent._ensureRegistered();
             if (this.config.tuning.waitOnProfileBeforeSend) {
-                await this.profileSync.updateProfile(protocol, data.sender, this.purple.gateway!);
+                await this.profileSync.updateProfile(protocol, data.sender, this.purple.gateway);
             }
             const res = await intent.getClient().joinRoom(data.roomAlias, {syncRoom: false});
             if (!this.config.tuning.waitOnProfileBeforeSend) {
-                await this.profileSync.updateProfile(protocol, data.sender, this.purple.gateway!);
+                await this.profileSync.updateProfile(protocol, data.sender, this.purple.gateway);
             }
             if (!res || !res.roomId) {
                 throw Error(
@@ -183,13 +180,13 @@ export class GatewayHandler {
                 );
             }
             const vroom = await this.getVirtualRoom(roomId!, intent);
-            await this.purple.gateway!.onRemoteJoin(null, data.join_id, vroom, intentUser.userId);
+            await this.purple.gateway.onRemoteJoin(null, data.join_id, vroom, intentUser);
         } catch (ex) {
             if (roomId) {
                 intent.leave(roomId);
             }
             log.warn("Failed to join room:", ex.message);
-            await this.purple.gateway!.onRemoteJoin(ex.message, data.join_id, undefined, undefined);
+            await this.purple.gateway.onRemoteJoin(ex.message, data.join_id, undefined, undefined);
         }
     }
 

@@ -10,7 +10,7 @@ import { PresenceCache } from "./PresenceCache";
 import { XHTMLIM } from "./XHTMLIM";
 import { BifrostRemoteUser } from "../store/BifrostRemoteUser";
 import { StzaPresenceItem, StzaMessage, StzaMessageSubject,
-    StzaPresenceError, StzaBase, StzaPresenceKick } from "./Stanzas";
+    StzaPresenceError, StzaBase, StzaPresenceKick, StzaIqVcardRequest } from "./Stanzas";
 import { IGateway } from "../bifrost/Gateway";
 import { GatewayMUCMembership, IGatewayMemberXmpp, IGatewayMemberMatrix } from "./GatewayMUCMembership";
 import { XMPPStatusCode } from "./StatusCodes";
@@ -262,6 +262,12 @@ export class XmppJsGateway implements IGateway {
             new StzaMessageSubject(chatName, "", undefined,
             `${room.name || ""} ${room.topic ? "| " + room.topic : ""}`,
         ));
+    }
+
+    public getMxidForRemote(sender: string) {
+        const j = jid(sender);
+        const username = `${j.local}@${j.domain}`;
+        return XMPP_PROTOCOL.getMxIdForProtocol(username, this.config.domain, this.config.userPrefix).getId();
     }
 
     public async onRemoteJoin(
