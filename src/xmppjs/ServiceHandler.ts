@@ -59,7 +59,6 @@ export class ServiceHandler {
         const to = stanza.getAttr("to");
         const type = stanza.getAttr("type");
 
-
         log.info("Handling iq request");
 
         if (stanza.getChildByAttr("xmlns", "jabber:iq:version")) {

@@ -156,7 +156,7 @@ export class XmppJsGateway implements IGateway {
             // Send the sender an error.
             const kick = new StzaPresenceKick(
                 stanza.attrs.to,
-                stanza.attrs.from
+                stanza.attrs.from,
             );
             kick.statusCodes.add(XMPPStatusCode.SelfPresence);
             kick.statusCodes.add(XMPPStatusCode.SelfKicked);
@@ -544,7 +544,7 @@ export class XmppJsGateway implements IGateway {
             true,
             stanza.attrs.from,
         );
-        leaveStza.presenceType = "unavailable"
+        leaveStza.presenceType = "unavailable";
         this.xmpp.xmppWriteToStream(leaveStza);
         leaveStza.self = false;
         this.reflectXMPPStanza(chatName, leaveStza);
