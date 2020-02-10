@@ -16,6 +16,7 @@ export interface IGateway extends IProfileProvider {
     onRemoteJoin(err: string|null, joinId: string, room: IGatewayRoom|undefined, ownMxid: string|undefined,
     ): Promise<void>;
     reconnectRemoteUser(user: BifrostRemoteUser, room: IGatewayRoom): void;
+    getMxidForRemote(sender: string): string;
 }
 
 export interface IGatewayRoom {
