@@ -388,7 +388,7 @@ export class ServiceHandler {
             // Server-To-Server pings
             if (jid(from).domain === from) {
                 log.debug(`S2S ping result sent to ${from}`);
-                await this.xmpp.xmppSend(new StzaIqPingServiceUnavailable(to, from, id));
+                await this.xmpp.xmppSend(new StzaIqPing(to, from, id, "result"));
             }
             // If the 'from' part is not a domain, this is not a S2S ping.
         }
