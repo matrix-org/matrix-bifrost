@@ -1,6 +1,6 @@
 {
   "name": "matrix-bifrost",
-  "version": "0.1.4",
+  "version": "0.1.5",
   "description": "Multi protocol bridging for Matrix.",
   "main": "index.js",
   "scripts": {

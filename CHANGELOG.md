@@ -1,4 +1,30 @@
- 0.1.4 (2020-02-03)
+ 0.1.5 (2020-02-10)
+===================
+
+Features
+--------
+
+- XMPP and Matrix users are no longer anonymous over the gateway. This is to keep in line with Matrix's own identity visibility. ([\#97](https://github.com/matrix-org/matrix-bifrost/issues/97))
+
+
+Bugfixes
+--------
+
+- Matrix profiles can now be viewed over the gateway ([\#96](https://github.com/matrix-org/matrix-bifrost/issues/96))
+- Refactor ping handling to support Server-Server pings. ([\#101](https://github.com/matrix-org/matrix-bifrost/issues/101))
+- Kicking gatewayed XMPP users should now contain the correct status codes. ([\#102](https://github.com/matrix-org/matrix-bifrost/issues/102))
+- Additionally, XMPP profiles should now be viewable over Matrix.
+
+
+Internal Changes
+----------------
+
+- Use Typescript 3.7.5 ([\#95](https://github.com/matrix-org/matrix-bifrost/issues/95))
+- Refactor vcard support for gateways ([\#103](https://github.com/matrix-org/matrix-bifrost/issues/103))
+- Refactor profile handing for the gateway handler ([\#104](https://github.com/matrix-org/matrix-bifrost/issues/104))
+
+
+0.1.4 (2020-02-03)
 ===================
 
 Bugfixes
