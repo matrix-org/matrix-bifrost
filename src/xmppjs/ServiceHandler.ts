@@ -5,7 +5,7 @@ import { Logging } from "matrix-appservice-bridge";
 import * as request from "request-promise-native";
 import { IGatewayRoom } from "../bifrost/Gateway";
 import { IGatewayRoomQuery, IGatewayPublicRoomsQuery } from "../bifrost/Events";
-import { StzaIqDiscoInfo, StzaIqPing, StzaIqDiscoItems, StzaIqSearchFields, SztaIqError, StzaIqPingServiceUnavailable, StzaIqPingError } from "./Stanzas";
+import { StzaIqDiscoInfo, StzaIqPing, StzaIqDiscoItems, StzaIqSearchFields, SztaIqError, StzaIqPingError } from "./Stanzas";
 import { IPublicRoomsResponse } from "../MatrixTypes";
 import { IConfigBridge } from "../Config";
 
@@ -408,7 +408,7 @@ export class ServiceHandler {
             } else {
                 await this.xmpp.xmppSend(new StzaIqPingError(to, from, id, "not-acceptable", chatName));
             }
-            log.debug(`Self ping result sent to ${from}`);
+            log.debug(`Self ping ping result sent to ${from}`);
             return;
         }
 
