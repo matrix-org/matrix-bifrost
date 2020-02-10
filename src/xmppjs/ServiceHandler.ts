@@ -402,7 +402,7 @@ export class ServiceHandler {
             }
             const chatName = `${toJid.local}@${toJid.domain}`;
             const result = !!this.xmpp.gateway.getAnonIDForJID(chatName, toJid);
-            log.debug(`Self ping result sent to ${from} (result=)`);
+            log.debug(`Self ping result sent to ${from} (result=${result})`);
             if (result) {
                 await this.xmpp.xmppSend(new StzaIqPing(to, from, id, "result"));
             } else {
