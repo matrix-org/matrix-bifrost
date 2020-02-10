@@ -10,7 +10,7 @@ import { PresenceCache } from "./PresenceCache";
 import { XHTMLIM } from "./XHTMLIM";
 import { BifrostRemoteUser } from "../store/BifrostRemoteUser";
 import { StzaPresenceItem, StzaMessage, StzaMessageSubject,
-    StzaPresenceError, StzaBase, StzaPresenceKick, StzaIqVcardRequest } from "./Stanzas";
+    StzaPresenceError, StzaBase, StzaPresenceKick } from "./Stanzas";
 import { IGateway } from "../bifrost/Gateway";
 import { GatewayMUCMembership, IGatewayMemberXmpp, IGatewayMemberMatrix } from "./GatewayMUCMembership";
 import { XMPPStatusCode } from "./StatusCodes";
@@ -54,7 +54,7 @@ export class XmppJsGateway implements IGateway {
             this.xmpp.emit("gateway-joinroom", {
                 join_id: stanza.attrs.id,
                 roomAlias: gatewayAlias,
-                sender: stanza.attrs.from,
+                sender: stanza.attrs.to,
                 protocol_id: XMPP_PROTOCOL.id,
                 room_name: `${to.local}@${to.domain}`,
             } as IGatewayJoin);
@@ -150,15 +150,15 @@ export class XmppJsGateway implements IGateway {
         if (!member) {
             log.warn(`${stanza.attrs.from} is not part of this room.`);
             // Send the sender an error.
-            const kick = new StzaPresenceKick(
-                stanza.attrs.to,
-                stanza.attrs.from,
-                "Dropped connection to the gateway.",
+            this.xmpp.xmppSend(
+                new StzaPresenceKick(
+                    stanza.attrs.to,
+                    stanza.attrs.from,
+                    "Dropped connection to the gateway, please rejoin",
+                    "Bifrost",
+                    true,
+                ),
             );
-            kick.statusCodes.add(XMPPStatusCode.SelfPresence);
-            kick.statusCodes.add(XMPPStatusCode.SelfKicked);
-            kick.statusCodes.add(XMPPStatusCode.SelfKickedTechnical);
-            this.xmpp.xmppSend(kick);
             return false;
         }
         const preserveFrom = stanza.attrs.from;
@@ -203,9 +203,11 @@ export class XmppJsGateway implements IGateway {
             return;
         }
         stanza.attrs.from = sender.anonymousJid.toString();
-        stanza.attrs.to = recipient.devices[recipient.devices.size - 1].toString();
-        log.info(`Reflecting PM message ${stanza.attrs.from} -> ${stanza.attrs.to}`);
-        this.xmpp.xmppWriteToStream(stanza);
+        for (const device of recipient.devices) {
+            stanza.attrs.to = device;
+            log.info(`Reflecting PM message ${stanza.attrs.from} -> ${stanza.attrs.to}`);
+            this.xmpp.xmppWriteToStream(stanza);
+        }
     }
 
     public sendMatrixMembership(
@@ -483,7 +485,7 @@ export class XmppJsGateway implements IGateway {
             throw Error("Couldn't find the senders anonymous jid for a MUC PM over the gateway");
         }
         return {
-            recipient: recipient.devices![recipient!.devices!.size - 1].toString(),
+            recipient: recipient.devices[recipient.devices.size - 1].toString(),
             sender: sender.anonymousJid.toString(),
         };
     }
@@ -525,7 +527,6 @@ export class XmppJsGateway implements IGateway {
             true,
             stanza.attrs.from,
         );
-        leaveStza.presenceType = "unavailable";
         this.xmpp.xmppWriteToStream(leaveStza);
         leaveStza.self = false;
         this.reflectXMPPStanza(chatName, leaveStza);

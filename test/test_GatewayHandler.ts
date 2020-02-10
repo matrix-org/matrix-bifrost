@@ -37,6 +37,9 @@ function createGH() {
                     watch.remoteJoin = {err, joinId, room, ownMxid};
                     remoteJoinResolve();
             },
+            getMxidForRemote: (sender: string) => {
+                return `@_prefix_${sender}:localhost`;
+            },
         },
         getProtocol: () => dummyProtocol,
     };
@@ -72,7 +75,7 @@ describe("GatewayHandler", () => {
         await watch.remoteJoinPromise;
         expect(watch.intent).to.not.be.null;
         expect(watch.intent.ensureRegisteredCalled).to.be.true;
-        expect(watch.intent.userId).to.equal("@_prefix_frogman=40frogworld:localhost");
+        expect(watch.intent.userId).to.equal("@_prefix_frogman@frogworld:localhost");
         expect(watch.intent.clientJoinRoomCalledWith.roomString).to.equal("#roomAlias:localhost");
         expect(watch.profileUpdated).to.be.true;
         expect(watch.remoteJoin.err).is.null;
@@ -95,7 +98,7 @@ describe("GatewayHandler", () => {
         await watch.remoteJoinPromise;
         expect(watch.intent).to.not.be.null;
         expect(watch.intent.ensureRegisteredCalled).to.be.true;
-        expect(watch.intent.userId).to.equal("@_prefix_frogman=40frogworld:localhost");
+        expect(watch.intent.userId).to.equal("@_prefix_frogman@frogworld:localhost");
         expect(watch.intent.clientJoinRoomCalledWith.roomString).to.equal("#roomAlias2:localhost");
         expect(watch.profileUpdated).to.be.true;
         expect(watch.remoteJoin.joinId).to.equal("!roomId2:localhost");
