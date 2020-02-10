@@ -395,3 +395,20 @@ export class SztaIqError extends StzaBase {
           "xmlns='urn:ietf:params:xml:ns:xmpp-stanzas'/></error></iq>";
     }
 }
+
+export class StzaIqVcardRequest extends StzaBase {
+
+    constructor(from: string, to: string) {
+        super(from, to);
+    }
+
+    get type(): string {
+        return "iq";
+    }
+
+    get xml(): string {
+        return `<iq from='${this.from}' to='${this.to}' id='v1' type='get'>` +
+            "<vCard xmlns='vcard-temp'/>" +
+        "</iq>";
+    }
+}

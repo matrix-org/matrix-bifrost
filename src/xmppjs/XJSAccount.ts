@@ -11,7 +11,7 @@ import { Metrics } from "../Metrics";
 import { Logging } from "matrix-appservice-bridge";
 import * as uuid from "uuid/v4";
 import { XHTMLIM } from "./XHTMLIM";
-import { StzaPresence, StzaMessage, StzaIqPing, StzaPresenceJoin, StzaPresencePart } from "./Stanzas";
+import { StzaPresence, StzaMessage, StzaIqPing, StzaPresenceJoin, StzaPresencePart, StzaIqVcardRequest } from "./Stanzas";
 
 const IDPREFIX = "pbridge";
 const CONFLICT_SUFFIX = "[m]";
@@ -356,42 +356,20 @@ export class XmppJsAccount implements IBifrostAccount {
         return ui;
     }
 
-    public getAvatarBuffer(iconPath: string, senderId: string): Promise<{type: string, data: Buffer}> {
-        const id = uuid();
+    public async getAvatarBuffer(iconPath: string, senderId: string): Promise<{type: string, data: Buffer}> {
         log.info(`Fetching avatar for ${senderId} (hash: ${iconPath})`);
-        this.xmpp.xmppWriteToStream(
-            x("iq", {
-                from: `${this.remoteId}/${this.resource}`,
-                to: senderId,
-                type: "get",
-                id,
-            }, x("vCard", {xmlns: "vcard-temp"}),
-        ));
-        Metrics.remoteCall("xmpp.iq.vc2");
-        return new Promise((resolve, reject) => {
-            const timeout = setTimeout(() => reject(Error("Timeout")), 5000);
-            this.xmpp.once("iq." + id, (stanza: Element) => {
-                clearTimeout(timeout);
-                const vCard = stanza.getChild("vCard");
-                if (vCard) {
-                    const photo = vCard.getChild("PHOTO");
-                    if (!photo) {
-                        reject("No PHOTO in vCard given");
-                        return;
-                    }
-                    resolve(
-                        {
-                            data: Buffer.from(
-                                photo.getChildText("BINVAL")!,
-                                "base64",
-                            ),
-                            type: photo!.getChildText("TYPE") || "image/jpeg",
-                        },
-                    );
-                }
-                reject("No vCard given");
-            });
-        });
-    }
+        const vCard = await this.xmpp.getVCard(senderId);
+        const photo = vCard.getChild("PHOTO");
+        if (!photo) {
+            throw Error("No PHOTO in vCard given");
+        }
+        return {
+            data: Buffer.from(
+                photo.getChildText("BINVAL")!,
+                "base64",
+            ),
+            type: photo!.getChildText("TYPE") || "image/jpeg",
+        };
 
+    }
 }
