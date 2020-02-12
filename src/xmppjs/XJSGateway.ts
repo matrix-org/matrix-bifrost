@@ -75,6 +75,11 @@ export class XmppJsGateway implements IGateway {
                 log.warn("User has gone offline, but we don't have a member for them");
                 return;
             }
+            if (member.devices.size) {
+                // User still has other devices, not leaving.
+                log.log(`User has ${member.devices.size} other devices, not leaving.`);
+                return;
+            }
             this.xmpp.emit("chat-user-left", {
                 conv: {
                     name: convName,
@@ -97,6 +102,11 @@ export class XmppJsGateway implements IGateway {
     public addStanzaToCache(stanza: Element) {
         this.stanzaCache.set(stanza.attrs.id, stanza);
         log.debug("Added cached stanza for " + stanza.attrs.id);
+    }
+
+    public isAnonJIDInMuc(j: JID) {
+        const chatName = `${j.local}@${j.domain}`;
+        return !!this.members.getMemberByAnonJid<IGatewayMemberMatrix>(chatName, j.toString());
     }
 
     public getMatrixIDForJID(chatName: string, j: JID) {
