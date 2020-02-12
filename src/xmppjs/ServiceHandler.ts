@@ -400,14 +400,13 @@ export class ServiceHandler {
                 return;
             }
             const chatName = `${toJid.local}@${toJid.domain}`;
-            const result = !!this.xmpp.gateway.getAnonIDForJID(chatName, toJid);
-            log.debug(`Self ping result sent to ${from} (result=${result})`);
+            const result = !!this.xmpp.gateway.isAnonJIDInMuc(toJid);
             if (result) {
                 await this.xmpp.xmppSend(new StzaIqPing(to, from, id, "result"));
             } else {
                 await this.xmpp.xmppSend(new StzaIqPingError(to, from, id, "not-acceptable", chatName));
             }
-            log.debug(`Self ping ping result sent to ${from}`);
+            log.debug(`Self ping result sent to ${from} (result=${result})`);
             return;
         }
 

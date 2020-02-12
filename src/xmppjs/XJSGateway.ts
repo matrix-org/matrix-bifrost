@@ -99,6 +99,11 @@ export class XmppJsGateway implements IGateway {
         log.debug("Added cached stanza for " + stanza.attrs.id);
     }
 
+    public isAnonJIDInMuc(j: JID) {
+        const chatName = `${j.local}@${j.domain}`;
+        return !!this.members.getMemberByAnonJid<IGatewayMemberMatrix>(chatName, j.toString());
+    }
+
     public getMatrixIDForJID(chatName: string, j: JID) {
         const user = this.members.getMemberByAnonJid<IGatewayMemberMatrix>(chatName, j.toString());
         if (!user) {
