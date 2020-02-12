@@ -77,7 +77,7 @@ export class XmppJsGateway implements IGateway {
             }
             if (member.devices.size) {
                 // User still has other devices, not leaving.
-                log.log(`User has ${member.devices.size} other devices, not leaving.`);
+                log.info(`User has ${member.devices.size} other devices, not leaving.`);
                 return;
             }
             this.xmpp.emit("chat-user-left", {
