@@ -1,4 +1,13 @@
- 0.1.6 (2020-02-12)
+ 0.1.7 (2020-02-12)
+===================
+
+Bugfixes
+--------
+
+- Moved `source-map-support` to dependencies to fix a crash on startup. ([\#108](https://github.com/matrix-org/matrix-bifrost/issues/108))
+
+
+0.1.6 (2020-02-12)
 ===================
 
 Features

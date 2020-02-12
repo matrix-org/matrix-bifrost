@@ -1,1 +1,0 @@
-Moved `source-map-support` to dependencies to fix a crash on startup.
