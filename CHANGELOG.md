@@ -1,4 +1,13 @@
- 0.1.7 (2020-02-12)
+ 0.1.8 (2020-02-12)
+===================
+
+Bugfixes
+--------
+
+- Fix exception involving `log.log` ([\#109](https://github.com/matrix-org/matrix-bifrost/issues/109))
+
+
+0.1.7 (2020-02-12)
 ===================
 
 Bugfixes
