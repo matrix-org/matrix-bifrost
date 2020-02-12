@@ -1,4 +1,19 @@
- 0.1.5 (2020-02-10)
+ 0.1.6 (2020-02-12)
+===================
+
+Features
+--------
+
+- TypeScript stack traces are now shown instead of compiled JavaScript. ([\#105](https://github.com/matrix-org/matrix-bifrost/issues/105))
+
+
+Bugfixes
+--------
+
+- Fix issue where the XMPP gateway would incorrecly report that a user isn't joined ([\#107](https://github.com/matrix-org/matrix-bifrost/issues/107))
+
+
+0.1.5 (2020-02-10)
 ===================
 
 Features
