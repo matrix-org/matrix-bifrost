@@ -1,0 +1,1 @@
+Fix issue where the XMPP gateway would incorrecly report that a user isn't joined
