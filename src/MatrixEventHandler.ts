@@ -254,7 +254,7 @@ export class MatrixEventHandler {
             const users = await this.bridge.getUserStore().getRemoteUsersFromMatrixId(event.sender);
             let body = "Linked accounts:\n";
             body += users.map((remoteUser: RemoteUser) => {
-                const pid = remoteUser.get("protocolId");
+                const pid = remoteUser.get("protocol_id");
                 const username = remoteUser.get("username");
                 let account: IBifrostAccount|null = null;
                 try {
