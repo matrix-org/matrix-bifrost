@@ -357,6 +357,7 @@ export class XmppJsGateway implements IGateway {
         const members = this.members.getMembers(chatName);
         // Ensure we chunk this
         let sent = 0;
+        const allMembershipPromises: Promise<unknown>[] = [];
         for (const member of members) {
             sent++;
             if (member.anonymousJid.toString() === stanza.attrs.to) {
@@ -377,7 +378,7 @@ export class XmppJsGateway implements IGateway {
                     XMPP_PROTOCOL.id, (member as IGatewayMemberMatrix).matrixId,
                 ).username;
             }
-            this.xmpp.xmppSend(
+            allMembershipPromises.push(this.xmpp.xmppSend(
                 new StzaPresenceItem(
                     member.anonymousJid.toString(),
                     stanza.attrs.from,
@@ -387,8 +388,11 @@ export class XmppJsGateway implements IGateway {
                     false,
                     realJid,
                 ),
-            );
+            ));
         }
+
+        // Wait for all presence to be sent first.
+        await Promise.all(allMembershipPromises);
 
         log.debug("Emitting membership of self");
         // 2. self presence
@@ -405,16 +409,8 @@ export class XmppJsGateway implements IGateway {
         selfPresence.statusCodes.add(XMPPStatusCode.RoomNonAnonymous);
         selfPresence.statusCodes.add(XMPPStatusCode.RoomLoggingEnabled);
         await this.xmpp.xmppSend(selfPresence);
-
-        // FROM THIS POINT ON, WE CONSIDER THE USER JOINED.
-
-        this.members.addXmppMember(
-            `${to.local}@${to.domain}`,
-            jid(stanza.attrs.from),
-            jid(stanza.attrs.to),
-        );
-
-        this.reflectXMPPMessage(chatName, x("presence", {
+        // Send everyone else the users new presence.
+        await this.reflectXMPPMessage(chatName, x("presence", {
                 from: stanza.attrs.from,
                 to: null,
                 id: stanza.attrs.id,
@@ -424,6 +420,15 @@ export class XmppJsGateway implements IGateway {
                     x("item", {affiliation: "member", role: "participant"}),
                 ]),
         ));
+
+        // FROM THIS POINT ON, WE CONSIDER THE USER JOINED.
+
+        this.members.addXmppMember(
+            `${to.local}@${to.domain}`,
+            jid(stanza.attrs.from),
+            jid(stanza.attrs.to),
+        );
+
         // 3. Room history
         log.debug("Emitting history");
         const history = this.roomHistory.get(room.roomId) || [];
