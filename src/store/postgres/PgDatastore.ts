@@ -15,9 +15,9 @@ limitations under the License.
 */
 
 import { Pool } from "pg";
-import { MatrixRoom, RemoteRoom, MatrixUser, Logging } from "matrix-appservice-bridge";
-import { IRemoteRoomData, IRemoteGroupData, IRoomEntry, MROOM_TYPES, MUSER_TYPES,
-    IRemoteImData, IRemoteUserAdminData, MUSER_TYPE_ACCOUNT, MUSER_TYPE_GHOST, MROOM_TYPE_IM } from "../Types";
+import { MatrixRoom, RemoteRoom, MatrixUser, Logging, RoomBridgeStoreEntry } from "matrix-appservice-bridge";
+import { IRemoteRoomData, IRemoteGroupData, MROOM_TYPES,
+    IRemoteImData, IRemoteUserAdminData, MROOM_TYPE_IM } from "../Types";
 import { BifrostProtocol } from "../../bifrost/Protocol";
 import { IAccountMinimal } from "../../bifrost/Events";
 import { BifrostRemoteUser } from "../BifrostRemoteUser";
@@ -100,7 +100,7 @@ export class PgDataStore implements IStore {
         await this.pgPool.query(statement, Object.values(props));
     }
 
-    public async getMatrixUserForAccount(account: IAccountMinimal): Promise<MatrixUser> {
+    public async getMatrixUserForAccount(account: IAccountMinimal): Promise<MatrixUser|null> {
         log.info("Getting matrix user for ", account);
         const res = await this.pgPool.query(
             "SELECT user_id FROM accounts WHERE protocol_id = $1 AND username = $2 LIMIT 1",
@@ -166,7 +166,7 @@ export class PgDataStore implements IStore {
         });
     }
 
-    public async getRoomByRemoteData(remoteData: IRemoteGroupData): Promise<IRoomEntry|null> {
+    public async getRoomByRemoteData(remoteData: IRemoteGroupData): Promise<RoomBridgeStoreEntry|null> {
         const parts: string[] = [];
         let i = 0;
         for (const key of Object.keys(remoteData)) {
@@ -189,18 +189,20 @@ export class PgDataStore implements IStore {
             return null;
         }
         const row = res.rows[0];
+        const remoteGroupData: IRemoteGroupData = {
+            gateway: row.gateway,
+            properties: row.properties,
+            room_name: row.room_name,
+        };
         return {
             matrix: new MatrixRoom(row.room_id, { extras: { type: "group" } }),
             // Id is not used.
-            remote: new RemoteRoom("", {
-                gateway: row.gateway,
-                properties: row.properties,
-                room_name: row.room_name,
-            } as IRemoteGroupData),
+            remote: new RemoteRoom("", remoteGroupData as Record<string,unknown>),
+            data: {}
         };
     }
 
-    public async getIMRoom(matrixUserId: string, protocolId: string, remoteUserId: string): Promise<IRoomEntry|null> {
+    public async getIMRoom(matrixUserId: string, protocolId: string, remoteUserId: string): Promise<RoomBridgeStoreEntry|null> {
         const res = await this.pgPool.query(
             "SELECT room_id FROM im_rooms WHERE user_id = $1 AND remote_id = $2 AND protocol_id = $3",
             [ matrixUserId, remoteUserId, protocolId ],
@@ -216,6 +218,7 @@ export class PgDataStore implements IStore {
                 protocol_id: protocolId,
                 recipient: remoteUserId,
             }),
+            data: {}
         };
     }
 
@@ -231,19 +234,23 @@ export class PgDataStore implements IStore {
         return users;
     }
 
-    public async getRoomsOfType(type: MROOM_TYPES): Promise<IRoomEntry[]> {
+    public async getRoomsOfType(type: MROOM_TYPES): Promise<RoomBridgeStoreEntry[]> {
         const tableName = RoomTypeToTable[type];
         const res = await this.pgPool.query(`SELECT * FROM ${tableName};`);
-        return res.rows.map((row) => ({
-            matrix: new MatrixRoom(row.room_id, { extras: { type } }),
-            // Id is not used.
-            remote: new RemoteRoom("", {
+        return res.rows.map((row) => {
+            const remoteData: IRemoteGroupData = {
                 gateway: row.gateway,
                 properties: row.properties,
                 room_name: row.room_name,
                 protocol_id: row.protocol_id,
-            } as IRemoteGroupData),
-        }));
+            };
+            return {
+                matrix: new MatrixRoom(row.room_id, { extras: { type } }),
+                // Id is not used.
+                remote: new RemoteRoom("", remoteData as Record<string, unknown>),
+                data: {}
+            };
+        });
     }
 
     public async storeAccount(userId: string, protocol: BifrostProtocol, username: string, extraData?: any) {
@@ -288,7 +295,7 @@ export class PgDataStore implements IStore {
         );
     }
 
-    public async getRoomEntryByMatrixId(roomId: string): Promise<IRoomEntry | null> {
+    public async getRoomEntryByMatrixId(roomId: string): Promise<RoomBridgeStoreEntry | null> {
         log.debug("Getting room", roomId);
         const typeRes = await this.pgPool.query(
             "SELECT tableoid::regclass as table_name FROM rooms WHERE room_id = $1 LIMIT 1",
@@ -318,31 +325,33 @@ export class PgDataStore implements IStore {
             } as IRemoteGroupData;
         } else if (type === "im") {
             remoteData = {
-                matrixUser: new MatrixUser(row.user_id),
+                matrixUser: new MatrixUser(row.user_id).userId,
                 recipient: row.remote_id,
                 protocol_id: row.protocol_id,
             } as IRemoteImData;
         } else if (type === "user-admin") {
             remoteData = {
-                matrixUser: new MatrixUser(row.user_id),
+                matrixUser: new MatrixUser(row.user_id).userId,
             } as IRemoteUserAdminData;
         } else {
             throw Error("Room was of unknown type!");
         }
         log.debug("Found room ", JSON.stringify(remoteData));
         return {
-            remote: new RemoteRoom("", remoteData),
+            remote: new RemoteRoom("", remoteData as Record<string, unknown>),
             matrix: new MatrixRoom(roomId, { extras: { type }}),
+            data: {}
         };
     }
 
     public async storeRoom(matrixId: string, type: MROOM_TYPES, remoteId: string, remoteData: IRemoteRoomData)
-    : Promise<{remote: RemoteRoom, matrix: MatrixRoom}> {
+    : Promise<RoomBridgeStoreEntry> {
         log.debug("Storing room", matrixId);
         let statement: string;
         const res = {
-            remote: new RemoteRoom(remoteId, remoteData),
+            remote: new RemoteRoom(remoteId, remoteData as Record<string, unknown>),
             matrix: new MatrixRoom(matrixId, { extras: { type } }),
+            data: {}
         };
 
         if (type === "user-admin") {

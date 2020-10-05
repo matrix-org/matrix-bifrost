@@ -2,7 +2,7 @@ import { IBifrostAccount, IProfileProvider } from "./bifrost/Account";
 import * as _fs from "fs";
 import * as path from "path";
 import { BifrostProtocol } from "./bifrost/Protocol";
-import { Logging, MatrixUser, Bridge, Intent } from "matrix-appservice-bridge";
+import { Logging, MatrixUser, Bridge } from "matrix-appservice-bridge";
 import { Config } from "./Config";
 import { IStore} from "./store/Store";
 import { BifrostRemoteUser } from "./store/BifrostRemoteUser";
@@ -22,7 +22,7 @@ export class ProfileSync {
     ) {
         senderIdToLookup = senderIdToLookup ? senderIdToLookup : senderId;
         const {matrixUser, remoteUser} = await this.getOrCreateStoreUsers(protocol, senderId);
-        const lastCheck = matrixUser.get("last_check");
+        const lastCheck = matrixUser.get<number>("last_check");
         matrixUser.set("last_check", Date.now());
         if (!force &&
             lastCheck != null && (Date.now() - lastCheck) < this.config.profile.updateInterval) {

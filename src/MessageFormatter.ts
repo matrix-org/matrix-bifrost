@@ -24,7 +24,7 @@ export interface IMatrixMsgContents {
 
 export interface IBasicProtocolMessage {
     body: string;
-    formatted?: Array<{type: string, body: string}>;
+    formatted?: {type: string, body: string}[];
     id?: string;
     original_message?: string;
     opts?: {
@@ -42,7 +42,7 @@ export class MessageFormatter {
 
     public static matrixEventToBody(event: IEventRequestData, config: IConfigBridge): IBasicProtocolMessage {
         const body = event.content.body;
-        const formatted: Array<{type: string, body: string}> = [];
+        const formatted: {type: string, body: string}[] = [];
         if (event.content.formatted_body) {
             formatted.push({
                 body: event.content.formatted_body,

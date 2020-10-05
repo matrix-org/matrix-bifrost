@@ -7,7 +7,7 @@ export class MockIntent {
 
     }
 
-    public async _ensureRegistered() {
+    public async ensureRegistered() {
         this.ensureRegisteredCalled = true;
     }
 

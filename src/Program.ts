@@ -1,11 +1,10 @@
-import { Cli, Bridge, AppServiceRegistration, Logging } from "matrix-appservice-bridge";
+import { Cli, Bridge, AppServiceRegistration, Logging, WeakEvent } from "matrix-appservice-bridge";
 import { EventEmitter } from "events";
 import { MatrixEventHandler } from "./MatrixEventHandler";
 import { MatrixRoomHandler } from "./MatrixRoomHandler";
 import { IBifrostInstance } from "./bifrost/Instance";
 import {  IAccountEvent } from "./bifrost/Events";
 import { ProfileSync } from "./ProfileSync";
-import { IEventRequest } from "./MatrixTypes";
 import { RoomSync } from "./RoomSync";
 import { IStore, initiateStore } from "./store/Store";
 import { Deduplicator } from "./Deduplicator";
@@ -30,8 +29,8 @@ EventEmitter.defaultMaxListeners = 50;
  * This is the entry point for the bridge. It contains
  */
 class Program {
-    private cli: Cli;
-    private bridge: Bridge;
+    private cli: Cli<Record<string, unknown>>;
+    private bridge?: Bridge;
     private eventHandler: MatrixEventHandler|undefined;
     private roomHandler: MatrixRoomHandler|undefined;
     private gatewayHandler!: GatewayHandler;
@@ -47,6 +46,7 @@ class Program {
           bridgeConfig: {
             affectsRegistration: true,
             schema: "./config/config.schema.yaml",
+            defaults: {},
           },
           registrationPath: "bifrost-registration.yaml",
           generateRegistration: this.generateRegistration,
@@ -96,9 +96,11 @@ class Program {
     }
 
     private async registerBot() {
+        if (!this.bridge) {
+            throw Error('registerBot called without first instantiating bridge');
+        }
         const intent = this.bridge.getIntent();
-        intent.opts.registered = false;
-        await intent._ensureRegistered();
+        await intent.ensureRegistered(true);
         const botUserId = this.bridge.getBot().getUserId();
         // Set a profile for the bridge user.
         try {
@@ -140,12 +142,16 @@ class Program {
                 userStore: `${path}/user-store.db`,
                 roomStore: `${path}/room-store.db`,
             };
+        } else {
+            storeParams = {
+                disableStores: true,
+            };
         }
         this.bridge = new Bridge({
           controller: {
             // onUserQuery: userQuery,
             onAliasQuery: (alias, aliasLocalpart) => this.eventHandler!.onAliasQuery(alias, aliasLocalpart),
-            onEvent: (r: IEventRequest) => {
+            onEvent: (r) => {
                 if (this.eventHandler === undefined) {return; }
                 const p = this.eventHandler.onEvent(r).catch((err) => {
                     log.error("onEvent err", err);
@@ -166,14 +172,6 @@ class Program {
           registration: this.cli.getRegistrationFilePath(),
           ...storeParams,
         });
-        if (this.config.datastore.engine !== "nedb") {
-            // If these are undefined in the constructor, default names
-            // are used. We want to override those names so these stores
-            // will never be created.
-            this.bridge.opts.userStore = undefined;
-            this.bridge.opts.roomStore = undefined;
-            this.bridge.opts.eventStore = undefined;
-        }
         log.info("Starting purple bridge on port", port);
         await this.bridge.run(port, this.cfg);
         if (this.cfg.purple.backend === "node-purple") {
@@ -231,12 +229,6 @@ class Program {
 
         this.eventHandler.setBridge(this.bridge, autoReg || undefined);
         this.roomHandler.setBridge(this.bridge);
-        // XXX: Hack to make onAliasQueried work
-        if (!this.bridge._roomStore) {
-            this.bridge._roomStore = {
-                setMatrixRoom: () => Promise.resolve(),
-            };
-        }
         log.info("Bridge has started.");
         try {
             if (purple instanceof XmppJsInstance) {

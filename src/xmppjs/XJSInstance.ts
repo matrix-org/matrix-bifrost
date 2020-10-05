@@ -11,10 +11,8 @@ import { IBifrostAccount } from "../bifrost/Account";
 import { IAccountEvent,
     IChatJoined,
     IReceivedImMsg,
-    IConversationEvent,
     IUserStateChanged,
     IChatTyping,
-    IGatewayJoin,
     IStoreRemoteUser,
     IChatReadReceipt,
     IChatStringState,
@@ -28,7 +26,7 @@ import { AutoRegistration } from "../AutoRegistration";
 import { XmppJsGateway } from "./XJSGateway";
 import { IStza, StzaIqVcardRequest } from "./Stanzas";
 import { Util } from "../Util";
-import * as uuid from "uuid/v4";
+import uuid from "uuid/v4";
 
 const xLog = Logging.get("XMPP-conn");
 const log = Logging.get("XmppJsInstance");
@@ -70,7 +68,7 @@ export class XmppJsInstance extends EventEmitter implements IBifrostInstance {
     private canWrite: boolean;
     private defaultRes!: string;
     private connectionWasDropped: boolean;
-    private bufferedMessages: Array<{xmlMsg: Element|string, resolve: (res: Promise<void>) => void}>;
+    private bufferedMessages: {xmlMsg: Element|string, resolve: (res: Promise<void>) => void}[];
     private autoRegister?: AutoRegistration;
     private bridge!: Bridge;
     private xmppGateway: XmppJsGateway|null;
@@ -326,7 +324,7 @@ export class XmppJsInstance extends EventEmitter implements IBifrostInstance {
             mxid: string,
             prefix: string = ""): {username: string, protocol: BifrostProtocol} {
         // This is for GHOST accts
-        const uName = Util.unescapeUserId(new MatrixUser(mxid, false).localpart);
+        const uName = Util.unescapeUserId(new MatrixUser(mxid, {}, false).localpart);
         const rPrefix = prefix ? `(${prefix})` : "";
         const regex =  new RegExp(`${rPrefix}(.+/)?(.+)@(.+)`);
         const match = regex.exec(uName);

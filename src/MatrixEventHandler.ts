@@ -1,10 +1,10 @@
-import { Bridge, RemoteUser, MatrixUser } from "matrix-appservice-bridge";
-import { IEventRequest, IEventRequestData } from "./MatrixTypes";
+import { Bridge, RemoteUser, MatrixUser, Request, WeakEvent, RoomBridgeStoreEntry } from "matrix-appservice-bridge";
+import { IEventRequestData } from "./MatrixTypes";
 import { MROOM_TYPE_UADMIN, MROOM_TYPE_IM, MROOM_TYPE_GROUP,
-    IRemoteUserAdminData, IRoomEntry } from "./store/Types";
+    IRemoteUserAdminData } from "./store/Types";
 import { BifrostProtocol } from "./bifrost/Protocol";
 import { IBifrostInstance } from "./bifrost/Instance";
-import * as marked from "marked";
+import marked from "marked";
 import { IBifrostAccount } from "./bifrost/Account";
 import { Util } from "./Util";
 import { Logging } from "matrix-appservice-bridge";
@@ -23,7 +23,7 @@ const log = Logging.get("MatrixEventHandler");
  * Handles events coming into the appservice.
  */
 export class MatrixEventHandler {
-    private bridge: Bridge;
+    private bridge?: Bridge;
     private autoReg: AutoRegistration | null = null;
     private roomAliases: RoomAliasSet;
     private pendingRoomAliases: Map<string, {protocol: BifrostProtocol, props: IChatJoinProperties}>;
@@ -108,11 +108,15 @@ export class MatrixEventHandler {
         }
     }
 
-    public async onEvent(request: IEventRequest) {
+    public async onEvent(request: Request<WeakEvent>) {
+        if (!this.bridge) {
+            throw Error('Bridge is not defined yet');
+        }
         const event = request.getData();
-        const ctx = (await this.store.getRoomEntryByMatrixId(event.room_id) || {
-            matrix: null,
-            remote: null,
+        const ctx: RoomBridgeStoreEntry = (await this.store.getRoomEntryByMatrixId(event.room_id) || {
+            matrix: undefined,
+            remote: undefined,
+            data: {},
         });
 
         if (event.type === "m.room.member" && event.content.membership === "join") {
@@ -121,10 +125,10 @@ export class MatrixEventHandler {
 
         const roomType: string|null = ctx.matrix ? ctx.matrix.get("type") : null;
         const newInvite = !roomType && event.type === "m.room.member" && event.content.membership === "invite";
-        log.debug("Got event (id, type, sender, roomtype):", event.event_id, event.type, event.sender, roomType);
+        log.debug("Got event (id, type, sender, state_key, roomtype):", event.event_id, event.type, event.sender, event.state_key, roomType);
         const bridgeBot = this.bridge.getBot();
         const botUserId = bridgeBot.getUserId();
-        if (newInvite) {
+        if (newInvite && event.state_key) {
             log.debug(`Handling invite from ${event.sender}.`);
             if (event.state_key === botUserId) {
                 try {
@@ -145,8 +149,6 @@ export class MatrixEventHandler {
                     recipient: username,
                 } as any;
                 const ghostIntent = this.bridge.getIntent(event.state_key);
-                // XXX: See https://github.com/matrix-org/matrix-appservice-bridge/issues/96
-                ghostIntent.opts.registered = false;
                  // If the join fails to join because it's not registered, it tries to get invited which will fail.
                 log.debug(`Joining ${event.state_key} to ${event.room_id}.`);
                 await ghostIntent.join(event.room_id);
@@ -169,21 +171,23 @@ export class MatrixEventHandler {
             }
         }
 
+        const body = event.content.body as string|undefined;
+
         if (
             event.type === "m.room.message" &&
             event.content.msgtype === "m.text" &&
-            event.content.body.startsWith("!purple")) {
+            body?.startsWith("!purple")) {
             // It's probably a room waiting to be given commands.
             if (this.config.provisioning.enablePlumbing) {
-                const args = event.content.body.split(" ");
+                const args = body.split(" ");
                 await this.handlePlumbingCommand(args, event);
             }
             return;
         }
 
         if (roomType === MROOM_TYPE_UADMIN) {
-            if (event.type === "m.room.message" && event.content.msgtype === "m.text") {
-                const args = event.content.body.trim().split(" ");
+            if (event.type === "m.room.message" && event.content.msgtype === "m.text" && body) {
+                const args = body.trim().split(" ");
                 await this.handleCommand(args, event);
             } else if (event.content.membership === "leave") {
                 await this.store.removeRoomByRoomId(event.room_id);
@@ -194,8 +198,8 @@ export class MatrixEventHandler {
         }
 
         // Validate room entries
-        const roomProtocol = roomType ? ctx.remote.get("protocol_id") : null;
-        if (roomProtocol == null) {
+        const roomProtocol = roomType ? ctx.remote?.get<string>("protocol_id") : undefined;
+        if (!roomProtocol) {
             log.debug("Room protocol was null, we cannot handle this event!");
             return;
         }
@@ -204,7 +208,7 @@ export class MatrixEventHandler {
             if (this.bridge.getBot().isRemoteUser(event.sender)) {
                 return; // Don't really care about remote users
             }
-            if (["join", "leave"].includes(event.content.membership)) {
+            if (["join", "leave"].includes(event.content.membership as string)) {
                 await this.handleJoinLeaveGroup(ctx, event);
             }
         }
@@ -231,6 +235,9 @@ export class MatrixEventHandler {
 
     /* NOTE: Command handling should really be it's own class, but I am cutting corners.*/
     private async handleCommand(args: string[], event: IEventRequestData) {
+        if (!this.bridge) {
+            throw Error('Bridge is not defined');
+        }
         log.debug(`Handling command from ${event.sender} ${args.join(" ")}`);
         const intent = this.bridge.getIntent();
         if (args[0] === "protocols" && args.length === 1) {
@@ -251,11 +258,11 @@ export class MatrixEventHandler {
                 body: "\/\/Placeholder",
             });
         } else if (args[0] === "accounts" && args.length === 1) {
-            const users = await this.bridge.getUserStore().getRemoteUsersFromMatrixId(event.sender);
+            const users = await this.bridge.getUserStore()?.getRemoteUsersFromMatrixId(event.sender) || [];
             let body = "Linked accounts:\n";
             body += users.map((remoteUser: RemoteUser) => {
-                const pid = remoteUser.get("protocolId");
-                const username = remoteUser.get("username");
+                const pid = remoteUser.get<string>("protocolId");
+                const username = remoteUser.get<string>("username");
                 let account: IBifrostAccount|null = null;
                 try {
                     account = this.purple.getAccount(username, pid, event.sender);
@@ -337,6 +344,9 @@ return `- ${account.protocol.name} (${username}) [Enabled=${account.isEnabled}] 
     }
 
     private async handlePlumbingCommand(args: string[], event: IEventRequestData) {
+        if (!this.bridge) {
+            throw Error('Bridge is not defined');
+        }
         log.debug(`Handling plumbing command ${args} for ${event.room_id}`);
         // Check permissions
         if (args[0] !== "!purple") {
@@ -390,7 +400,7 @@ return `- ${account.protocol.name} (${username}) [Enabled=${account.isEnabled}] 
                     try {
                         const userIds = Object.keys(await this.bridge.getBot().getJoinedMembers(event.room_id));
                         await Promise.all(userIds.map(async (userId) => {
-                            if (this.bridge.getBot().getUserId() === userId) {
+                            if (this.bridge?.getBot().getUserId() === userId) {
                                 return; // Don't join the bridge bot.
                             }
                             log.info(`Joining ${userId} to ${remoteId}`);
@@ -416,12 +426,16 @@ return `- ${account.protocol.name} (${username}) [Enabled=${account.isEnabled}] 
     }
 
     private async handleInviteForBot(event: IEventRequestData) {
+        if (!this.bridge) {
+            throw Error('Bridge is not defined');
+        }
         log.info(`Got invite from ${event.sender} to ${event.room_id}`);
         const intent = this.bridge.getIntent();
         await intent.join(event.room_id);
         // Check to see if it's a 1 to 1.
+        // TODO: Use is_direct
         const members = await this.bridge.getBot().getJoinedMembers(event.room_id);
-        if (members.length > 2) {
+        if (Object.keys(members.length).length > 2) {
             log.info("Room is not a 1 to 1 room: Treating as a potential plumbable room.");
             if (this.config.provisioning.enablePlumbing) {
                 // We don't need to be in the room.
@@ -432,7 +446,7 @@ return `- ${account.protocol.name} (${username}) [Enabled=${account.isEnabled}] 
         }
         this.store.storeRoom(event.room_id, MROOM_TYPE_UADMIN, `UADMIN-${event.sender}`, {
             type: MROOM_TYPE_UADMIN,
-            matrixUser: new MatrixUser(event.sender),
+            matrixUser: new MatrixUser(event.sender).getId(),
         } as IRemoteUserAdminData);
         log.info("Created new 1 to 1 admin room");
         const body = `
@@ -468,7 +482,7 @@ Say \`help\` for more commands.
         const account = this.purple.createBifrostAccount(args[0], protocol);
         account.createNew(args[1]);
         await this.store.storeAccount(event.sender, protocol, args[0]);
-        await this.bridge.getIntent().sendMessage(event.room_id, {
+        await this.bridge?.getIntent().sendMessage(event.room_id, {
             msgtype: "m.notice",
             body: "Created new account",
         });
@@ -487,7 +501,7 @@ Say \`help\` for more commands.
             throw Error("Protocol was not found");
         }
         await this.store.storeAccount(event.sender, protocol, name);
-        await this.bridge.getIntent().sendMessage(event.room_id, {
+        await this.bridge?.getIntent().sendMessage(event.room_id, {
             msgtype: "m.notice",
             body: "Linked existing account",
         });
@@ -508,27 +522,36 @@ Say \`help\` for more commands.
         acct.setEnabled(enable);
     }
 
-    private async handleImMessage(context: IRoomEntry, event: IEventRequestData) {
+    private async handleImMessage(context: RoomBridgeStoreEntry, event: IEventRequestData) {
         log.info("Handling IM message");
+            if (!context.remote) {
+            throw Error('Cannot handle message, remote or matrix not defined');
+        }
         let acct: IBifrostAccount;
-        const roomProtocol = context.remote.get("protocol_id");
+        const roomProtocol: string = context.remote.get("protocol_id");
         try {
             acct = (await this.getAccountForMxid(event.sender, roomProtocol)).acct;
         } catch (ex) {
             log.error(`Couldn't handle ${event.event_id}, ${ex}`);
             return;
         }
-        const recipient = context.remote.get("recipient");
+        const recipient: string = context.remote.get("recipient");
         log.info(`Sending IM to ${recipient}`);
         const msg = MessageFormatter.matrixEventToBody(event, this.config.bridge);
         acct.sendIM(recipient, msg);
     }
 
-    private async handleGroupMessage(context: IRoomEntry, event: IEventRequestData) {
+    private async handleGroupMessage(context: RoomBridgeStoreEntry, event: IEventRequestData) {
+        if (!context.remote || !context.matrix) {
+            throw Error('Cannot handle message, remote or matrix not defined');
+        }
+        if (!this.bridge) {
+            throw Error('bridge is not defined yet')
+        }
         log.info(`Handling group message for ${event.room_id}`);
-        const roomProtocol = context.remote.get("protocol_id");
-        const isGateway = context.remote.get("gateway");
-        const name = context.remote.get("room_name");
+        const roomProtocol: string = context.remote.get("protocol_id");
+        const isGateway: boolean = context.remote.get("gateway");
+        const name: string = context.remote.get("room_name");
         if (isGateway) {
             const msg = MessageFormatter.matrixEventToBody(event, this.config.bridge);
             this.gatewayHandler.sendMatrixMessage(name, event.sender, msg, context);
@@ -545,7 +568,7 @@ Say \`help\` for more commands.
                 await ProtoHacks.addJoinProps(acct.protocol.id, props, event.sender, this.bridge.getIntent());
                 await this.joinOrDefer(acct, name, props);
             }
-            const roomName = context.remote.get("room_name");
+            const roomName: string = context.remote.get("room_name");
             const msg = MessageFormatter.matrixEventToBody(event, this.config.bridge);
             let nick = "";
             // XXX: Gnarly way of trying to determine who we are.
@@ -577,14 +600,20 @@ Say \`help\` for more commands.
         }
     }
 
-    private async handleJoinLeaveGroup(context: IRoomEntry, event: IEventRequestData) {
+    private async handleJoinLeaveGroup(context: RoomBridgeStoreEntry, event: IEventRequestData) {
+        if (!context.remote) {
+            throw Error('No remote context for room');
+        }
+        if (!this.bridge) {
+            throw Error('bridge is not defined yet')
+        }
         // XXX: We are assuming here that the previous state was invite.
         const membership = event.content.membership;
         log.info(`Handling group ${event.sender} ${membership}`);
         let acct: IBifrostAccount;
-        const isGateway = context.remote.get("gateway");
-        const name = context.remote.get("room_name");
-        const roomProtocol = context.remote.get("protocol_id");
+        const isGateway: boolean = context.remote.get("gateway");
+        const name: string = context.remote.get("room_name");
+        const roomProtocol: string = context.remote.get("protocol_id");
         if (isGateway) {
             const displayname = event.content.displayname ||
                 (await this.bridge.getIntent().getProfileInfo(event.sender)).displayname;
@@ -619,9 +648,12 @@ Say \`help\` for more commands.
         }
     }
 
-    private async handleStateEv(context: IRoomEntry, event: IEventRequestData) {
-        const isGateway = context.remote.get("gateway");
-        const name = context.remote.get("room_name");
+    private async handleStateEv(context: RoomBridgeStoreEntry, event: IEventRequestData) {
+        if (!context.remote) {
+            throw Error('No remote context for room');
+        }
+        const isGateway = context.remote.get<boolean>("gateway");
+        const name = context.remote.get<string>("room_name");
         log.info(`Handling group state event for ${name}`);
         if (isGateway) {
             await this.gatewayHandler.sendStateEvent(
@@ -633,6 +665,9 @@ Say \`help\` for more commands.
     }
 
     private async handleJoin(args: string[], event: IEventRequestData) {
+        if (!this.bridge) {
+            throw Error('Cannot handle handleJoin, bridge not defined');
+        }
         // XXX: This only supports the first account of a protocol for now.
         log.debug("Handling join request");
         if (!args[0]) {
@@ -660,6 +695,9 @@ Say \`help\` for more commands.
 
     private async getJoinParametersForCommand(acct: IBifrostAccount, args: string[], roomId: string, command: string)
     : Promise<IChatJoinProperties|null> {
+        if (!this.bridge) {
+            throw Error('Cannot handle getJoinParametersForCommand, bridge not defined');
+        }
         const params = acct.getChatParamsForProtocol();
         if (args.length === 1) {
             const optional: string[] = [];

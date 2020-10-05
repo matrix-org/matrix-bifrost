@@ -1,26 +1,19 @@
-import { PrometheusMetrics } from "matrix-appservice-bridge";
-import { Gauge, Counter, Histogram } from "prom-client";
-
-const AgeCounters = PrometheusMetrics.AgeCounters;
-
-interface IAgeCounter {
-    setGauge(gauge: Gauge, morelabels: any);
-    bump(age: number);
-}
+import { AgeCounters, Bridge, PrometheusMetrics } from "matrix-appservice-bridge";
+import { Counter, Histogram } from "prom-client";
 
 interface IBridgeGauges {
     matrixRoomConfigs: number;
     remoteRoomConfigs: number;
     matrixGhosts: number;
     remoteGhosts: number;
-    matrixRoomsByAge: IAgeCounter;
-    remoteRoomsByAge: IAgeCounter;
-    matrixUsersByAge: IAgeCounter;
-    remoteUsersByAge: IAgeCounter;
+    matrixRoomsByAge: AgeCounters;
+    remoteRoomsByAge: AgeCounters;
+    matrixUsersByAge: AgeCounters;
+    remoteUsersByAge: AgeCounters;
 }
 
 export class Metrics {
-    public static init(bridge: any) {
+    public static init(bridge: Bridge) {
         this.metrics = new PrometheusMetrics();
         this.metrics.registerMatrixSdkMetrics();
         this.metrics.registerBridgeGauges(() => this.bridgeGauges);

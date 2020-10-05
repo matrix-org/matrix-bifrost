@@ -1,4 +1,4 @@
-import * as Datastore from "nedb";
+import Datastore from "nedb";
 import { RoomBridgeStore, UserBridgeStore } from "matrix-appservice-bridge";
 import { NeDBStore } from "../../src/store/NeDBStore";
 import { IStore } from "../../src/store/Store";
@@ -11,8 +11,9 @@ export function mockStore(remoteUserRegex = DEF_REGEX): IStore {
     return new NeDBStore({
         getRoomStore: () => roomStore,
         getUserStore: () => userStore,
-        getBot: () => ({
-            isRemoteUser: (u) => remoteUserRegex.exec(u) !== null,
-        }),
-    });
+        getBot: () => {
+            const bot = { isRemoteUser: (u) => remoteUserRegex.exec(u) !== null }
+            return bot as any;
+        },
+    } as any);
 }

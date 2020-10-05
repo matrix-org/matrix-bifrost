@@ -7,7 +7,7 @@ import { buddy, accounts, messaging, Buddy, Account, Conversation, notify } from
 import { promises as fs } from "fs";
 import { Logging } from "matrix-appservice-bridge";
 import { BifrostProtocol } from "../bifrost/Protocol";
-import { IChatJoinProperties, IUserInfo, IConversationEvent, IChatJoined } from "../bifrost/Events";
+import { IChatJoinProperties, IUserInfo, IConversationEvent } from "../bifrost/Events";
 import { IBasicProtocolMessage } from "../MessageFormatter";
 import { Util } from "../Util";
 import { IBifrostInstance } from "../bifrost/Instance";

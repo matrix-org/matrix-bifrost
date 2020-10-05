@@ -1,4 +1,4 @@
-import { Bridge, MatrixUser, Intent, Logging} from "matrix-appservice-bridge";
+import { Bridge, MatrixUser, Intent, Logging, WeakEvent} from "matrix-appservice-bridge";
 import { IBifrostInstance } from "./bifrost/Instance";
 import { MROOM_TYPE_GROUP, MROOM_TYPE_IM, IRemoteGroupData, MUSER_TYPE_GHOST } from "./store/Types";
 import {
@@ -20,7 +20,6 @@ import { Deduplicator } from "./Deduplicator";
 import { Config } from "./Config";
 import * as entityDecode from "parse-entities";
 import { MessageFormatter } from "./MessageFormatter";
-import { IEventRequest, IEventRequestData } from "./MatrixTypes";
 const log = Logging.get("MatrixRoomHandler");
 
 const ACCOUNT_LOCK_MS = 1000;
@@ -30,7 +29,7 @@ const EVENT_MAPPING_SIZE = 16384;
  * Handles creation and handling of rooms.
  */
 export class MatrixRoomHandler {
-    private bridge: Bridge;
+    private bridge?: Bridge;
     private accountRoomLock: Set<string>;
     private remoteEventIdMapping: Map<string, string>; // remote_id -> event_id
     private roomCreationLock: Map<string, Promise<void>>;
@@ -51,6 +50,10 @@ export class MatrixRoomHandler {
             const matrixUser = await this.store.getMatrixUserForAccount(ev.account);
             if (!matrixUser) {
                 log.warn("Got a joined chat for an account not tied to a matrix user. WTF?");
+                return;
+            }
+            if (!this.bridge) {
+                log.warn("Got chat-joined-new but bridge was not defined yet");
                 return;
             }
             const intent = this.bridge.getIntent();
@@ -127,11 +130,11 @@ export class MatrixRoomHandler {
             log.info("room was created, no longer waiting");
         }
         const remoteEntries = await this.store.getIMRoom(matrixUser.getId(), data.account.protocol_id, data.sender);
-        if (remoteEntries != null) {
+        if (remoteEntries != null && remoteEntries.matrix) {
             return remoteEntries.matrix.getId();
         }
+
         // Room doesn't exist yet, create it.
-        //
         log.info(`Couldn't find room for IM ${matrixUser.getId()} <-> ${data.sender}. Creating a new one`);
         remoteData = {
             matrixUser: matrixUser.getId(),
@@ -151,8 +154,10 @@ export class MatrixRoomHandler {
             log.debug("Created room with id ", room_id);
             return this.store.storeRoom(roomId, MROOM_TYPE_IM, remoteId, remoteData);
         });
+
         this.roomCreationLock.set(remoteId, createPromise as Promise<any>);
         await createPromise;
+
         if (this.config.tuning.waitOnJoinBeforePM.find((prefix) => matrixUser.localpart.startsWith(prefix))) {
             log.info(
                 "Recipient matches waitOnJoinBeforePM, holding back sending messages until the user has joined",
@@ -200,17 +205,22 @@ export class MatrixRoomHandler {
         // For some reason the following function wites to remoteData, so recreate it later
         const remoteEntry = await this.store.getRoomByRemoteData(remoteData);
         if (remoteEntry) {
-            if (remoteEntry.remote.get("plumbed") && failIfPlumbed) {
+            if (remoteEntry.remote?.get("plumbed") && failIfPlumbed) {
                 return false;
             }
-            return remoteEntry.matrix.getId();
+            return remoteEntry.matrix?.getId();
         }
         let roomId;
-
         // This could be that this is the first user to join a gateway room
         // so we should try to create an entry for it ahead of time.
         if ((data as any).gatewayAlias) {
             const alias = ((data as any).gatewayAlias);
+
+            if (!this.bridge) {
+                log.error("Got gateway join request, but bridge was not defined");
+                return;
+            }
+
             log.info("Request was a gateway request, so attempting to find room and create an entry");
             try {
                 roomId = (await this.bridge.getIntent().getClient().getRoomIdForAlias(alias)).room_id;
@@ -255,6 +265,9 @@ export class MatrixRoomHandler {
     }
 
     private async handleIncomingIM(data: IReceivedImMsg) {
+        if (!this.bridge) {
+            throw Error("Couldn't handleIncomingIM, bridge was not defined");
+        }
         log.debug(`Handling incoming IM from ${data.sender}`);
         data.message.body = entityDecode(data.message.body);
         // First, find out who the message was intended for.
@@ -291,7 +304,7 @@ export class MatrixRoomHandler {
         }
 
         try {
-            await intent._ensureJoined(roomId);
+            await intent.join(roomId);
         } catch (ex) {
             log.warn("Not joined to room, discarding " + roomId);
             await this.store.removeRoomByRoomId(roomId);
@@ -305,7 +318,7 @@ export class MatrixRoomHandler {
             ) || undefined;
         }
         const content = await MessageFormatter.messageToMatrixEvent(data.message, protocol, intent);
-        const {event_id} = await intent.sendMessage(roomId, content);
+        const {event_id} = await intent.sendMessage(roomId, content) as { event_id: string };
         if (data.message.id) {
             this.remoteEventIdMapping.set(data.message.id, event_id);
             // Remove old entires.
@@ -320,6 +333,9 @@ export class MatrixRoomHandler {
     }
 
     private async handleIncomingChatMsg(data: IReceivedImMsg) {
+        if (!this.bridge) {
+            throw Error("Couldn't handleIncomingChatMsg, bridge was not defined");
+        }
         log.debug(`Handling incoming chat from ${data.sender} (${data.conv.name})`);
         data.message.body = entityDecode(data.message.body);
         const acctId = Util.createRemoteId(data.account.protocol_id, data.account.username);
@@ -380,7 +396,7 @@ export class MatrixRoomHandler {
             ) || undefined;
         }
         const content = await MessageFormatter.messageToMatrixEvent(data.message, protocol, intent);
-        const {event_id} = await intent.sendMessage(roomId, content);
+        const {event_id} = await intent.sendMessage(roomId, content) as {event_id: string};
         if (data.message.id) {
             await this.store.storeRoomEvent(roomId, event_id, data.message.id).catch((ev) => {
                 log.warn("Failed to store event mapping:", ev);
@@ -389,6 +405,9 @@ export class MatrixRoomHandler {
     }
 
     private async handleChatInvite(data: IChatInvite) {
+        if (!this.bridge) {
+            throw Error("Couldn't handleChatInvite, bridge was not defined");
+        }
         log.debug(`Handling invite to chat from ${data.sender} -> ${data.room_name}`);
         // First, find out who the message was intended for.
         const matrixUser = await this.store.getMatrixUserForAccount(data.account);
@@ -422,6 +441,9 @@ export class MatrixRoomHandler {
     }
 
     private async handleRemoteUserState(data: IUserStateChanged) {
+        if (!this.bridge) {
+            throw Error("Couldn't handleRemoteUserState, bridge was not defined");
+        }
         const protocol = this.purple.getProtocol(data.account.protocol_id)!;
         const remoteUser = await this.store.getRemoteUserBySender(data.sender, protocol);
         if (remoteUser && !remoteUser.isRemote) {
@@ -477,13 +499,16 @@ export class MatrixRoomHandler {
     }
 
     private async handleTopic(data: IChatStringState) {
+        if (!this.bridge) {
+            throw Error("Couldn't handleTopic, bridge was not defined");
+        }
         const intent = this.bridge.getIntent();
         log.info(`Setting topic for ${data.conv.name}: ${data.string}`);
         const roomId = await this.createOrGetGroupChatRoom(data, intent, true, true);
         if (roomId === false) {
             log.info("Room does not support setting topic");
         }
-        const state = await intent.roomState(roomId) as IEventRequestData[];
+        const state = await intent.roomState(roomId) as WeakEvent[];
         const topicEv = state.find((ev) => ev.type === "m.room.topic");
         const nameEv = state.find((ev) => ev.type === "m.room.name");
         const currentName = nameEv ? nameEv.content.name : "";
@@ -501,6 +526,9 @@ export class MatrixRoomHandler {
     }
 
     private async handleTyping(data: IChatTyping) {
+        if (!this.bridge) {
+            throw Error("Couldn't handleTyping, bridge was not defined");
+        }
         log.debug(`Setting typing status for ${data.conv.name} ${data.sender}: ${data.typing}`);
         const intent = this.bridge.getIntent(this.purple.getProtocol(data.account.protocol_id)!.getMxIdForProtocol(
             data.sender,
@@ -512,6 +540,9 @@ export class MatrixRoomHandler {
     }
 
     private async handleReadReceipt(data: IChatReadReceipt) {
+        if (!this.bridge) {
+            throw Error("Couldn't handleTyping, bridge was not defined");
+        }
         const userId = this.purple.getProtocol(data.account.protocol_id)!.getMxIdForProtocol(
             data.sender,
             this.config.bridge.domain,
@@ -520,6 +551,10 @@ export class MatrixRoomHandler {
         const intent = this.bridge.getIntent(userId);
         const roomId = await this.createOrGetGroupChatRoom(data, intent, true);
         const eventId = data.originIsMatrix ? data.messageId : this.remoteEventIdMapping.get(data.messageId);
+        if (!eventId) {
+            log.info(`Got read receipt for ${data.messageId}, but no corresponding event was found`);
+            return;
+        }
         await intent.sendReadReceipt(roomId, eventId);
         log.debug(`Updated read reciept for ${userId} in ${roomId}`);
     }

@@ -3,15 +3,7 @@
  * and timing is of the essence.
  * - Half-Shot
  */
-import { MatrixUser, RemoteUser, MatrixRoom, RemoteRoom } from "matrix-appservice-bridge";
-
-export interface IEventRequest {
-    getData(): IEventRequestData;
-    getDuration(): number;
-    getId(): string;
-    getPromise(): Promise<void>;
-    outcomeFrom(p: Promise<any>);
-}
+import { MatrixUser, RemoteUser, MatrixRoom, RemoteRoom, WeakEvent } from "matrix-appservice-bridge";
 
  /**
   * This is actually just a matrix event, as far as we care.

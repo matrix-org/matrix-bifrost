@@ -9,9 +9,9 @@ import { jid, JID } from "@xmpp/jid";
 import { IBasicProtocolMessage } from "../MessageFormatter";
 import { Metrics } from "../Metrics";
 import { Logging } from "matrix-appservice-bridge";
-import * as uuid from "uuid/v4";
+import uuid from "uuid/v4";
 import { XHTMLIM } from "./XHTMLIM";
-import { StzaPresence, StzaMessage, StzaIqPing, StzaPresenceJoin, StzaPresencePart, StzaIqVcardRequest } from "./Stanzas";
+import { StzaMessage, StzaIqPing, StzaPresenceJoin, StzaPresencePart, StzaIqVcardRequest } from "./Stanzas";
 
 const IDPREFIX = "pbridge";
 const CONFLICT_SUFFIX = "[m]";
