@@ -165,9 +165,9 @@ export class XmppJsGateway implements IGateway {
      * @param stanza The XMPP stanza message
      * @returns If the message was sent successfully.
      */
-    public async reflectXMPPMessage(chatName: string, stanza: Element): Promise<boolean> {
+    public async reflectXMPPMessage(chatName: string, stanza: Element, kickNonMember=true): Promise<boolean> {
         const member = this.members.getXmppMemberByRealJid(chatName, stanza.attrs.from);
-        if (!member) {
+        if (!member && kickNonMember) {
             log.warn(`${stanza.attrs.from} is not part of this room.`);
             // Send the sender an error.
             const kick = new StzaPresenceKick(
@@ -413,7 +413,7 @@ export class XmppJsGateway implements IGateway {
             true,
         );
 
-        // Matrix is non-anon, and matrix logs.
+        // Matrix is non-anon, and Matrix logs.
         selfPresence.statusCodes.add(XMPPStatusCode.RoomNonAnonymous);
         selfPresence.statusCodes.add(XMPPStatusCode.RoomLoggingEnabled);
         await this.xmpp.xmppSend(selfPresence);
@@ -427,7 +427,7 @@ export class XmppJsGateway implements IGateway {
                 }, [
                     x("item", {affiliation: "member", role: "participant"}),
                 ]),
-        ));
+        ), false);
 
         // FROM THIS POINT ON, WE CONSIDER THE USER JOINED.
 
