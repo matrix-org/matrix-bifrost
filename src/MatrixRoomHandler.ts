@@ -218,9 +218,9 @@ export class MatrixRoomHandler {
 
             if (!this.bridge) {
                 log.error("Got gateway join request, but bridge was not defined");
-                return;   
+                return;
             }
-    
+
             log.info("Request was a gateway request, so attempting to find room and create an entry");
             try {
                 roomId = (await this.bridge.getIntent().getClient().getRoomIdForAlias(alias)).room_id;

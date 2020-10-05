@@ -68,7 +68,7 @@ export class XmppJsInstance extends EventEmitter implements IBifrostInstance {
     private canWrite: boolean;
     private defaultRes!: string;
     private connectionWasDropped: boolean;
-    private bufferedMessages: Array<{xmlMsg: Element|string, resolve: (res: Promise<void>) => void}>;
+    private bufferedMessages: {xmlMsg: Element|string, resolve: (res: Promise<void>) => void}[];
     private autoRegister?: AutoRegistration;
     private bridge!: Bridge;
     private xmppGateway: XmppJsGateway|null;

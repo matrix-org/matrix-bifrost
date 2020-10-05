@@ -308,7 +308,7 @@ export abstract class StzaIqDisco extends StzaBase {
 }
 
 export class StzaIqDiscoItems extends StzaIqDisco {
-    private items: Array<{jid: string, name: string}>;
+    private items: {jid: string, name: string}[];
     constructor(
         from: string,
         to: string,
