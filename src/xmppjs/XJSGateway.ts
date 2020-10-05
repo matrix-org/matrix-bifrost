@@ -345,13 +345,10 @@ export class XmppJsGateway implements IGateway {
             }
         }
 
-        // FROM THIS POINT ON, WE CONSIDER THE USER JOINED.
-
-        this.members.addXmppMember(
-            `${to.local}@${to.domain}`,
-            jid(stanza.attrs.from),
-            jid(stanza.attrs.to),
-        );
+        /* Critical section - We need to emit membership to the user, but
+           we can't store they are joined yet.
+           https://github.com/matrix-org/matrix-bifrost/issues/132
+         */
 
         // https://xmpp.org/extensions/xep-0045.html#order
         // 1. membership of others.
@@ -407,7 +404,16 @@ export class XmppJsGateway implements IGateway {
         // Matrix is non-anon, and matrix logs.
         selfPresence.statusCodes.add(XMPPStatusCode.RoomNonAnonymous);
         selfPresence.statusCodes.add(XMPPStatusCode.RoomLoggingEnabled);
-        this.xmpp.xmppSend(selfPresence);
+        await this.xmpp.xmppSend(selfPresence);
+
+        // FROM THIS POINT ON, WE CONSIDER THE USER JOINED.
+
+        this.members.addXmppMember(
+            `${to.local}@${to.domain}`,
+            jid(stanza.attrs.from),
+            jid(stanza.attrs.to),
+        );
+
         this.reflectXMPPMessage(chatName, x("presence", {
                 from: stanza.attrs.from,
                 to: null,
@@ -431,6 +437,8 @@ export class XmppJsGateway implements IGateway {
         this.xmpp.xmppSend(new StzaMessageSubject(chatName, stanza.attrs.from, undefined,
             `${room.name || ""} ${room.topic ? "| " + room.topic : ""}`,
         ));
+
+
         // All done, now for some house cleaning.
         // Store this user so we can reconnect them on restart.
         this.xmpp.emit("store-remote-user", {
