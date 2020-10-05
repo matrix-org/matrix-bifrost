@@ -29,7 +29,8 @@ export class ServiceHandler {
         this.avatarCache = new Map();
         this.existingAliases = new Map();
         this.discoInfo = new StzaIqDiscoInfo("", "", "");
-        this.discoInfo.identity.add({category: "conference", type: "text", name : "Bifrost"});
+        this.discoInfo.identity.add({category: "conference", type: "text", name: "Bifrost Matrix Gateway"});
+        this.discoInfo.identity.add({category: "gateway", type: "matrix", name: "Bifrost Matrix Gateway"});
         this.discoInfo.feature.add("http://jabber.org/protocol/disco#info");
         this.discoInfo.feature.add("http://jabber.org/protocol/disco#items");
         this.discoInfo.feature.add("http://jabber.org/protocol/muc");
@@ -264,30 +265,20 @@ export class ServiceHandler {
                 this.existingAliases.set(alias, roomId);
             }
             log.info(`Response for alias request ${toStr} (${alias}) -> ${roomId}`);
-            await this.xmpp.xmppWriteToStream(
-                x("iq", {
-                    type: "result",
-                    to: from,
-                    from: toStr,
-                    id,
-                },
-                    x("query", {
-                        xmlns: "http://jabber.org/protocol/disco#info",
-                    }, [
-                        x("identity", {
-                            category: "gateway",
-                            name: alias,
-                            type: "matrix",
-                        }),
-                        x("feature", {
-                            var: "http://jabber.org/protocol/disco#info",
-                        }),
-                        x("feature", {
-                            var: "http://jabber.org/protocol/muc",
-                        }),
-                    ]),
-                ),
-            );
+            const discoInfo = new StzaIqDiscoInfo(toStr, from, id);
+            discoInfo.feature.add("http://jabber.org/protocol/disco#info");
+            discoInfo.feature.add("http://jabber.org/protocol/muc");
+            discoInfo.identity.add({
+                category: "conference",
+                name: alias,
+                type: "text",
+            });
+            discoInfo.identity.add({
+                category: "gateway",
+                name: alias,
+                type: "matrix",
+            });
+            await this.xmpp.xmppSend(discoInfo);
         } catch (ex) {
             await this.xmpp.xmppSend(new SztaIqError(toStr, from, id, "cancel", 404, "item-not-found"));
         }
