@@ -1,0 +1,1 @@
+Fix compatibility with XEP-0045 by only sending messages after sending all presence to new joiners
