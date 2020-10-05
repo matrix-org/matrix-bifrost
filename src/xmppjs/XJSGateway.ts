@@ -544,10 +544,10 @@ export class XmppJsGateway implements IGateway {
             log.error(`User tried to leave room, but they aren't in the member list`);
             return;
         }
-        this.members.removeXmppMember(chatName, stanza.attrs.from);
+        const lastDevice = this.members.removeXmppMember(chatName, stanza.attrs.from);
         const leaveStza = new StzaPresenceItem(
             user.anonymousJid.toString(),
-            stanza.attrs.to,
+            stanza.attrs.from,
             undefined,
             "member",
             "none",
@@ -556,7 +556,11 @@ export class XmppJsGateway implements IGateway {
         );
         leaveStza.presenceType = "unavailable";
         this.xmpp.xmppWriteToStream(leaveStza);
-        leaveStza.self = false;
-        this.reflectXMPPStanza(chatName, leaveStza);
+        // If this is the last device for that member, reflect
+        // that change to everyone.
+        if (lastDevice) {
+            leaveStza.self = false;
+            this.reflectXMPPStanza(chatName, leaveStza);
+        }
     }
 }
