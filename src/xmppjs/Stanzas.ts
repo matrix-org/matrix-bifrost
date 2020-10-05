@@ -9,8 +9,6 @@ export interface IStza {
 }
 
 export abstract class StzaBase implements IStza {
-    public type!: string;
-    public xml!: string;
     private hFrom: string = "";
     private hTo: string = "";
     private hId?: string = "";
@@ -19,6 +17,10 @@ export abstract class StzaBase implements IStza {
         this.to = to;
         this.id = id;
     }
+
+    get type(): string { throw Error('type not defined') }
+
+    get xml(): string { throw Error('xml not defined') }
 
     get from() { return this.hFrom; }
 
@@ -334,9 +336,9 @@ export class StzaIqDiscoInfo extends StzaIqDisco {
     public feature: Set<string>;
 
     constructor(
-        public from: string,
-        public to: string,
-        public id: string) {
+        from: string,
+        to: string,
+        id: string) {
         super(from, to, id, "result", "http://jabber.org/protocol/disco#info");
         this.identity = new Set();
         this.feature = new Set();

@@ -4,13 +4,13 @@ import { MatrixEventHandler } from "../src/MatrixEventHandler";
 import { mockStore } from "./mocks/store";
 import { Deduplicator } from "../src/Deduplicator";
 import { Config } from "../src/Config";
-import { IEventRequest } from "../src/MatrixTypes";
 import { dummyProtocol } from "./mocks/dummyprotocol";
 import { IStore } from "../src/store/Store";
-import { IRemoteImData, MROOM_TYPE_IM, IRoomEntry } from "../src/store/Types";
+import { IRemoteImData, MROOM_TYPE_IM } from "../src/store/Types";
+import { WeakEvent, Request } from "matrix-appservice-bridge";
 const expect = Chai.expect;
 
-function createRequest(extraEvData: any): IEventRequest {
+function createRequest(extraEvData: any): Request<WeakEvent> {
     const eventData = {
         room_id: "!12345:localhost",
         event_id: "$12345:localhost",
@@ -20,13 +20,10 @@ function createRequest(extraEvData: any): IEventRequest {
         content: { },
         ...extraEvData,
     };
-    return {
-        getData: () => eventData,
-        getDuration: () => 0,
-        getId: () => "requestId",
-        getPromise: () => Promise.resolve(),
-        outcomeFrom: () => null,
-    };
+    return new Request({
+        id: "requestId",
+        data: eventData,
+    });
 }
 
 function createMEH() {
@@ -132,8 +129,8 @@ describe("MatrixEventHandler", () => {
                 protocol_id: dummyProtocol.id,
             } as IRemoteImData);
             expect(storeEntry).to.not.be.null;
-            expect(storeEntry!.matrix.getId()).to.equal("!12345:localhost");
-            expect(storeEntry!.matrix.get("type")).to.equal(MROOM_TYPE_IM);
+            expect(storeEntry?.matrix?.getId()).to.equal("!12345:localhost");
+            expect(storeEntry?.matrix?.get("type")).to.equal(MROOM_TYPE_IM);
         });
     });
 });

@@ -1,4 +1,4 @@
-import { MatrixRoom, RemoteRoom, MatrixUser } from "matrix-appservice-bridge";
+import { MatrixRoom, RemoteRoom } from "matrix-appservice-bridge";
 import { IChatJoinProperties } from "../bifrost/Events";
 
 export const MROOM_TYPE_UADMIN = "user-admin";
@@ -54,9 +54,4 @@ export interface IRemoteUserAccountRemote extends IRemoteUserAccount {
     displayname?: string;
     avatar_url?: string;
     protocol_data: {[key: string]: string|number};
-}
-
-export interface IRoomEntry {
-    matrix: MatrixRoom|undefined;
-    remote: RemoteRoom|undefined;
 }

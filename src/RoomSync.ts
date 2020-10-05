@@ -1,8 +1,8 @@
-import { Logging, MatrixRoom, RemoteRoom } from "matrix-appservice-bridge";
+import { Logging, RemoteRoom } from "matrix-appservice-bridge";
 import { IBifrostInstance } from "./bifrost/Instance";
 import { IAccountEvent, IChatJoinProperties } from "./bifrost/Events";
 import { IStore } from "./store/Store";
-import { MROOM_TYPE_GROUP, IRoomEntry } from "./store/Types";
+import { MROOM_TYPE_GROUP } from "./store/Types";
 import { Util } from "./Util";
 import { Deduplicator } from "./Deduplicator";
 import { ProtoHacks } from "./ProtoHacks";
@@ -78,7 +78,7 @@ export class RoomSync {
     private async syncAccountsToGroupRooms(bot: any): Promise<void> {
         const rooms = await this.store.getRoomsOfType(MROOM_TYPE_GROUP);
         log.info(`Got ${rooms.length} group rooms`);
-        await Promise.all(rooms.map(async (room: IRoomEntry) => {
+        await Promise.all(rooms.map(async (room) => {
             if (!room.matrix) {
                 log.warn(`Not syncing entry because it has no matrix component`);
                 return;
@@ -88,12 +88,12 @@ export class RoomSync {
                 log.warn(`Not syncing ${roomId} because it has no remote links`);
                 return;
             }
-            const protocolId = room.remote.get("protocol_id");
+            const protocolId = room.remote.get<string>("protocol_id");
             if (!this.bifrost.getProtocol(protocolId)) {
                 log.debug(`Not syncing ${roomId} because the purple backend doesn't support this protocol`);
                 return;
             }
-            const isGateway = room.remote.get("gateway");
+            const isGateway = room.remote.get<boolean>("gateway");
             let members;
             try {
                  members = await this.getJoinedMembers(bot, roomId);
@@ -126,7 +126,7 @@ export class RoomSync {
         }
 
         // First get an account for this matrix user.
-        const protocolId = remoteRoom.get("protocol_id");
+        const protocolId = remoteRoom.get<string>("protocol_id");
         const remotes = await this.store.getAccountsForMatrixUser(userId, protocolId);
         if (remotes.length === 0) {
             log.warn(`${userId} has no remote accounts matching the rooms protocol`);

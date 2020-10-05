@@ -3,8 +3,9 @@ import * as Chai from "chai";
 import { BifrostProtocol } from "../src/bifrost/Protocol";
 import { RoomSync } from "../src/RoomSync";
 import { Deduplicator } from "../src/Deduplicator";
-import { IRoomEntry, MROOM_TYPE_GROUP, IRemoteGroupData, MUSER_TYPE_ACCOUNT } from "../src/store/Types";
+import { MROOM_TYPE_GROUP, IRemoteGroupData } from "../src/store/Types";
 import { mockStore } from "./mocks/store";
+import { RoomBridgeStoreEntry } from "matrix-appservice-bridge";
 const expect = Chai.expect;
 
 const dummyProtocol = new BifrostProtocol({
@@ -35,7 +36,7 @@ function createBotAndIntent() {
 
 let remoteJoins: any[];
 
-function createRoomSync(intent, rooms: IRoomEntry[] = []) {
+function createRoomSync(intent, rooms: RoomBridgeStoreEntry[] = []) {
     remoteJoins = [];
     // Create dummy objects, only implement needed stuff.
     const purple = {

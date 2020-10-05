@@ -326,7 +326,7 @@ export class XmppJsInstance extends EventEmitter implements IBifrostInstance {
             mxid: string,
             prefix: string = ""): {username: string, protocol: BifrostProtocol} {
         // This is for GHOST accts
-        const uName = Util.unescapeUserId(new MatrixUser(mxid, false).localpart);
+        const uName = Util.unescapeUserId(new MatrixUser(mxid, {}, false).localpart);
         const rPrefix = prefix ? `(${prefix})` : "";
         const regex =  new RegExp(`${rPrefix}(.+/)?(.+)@(.+)`);
         const match = regex.exec(uName);

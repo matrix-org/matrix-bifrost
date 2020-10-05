@@ -1,7 +1,7 @@
-import { RemoteUser, AsBot } from "matrix-appservice-bridge";
+import { RemoteUser, AppServiceBot } from "matrix-appservice-bridge";
 
 export class BifrostRemoteUser {
-    public static fromRemoteUser(remoteUser: RemoteUser, asBot: AsBot, userId: string): BifrostRemoteUser {
+    public static fromRemoteUser(remoteUser: RemoteUser, asBot: AppServiceBot, userId: string): BifrostRemoteUser {
         return new BifrostRemoteUser(
             remoteUser.getId(),
             remoteUser.get("username"),

@@ -1,7 +1,7 @@
 import { Bridge, MatrixRoom, RemoteRoom, RemoteUser,
-    MatrixUser, UserStore, RoomStore, Logging, AsBot } from "matrix-appservice-bridge";
+    MatrixUser, UserBridgeStore, RoomBridgeStore, Logging, AppServiceBot, RoomBridgeStoreEntry } from "matrix-appservice-bridge";
 import { Util } from "../Util";
-import { MROOM_TYPES, IRoomEntry, IRemoteRoomData, IRemoteGroupData,
+import { MROOM_TYPES, IRemoteRoomData, IRemoteGroupData,
     MUSER_TYPE_ACCOUNT, MUSER_TYPES, MROOM_TYPE_UADMIN, MROOM_TYPE_GROUP,
     MUSER_TYPE_GHOST, IRemoteImData, MROOM_TYPE_IM } from "./Types";
 import { BifrostProtocol } from "../bifrost/Protocol";
@@ -12,14 +12,19 @@ import { BifrostRemoteUser } from "./BifrostRemoteUser";
 const log = Logging.get("NeDBStore");
 
 export class NeDBStore implements IStore {
-    private roomStore: RoomStore;
-    private userStore: UserStore;
-    private asBot: AsBot;
+    private roomStore: RoomBridgeStore;
+    private userStore: UserBridgeStore;
+    private asBot: AppServiceBot;
     private userLock: Map<string, Promise<void>>;
 
-    constructor(private bridge: Bridge) {
-        this.roomStore = bridge.getRoomStore();
-        this.userStore = bridge.getUserStore();
+    constructor(bridge: Bridge) {
+        const roomStore = bridge.getRoomStore();
+        const userStore = bridge.getUserStore();
+        if (!roomStore || !userStore) {
+            throw Error('Bridge stores are not defined!');
+        }
+        this.roomStore = roomStore;
+        this.userStore = userStore;
         this.asBot = bridge.getBot();
         this.userLock = new Map();
     }
@@ -61,6 +66,9 @@ export class NeDBStore implements IStore {
             return null;
         }
         const userIds = await this.userStore.getMatrixLinks(remoteId);
+        if (!userIds) {
+            return null;
+        }
         const realUserIds = userIds.filter(
             (uId) => this.asBot.isRemoteUser(uId),
         );
@@ -89,22 +97,23 @@ export class NeDBStore implements IStore {
     }
 
     public async getRoomByRemoteData(remoteData: IRemoteRoomData|IRemoteGroupData) {
-        const remoteEntries = await this.roomStore.getEntriesByRemoteRoomData(remoteData);
+        const remoteEntries = await this.roomStore.getEntriesByRemoteRoomData(remoteData as Record<string, unknown>);
         if (remoteEntries !== null && remoteEntries.length > 0) {
             if (remoteEntries.length > 1) {
                 throw Error(`Have multiple matrix rooms assigned for chat. Bailing`);
             }
             return remoteEntries[0];
         }
+        return null;
     }
 
-    public async getIMRoom(matrixUserId: string, protocolId: string, remoteUserId: string): Promise<IRoomEntry|null> {
+    public async getIMRoom(matrixUserId: string, protocolId: string, remoteUserId: string): Promise<RoomBridgeStoreEntry|null> {
         const remoteEntries = await this.roomStore.getEntriesByRemoteRoomData({
             matrixUser: matrixUserId,
             protocol_id: protocolId,
             recipient: remoteUserId,
-        } as IRemoteImData);
-        const suitableEntries = remoteEntries.filter((e) => e.matrix.get("type") === MROOM_TYPE_IM)[0];
+        } as IRemoteImData as Record<string, unknown>);
+        const suitableEntries = remoteEntries.filter((e) => e.matrix?.get("type") === MROOM_TYPE_IM)[0];
         if (!suitableEntries) {
             return null;
         }
@@ -129,7 +138,7 @@ export class NeDBStore implements IStore {
         return set;
     }
 
-    public getRoomsOfType(type: MROOM_TYPES): Promise<IRoomEntry[]> {
+    public getRoomsOfType(type: MROOM_TYPES): Promise<RoomBridgeStoreEntry[]> {
         return this.roomStore.getEntriesByMatrixRoomData({type});
     }
 
@@ -159,7 +168,7 @@ export class NeDBStore implements IStore {
         await this.roomStore.removeEntriesByMatrixRoomId(matrixId);
     }
 
-    public async getRoomEntryByMatrixId(roomId: string): Promise<{matrix: MatrixRoom, remote: RemoteRoom}|null> {
+    public async getRoomEntryByMatrixId(roomId: string): Promise<RoomBridgeStoreEntry|null> {
         // TODO: This assumes one remote
         const entries = await this.roomStore.getEntriesByMatrixId(roomId);
         if (entries.length === 0) {
@@ -168,24 +177,27 @@ export class NeDBStore implements IStore {
         // XXX: The room store can become full of empty remote_id entries.
         const entryWithRemote = entries.filter((e) => e.remote)[0];
         const entry = entryWithRemote || entries[0];
-        return {matrix: entry.matrix, remote: entry.remote};
+        if (!entry.matrix || !entry.remote) {
+            return null;
+        }
+        return {matrix: entry.matrix, remote: entry.remote, data: {}};
     }
 
     public async storeRoom(matrixId: string, type: MROOM_TYPES, remoteId: string, remoteData: IRemoteRoomData)
-    : Promise<{remote: RemoteRoom, matrix: MatrixRoom}> {
+    : Promise<RoomBridgeStoreEntry> {
         // XXX: If a room with all these identifiers already exists, replace it.
         log.info(`Storing remote room (${type}) ${matrixId}`);
         log.debug("with data ", remoteData);
         const mxRoom = new MatrixRoom(matrixId);
         mxRoom.set("type", type);
-        const remote = new RemoteRoom(remoteId, remoteData);
+        const remote = new RemoteRoom(remoteId, remoteData as Record<string, unknown>);
         try {
             await this.roomStore.linkRooms(mxRoom, remote);
         } catch (ex) {
             log.error("Failed to store room:", ex);
             throw ex;
         }
-        return {matrix: mxRoom, remote};
+        return {matrix: mxRoom, remote, data: {}};
     }
 
     public async getMatrixEventId(roomId: string, remoteEventId: string) {
@@ -228,8 +240,8 @@ export class NeDBStore implements IStore {
                 removedRemoteRooms.push(entry._id);
                 return this.roomStore.delete({
                     _id: entry._id,
-                }) as Promise<void>;
-            })).then(() => { /* for typescript */});
+                });
+            }));
         }
 
         // Special case problem: Gateways used to be allowed for rooms that were plumbed/portals
@@ -267,16 +279,15 @@ export class NeDBStore implements IStore {
             });
             roomGroup.pop(); // Remove the one we want to keep
             log.info(`Removing ${roomGroup.length} duplicate rooms.`);
-            await Promise.all(roomGroup.map((removedEntry) => {
+            await Promise.all(roomGroup.map(async (removedEntry) => {
                 log.info(`Cleaning up room entry ${removedEntry._id}`, removedEntry.remote);
                 removedRemoteRooms.push(removedEntry._id);
-                if (!canWrite) {
-                    return Promise.resolve();
+                if (canWrite) {
+                    await this.roomStore.delete({
+                        _id: removedEntry._id,
+                    });
                 }
-                return this.roomStore.delete({
-                    _id: removedEntry._id,
-                }) as Promise<void>;
-            })).then(() => { /* for typescript */});
+            }));
         }
 
         // Check the user store.
@@ -289,7 +300,7 @@ export class NeDBStore implements IStore {
         const ghostEntries = userEntries.filter((e) => e.get("type") === "ghost");
         const userEntryIds = ghostEntries.map((entry) => entry.id);
         const invalidUserEntries = ghostEntries.filter((entry) =>
-            userEntryIds.filter((e) => e.id === entry.id).length >= 2,
+            userEntryIds.filter((e) => e === entry.id).length >= 2,
         ).concat(noTypeEntries);
         log.info(`Also found ${invalidUserEntries.length - noTypeEntries.length} invalid ghosts`);
 
@@ -300,8 +311,8 @@ export class NeDBStore implements IStore {
                 log.debug(`Cleaning up user entry ${entry.id}`);
                 return this.userStore.delete({
                     id: entry.id,
-                }) as Promise<void>;
-            })).then(() => { /* for typescript */});
+                });
+            }));
         }
     }
 
@@ -326,10 +337,11 @@ export class NeDBStore implements IStore {
             );
             return {remote, matrix: mxUser};
         } else {
-            const linkedMatrixUsers = await this.userStore.getMatrixLinks(id);
-            if (!linkedMatrixUsers.includes(mxUser.getId())) {
+            let linkedMatrixUsers = await this.userStore.getMatrixLinks(id);
+            if (!linkedMatrixUsers || !linkedMatrixUsers.includes(mxUser.getId())) {
                 log.warn(`${id} was not correctly linked to ${mxUser.getId()}, resolving`);
                 await this.userStore.linkUsers(mxUser, existing);
+                linkedMatrixUsers = [mxUser.getId()];
             }
             for (const lnkUserId of linkedMatrixUsers) {
                 if (lnkUserId === mxUser.getId()) {

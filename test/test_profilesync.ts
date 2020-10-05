@@ -85,9 +85,9 @@ describe("ProfileSync", () => {
         expect(values.displayname).to.equal("alice@foobar.com");
         expect(values.userId).to.equal("@_bifrost_dummy_alice=40foobar.com:localhost");
         const matrixUser = await store.getMatrixUser(values.userId);
-        expect(matrixUser.get("last_check")).to.be.above(time);
-        expect(matrixUser.get("displayname")).to.be.equal(values.displayname);
-        expect(matrixUser.get("avatar_url")).to.be.undefined;
+        expect(matrixUser?.get("last_check")).to.be.above(time);
+        expect(matrixUser?.get("displayname")).to.be.equal(values.displayname);
+        expect(matrixUser?.get("avatar_url")).to.be.undefined;
     });
     it("can sync one profile without useful UserInfo", async () => {
         const time = Date.now();
@@ -98,9 +98,9 @@ describe("ProfileSync", () => {
         expect(values.displayname).to.equal("alice@foobar.com");
         expect(values.userId).to.equal("@_bifrost_dummy_alice=40foobar.com:localhost");
         const matrixUser = await store.getMatrixUser(values.userId);
-        expect(matrixUser.get("last_check")).to.be.above(time);
-        expect(matrixUser.get("displayname")).to.be.equal(values.displayname);
-        expect(matrixUser.get("avatar_url")).to.be.undefined;
+        expect(matrixUser?.get("last_check")).to.be.above(time);
+        expect(matrixUser?.get("displayname")).to.be.equal(values.displayname);
+        expect(matrixUser?.get("avatar_url")).to.be.undefined;
     });
     it("can sync one profile with a nickname", async () => {
         const time = Date.now();
@@ -111,9 +111,9 @@ describe("ProfileSync", () => {
         expect(values.displayname).to.equal("SuperAlice");
         expect(values.userId).to.equal("@_bifrost_dummy_alice=40foobar.com:localhost");
         const matrixUser = await store.getMatrixUser(values.userId);
-        expect(matrixUser.get("last_check")).to.be.above(time);
-        expect(matrixUser.get("displayname")).to.be.equal("SuperAlice");
-        expect(matrixUser.get("avatar_url")).to.be.undefined;
+        expect(matrixUser?.get("last_check")).to.be.above(time);
+        expect(matrixUser?.get("displayname")).to.be.equal("SuperAlice");
+        expect(matrixUser?.get("avatar_url")).to.be.undefined;
     });
     it("can sync one profile with a avatar ", async () => {
         const time = Date.now();
@@ -124,20 +124,20 @@ describe("ProfileSync", () => {
         expect(values.displayname).to.equal("alice@foobar.com");
         expect(values.userId).to.equal("@_bifrost_dummy_alice=40foobar.com:localhost");
         const matrixUser = await store.getMatrixUser(values.userId);
-        expect(matrixUser.get("last_check")).to.be.above(time);
-        expect(matrixUser.get("displayname")).to.be.equal("alice@foobar.com");
+        expect(matrixUser?.get("last_check")).to.be.above(time);
+        expect(matrixUser?.get("displayname")).to.be.equal("alice@foobar.com");
         expect(values.avatarUrl).to.be.equal("mxc://example.com/foobar");
-        expect(matrixUser.get("avatar_url")).to.be.equal("http://example.com/myamazingavatar.png");
+        expect(matrixUser?.get("avatar_url")).to.be.equal("http://example.com/myamazingavatar.png");
     });
     it("will skip the second profile update", async () => {
         const time = Date.now();
         const {profileSync, account, values, store} = createProfileSync({});
         await profileSync.updateProfile(dummyProtocol, "aconvo@foobar.com/FOO!$BAR", account as any, false);
         const matrixUser = await store.getMatrixUser(values.userId);
-        expect(matrixUser.get("last_check")).to.be.above(time);
-        const lastTime = matrixUser.get("last_check");
+        expect(matrixUser?.get("last_check")).to.be.above(time);
+        const lastTime = matrixUser?.get("last_check");
         await profileSync.updateProfile(dummyProtocol, "aconvo@foobar.com/FOO!$BAR", account as any, false);
         const matrixUserTwo = await store.getMatrixUser(values.userId);
-        expect(matrixUserTwo.get("last_check")).to.be.equal(lastTime);
+        expect(matrixUserTwo?.get("last_check")).to.be.equal(lastTime);
     });
 });

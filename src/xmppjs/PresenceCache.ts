@@ -81,10 +81,10 @@ export class PresenceCache {
         }
         const type = stanza.getAttr("type")!;
         // If it's a gateway, we want to invert this.
-        const from = jid( this.isGateway ? stanza.attrs.to : stanza.attrs.from);
+        const from = jid.parse( this.isGateway ? stanza.attrs.to : stanza.attrs.from);
         let device: string|null = null;
         if (this.isGateway) {
-            device = jid(stanza.attrs.from).resource;
+            device = jid.parse(stanza.attrs.from).resource;
         }
 
         if (!from.resource) {

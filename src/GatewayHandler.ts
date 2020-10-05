@@ -1,9 +1,9 @@
-import { IGatewayJoin, IGatewayRoomQuery, IGatewayPublicRoomsQuery } from "./bifrost/Events";
+import { IGatewayJoin, IGatewayRoomQuery, IGatewayPublicRoomsQuery, IChatJoinProperties } from "./bifrost/Events";
 import { IBifrostInstance } from "./bifrost/Instance";
-import { Bridge, Logging, Intent } from "matrix-appservice-bridge";
+import { Bridge, Logging, Intent, RoomBridgeStoreEntry } from "matrix-appservice-bridge";
 import { Config } from "./Config";
 import { IStore } from "./store/Store";
-import { MROOM_TYPE_GROUP, IRemoteGroupData, IRoomEntry } from "./store/Types";
+import { MROOM_TYPE_GROUP, IRemoteGroupData } from "./store/Types";
 import { IBasicProtocolMessage } from "./MessageFormatter";
 import { ProfileSync } from "./ProfileSync";
 import { IGatewayRoom } from "./bifrost/Gateway";
@@ -74,16 +74,22 @@ export class GatewayHandler {
     }
 
     public async sendMatrixMessage(
-        chatName: string, sender: string, body: IBasicProtocolMessage, context: IRoomEntry) {
+        chatName: string, sender: string, body: IBasicProtocolMessage, context: RoomBridgeStoreEntry) {
         if (!this.purple.gateway) {
+            return;
+        }
+        if (!context.matrix) {
             return;
         }
         const room = await this.getVirtualRoom(context.matrix.getId(), this.bridge.getIntent());
         this.purple.gateway.sendMatrixMessage(chatName, sender, body, room);
     }
 
-    public async sendStateEvent(chatName: string, sender: string, ev: any , context: IRoomEntry) {
+    public async sendStateEvent(chatName: string, sender: string, ev: any , context: RoomBridgeStoreEntry) {
         if (!this.purple.gateway) {
+            return;
+        }
+        if (!context.matrix) {
             return;
         }
         const room = await this.getVirtualRoom(context.matrix.getId(), this.bridge.getIntent());
@@ -103,9 +109,12 @@ export class GatewayHandler {
     }
 
     public async sendMatrixMembership(
-        chatName: string, sender: string, displayname: string, membership: string, context: IRoomEntry,
+        chatName: string, sender: string, displayname: string, membership: string, context: RoomBridgeStoreEntry,
     ) {
         if (!this.purple.gateway) {
+            return;
+        }
+        if (!context.matrix) {
             return;
         }
         const room = await this.getVirtualRoom(context.matrix.getId(), this.bridge.getIntent());
@@ -158,7 +167,7 @@ export class GatewayHandler {
         let roomId: string|null = null;
         try {
             // XXX: We don't get the room_id from the join call, because Intents are made of fail.
-            await intent._ensureRegistered();
+            await intent.ensureRegistered();
             if (this.config.tuning.waitOnProfileBeforeSend) {
                 await this.profileSync.updateProfile(protocol, data.sender, this.purple.gateway);
             }
@@ -173,7 +182,7 @@ export class GatewayHandler {
             }
             roomId = res.roomId;
             const room = await this.getOrCreateGatewayRoom(data, roomId!);
-            const canonAlias = room.remote.get("properties").room_alias;
+            const canonAlias = room.remote?.get<IChatJoinProperties>("properties").room_alias;
             if (canonAlias !== data.roomAlias) {
                 throw Error(
                     "We do not support multiple room aliases, try " + canonAlias,
@@ -231,14 +240,14 @@ export class GatewayHandler {
         }
     }
 
-    private async getOrCreateGatewayRoom(data: IGatewayJoin, roomId: string): Promise<IRoomEntry> {
+    private async getOrCreateGatewayRoom(data: IGatewayJoin, roomId: string): Promise<RoomBridgeStoreEntry> {
         const remoteId = Buffer.from(
             `${data.protocol_id}:${data.room_name}`,
         ).toString("base64");
         // Check if we have bridged this already.
         const exists = (await this.store.getRoomEntryByMatrixId(roomId));
-        if (exists && !exists.remote.data.gateway) {
-            const roomName = exists.remote.data.room_name;
+        if (exists && !exists.remote?.get<boolean>("gateway")) {
+            const roomName = exists.remote?.get<string>("room_name");
             throw Error(`This room is already bridged to ${roomName}`);
         }
 
