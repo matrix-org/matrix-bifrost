@@ -273,6 +273,11 @@ export class ServiceHandler {
                 name: alias,
                 type: "text",
             });
+            discoInfo.identity.add({
+                category: "gateway",
+                name: alias,
+                type: "matrix",
+            });
             await this.xmpp.xmppSend(discoInfo);
         } catch (ex) {
             await this.xmpp.xmppSend(new SztaIqError(toStr, from, id, "cancel", 404, "item-not-found"));
