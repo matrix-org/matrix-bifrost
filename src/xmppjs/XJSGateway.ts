@@ -159,7 +159,13 @@ export class XmppJsGateway implements IGateway {
         });
     }
 
-    public reflectXMPPMessage(chatName: string, stanza: Element): boolean {
+    /**
+     * Send a XMPP message to the occupants of a gateway.
+     * @param chatName The XMPP MUC name
+     * @param stanza The XMPP stanza message
+     * @returns If the message was sent successfully.
+     */
+    public async reflectXMPPMessage(chatName: string, stanza: Element): Promise<boolean> {
         const member = this.members.getXmppMemberByRealJid(chatName, stanza.attrs.from);
         if (!member) {
             log.warn(`${stanza.attrs.from} is not part of this room.`);
@@ -171,22 +177,24 @@ export class XmppJsGateway implements IGateway {
             kick.statusCodes.add(XMPPStatusCode.SelfPresence);
             kick.statusCodes.add(XMPPStatusCode.SelfKicked);
             kick.statusCodes.add(XMPPStatusCode.SelfKickedTechnical);
-            this.xmpp.xmppSend(kick);
+            await this.xmpp.xmppSend(kick);
             return false;
         }
         const preserveFrom = stanza.attrs.from;
-        new Promise(() => {
+        try {
             stanza.attrs.from = member!.anonymousJid;
             const xmppMembers = this.members.getXmppMembers(chatName);
-            xmppMembers.forEach((xmppUser) => {
-                xmppUser.devices!.forEach((device) => {
+            await Promise.all(xmppMembers.map((xmppUser) => {
+                [...xmppUser.devices!].map((device) => {
                     stanza.attrs.to = device;
                     this.xmpp.xmppWriteToStream(stanza);
                 });
-            });
-        }).catch((err) => {
+            }).flat());
+        } catch (err) {
             log.warn("Failed to reflect XMPP message:", err);
-        });
+            stanza.attrs.from = preserveFrom;
+            return false;
+        }
         stanza.attrs.from = preserveFrom;
         return true;
     }
