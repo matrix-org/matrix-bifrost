@@ -11,10 +11,8 @@ import { IBifrostAccount } from "../bifrost/Account";
 import { IAccountEvent,
     IChatJoined,
     IReceivedImMsg,
-    IConversationEvent,
     IUserStateChanged,
     IChatTyping,
-    IGatewayJoin,
     IStoreRemoteUser,
     IChatReadReceipt,
     IChatStringState,
@@ -28,7 +26,7 @@ import { AutoRegistration } from "../AutoRegistration";
 import { XmppJsGateway } from "./XJSGateway";
 import { IStza, StzaIqVcardRequest } from "./Stanzas";
 import { Util } from "../Util";
-import * as uuid from "uuid/v4";
+import uuid from "uuid/v4";
 
 const xLog = Logging.get("XMPP-conn");
 const log = Logging.get("XmppJsInstance");
