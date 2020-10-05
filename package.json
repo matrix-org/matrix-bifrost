@@ -9,7 +9,7 @@
     "lint": "tslint --project tsconfig.json --format stylish",
     "start": "node build/src/Program.js -c config.yaml",
     "genreg": "node build/src/Program.js -r -c config.yaml",
-    "test": "npm run build && mocha --recursive build/test",
+    "test": "npm run build && mocha --require source-map-support/register --recursive build/test",
     "changelog": "scripts/towncrier.sh",
     "coverage": "nyc mocha --recursive test/*.ts"
   },
