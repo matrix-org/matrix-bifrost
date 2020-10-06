@@ -7,6 +7,7 @@ import { MROOM_TYPE_GROUP, IRemoteGroupData } from "./store/Types";
 import { IBasicProtocolMessage } from "./MessageFormatter";
 import { ProfileSync } from "./ProfileSync";
 import { IGatewayRoom } from "./bifrost/Gateway";
+import { MatrixMembershipEvent } from "./MatrixTypes";
 
 const log = Logging.get("GatewayHandler");
 
@@ -109,7 +110,7 @@ export class GatewayHandler {
     }
 
     public async sendMatrixMembership(
-        chatName: string, sender: string, displayname: string, membership: string, context: RoomBridgeStoreEntry,
+        chatName: string, context: RoomBridgeStoreEntry, event: MatrixMembershipEvent,
     ) {
         if (!this.purple.gateway) {
             return;
@@ -118,26 +119,26 @@ export class GatewayHandler {
             return;
         }
         const room = await this.getVirtualRoom(context.matrix.getId(), this.bridge.getIntent());
-        const existingMembership = room.membership.find((ev) => ev.sender === sender);
+        const existingMembership = room.membership.find((ev) => ev.stateKey === event.state_key);
         if (existingMembership) {
-            if (existingMembership.membership === membership) {
+            if (existingMembership.membership === event.content.membership) {
+                // No-op
                 return;
-            } else {
-                existingMembership.membership = membership;
-                existingMembership.content.displayname = displayname;
             }
+            existingMembership.membership = event.content.membership;
+            existingMembership.displayname = event.content.displayname;
         } else {
             room.membership.push({
-                membership,
-                sender,
-                content: {
-                    displayname,
-                },
+                membership: event.content.membership,
+                sender: event.sender,
+                displayname: event.content.displayname,
+                stateKey: event.state_key,
+                isRemote: false,
             });
             this.roomIdCache.set(context.matrix.getId(), room);
         }
-        log.info(`Updating membership for ${sender} in ${chatName}`);
-        this.purple.gateway.sendMatrixMembership(chatName, sender, displayname, membership, room);
+        log.info(`Updating membership for ${event.state_key} in ${chatName}`);
+        this.purple.gateway.sendMatrixMembership(chatName, event, room);
     }
 
     public async rejoinRemoteUser(mxid: string, roomid: string) {

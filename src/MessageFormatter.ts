@@ -1,10 +1,10 @@
 import { BifrostProtocol } from "./bifrost/Protocol";
 import { PRPL_XMPP } from "./ProtoHacks";
 import { Parser } from "htmlparser2";
-import { Logging } from "matrix-appservice-bridge";
-import { IEventRequestData } from "./MatrixTypes";
+import { Logging, WeakEvent } from "matrix-appservice-bridge";
 import { IConfigBridge } from "./Config";
 import * as request from "request-promise-native";
+import { MatrixMessageEvent } from "./MatrixTypes";
 const log = Logging.get("MessageFormatter");
 
 export interface IMatrixMsgContents {
@@ -40,7 +40,7 @@ export interface IMessageAttachment {
 
 export class MessageFormatter {
 
-    public static matrixEventToBody(event: IEventRequestData, config: IConfigBridge): IBasicProtocolMessage {
+    public static matrixEventToBody(event: MatrixMessageEvent, config: IConfigBridge): IBasicProtocolMessage {
         const body = event.content.body;
         const formatted: {type: string, body: string}[] = [];
         if (event.content.formatted_body) {
@@ -52,7 +52,7 @@ export class MessageFormatter {
         if (event.content.msgtype === "m.emote") {
             return {body: `/me ${body}`, formatted, id: event.event_id};
         }
-        if (["m.file", "m.image", "m.video"].includes(event.content.msgtype)) {
+        if (["m.file", "m.image", "m.video"].includes(event.content.msgtype) && event.content.url) {
             const uriBits = event.content.url.substr("mxc://".length).split("/");
             const url = (config.mediaserverUrl ? config.mediaserverUrl : config.homeserverUrl).replace(/\/$/, "");
             event.content.info = event.content.info || {};
