@@ -8,6 +8,21 @@ export interface IStza {
     xml: string;
 }
 
+export enum PresenceRole {
+    None = "none",
+    Visitor = "visitor",
+    Participant = "participant",
+    Moderator = "moderator",
+}
+
+export enum PresenceAffiliation {
+    None = "none",
+    Outcast = "outcast",
+    Member = "member",
+    Admin = "admin",
+    Owner = "owner",
+}
+
 export abstract class StzaBase implements IStza {
     private hFrom: string = "";
     private hTo: string = "";
@@ -78,12 +93,14 @@ export class StzaPresence extends StzaBase {
 
 export class StzaPresenceItem extends StzaPresence {
     public statusCodes: Set<XMPPStatusCode>;
+    public actor?: string;
+    public reason?: string;
     constructor(
         from: string,
         to: string,
         id?: string,
-        public affiliation: string = "member",
-        public role: string = "participant",
+        public affiliation: PresenceAffiliation = PresenceAffiliation.Member,
+        public role: PresenceRole = PresenceRole.Participant,
         self: boolean = false,
         public jid: string = "",
         itemType: string = "",
@@ -97,18 +114,20 @@ export class StzaPresenceItem extends StzaPresence {
         this.statusCodes[isSelf ? "add" : "delete"](XMPPStatusCode.SelfPresence);
     }
 
-    get itemContents(): string { return ""; }
-
     get xProtocol(): string { return "muc#user"; }
 
     public get xContent() {
-        const statusCodes = [...this.statusCodes].map((s) => `<status code='${s}'/>`).join("");
         const jid = this.jid ? ` jid='${this.jid}'` : "";
-        if (this.itemContents) {
-return `<item affiliation='${this.affiliation}'${jid} role='${this.role}'>${this.itemContents}</item>${statusCodes}`;
-        } else {
-            return `<item affiliation='${this.affiliation}'${jid} role='${this.role}'/>${statusCodes}`;
+        let xml = `<item affiliation='${this.affiliation}'${jid} role='${this.role}'>`;
+        if (this.actor) {
+            xml += `<actor nick="${he.encode(this.actor)}"/>`
         }
+        if (this.reason) {
+            xml += `<reason>${he.encode(this.reason)}</reason>`
+        }
+        xml += "</item>";
+        xml += [...this.statusCodes].map((s) => `<status code='${s}'/>`).join("");
+        return xml;
     }
 }
 
@@ -167,7 +186,7 @@ export class StzaPresenceKick extends StzaPresenceItem {
         public actorNick?: string,
         self: boolean = false,
     ) {
-        super(from, to, undefined, "none", "none", self, undefined, "unavailable");
+        super(from, to, undefined, PresenceAffiliation.None, PresenceRole.None, self, undefined, "unavailable");
         this.statusCodes.add(XMPPStatusCode.SelfKicked);
     }
 
