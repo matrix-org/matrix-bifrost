@@ -3,8 +3,6 @@ import * as jid from "@xmpp/jid";
 import { Logging } from "matrix-appservice-bridge";
 import { XMPPStatusCode } from "./StatusCodes";
 
-const log = Logging.get("PresenceCache");
-
 export interface IPresenceDelta {
     status?: IPresenceStatus;
     changed: string[];
