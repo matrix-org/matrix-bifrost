@@ -50,7 +50,14 @@ class Program {
           },
           registrationPath: "bifrost-registration.yaml",
           generateRegistration: this.generateRegistration,
-          run: this.runBridge.bind(this),
+          run: async (port: number, config: any) => {
+                try {
+                    await this.runBridge(port, config);
+                } catch (ex) {
+                    log.error("Failed to start:", ex);
+                    process.exit(1);
+                }
+          }
         });
         this.cfg = new Config();
         this.deduplicator = new Deduplicator();
