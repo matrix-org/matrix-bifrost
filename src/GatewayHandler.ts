@@ -203,15 +203,11 @@ export class GatewayHandler {
     private async handleRoomQuery(ev: IGatewayRoomQuery) {
         log.info(`Trying to discover ${ev.roomAlias}`);
         try {
-            // XXX: We should check to see if the room exists in our cache.
-            // We have to join the room, as doing a lookup would not prompt a bridge like freenode
-            // to intervene.
-            const res = await this.bridge.getIntent().getClient().joinRoom(ev.roomAlias);
-            log.info(`Found ${res.roomId}`);
+            const res = await this.bridge.getIntent().getClient().resolveRoomAlias(ev.roomAlias);
+            log.info(`Found ${res.room_id}`);
             if (ev.onlyCheck) {
-                ev.result(null, res.roomId);
+                ev.result(null, res.room_id);
             }
-            this.bridge.getIntent().leave(res.roomId);
         } catch (ex) {
             log.warn("Room not found:", ex);
             ev.result(Error("Room not found"));
