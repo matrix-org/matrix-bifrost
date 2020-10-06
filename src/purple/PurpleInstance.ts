@@ -3,7 +3,7 @@ import { helper, plugins, messaging, Conversation } from "node-purple";
 import { EventEmitter } from "events";
 import { PurpleAccount } from "./PurpleAccount";
 import { IBifrostInstance } from "../bifrost/Instance";
-import { Logging, WeakEvent } from "matrix-appservice-bridge";
+import { Logging } from "matrix-appservice-bridge";
 import * as path from "path";
 import { IConfigPurple } from "../Config";
 import { IUserInfo, IConversationEvent, IEventBody } from "../bifrost/Events";

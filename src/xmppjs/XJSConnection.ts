@@ -1,5 +1,5 @@
-import {Component, xml, jid} from "@xmpp/component-core";
-import * as Reconnect from "@xmpp/reconnect";
+import {Component} from "@xmpp/component-core";
+import Reconnect from "@xmpp/reconnect";
 
 export interface IXJSConnectionOptions {
     password: string;
