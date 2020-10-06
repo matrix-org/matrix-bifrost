@@ -35,7 +35,7 @@
     "marked": "^1.2.0",
     "matrix-appservice-bridge": "^2.1.0",
     "parse-entities": "^1.2.0",
-    "pg": "7.12.1",
+    "pg": "8.3.3",
     "prom-client": "^11.2.1",
     "request": "^2.88.0",
     "request-promise-native": "^1.0.5",
