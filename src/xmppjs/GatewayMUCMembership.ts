@@ -96,6 +96,12 @@ export class GatewayMUCMembership {
         return set.delete(member);
     }
 
+    /**
+     * Remove an XMPP member from the gateway membership.
+     * @param chatName The MUC the user is part of
+     * @param realJid The real JID of the user
+     * @returns True if this is the last device for this member, false otherwise.
+     */
     public removeXmppMember(chatName: string, realJid: string): boolean {
         const member = this.getXmppMemberByRealJid(chatName, realJid);
         if (!member) {

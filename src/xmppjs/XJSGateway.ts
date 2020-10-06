@@ -159,9 +159,15 @@ export class XmppJsGateway implements IGateway {
         });
     }
 
-    public reflectXMPPMessage(chatName: string, stanza: Element): boolean {
+    /**
+     * Send a XMPP message to the occupants of a gateway.
+     * @param chatName The XMPP MUC name
+     * @param stanza The XMPP stanza message
+     * @returns If the message was sent successfully.
+     */
+    public async reflectXMPPMessage(chatName: string, stanza: Element, kickNonMember=true): Promise<boolean> {
         const member = this.members.getXmppMemberByRealJid(chatName, stanza.attrs.from);
-        if (!member) {
+        if (!member && kickNonMember) {
             log.warn(`${stanza.attrs.from} is not part of this room.`);
             // Send the sender an error.
             const kick = new StzaPresenceKick(
@@ -171,22 +177,24 @@ export class XmppJsGateway implements IGateway {
             kick.statusCodes.add(XMPPStatusCode.SelfPresence);
             kick.statusCodes.add(XMPPStatusCode.SelfKicked);
             kick.statusCodes.add(XMPPStatusCode.SelfKickedTechnical);
-            this.xmpp.xmppSend(kick);
+            await this.xmpp.xmppSend(kick);
             return false;
         }
         const preserveFrom = stanza.attrs.from;
-        new Promise(() => {
+        try {
             stanza.attrs.from = member!.anonymousJid;
             const xmppMembers = this.members.getXmppMembers(chatName);
-            xmppMembers.forEach((xmppUser) => {
-                xmppUser.devices!.forEach((device) => {
+            await Promise.all(xmppMembers.map((xmppUser) => {
+                [...xmppUser.devices!].map((device) => {
                     stanza.attrs.to = device;
                     this.xmpp.xmppWriteToStream(stanza);
                 });
-            });
-        }).catch((err) => {
+            }).flat());
+        } catch (err) {
             log.warn("Failed to reflect XMPP message:", err);
-        });
+            stanza.attrs.from = preserveFrom;
+            return false;
+        }
         stanza.attrs.from = preserveFrom;
         return true;
     }
@@ -357,6 +365,7 @@ export class XmppJsGateway implements IGateway {
         const members = this.members.getMembers(chatName);
         // Ensure we chunk this
         let sent = 0;
+        const allMembershipPromises: Promise<unknown>[] = [];
         for (const member of members) {
             sent++;
             if (member.anonymousJid.toString() === stanza.attrs.to) {
@@ -377,7 +386,7 @@ export class XmppJsGateway implements IGateway {
                     XMPP_PROTOCOL.id, (member as IGatewayMemberMatrix).matrixId,
                 ).username;
             }
-            this.xmpp.xmppSend(
+            allMembershipPromises.push(this.xmpp.xmppSend(
                 new StzaPresenceItem(
                     member.anonymousJid.toString(),
                     stanza.attrs.from,
@@ -387,8 +396,11 @@ export class XmppJsGateway implements IGateway {
                     false,
                     realJid,
                 ),
-            );
+            ));
         }
+
+        // Wait for all presence to be sent first.
+        await Promise.all(allMembershipPromises);
 
         log.debug("Emitting membership of self");
         // 2. self presence
@@ -401,10 +413,21 @@ export class XmppJsGateway implements IGateway {
             true,
         );
 
-        // Matrix is non-anon, and matrix logs.
+        // Matrix is non-anon, and Matrix logs.
         selfPresence.statusCodes.add(XMPPStatusCode.RoomNonAnonymous);
         selfPresence.statusCodes.add(XMPPStatusCode.RoomLoggingEnabled);
         await this.xmpp.xmppSend(selfPresence);
+        // Send everyone else the users new presence.
+        await this.reflectXMPPMessage(chatName, x("presence", {
+                from: stanza.attrs.from,
+                to: null,
+                id: stanza.attrs.id,
+            }, x("x", {
+                    xmlns: "http://jabber.org/protocol/muc#user",
+                }, [
+                    x("item", {affiliation: "member", role: "participant"}),
+                ]),
+        ), false);
 
         // FROM THIS POINT ON, WE CONSIDER THE USER JOINED.
 
@@ -414,16 +437,6 @@ export class XmppJsGateway implements IGateway {
             jid(stanza.attrs.to),
         );
 
-        this.reflectXMPPMessage(chatName, x("presence", {
-                from: stanza.attrs.from,
-                to: null,
-                id: stanza.attrs.id,
-            }, x("x", {
-                    xmlns: "http://jabber.org/protocol/muc#user",
-                }, [
-                    x("item", {affiliation: "member", role: "participant"}),
-                ]),
-        ));
         // 3. Room history
         log.debug("Emitting history");
         const history = this.roomHistory.get(room.roomId) || [];
@@ -552,10 +565,10 @@ export class XmppJsGateway implements IGateway {
             log.error(`User tried to leave room, but they aren't in the member list`);
             return;
         }
-        this.members.removeXmppMember(chatName, stanza.attrs.from);
+        const lastDevice = this.members.removeXmppMember(chatName, stanza.attrs.from);
         const leaveStza = new StzaPresenceItem(
             user.anonymousJid.toString(),
-            stanza.attrs.to,
+            stanza.attrs.from,
             undefined,
             "member",
             "none",
@@ -564,7 +577,11 @@ export class XmppJsGateway implements IGateway {
         );
         leaveStza.presenceType = "unavailable";
         this.xmpp.xmppWriteToStream(leaveStza);
-        leaveStza.self = false;
-        this.reflectXMPPStanza(chatName, leaveStza);
+        // If this is the last device for that member, reflect
+        // that change to everyone.
+        if (lastDevice) {
+            leaveStza.self = false;
+            this.reflectXMPPStanza(chatName, leaveStza);
+        }
     }
 }
