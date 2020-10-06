@@ -9,6 +9,7 @@ export interface IGatewayMemberXmpp extends IGatewayMember {
     type: "xmpp";
     realJid: JID;
     devices: Set<string>;
+    matrixId: string;
 }
 
 export interface IGatewayMemberMatrix extends IGatewayMember {
@@ -42,8 +43,18 @@ export class GatewayMUCMembership {
         return member;
     }
 
+    public getXmppMemberByMatrixId(chatName: string, matrixId: string): IGatewayMemberXmpp|undefined {
+        // Strip the resource.
+        return this.getXmppMembers(chatName).find((user) => user.matrixId === matrixId);
+    }
+
+
     public getXmppMembers(chatName: string): IGatewayMemberXmpp[] {
         return this.getMembers(chatName).filter((s) => s.type === "xmpp") as IGatewayMemberXmpp[];
+    }
+
+    public getXmppMembersDevices(chatName: string): Set<string> {
+        return new Set(this.getXmppMembers(chatName).map((u) => [...u.devices]).flat());
     }
 
     public getMatrixMembers(chatName: string): IGatewayMemberMatrix[] {
@@ -70,7 +81,7 @@ export class GatewayMUCMembership {
         return true;
     }
 
-    public addXmppMember(chatName: string, realJid: JID, anonymousJid: JID): boolean {
+    public addXmppMember(chatName: string, realJid: JID, anonymousJid: JID, matrixId: string): boolean {
         const member = this.getXmppMemberByRealJid(chatName, realJid.toString());
         if (member) {
             member.devices.add(realJid.toString());
@@ -82,6 +93,7 @@ export class GatewayMUCMembership {
             anonymousJid,
             realJid: jid(`${realJid.local}@${realJid.domain}`),
             devices: new Set([realJid.toString()]),
+            matrixId,
         } as IGatewayMemberXmpp);
         this.members.set(chatName, set);
         return true;

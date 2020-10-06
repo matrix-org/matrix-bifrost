@@ -10,11 +10,13 @@ import { PresenceCache } from "./PresenceCache";
 import { XHTMLIM } from "./XHTMLIM";
 import { BifrostRemoteUser } from "../store/BifrostRemoteUser";
 import { StzaPresenceItem, StzaMessage, StzaMessageSubject,
-    StzaPresenceError, StzaBase, StzaPresenceKick } from "./Stanzas";
+    StzaPresenceError, StzaBase, StzaPresenceKick, PresenceAffiliation, PresenceRole } from "./Stanzas";
 import { IGateway } from "../bifrost/Gateway";
 import { GatewayMUCMembership, IGatewayMemberXmpp, IGatewayMemberMatrix } from "./GatewayMUCMembership";
 import { XMPPStatusCode } from "./StatusCodes";
 import { AutoRegistration } from "../AutoRegistration";
+import { GatewayStateResolve } from "./GatewayStateResolve";
+import { MatrixMembershipEvent } from "../MatrixTypes";
 
 const log = Logging.get("XmppJsGateway");
 
@@ -223,42 +225,19 @@ export class XmppJsGateway implements IGateway {
         }
     }
 
-    public sendMatrixMembership(
-        chatName: string, sender: string, displayname: string, membership: "join"|"leave",
+    public async sendMatrixMembership(
+        chatName: string, event: MatrixMembershipEvent,
     ) {
-        log.info(`Got new ${membership} for ${sender} in ${chatName}`);
+        log.info(`Got new ${event.content.membership} for ${event.state_key} (from: ${event.sender}) in ${chatName}`);
         // Iterate around each joined member and add the new presence step.
-        const from = `${chatName}/` + (displayname || sender);
-        const users = this.members.getXmppMembers(chatName);
-        if (users.length === 0) {
-            log.warn("No users found for gateway room!");
+        const presenceEvents = await GatewayStateResolve.resolveMatrixStateToXMPP(chatName, this.members, event);
+        if (presenceEvents.length === 0) {
+            log.info(`Nothing to do for ${event.event_id}`);
+            return;
         }
-        if (membership === "join") {
-            this.members.addMatrixMember(chatName, sender, jid(from));
-        } else {
-            this.members.removeMatrixMember(chatName, sender);
+        for (const stza of presenceEvents) {
+            await this.xmpp.xmppSend(stza);
         }
-        let affiliation = "";
-        let role = "";
-        let type = "";
-        if (membership === "join") {
-            affiliation = "member";
-            role = "participant";
-        } else if (membership === "leave") {
-            affiliation = "member";
-            role = "none";
-            type = "unavailable";
-        }
-        users.forEach((user) => {
-            user.devices!.forEach((device) => {
-                this.xmpp.xmppSend(
-                    new StzaPresenceItem(
-                        from, device.toString(), undefined, affiliation,
-                        role, false, undefined, type,
-                    ),
-                );
-            });
-        });
     }
 
     public sendStateChange(
@@ -314,6 +293,10 @@ export class XmppJsGateway implements IGateway {
             return;
         }
         room = room!;
+
+        if (!ownMxid) {
+            throw Error('ownMxid is not defined');
+        }
 
         // Check if the nick conflicts.
         const existingMember = this.members.getMemberByAnonJid(chatName, stanza.attrs.to);
@@ -382,8 +365,8 @@ export class XmppJsGateway implements IGateway {
                     member.anonymousJid.toString(),
                     stanza.attrs.from,
                     undefined,
-                    "member",
-                    "participant",
+                    PresenceAffiliation.Member,
+                    PresenceRole.Participant,
                     false,
                     realJid,
                 ),
@@ -396,8 +379,8 @@ export class XmppJsGateway implements IGateway {
             stanza.attrs.to,
             stanza.attrs.from,
             undefined,
-            "member",
-            "participant",
+            PresenceAffiliation.Member,
+            PresenceRole.Participant,
             true,
         );
 
@@ -412,6 +395,7 @@ export class XmppJsGateway implements IGateway {
             `${to.local}@${to.domain}`,
             jid(stanza.attrs.from),
             jid(stanza.attrs.to),
+            ownMxid,
         );
 
         this.reflectXMPPMessage(chatName, x("presence", {
@@ -465,6 +449,7 @@ export class XmppJsGateway implements IGateway {
             user.extraData.room_name,
             jid(user.extraData.real_jid),
             jid(`${user.extraData.handle}`),
+            user.id,
         );
     }
 
@@ -526,19 +511,19 @@ export class XmppJsGateway implements IGateway {
     }
 
     private updateMatrixMemberListForRoom(chatName: string, room: IGatewayRoom) {
-        const joined = room.membership.filter((member) => member.content.membership === "join" && !member.isRemote);
+        const joined = room.membership.filter((member) => member.membership === "join" && !member.isRemote);
         joined.forEach((member) => {
             this.members.addMatrixMember(
                 chatName,
-                member.state_key,
-                jid(`${chatName}/${member.content.displayname || member.state_key}`),
+                member.stateKey,
+                jid(`${chatName}/${member.displayname || member.stateKey}`),
             );
         });
-        const left = room.membership.filter((member) => member.content.membership === "leave" && !member.isRemote);
+        const left = room.membership.filter((member) => member.membership === "leave" && !member.isRemote);
         left.forEach((member) => {
             this.members.removeMatrixMember(
                 chatName,
-                member.state_key,
+                member.stateKey,
             );
         });
     }
@@ -557,8 +542,8 @@ export class XmppJsGateway implements IGateway {
             user.anonymousJid.toString(),
             stanza.attrs.to,
             undefined,
-            "member",
-            "none",
+            PresenceAffiliation.Member,
+            PresenceRole.None,
             true,
             stanza.attrs.from,
         );
