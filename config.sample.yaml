@@ -20,8 +20,8 @@ datastore:
   # connectionString: "nedb://."
 
 purple:
-  # For selecting a specific backend. One of "node-purple", "xmpp.js". Defaults to "node-purple"
-  backend: "xmpp.js"
+  # For selecting a specific backend. One of "node-purple", "xmpp-js". Defaults to "node-purple"
+  backend: "xmpp-js"
 # -- For xmpp.js - You need an existing xmpp server for this to work.
   backendOpts:
     # endpoint to reach the component on. The default port is 5347
