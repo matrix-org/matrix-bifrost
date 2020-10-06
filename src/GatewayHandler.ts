@@ -1,6 +1,6 @@
 import { IGatewayJoin, IGatewayRoomQuery, IGatewayPublicRoomsQuery, IChatJoinProperties } from "./bifrost/Events";
 import { IBifrostInstance } from "./bifrost/Instance";
-import { Bridge, Logging, Intent, RoomBridgeStoreEntry } from "matrix-appservice-bridge";
+import { Bridge, Logging, Intent, RoomBridgeStoreEntry, WeakEvent } from "matrix-appservice-bridge";
 import { Config } from "./Config";
 import { IStore } from "./store/Store";
 import { MROOM_TYPE_GROUP, IRemoteGroupData } from "./store/Types";
@@ -60,9 +60,15 @@ export class GatewayHandler {
         const nameEv = state.find((e) => e.type === "m.room.name");
         const topicEv = state.find((e) => e.type === "m.room.topic");
         const bot = this.bridge.getBot();
-        const membership = state.filter((e) => e.type === "m.room.member").map((e) => {
-            return { isRemote: bot.isRemoteUser(e.sender), ...e };
-        });
+        const membership = state.filter((e) => e.type === "m.room.member").map((e: WeakEvent) => (
+            {
+                isRemote: bot.isRemoteUser(e.sender),
+                stateKey: e.state_key,
+                displayname: e.content.displayname,
+                sender: e.sender,
+                membership: e.content.membership,
+            }
+        ))
         room = {
             name: nameEv ? nameEv.content.name : "",
             topic: topicEv ? topicEv.content.topic : "",
@@ -153,7 +159,7 @@ export class GatewayHandler {
             log.warn("Cannot reconnect a user without a remote user stored");
             return;
         }
-        this.purple.gateway.reconnectRemoteUser(user, room);
+        this.purple.gateway.reconnectRemoteUser(user, mxid, room);
     }
 
     private async handleRoomJoin(data: IGatewayJoin) {

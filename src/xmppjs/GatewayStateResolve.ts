@@ -8,7 +8,7 @@ import { XMPPStatusCode } from "./StatusCodes";
 const log = Logging.get("GatewayStateResolve");
 
 function sendToAllDevices(presence: StzaPresenceItem, devices: Set<string>) {
-    return [...devices].map((deviceJid) => 
+    return [...devices].map((deviceJid) =>
         new StzaPresenceItem(
             presence.from,
             deviceJid,
@@ -40,7 +40,6 @@ export class GatewayStateResolve {
                 return [];
             }
             // Matrix Join
-            const from = `${chatName}/` + (event.content.displayname || event.state_key);
             members.addMatrixMember(chatName, event.state_key, jid(from));
             // Reflect to all
             stanzas = sendToAllDevices(

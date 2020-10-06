@@ -298,6 +298,10 @@ export class XmppJsGateway implements IGateway {
             throw Error('ownMxid is not defined');
         }
 
+        // Ensure our membership is accurate.
+        this.updateMatrixMemberListForRoom(chatName, room);
+        const members = this.members.getMembers(chatName);
+
         // Check if the nick conflicts.
         const existingMember = this.members.getMemberByAnonJid(chatName, stanza.attrs.to);
         if (existingMember) {
@@ -335,9 +339,7 @@ export class XmppJsGateway implements IGateway {
 
         // https://xmpp.org/extensions/xep-0045.html#order
         // 1. membership of others.
-        log.debug("Emitting membership of other users");
-        this.updateMatrixMemberListForRoom(chatName, room);
-        const members = this.members.getMembers(chatName);
+        log.debug(`Emitting membership of other users (${members.length})`);
         // Ensure we chunk this
         let sent = 0;
         for (const member of members) {
@@ -438,7 +440,7 @@ export class XmppJsGateway implements IGateway {
         log.debug(`Join complete for ${to}`);
     }
 
-    public reconnectRemoteUser(user: BifrostRemoteUser, room: IGatewayRoom) {
+    public reconnectRemoteUser(user: BifrostRemoteUser, mxUserId: string, room: IGatewayRoom) {
         if (!user.extraData.real_jid) {
             return;
         }
@@ -449,7 +451,7 @@ export class XmppJsGateway implements IGateway {
             user.extraData.room_name,
             jid(user.extraData.real_jid),
             jid(`${user.extraData.handle}`),
-            user.id,
+            mxUserId,
         );
     }
 

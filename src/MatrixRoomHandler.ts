@@ -83,6 +83,7 @@ export class MatrixRoomHandler {
                 storeUser.mxId,
                 this.purple.getProtocol(storeUser.protocol_id)!,
                 storeUser.remoteId,
+                storeUser.data,
             );
         });
         this.remoteEventIdMapping = new Map();
