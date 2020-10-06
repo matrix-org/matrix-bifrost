@@ -486,7 +486,7 @@ export class XmppJsInstance extends EventEmitter implements IBifrostInstance {
                 // and set the right to/from addresses.
                 convName = `${to.local}@${to.domain}`;
                 log.info(`Sending gateway group message to ${convName}`);
-                if (!this.gateway!.reflectXMPPMessage(convName, stanza)) {
+                if (!(await this.gateway!.reflectXMPPMessage(convName, stanza))) {
                     log.warn(`Message could not be sent, not forwarding to Matrix`);
                     return;
                 }
