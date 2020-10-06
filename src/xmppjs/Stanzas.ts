@@ -1,5 +1,5 @@
-import * as uuid from "uuid/v4";
-import * as he from "he";
+import uuid from "uuid/v4";
+import he from "he";
 import { IBasicProtocolMessage } from "../MessageFormatter";
 import { XMPPStatusCode } from "./StatusCodes";
 
@@ -118,15 +118,19 @@ export class StzaPresenceItem extends StzaPresence {
 
     public get xContent() {
         const jid = this.jid ? ` jid='${this.jid}'` : "";
-        let xml = `<item affiliation='${this.affiliation}'${jid} role='${this.role}'>`;
+        let xml = [...this.statusCodes].map((s) => `<status code='${s}'/>`).join("");
+        xml += `<item affiliation='${this.affiliation}'${jid} role='${this.role}'`;
+        if (!this.actor && !this.reason) {
+            return xml + "/>";
+        }
+        xml += ">";
         if (this.actor) {
-            xml += `<actor nick="${he.encode(this.actor)}"/>`
+            xml += `<actor nick='${he.encode(this.actor)}'/>`
         }
         if (this.reason) {
             xml += `<reason>${he.encode(this.reason)}</reason>`
         }
         xml += "</item>";
-        xml += [...this.statusCodes].map((s) => `<status code='${s}'/>`).join("");
         return xml;
     }
 }
@@ -182,20 +186,15 @@ export class StzaPresenceKick extends StzaPresenceItem {
     constructor(
         from: string,
         to: string,
-        public reason?: string,
-        public actorNick?: string,
+        reason?: string,
+        actorNick?: string,
         self: boolean = false,
     ) {
         super(from, to, undefined, PresenceAffiliation.None, PresenceRole.None, self, undefined, "unavailable");
+        this.actor = actorNick;
+        this.reason = reason;
         this.statusCodes.add(XMPPStatusCode.SelfKicked);
     }
-
-    get itemContents(): string {
-        const actor = this.actorNick ? `<actor nick='${he.encode(this.actorNick)}'/>` : "";
-        const reason = this.reason ? `<reason>${he.encode(this.reason)}</reason>` : "";
-        return `${actor}${reason}`;
-    }
-
 }
 export class StzaMessage extends StzaBase {
     public html: string = "";

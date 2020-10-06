@@ -50,9 +50,9 @@ describe("Stanzas", () => {
             assertXML(xml);
             expect(xml).to.equal(
                 `<presence from="foo@bar" to="baz@bar" type='unavailable'>`
-                + "<x xmlns='http://jabber.org/protocol/muc#user'><item affiliation='none' role='none'>"
-                + "<actor nick='Kicky'/><reason>reasonable reason</reason></item><status code='110'/>"
-                + "<status code='307'/></x></presence>",
+                + "<x xmlns='http://jabber.org/protocol/muc#user'><status code='110'/>"
+                + "<status code='307'/><item affiliation='none' role='none'>"
+                + "<actor nick='Kicky'/><reason>reasonable reason</reason></item></x></presence>",
             );
         });
     });
