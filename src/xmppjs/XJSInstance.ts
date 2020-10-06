@@ -228,8 +228,17 @@ export class XmppJsInstance extends EventEmitter implements IBifrostInstance {
               log.error("Connection to XMPP server was lost..");
               this.connectionWasDropped = true;
           }
-          xLog.debug("status:", status);
+          xLog.info("status:", status);
         });
+
+        xmpp.on("reconnecting", () => {
+            xLog.info("status: reconnecting");
+        });
+
+        xmpp.on("reconnected", () => {
+            xLog.info("status: reconnecting");
+        });
+
 
         if (opts.logRawStream) {
             xmpp.on("input", (input) => {
