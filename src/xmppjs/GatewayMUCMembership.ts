@@ -35,9 +35,9 @@ export class GatewayMUCMembership {
         return this.getMatrixMembers(chatName).find((user) => user.matrixId === matrixId);
     }
 
-    public getXmppMemberByRealJid(chatName: string, realJid: string): IGatewayMemberXmpp|undefined {
+    public getXmppMemberByRealJid(chatName: string, realJid: string|JID): IGatewayMemberXmpp|undefined {
         // Strip the resource.
-        const j = jid(realJid);
+        const j = typeof(realJid) === "string" ? jid(realJid) : realJid;
         const strippedJid = `${j.local}@${j.domain}`;
         const member = this.getXmppMembers(chatName).find((user) => user.realJid!.toString() === strippedJid);
         return member;
@@ -81,8 +81,17 @@ export class GatewayMUCMembership {
         return true;
     }
 
+    /**
+     * Add an XMPP member to a MUC chat.
+     * @param chatName The MUC name.
+     * @param realJid The real JID for the XMPP user.
+     * @param anonymousJid The anonymous JID for the the user in the context of the MUC.
+     * @param matrixId The assigned Matrix UserID for the user.
+     * @returns True if this is the first device for a user, false otherwise.
+     */
     public addXmppMember(chatName: string, realJid: JID, anonymousJid: JID, matrixId: string): boolean {
-        const member = this.getXmppMemberByRealJid(chatName, realJid.toString());
+        const strippedDevice = jid(`${realJid.local}@${realJid.domain}`);
+        const member = this.getXmppMemberByRealJid(chatName, strippedDevice.toString());
         if (member) {
             member.devices.add(realJid.toString());
             return false;
@@ -91,7 +100,7 @@ export class GatewayMUCMembership {
         set.add({
             type: "xmpp",
             anonymousJid,
-            realJid: jid(`${realJid.local}@${realJid.domain}`),
+            realJid: strippedDevice,
             devices: new Set([realJid.toString()]),
             matrixId,
         } as IGatewayMemberXmpp);
@@ -108,7 +117,8 @@ export class GatewayMUCMembership {
         return set.delete(member);
     }
 
-    public removeXmppMember(chatName: string, realJid: string): boolean {
+    public removeXmppMember(chatName: string, realJid: string|JID): boolean {
+        realJid = realJid.toString();
         const member = this.getXmppMemberByRealJid(chatName, realJid);
         if (!member) {
             return false;
