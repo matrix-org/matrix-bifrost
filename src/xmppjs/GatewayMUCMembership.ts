@@ -118,16 +118,18 @@ export class GatewayMUCMembership {
     }
 
     public removeXmppMember(chatName: string, realJid: string|JID): boolean {
-        realJid = realJid.toString();
+        realJid = typeof(realJid) === "string" ? jid(realJid) : realJid;
         const member = this.getXmppMemberByRealJid(chatName, realJid);
         if (!member) {
             return false;
         }
-        member.devices.delete(realJid.toString());
-        if (member.devices.size) {
-            return false;
+        if (realJid.resource) {
+            member.devices.delete(realJid.toString());
+            if (member.devices.size) {
+                return false;
+            }
         }
-        const set = this.members.get(chatName)!;
-        return set.delete(member);
+        const set = this.members.get(chatName);
+        return set ? set.delete(member) : true;
     }
 }

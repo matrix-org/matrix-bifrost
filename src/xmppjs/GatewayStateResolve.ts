@@ -34,9 +34,15 @@ export class GatewayStateResolve {
             return stanzas;
         }
         const existingMember = members.getMatrixMemberByMatrixId(chatName, event.state_key);
+        const xmppMember = members.getXmppMemberByMatrixId(chatName, event.state_key);
         if (membership === "join") {
+            log.info(`Joining a Matrix user ${event.state_key}`);
             if (existingMember) {
                 // Do not handle if we already have them
+                return [];
+            }
+            if (xmppMember) {
+                // Catch to avoid double bridging.
                 return [];
             }
             // Matrix Join
@@ -52,6 +58,7 @@ export class GatewayStateResolve {
                 ), allDevices,
             );
         } else if (membership === "leave" && event.state_key === event.sender) {
+            log.info(`Leaving a Matrix user ${event.state_key}`);
             if (!existingMember) {
                 // Do not handle if we don't have them
                 return [];
@@ -73,13 +80,13 @@ export class GatewayStateResolve {
             );
         } else if ((membership === "leave" || membership === "ban") && event.state_key !== event.sender) {
             const kicker = members.getMatrixMemberByMatrixId(chatName, event.sender);
-            const xmppKickee = members.getXmppMemberByMatrixId(chatName, event.state_key);
             if (existingMember) {
+                log.info(`Kicking a Matrix user ${event.state_key}`);
                 // This is Matrix -> Matrix
                 members.removeMatrixMember(chatName, event.state_key);
                 // Reflect to all
                 const presence = new StzaPresenceItem(
-                    from,
+                    existingMember.anonymousJid.toString(),
                     "",
                     undefined,
                     PresenceAffiliation.None,
@@ -92,10 +99,41 @@ export class GatewayStateResolve {
                 presence.reason = event.content.reason;
                 presence.statusCodes.add(XMPPStatusCode.SelfKicked);
                 stanzas = sendToAllDevices(presence, allDevices);
-            } else if (xmppKickee) {
+            } else if (xmppMember) {
+                log.info(`Kicking a XMPP user ${event.state_key}`);
                 // This is Matrix -> XMPP
-                members.removeXmppMember(chatName, xmppKickee.realJid.toString());
-                // TODO: Tell the XMPP memeber that it got kicked.
+                members.removeXmppMember(chatName, xmppMember.realJid.toString());
+
+                const presenceSelf = new StzaPresenceItem(
+                    xmppMember.anonymousJid.toString(),
+                    "",
+                    undefined,
+                    membership === "leave" ? PresenceAffiliation.None : PresenceAffiliation.Outcast,
+                    PresenceRole.None,
+                    true,
+                    undefined,
+                    "unavailable",
+                );
+                presenceSelf.actor = kicker?.anonymousJid.getResource();
+                presenceSelf.reason = event.content.reason;
+                presenceSelf.statusCodes.add( membership === "leave" ? XMPPStatusCode.SelfKicked : XMPPStatusCode.SelfBanned);
+
+                // Tell the XMPP user's devices.
+                stanzas.push(...sendToAllDevices(presenceSelf, xmppMember.devices));
+
+                const presence = new StzaPresenceItem(
+                    xmppMember.anonymousJid.toString(),
+                    "",
+                    undefined,
+                    membership === "leave" ? PresenceAffiliation.None : PresenceAffiliation.Outcast,
+                    PresenceRole.None,
+                    false,
+                    undefined,
+                    "unavailable",
+                );
+                presence.statusCodes.add( membership === "leave" ? XMPPStatusCode.SelfKicked : XMPPStatusCode.SelfBanned);
+                // Tell the others
+                stanzas = sendToAllDevices(presence, allDevices);
             } else {
                 // We're not sure what this is, nope out to play it safe.
                 return [];

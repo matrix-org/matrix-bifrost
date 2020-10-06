@@ -216,6 +216,7 @@ export class MatrixEventHandler {
             }
             if (["join", "leave"].includes(event.content.membership as string)) {
                 await this.handleJoinLeaveGroup(ctx, membershipEvent);
+                return;
             }
         }
 
@@ -623,9 +624,10 @@ Say \`help\` for more commands.
         const name: string = context.remote.get("room_name");
         const roomProtocol: string = context.remote.get("protocol_id");
         if (isGateway) {
-            this.gatewayHandler.sendMatrixMembership(
+            await this.gatewayHandler.sendMatrixMembership(
                 name, context, event,
             );
+            return;
         }
 
         try {

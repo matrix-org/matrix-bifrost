@@ -51,6 +51,12 @@ describe("GatewayMUCMembership", () => {
             lastDevice = members.removeXmppMember(CHAT_NAME, XMPP_MEMBER_JID_SECOND_DEVICE.toString());
             expect(lastDevice).to.be.true;
         });
+        it("can add two devices, and remove all if the JID is stripped", () => {
+            members.addXmppMember(CHAT_NAME, XMPP_MEMBER_JID, XMPP_MEMBER_ANONYMOUS, XMPP_MEMBER_MXID);
+            members.addXmppMember(CHAT_NAME, XMPP_MEMBER_JID_SECOND_DEVICE, XMPP_MEMBER_ANONYMOUS, XMPP_MEMBER_MXID);
+            const lastDevice = members.removeXmppMember(CHAT_NAME, XMPP_MEMBER_JID_STRIPPED);
+            expect(lastDevice).to.be.true;
+        });
         it("can remove a Matrix member", () => {
             members.addMatrixMember(CHAT_NAME, MATRIX_MEMBER_MXID, MATRIX_MEMBER_ANONYMOUS);
             const removed = members.removeMatrixMember(CHAT_NAME, MATRIX_MEMBER_MXID);

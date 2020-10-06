@@ -125,6 +125,12 @@ export class GatewayHandler {
             return;
         }
         const room = await this.getVirtualRoom(context.matrix.getId(), this.bridge.getIntent());
+        if (this.bridge.getBot().isRemoteUser(event.state_key)) {
+            // This might be a kick or ban.
+            log.info(`Forwarding remote membership for ${event.state_key} in ${chatName}`);
+            this.purple.gateway.sendMatrixMembership(chatName, event, room);
+            return;
+        }
         const existingMembership = room.membership.find((ev) => ev.stateKey === event.state_key);
         if (existingMembership) {
             if (existingMembership.membership === event.content.membership) {
