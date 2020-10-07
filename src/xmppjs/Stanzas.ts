@@ -220,7 +220,9 @@ export class StzaMessage extends StzaBase {
                 this.attachments = (idOrMsg.opts.attachments || []).map((a) => a.uri);
             }
             this.id = idOrMsg.id;
-            this.replacesId = idOrMsg.original_message;
+            if (idOrMsg.original_message) {
+                this.replacesId = idOrMsg.original_message;
+            }
         } else if (idOrMsg) {
             this.id = idOrMsg as string;
         }

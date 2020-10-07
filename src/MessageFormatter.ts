@@ -27,7 +27,7 @@ export class MessageFormatter {
 
     public static matrixEventToBody(event: MatrixMessageEvent, config: IConfigBridge): IBasicProtocolMessage {
         let content = event.content;
-        let original_message = event.content["m.relates_to"]?.event_id;
+        const originalMessage = event.content["m.relates_to"]?.event_id;
         const formatted: {type: string, body: string}[] = [];
         if (event.content["m.relates_to"]?.rel_type === "m.replace" && event.content["m.new_content"]) {
             // This is an edit!
@@ -59,7 +59,11 @@ export class MessageFormatter {
                 },
             };
         }
-        return {body: content.body, formatted, id: event.event_id, original_message};
+        const newMsg: IBasicProtocolMessage = {body: content.body, formatted, id: event.event_id};
+        if (originalMessage) {
+            newMsg.original_message = originalMessage;
+        }
+        return newMsg;
     }
 
     public static async messageToMatrixEvent(msg: IBasicProtocolMessage, protocol: BifrostProtocol, intent?: any):
