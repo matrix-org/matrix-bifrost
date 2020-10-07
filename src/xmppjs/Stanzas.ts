@@ -1,7 +1,7 @@
 import uuid from "uuid/v4";
 import he from "he";
 import { IBasicProtocolMessage } from "../MessageFormatter";
-import { XMPPStatusCode } from "./XMPPConstants";
+import { XMPPFeatures, XMPPStatusCode } from "./XMPPConstants";
 
 export interface IStza {
     type: string;
