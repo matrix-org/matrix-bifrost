@@ -1,5 +1,5 @@
-import { Bridge, RemoteUser, MatrixUser, Request, WeakEvent, RoomBridgeStoreEntry } from "matrix-appservice-bridge";
-import { IEventRequestData } from "./MatrixTypes";
+import { Bridge, RemoteUser, MatrixUser, Request, WeakEvent, RoomBridgeStoreEntry, UserMembership } from "matrix-appservice-bridge";
+import { MatrixMembershipEvent, MatrixMessageEvent } from "./MatrixTypes";
 import { MROOM_TYPE_UADMIN, MROOM_TYPE_IM, MROOM_TYPE_GROUP,
     IRemoteUserAdminData } from "./store/Types";
 import { BifrostProtocol } from "./bifrost/Protocol";
@@ -119,12 +119,18 @@ export class MatrixEventHandler {
             data: {},
         });
 
-        if (event.type === "m.room.member" && event.content.membership === "join") {
+        let membershipEvent: MatrixMembershipEvent|undefined;
+
+        if (event.type === "m.room.member" && event.state_key?.length && typeof event.content.membership === "string") {
+            membershipEvent = event as MatrixMembershipEvent;
+        }
+
+        if (membershipEvent && membershipEvent.content.membership === "join") {
             this.deduplicator.waitForJoinResolve(event.room_id, event.sender);
         }
 
         const roomType: string|null = ctx.matrix ? ctx.matrix.get("type") : null;
-        const newInvite = !roomType && event.type === "m.room.member" && event.content.membership === "invite";
+        const newInvite = !roomType && membershipEvent?.content.membership === "invite";
         log.debug("Got event (id, type, sender, state_key, roomtype):", event.event_id, event.type, event.sender, event.state_key, roomType);
         const bridgeBot = this.bridge.getBot();
         const botUserId = bridgeBot.getUserId();
@@ -204,12 +210,13 @@ export class MatrixEventHandler {
             return;
         }
 
-        if (event.type === "m.room.member" && roomType === MROOM_TYPE_GROUP) {
+        if (membershipEvent && roomType === MROOM_TYPE_GROUP) {
             if (this.bridge.getBot().isRemoteUser(event.sender)) {
                 return; // Don't really care about remote users
             }
             if (["join", "leave"].includes(event.content.membership as string)) {
-                await this.handleJoinLeaveGroup(ctx, event);
+                await this.handleJoinLeaveGroup(ctx, membershipEvent);
+                return;
             }
         }
 
@@ -234,7 +241,7 @@ export class MatrixEventHandler {
     }
 
     /* NOTE: Command handling should really be it's own class, but I am cutting corners.*/
-    private async handleCommand(args: string[], event: IEventRequestData) {
+    private async handleCommand(args: string[], event: WeakEvent) {
         if (!this.bridge) {
             throw Error('Bridge is not defined');
         }
@@ -343,7 +350,7 @@ return `- ${account.protocol.name} (${username}) [Enabled=${account.isEnabled}] 
         }
     }
 
-    private async handlePlumbingCommand(args: string[], event: IEventRequestData) {
+    private async handlePlumbingCommand(args: string[], event: WeakEvent) {
         if (!this.bridge) {
             throw Error('Bridge is not defined');
         }
@@ -425,7 +432,7 @@ return `- ${account.protocol.name} (${username}) [Enabled=${account.isEnabled}] 
         }
     }
 
-    private async handleInviteForBot(event: IEventRequestData) {
+    private async handleInviteForBot(event: WeakEvent) {
         if (!this.bridge) {
             throw Error('Bridge is not defined');
         }
@@ -464,7 +471,7 @@ Say \`help\` for more commands.
         });*/
     }
 
-    private async handleNewAccount(nameOrId: string, args: string[], event: IEventRequestData) {
+    private async handleNewAccount(nameOrId: string, args: string[], event: WeakEvent) {
         // TODO: Check to see if the user has an account matching this already.
         const protocol = this.purple.findProtocol(nameOrId);
         if (protocol === undefined) {
@@ -488,7 +495,7 @@ Say \`help\` for more commands.
         });
     }
 
-    private async handleAddExistingAccount(protocolId: string, name: string, event: IEventRequestData) {
+    private async handleAddExistingAccount(protocolId: string, name: string, event: WeakEvent) {
         // TODO: Check to see if the user has an account matching this already.
         if (protocolId === undefined) {
             throw Error("You need to specify a protocol");
@@ -522,7 +529,7 @@ Say \`help\` for more commands.
         acct.setEnabled(enable);
     }
 
-    private async handleImMessage(context: RoomBridgeStoreEntry, event: IEventRequestData) {
+    private async handleImMessage(context: RoomBridgeStoreEntry, event: WeakEvent) {
         log.info("Handling IM message");
             if (!context.remote) {
             throw Error('Cannot handle message, remote or matrix not defined');
@@ -537,11 +544,11 @@ Say \`help\` for more commands.
         }
         const recipient: string = context.remote.get("recipient");
         log.info(`Sending IM to ${recipient}`);
-        const msg = MessageFormatter.matrixEventToBody(event, this.config.bridge);
+        const msg = MessageFormatter.matrixEventToBody(event as MatrixMessageEvent, this.config.bridge);
         acct.sendIM(recipient, msg);
     }
 
-    private async handleGroupMessage(context: RoomBridgeStoreEntry, event: IEventRequestData) {
+    private async handleGroupMessage(context: RoomBridgeStoreEntry, event: WeakEvent) {
         if (!context.remote || !context.matrix) {
             throw Error('Cannot handle message, remote or matrix not defined');
         }
@@ -553,7 +560,7 @@ Say \`help\` for more commands.
         const isGateway: boolean = context.remote.get("gateway");
         const name: string = context.remote.get("room_name");
         if (isGateway) {
-            const msg = MessageFormatter.matrixEventToBody(event, this.config.bridge);
+            const msg = MessageFormatter.matrixEventToBody(event as MatrixMessageEvent, this.config.bridge);
             this.gatewayHandler.sendMatrixMessage(name, event.sender, msg, context);
             return;
         }
@@ -569,7 +576,7 @@ Say \`help\` for more commands.
                 await this.joinOrDefer(acct, name, props);
             }
             const roomName: string = context.remote.get("room_name");
-            const msg = MessageFormatter.matrixEventToBody(event, this.config.bridge);
+            const msg = MessageFormatter.matrixEventToBody(event as MatrixMessageEvent, this.config.bridge);
             let nick = "";
             // XXX: Gnarly way of trying to determine who we are.
             try {
@@ -600,25 +607,25 @@ Say \`help\` for more commands.
         }
     }
 
-    private async handleJoinLeaveGroup(context: RoomBridgeStoreEntry, event: IEventRequestData) {
+    private async handleJoinLeaveGroup(context: RoomBridgeStoreEntry, event: MatrixMembershipEvent) {
         if (!context.remote) {
             throw Error('No remote context for room');
         }
         if (!this.bridge) {
             throw Error('bridge is not defined yet')
         }
-        // XXX: We are assuming here that the previous state was invite.
-        const membership = event.content.membership;
+        const membership: string = event.content.membership as string;
+        if (!event.state_key || !membership) {
+            return;
+        }
         log.info(`Handling group ${event.sender} ${membership}`);
         let acct: IBifrostAccount;
         const isGateway: boolean = context.remote.get("gateway");
         const name: string = context.remote.get("room_name");
         const roomProtocol: string = context.remote.get("protocol_id");
         if (isGateway) {
-            const displayname = event.content.displayname ||
-                (await this.bridge.getIntent().getProfileInfo(event.sender)).displayname;
-            this.gatewayHandler.sendMatrixMembership(
-                name, event.sender, displayname, membership, context,
+            await this.gatewayHandler.sendMatrixMembership(
+                name, context, event,
             );
             return;
         }
@@ -648,7 +655,7 @@ Say \`help\` for more commands.
         }
     }
 
-    private async handleStateEv(context: RoomBridgeStoreEntry, event: IEventRequestData) {
+    private async handleStateEv(context: RoomBridgeStoreEntry, event: WeakEvent) {
         if (!context.remote) {
             throw Error('No remote context for room');
         }
@@ -664,7 +671,7 @@ Say \`help\` for more commands.
         // XXX: Support state changes for non-gateways
     }
 
-    private async handleJoin(args: string[], event: IEventRequestData) {
+    private async handleJoin(args: string[], event: WeakEvent) {
         if (!this.bridge) {
             throw Error('Cannot handle handleJoin, bridge not defined');
         }

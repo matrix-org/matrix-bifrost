@@ -18,7 +18,7 @@ import { ProtoHacks } from "./ProtoHacks";
 import { IStore } from "./store/Store";
 import { Deduplicator } from "./Deduplicator";
 import { Config } from "./Config";
-import * as entityDecode from "parse-entities";
+import entityDecode from "parse-entities";
 import { MessageFormatter } from "./MessageFormatter";
 const log = Logging.get("MatrixRoomHandler");
 
@@ -83,6 +83,7 @@ export class MatrixRoomHandler {
                 storeUser.mxId,
                 this.purple.getProtocol(storeUser.protocol_id)!,
                 storeUser.remoteId,
+                storeUser.data,
             );
         });
         this.remoteEventIdMapping = new Map();

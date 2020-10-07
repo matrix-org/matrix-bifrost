@@ -50,7 +50,14 @@ class Program {
           },
           registrationPath: "bifrost-registration.yaml",
           generateRegistration: this.generateRegistration,
-          run: this.runBridge.bind(this),
+          run: async (port: number, config: any) => {
+                try {
+                    await this.runBridge(port, config);
+                } catch (ex) {
+                    log.error("Failed to start:", ex);
+                    process.exit(1);
+                }
+          }
         });
         this.cfg = new Config();
         this.deduplicator = new Deduplicator();
@@ -81,6 +88,7 @@ class Program {
     }
 
     private async waitForHomeserver() {
+        log.info("Checking if homeserver is up");
         // Wait for the homeserver to start before progressing with the bridge.
         const url = `${this.config.bridge.homeserverUrl}/_matrix/client/versions`;
         while (true) {
@@ -96,6 +104,7 @@ class Program {
     }
 
     private async registerBot() {
+        log.info("Ensuring bot is registered");
         if (!this.bridge) {
             throw Error('registerBot called without first instantiating bridge');
         }
@@ -172,7 +181,7 @@ class Program {
           registration: this.cli.getRegistrationFilePath(),
           ...storeParams,
         });
-        log.info("Starting purple bridge on port", port);
+        log.info("Starting appservice listener on port", port);
         await this.bridge.run(port, this.cfg);
         if (this.cfg.purple.backend === "node-purple") {
             log.info("Selecting node-purple as a backend");
@@ -190,21 +199,17 @@ class Program {
             Metrics.init(this.bridge);
         }
 
-        try {
-            this.store = await initiateStore(this.config.datastore, this.bridge);
-            const ignoreIntegrity = process.env.BIFROST_INTEGRITY_WRITE;
-            await this.store.integrityCheck(
-                ignoreIntegrity === undefined || ignoreIntegrity !== "false");
-            if (checkOnly) {
-                log.warn("BIFROST_CHECK_ONLY is set, exiting");
-                process.exit(0);
-            }
-            await this.waitForHomeserver();
-            await this.registerBot();
-        } catch (ex) {
-            log.error("Encountered an error when starting:", ex);
-            process.exit(1);
+        this.store = await initiateStore(this.config.datastore, this.bridge);
+        const ignoreIntegrity = process.env.BIFROST_INTEGRITY_WRITE;
+        await this.store.integrityCheck(
+            ignoreIntegrity === undefined || ignoreIntegrity !== "false");
+        if (checkOnly) {
+            log.warn("BIFROST_CHECK_ONLY is set, exiting");
+            process.exit(0);
         }
+        await this.waitForHomeserver();
+        await this.registerBot();
+
         this.profileSync = new ProfileSync(this.bridge, this.cfg, this.store);
         this.roomHandler = new MatrixRoomHandler(
             this.purple!, this.profileSync, this.store, this.cfg, this.deduplicator,

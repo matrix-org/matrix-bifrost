@@ -22,14 +22,13 @@ function createGateway(config?: IConfigBridge) {
     } as any, config), mockXmpp};
 }
 
-function createMember(stateKey: string, displayname?: string, membership: string = "join") {
+function createMember(stateKey: string, displayname?: string, membership: string = "join", sender?: string) {
     return {
-        state_key: stateKey,
+        stateKey,
         isRemote: stateKey.startsWith("@_xmpp_"),
-        content: {
-            displayname,
-            membership,
-        },
+        displayname,
+        membership,
+        sender: sender || stateKey,
     };
 }
 

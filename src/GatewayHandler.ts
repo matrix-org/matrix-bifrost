@@ -1,12 +1,13 @@
 import { IGatewayJoin, IGatewayRoomQuery, IGatewayPublicRoomsQuery, IChatJoinProperties } from "./bifrost/Events";
 import { IBifrostInstance } from "./bifrost/Instance";
-import { Bridge, Logging, Intent, RoomBridgeStoreEntry } from "matrix-appservice-bridge";
+import { Bridge, Logging, Intent, RoomBridgeStoreEntry, WeakEvent } from "matrix-appservice-bridge";
 import { Config } from "./Config";
 import { IStore } from "./store/Store";
 import { MROOM_TYPE_GROUP, IRemoteGroupData } from "./store/Types";
 import { IBasicProtocolMessage } from "./MessageFormatter";
 import { ProfileSync } from "./ProfileSync";
 import { IGatewayRoom } from "./bifrost/Gateway";
+import { MatrixMembershipEvent } from "./MatrixTypes";
 
 const log = Logging.get("GatewayHandler");
 
@@ -59,9 +60,15 @@ export class GatewayHandler {
         const nameEv = state.find((e) => e.type === "m.room.name");
         const topicEv = state.find((e) => e.type === "m.room.topic");
         const bot = this.bridge.getBot();
-        const membership = state.filter((e) => e.type === "m.room.member").map((e) => {
-            return { isRemote: bot.isRemoteUser(e.sender), ...e };
-        });
+        const membership = state.filter((e) => e.type === "m.room.member").map((e: WeakEvent) => (
+            {
+                isRemote: bot.isRemoteUser(e.sender),
+                stateKey: e.state_key,
+                displayname: e.content.displayname,
+                sender: e.sender,
+                membership: e.content.membership,
+            }
+        ))
         room = {
             name: nameEv ? nameEv.content.name : "",
             topic: topicEv ? topicEv.content.topic : "",
@@ -109,7 +116,7 @@ export class GatewayHandler {
     }
 
     public async sendMatrixMembership(
-        chatName: string, sender: string, displayname: string, membership: string, context: RoomBridgeStoreEntry,
+        chatName: string, context: RoomBridgeStoreEntry, event: MatrixMembershipEvent,
     ) {
         if (!this.purple.gateway) {
             return;
@@ -118,26 +125,32 @@ export class GatewayHandler {
             return;
         }
         const room = await this.getVirtualRoom(context.matrix.getId(), this.bridge.getIntent());
-        const existingMembership = room.membership.find((ev) => ev.sender === sender);
+        if (this.bridge.getBot().isRemoteUser(event.state_key)) {
+            // This might be a kick or ban.
+            log.info(`Forwarding remote membership for ${event.state_key} in ${chatName}`);
+            this.purple.gateway.sendMatrixMembership(chatName, event, room);
+            return;
+        }
+        const existingMembership = room.membership.find((ev) => ev.stateKey === event.state_key);
         if (existingMembership) {
-            if (existingMembership.membership === membership) {
+            if (existingMembership.membership === event.content.membership) {
+                // No-op
                 return;
-            } else {
-                existingMembership.membership = membership;
-                existingMembership.content.displayname = displayname;
             }
+            existingMembership.membership = event.content.membership;
+            existingMembership.displayname = event.content.displayname;
         } else {
             room.membership.push({
-                membership,
-                sender,
-                content: {
-                    displayname,
-                },
+                membership: event.content.membership,
+                sender: event.sender,
+                displayname: event.content.displayname,
+                stateKey: event.state_key,
+                isRemote: false,
             });
             this.roomIdCache.set(context.matrix.getId(), room);
         }
-        log.info(`Updating membership for ${sender} in ${chatName}`);
-        this.purple.gateway.sendMatrixMembership(chatName, sender, displayname, membership, room);
+        log.info(`Updating membership for ${event.state_key} in ${chatName}`);
+        this.purple.gateway.sendMatrixMembership(chatName, event, room);
     }
 
     public async rejoinRemoteUser(mxid: string, roomid: string) {
@@ -152,7 +165,7 @@ export class GatewayHandler {
             log.warn("Cannot reconnect a user without a remote user stored");
             return;
         }
-        this.purple.gateway.reconnectRemoteUser(user, room);
+        this.purple.gateway.reconnectRemoteUser(user, mxid, room);
     }
 
     private async handleRoomJoin(data: IGatewayJoin) {
@@ -202,15 +215,11 @@ export class GatewayHandler {
     private async handleRoomQuery(ev: IGatewayRoomQuery) {
         log.info(`Trying to discover ${ev.roomAlias}`);
         try {
-            // XXX: We should check to see if the room exists in our cache.
-            // We have to join the room, as doing a lookup would not prompt a bridge like freenode
-            // to intervene.
-            const res = await this.bridge.getIntent().getClient().joinRoom(ev.roomAlias);
-            log.info(`Found ${res.roomId}`);
+            const res = await this.bridge.getIntent().getClient().resolveRoomAlias(ev.roomAlias);
+            log.info(`Found ${res.room_id}`);
             if (ev.onlyCheck) {
-                ev.result(null, res.roomId);
+                ev.result(null, res.room_id);
             }
-            this.bridge.getIntent().leave(res.roomId);
         } catch (ex) {
             log.warn("Room not found:", ex);
             ev.result(Error("Room not found"));

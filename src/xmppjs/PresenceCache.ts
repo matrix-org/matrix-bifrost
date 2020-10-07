@@ -1,9 +1,6 @@
-import * as xml from "@xmpp/xml";
-import * as jid from "@xmpp/jid";
-import { Logging } from "matrix-appservice-bridge";
+import  xml from "@xmpp/xml";
+import jid from "@xmpp/jid";
 import { XMPPStatusCode } from "./StatusCodes";
-
-const log = Logging.get("PresenceCache");
 
 export interface IPresenceDelta {
     status?: IPresenceStatus;

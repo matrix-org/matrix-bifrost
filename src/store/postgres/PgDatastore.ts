@@ -272,14 +272,18 @@ export class PgDataStore implements IStore {
     }
 
     public async storeGhost(
-        userId: string, protocol: BifrostProtocol, username: string,
+        userId: string, protocol: BifrostProtocol, username: string, extraData?: any,
     ): Promise<{remote: BifrostRemoteUser, matrix: MatrixUser}> {
         const acctProps = {
             user_id: userId,
             sender_name: username,
             protocol_id: protocol.id,
+            extra_data: "{}",
         // tslint:disable-next-line: no-any
         } as any;
+        if (extraData) {
+            acctProps.extra_data = JSON.stringify(extraData) ;
+        }
         const statement = PgDataStore.BuildUpsertStatement("remote_users", "(user_id)", Object.keys(acctProps));
         await this.pgPool.query(statement, Object.values(acctProps));
         return {
@@ -459,6 +463,7 @@ export class PgDataStore implements IStore {
     }
 
     private async getSchemaVersion(): Promise<number> {
+        log.debug("Fetching schema version");
         try {
             const { rows } = await this.pgPool.query("SELECT version FROM SCHEMA");
             return rows[0].version;

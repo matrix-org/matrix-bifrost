@@ -9,6 +9,7 @@ export interface IGatewayMemberXmpp extends IGatewayMember {
     type: "xmpp";
     realJid: JID;
     devices: Set<string>;
+    matrixId: string;
 }
 
 export interface IGatewayMemberMatrix extends IGatewayMember {
@@ -34,16 +35,26 @@ export class GatewayMUCMembership {
         return this.getMatrixMembers(chatName).find((user) => user.matrixId === matrixId);
     }
 
-    public getXmppMemberByRealJid(chatName: string, realJid: string): IGatewayMemberXmpp|undefined {
+    public getXmppMemberByRealJid(chatName: string, realJid: string|JID): IGatewayMemberXmpp|undefined {
         // Strip the resource.
-        const j = jid(realJid);
+        const j = typeof(realJid) === "string" ? jid(realJid) : realJid;
         const strippedJid = `${j.local}@${j.domain}`;
         const member = this.getXmppMembers(chatName).find((user) => user.realJid!.toString() === strippedJid);
         return member;
     }
 
+    public getXmppMemberByMatrixId(chatName: string, matrixId: string): IGatewayMemberXmpp|undefined {
+        // Strip the resource.
+        return this.getXmppMembers(chatName).find((user) => user.matrixId === matrixId);
+    }
+
+
     public getXmppMembers(chatName: string): IGatewayMemberXmpp[] {
         return this.getMembers(chatName).filter((s) => s.type === "xmpp") as IGatewayMemberXmpp[];
+    }
+
+    public getXmppMembersDevices(chatName: string): Set<string> {
+        return new Set(this.getXmppMembers(chatName).map((u) => [...u.devices]).flat());
     }
 
     public getMatrixMembers(chatName: string): IGatewayMemberMatrix[] {
@@ -70,8 +81,17 @@ export class GatewayMUCMembership {
         return true;
     }
 
-    public addXmppMember(chatName: string, realJid: JID, anonymousJid: JID): boolean {
-        const member = this.getXmppMemberByRealJid(chatName, realJid.toString());
+    /**
+     * Add an XMPP member to a MUC chat.
+     * @param chatName The MUC name.
+     * @param realJid The real JID for the XMPP user.
+     * @param anonymousJid The anonymous JID for the the user in the context of the MUC.
+     * @param matrixId The assigned Matrix UserID for the user.
+     * @returns True if this is the first device for a user, false otherwise.
+     */
+    public addXmppMember(chatName: string, realJid: JID, anonymousJid: JID, matrixId: string): boolean {
+        const strippedDevice = jid(`${realJid.local}@${realJid.domain}`);
+        const member = this.getXmppMemberByRealJid(chatName, strippedDevice.toString());
         if (member) {
             member.devices.add(realJid.toString());
             return false;
@@ -80,8 +100,9 @@ export class GatewayMUCMembership {
         set.add({
             type: "xmpp",
             anonymousJid,
-            realJid: jid(`${realJid.local}@${realJid.domain}`),
+            realJid: strippedDevice,
             devices: new Set([realJid.toString()]),
+            matrixId,
         } as IGatewayMemberXmpp);
         this.members.set(chatName, set);
         return true;
@@ -102,16 +123,19 @@ export class GatewayMUCMembership {
      * @param realJid The real JID of the user
      * @returns True if this is the last device for this member, false otherwise.
      */
-    public removeXmppMember(chatName: string, realJid: string): boolean {
+    public removeXmppMember(chatName: string, realJid: string|JID): boolean {
+        realJid = typeof(realJid) === "string" ? jid(realJid) : realJid;
         const member = this.getXmppMemberByRealJid(chatName, realJid);
         if (!member) {
             return false;
         }
-        member.devices.delete(realJid.toString());
-        if (member.devices.size) {
-            return false;
+        if (realJid.resource) {
+            member.devices.delete(realJid.toString());
+            if (member.devices.size) {
+                return false;
+            }
         }
-        const set = this.members.get(chatName)!;
-        return set.delete(member);
+        const set = this.members.get(chatName);
+        return set ? set.delete(member) : true;
     }
 }

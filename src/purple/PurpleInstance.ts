@@ -8,7 +8,6 @@ import * as path from "path";
 import { IConfigPurple } from "../Config";
 import { IUserInfo, IConversationEvent, IEventBody } from "../bifrost/Events";
 import { BifrostProtocol } from "../bifrost/Protocol";
-import { IEventRequestData } from "../MatrixTypes";
 const log = Logging.get("PurpleInstance");
 
 export class PurpleInstance extends EventEmitter implements IBifrostInstance {
@@ -101,11 +100,11 @@ export class PurpleInstance extends EventEmitter implements IBifrostInstance {
         throw Error("Not implemented yet");
     }
 
-    public pushEvent(ev: IEventRequestData) {
+    public pushEvent() {
         // This is for gateways, and we aren't a gateway yet.
     }
 
-    public eventAck(eventName: string, data: IEventBody) {
+    public eventAck() {
         // This is for handling stuff after an event has been sent.
     }
 

@@ -1,7 +1,6 @@
 import { IChatJoinProperties } from "./bifrost/Events";
-import { Intent } from "matrix-appservice-bridge";
+import { Intent, WeakEvent } from "matrix-appservice-bridge";
 import * as crypto from "crypto";
-import { IEventRequestData } from "./MatrixTypes";
 
 export class Util {
 
@@ -51,14 +50,14 @@ export class Util {
     }
 
     public static async getMessagesBeforeJoin(
-        intent: Intent, roomId: string): Promise<IEventRequestData[]> {
+        intent: Intent, roomId: string): Promise<WeakEvent[]> {
         const client = intent.getClient();
         // Because the JS SDK expects this to be set :/
         client._clientOpts = {
             lazyLoadMembers: false,
         };
         const res = await client._createMessagesRequest(roomId, undefined, undefined, "b");
-        const msgs: IEventRequestData[] = [];
+        const msgs: WeakEvent[] = [];
         for (const msg of res.chunk.reverse()) {
             if (msg.type === "m.room.member" && msg.sender === client.getUserId()) {
                 break;

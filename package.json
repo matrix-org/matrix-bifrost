@@ -9,9 +9,9 @@
     "lint": "tslint --project tsconfig.json --format stylish",
     "start": "node build/src/Program.js -c config.yaml",
     "genreg": "node build/src/Program.js -r -c config.yaml",
-    "test": "npm run build && mocha --require source-map-support/register --recursive build/test",
+    "test": "mocha -r ts-node/register test/test.ts test/*.ts test/**/*.ts",
     "changelog": "scripts/towncrier.sh",
-    "coverage": "nyc mocha --recursive test/*.ts"
+    "coverage": "nyc mocha -r ts-node/register test/test.ts test/*.ts test/**/*.ts"
   },
   "repository": {
     "type": "git",
@@ -35,7 +35,7 @@
     "marked": "^1.2.0",
     "matrix-appservice-bridge": "^2.1.0",
     "parse-entities": "^1.2.0",
-    "pg": "7.12.1",
+    "pg": "8.3.3",
     "prom-client": "^11.2.1",
     "request": "^2.88.0",
     "request-promise-native": "^1.0.5",
