@@ -130,9 +130,7 @@ export class XmppJsGateway implements IGateway {
 
     public sendMatrixMessage(
         chatName: string, sender: string, msg: IBasicProtocolMessage, room: IGatewayRoom) {
-        if (!this.members.hasMembershipForRoom(chatName)) {
-            this.updateMatrixMemberListForRoom(chatName, room);
-        }
+        this.updateMatrixMemberListForRoom(chatName, room);
         log.info(`Sending ${msg.id} to ${chatName}`);
         const from = this.members.getMatrixMemberByMatrixId(chatName, sender);
         if (!from) {
@@ -521,6 +519,9 @@ export class XmppJsGateway implements IGateway {
     }
 
     private updateMatrixMemberListForRoom(chatName: string, room: IGatewayRoom) {
+        if (this.members.hasMembershipForRoom(chatName)) {
+            return;
+        }
         const joined = room.membership.filter((member) => member.membership === "join" && !member.isRemote);
         joined.forEach((member) => {
             this.members.addMatrixMember(
