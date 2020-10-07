@@ -6,7 +6,7 @@ import { MockXJSInstance } from "../mocks/XJSInstance";
 import { IGatewayRoom } from "../../src/bifrost/Gateway";
 import { x } from "@xmpp/xml";
 import { StzaBase, StzaPresenceItem } from "../../src/xmppjs/Stanzas";
-import { XMPPStatusCode } from "../../src/xmppjs/StatusCodes";
+import { XMPPStatusCode } from "../../src/xmppjs/XMPPConstants";
 
 const expect = Chai.expect;
 

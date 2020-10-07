@@ -13,7 +13,7 @@ import { StzaPresenceItem, StzaMessage, StzaMessageSubject,
     StzaPresenceError, StzaBase, StzaPresenceKick, PresenceAffiliation, PresenceRole } from "./Stanzas";
 import { IGateway } from "../bifrost/Gateway";
 import { GatewayMUCMembership, IGatewayMemberXmpp, IGatewayMemberMatrix } from "./GatewayMUCMembership";
-import { XMPPStatusCode } from "./StatusCodes";
+import { XMPPStatusCode } from "./XMPPConstants";
 import { AutoRegistration } from "../AutoRegistration";
 import { GatewayStateResolve } from "./GatewayStateResolve";
 import { MatrixMembershipEvent } from "../MatrixTypes";

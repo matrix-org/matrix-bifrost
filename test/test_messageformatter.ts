@@ -310,11 +310,11 @@ body: `<html xmlns='http://jabber.org/protocol/xhtml-im'>
                 "formatted_body": undefined,
                 "m.new_content": {
                   "body": "This is an edited message",
-                  "m.relates_to": {
-                    event_id: "This is the original message",
-                    rel_type: "m.replace",
-                  },
                   "msgtype": "m.text",
+                },
+                "m.relates_to": {
+                  event_id: "This is the original message",
+                  rel_type: "m.replace",
                 },
             });
         });

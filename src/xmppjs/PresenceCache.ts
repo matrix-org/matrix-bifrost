@@ -1,6 +1,6 @@
 import  xml from "@xmpp/xml";
 import jid from "@xmpp/jid";
-import { XMPPStatusCode } from "./StatusCodes";
+import { XMPPStatusCode } from "./XMPPConstants";
 
 export interface IPresenceDelta {
     status?: IPresenceStatus;

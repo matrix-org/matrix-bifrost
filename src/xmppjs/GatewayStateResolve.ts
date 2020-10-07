@@ -3,7 +3,7 @@ import { Logging } from "matrix-appservice-bridge";
 import { MatrixMembershipEvent } from "../MatrixTypes";
 import { GatewayMUCMembership } from "./GatewayMUCMembership";
 import { IStza, PresenceAffiliation, PresenceRole, StzaBase, StzaPresenceItem } from "./Stanzas";
-import { XMPPStatusCode } from "./StatusCodes";
+import { XMPPStatusCode } from "./XMPPConstants";
 
 const log = Logging.get("GatewayStateResolve");
 

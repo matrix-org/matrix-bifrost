@@ -8,6 +8,7 @@ import { IGatewayRoomQuery, IGatewayPublicRoomsQuery } from "../bifrost/Events";
 import { StzaIqDiscoInfo, StzaIqPing, StzaIqDiscoItems, StzaIqSearchFields, SztaIqError, StzaIqPingError } from "./Stanzas";
 import { IPublicRoomsResponse } from "../MatrixTypes";
 import { IConfigBridge } from "../Config";
+import { XMPPFeatures } from "./XMPPConstants";
 
 const log = Logging.get("ServiceHandler");
 
@@ -31,11 +32,11 @@ export class ServiceHandler {
         this.discoInfo = new StzaIqDiscoInfo("", "", "");
         this.discoInfo.identity.add({category: "conference", type: "text", name: "Bifrost Matrix Gateway"});
         this.discoInfo.identity.add({category: "gateway", type: "matrix", name: "Bifrost Matrix Gateway"});
-        this.discoInfo.feature.add("http://jabber.org/protocol/disco#info");
-        this.discoInfo.feature.add("http://jabber.org/protocol/disco#items");
-        this.discoInfo.feature.add("http://jabber.org/protocol/muc");
-        this.discoInfo.feature.add("jabber:iq:version");
-        this.discoInfo.feature.add("jabber:iq:search");
+        this.discoInfo.feature.add(XMPPFeatures.DiscoInfo);
+        this.discoInfo.feature.add(XMPPFeatures.DiscoItems);
+        this.discoInfo.feature.add(XMPPFeatures.Muc);
+        this.discoInfo.feature.add(XMPPFeatures.IqVersion);
+        this.discoInfo.feature.add(XMPPFeatures.IqSearch);
     }
 
     public parseAliasFromJID(to: JID): string|null {
@@ -266,8 +267,9 @@ export class ServiceHandler {
             }
             log.info(`Response for alias request ${toStr} (${alias}) -> ${roomId}`);
             const discoInfo = new StzaIqDiscoInfo(toStr, from, id);
-            discoInfo.feature.add("http://jabber.org/protocol/disco#info");
-            discoInfo.feature.add("http://jabber.org/protocol/muc");
+            discoInfo.feature.add(XMPPFeatures.DiscoInfo);
+            discoInfo.feature.add(XMPPFeatures.Muc);
+            discoInfo.feature.add(XMPPFeatures.MessageCorrection);
             discoInfo.identity.add({
                 category: "conference",
                 name: alias,

@@ -83,12 +83,6 @@ export class MessageFormatter {
         if (msg.id) {
             matrixMsg.remote_id = msg.id;
         }
-        if (msg.original_message) {
-            matrixMsg["m.relates_to"] = {
-                event_id: msg.original_message,
-                rel_type: "m.replace",
-            };
-        }
         const hasAttachment = msg.opts && msg.opts.attachments && msg.opts.attachments.length;
         if (protocol.id === PRPL_XMPP) {
             if (matrixMsg.body.startsWith("<")) {
@@ -182,6 +176,10 @@ export class MessageFormatter {
         if (msg.original_message) {
             finalMsg = {
                 "m.new_content": matrixMsg,
+                "m.relates_to": {
+                    event_id: msg.original_message,
+                    rel_type: "m.replace",
+                },
                 "body": ` * ${matrixMsg.body}`,
                 "msgtype": matrixMsg.msgtype,
                 "formatted_body": matrixMsg.formatted_body ? ` * ${matrixMsg.formatted_body}` : undefined,
