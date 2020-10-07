@@ -130,14 +130,15 @@ export class XmppJsGateway implements IGateway {
 
     public sendMatrixMessage(
         chatName: string, sender: string, msg: IBasicProtocolMessage, room: IGatewayRoom) {
-        this.updateMatrixMemberListForRoom(chatName, room);
+        if (!this.members.hasMembershipForRoom(chatName)) {
+            this.updateMatrixMemberListForRoom(chatName, room);
+        }
         log.info(`Sending ${msg.id} to ${chatName}`);
         const from = this.members.getMatrixMemberByMatrixId(chatName, sender);
         if (!from) {
             log.error(`Cannot send ${msg.id}: No member cached.`);
             return;
         }
-        const users = this.members.getXmppMembers(chatName);
         this.xmpp.xmppAddSentMessage(msg.id!);
 
         // Ensure that the html portion is XHTMLIM
