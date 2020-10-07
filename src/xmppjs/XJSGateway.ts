@@ -202,12 +202,10 @@ export class XmppJsGateway implements IGateway {
     }
 
     public reflectXMPPStanza(chatName: string, stanza: StzaBase) {
-        const xmppMembers = this.members.getXmppMembers(chatName);
-        xmppMembers.forEach((xmppUser) => {
-            xmppUser.devices!.forEach((device) => {
-                stanza.to = device.toString();
-                this.xmpp.xmppSend(stanza);
-            });
+        const xmppDevices = [...this.members.getXmppMembersDevices(chatName)];
+        xmppDevices.forEach((device) => {
+            stanza.to = device;
+            this.xmpp.xmppSend(stanza);
         });
     }
 
@@ -243,9 +241,7 @@ export class XmppJsGateway implements IGateway {
             log.info(`Nothing to do for ${event.event_id}`);
             return;
         }
-        for (const stza of presenceEvents) {
-            await this.xmpp.xmppSend(stza);
-        }
+        await this.xmpp.xmppSendBulk(presenceEvents);
     }
 
     public sendStateChange(
