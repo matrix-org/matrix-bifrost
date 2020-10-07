@@ -24,7 +24,7 @@ function sendToAllDevices(presence: StzaPresenceItem, devices: Set<string>) {
 }
 
 export class GatewayStateResolve {
-    static async resolveMatrixStateToXMPP(chatName: string, members: GatewayMUCMembership, event: MatrixMembershipEvent): Promise<IStza[]> {
+    static resolveMatrixStateToXMPP(chatName: string, members: GatewayMUCMembership, event: MatrixMembershipEvent): IStza[] {
         const membership = event.content.membership;
         let stanzas: IStza[] = [];
         const allDevices = members.getXmppMembersDevices(chatName);
@@ -68,7 +68,7 @@ export class GatewayStateResolve {
                 // Reflect to all
             stanzas = sendToAllDevices(
                 new StzaPresenceItem(
-                    from,
+                    existingMember.anonymousJid.toString(),
                     "",
                     undefined,
                     PresenceAffiliation.Member,
