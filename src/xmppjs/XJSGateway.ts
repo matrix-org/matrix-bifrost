@@ -148,17 +148,15 @@ export class XmppJsGateway implements IGateway {
                 }
             });
         }
-        this.members.getXmppMembersDevices(chatName)
-        users.forEach((xmppUser) => {
-            xmppUser.devices!.forEach((device) => {
-                this.xmpp.xmppSend(new StzaMessage(
-                    from.anonymousJid.toString(),
-                    device.toString(),
-                    msg,
-                    "groupchat",
-                ));
-            });
-        });
+        const msgs = [...this.members.getXmppMembersDevices(chatName)].map((device) => 
+            new StzaMessage(
+                from.anonymousJid.toString(),
+                device,
+                msg,
+                "groupchat",
+            )
+        );
+        return this.xmpp.xmppSendBulk(msgs);
     }
 
     /**
