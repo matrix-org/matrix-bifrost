@@ -201,6 +201,7 @@ export class StzaMessage extends StzaBase {
     public body: string = "";
     public markable: boolean = true;
     public attachments: string[] = [];
+    public replacesId?: string;
     constructor(
         from: string,
         to: string,
@@ -219,6 +220,7 @@ export class StzaMessage extends StzaBase {
                 this.attachments = (idOrMsg.opts.attachments || []).map((a) => a.uri);
             }
             this.id = idOrMsg.id;
+            this.replacesId = idOrMsg.original_message;
         } else if (idOrMsg) {
             this.id = idOrMsg as string;
         }
@@ -240,8 +242,10 @@ export class StzaMessage extends StzaBase {
         }
         // XEP-0333
         const markable = this.markable ? "<markable xmlns='urn:xmpp:chat-markers:0'/>" : "";
+        // XEP-0308
+        const replaces = this.replacesId ? `<replace id='${this.replacesId}' xmlns='urn:xmpp:message-correct:0'/>` : "";
         return `<message from="${this.from}" to="${this.to}" id="${this.id}" ${type}>`
-             + `${this.html}<body>${he.encode(this.body)}</body>${attachments}${markable}</message>`;
+             + `${this.html}<body>${he.encode(this.body)}</body>${attachments}${markable}${replaces}</message>`;
     }
 }
 
