@@ -32,16 +32,21 @@ export interface MatrixMembershipEvent extends WeakEvent {
     state_key: string;
 }
 
-export interface MatrixMessageEvent extends WeakEvent {
-    content: {
-        body: string;
-        formatted_body?: string;
-        format?: string;
-        msgtype: string;
-        info?: {
-            mimetype?: string;
-            size?: number
-        };
-        url?: string;
+export interface IMatrixMsgContents {
+    msgtype: string;
+    body: string;
+    remote_id?: string;
+    info?: {mimetype: string, size: number};
+    "m.relates_to"?: {
+        "event_id": string,
+        rel_type: "m.replace",
     };
+    "m.new_content"?: IMatrixMsgContents;
+    formatted_body?: string;
+    format?: "org.matrix.custom.html";
+    [key: string]: any|undefined;
+}
+
+export interface MatrixMessageEvent extends WeakEvent {
+    content: IMatrixMsgContents;
 }

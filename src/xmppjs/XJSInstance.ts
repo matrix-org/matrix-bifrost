@@ -119,14 +119,26 @@ export class XmppJsInstance extends EventEmitter implements IBifrostInstance {
         return p;
     }
 
-    public xmppSend(xmlMsg: IStza): Promise<unknown> {
+    public xmppSendBulk(xmlMsgs: IStza[]): Promise<unknown> {
+        let xml = "";
+        for (const xmlMsg of xmlMsgs) {
+            xml += xmlMsg.xml;
+            Metrics.remoteCall(`xmpp.${xmlMsg.type}`);
+        }
+        return this.xmppSend(xml);
+    }
+
+    public xmppSend(xmlMsg: IStza|string): Promise<unknown> {
+        const xml = typeof(xmlMsg) === "string" ? xmlMsg : xmlMsg.xml;
         if (this.canWrite) {
-            return this.xmpp.write(xmlMsg.xml);
+            return this.xmpp.write(xml);
         }
         const p = new Promise((resolve) => {
-            this.bufferedMessages.push({xmlMsg: xmlMsg.xml, resolve});
+            this.bufferedMessages.push({xmlMsg: xml, resolve});
         });
-        Metrics.remoteCall(`xmpp.${xmlMsg.type}`);
+        if (typeof(xmlMsg) !== "string") {
+            Metrics.remoteCall(`xmpp.${xmlMsg.type}`);
+        }
         return p;
     }
 

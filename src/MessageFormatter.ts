@@ -4,23 +4,8 @@ import { Parser } from "htmlparser2";
 import { Logging, WeakEvent } from "matrix-appservice-bridge";
 import { IConfigBridge } from "./Config";
 import * as request from "request-promise-native";
-import { MatrixMessageEvent } from "./MatrixTypes";
+import { IMatrixMsgContents, MatrixMessageEvent } from "./MatrixTypes";
 const log = Logging.get("MessageFormatter");
-
-export interface IMatrixMsgContents {
-    msgtype: string;
-    body: string;
-    remote_id?: string;
-    info?: {mimetype: string, size: number};
-    "m.relates_to"?: {
-        "event_id": string,
-        rel_type: "m.replace",
-    };
-    "m.new_content"?: IMatrixMsgContents;
-    formatted_body?: string;
-    format?: "org.matrix.custom.html";
-    [key: string]: any|undefined;
-}
 
 export interface IBasicProtocolMessage {
     body: string;
@@ -41,36 +26,44 @@ export interface IMessageAttachment {
 export class MessageFormatter {
 
     public static matrixEventToBody(event: MatrixMessageEvent, config: IConfigBridge): IBasicProtocolMessage {
-        const body = event.content.body;
+        let content = event.content;
+        const originalMessage = event.content["m.relates_to"]?.event_id;
         const formatted: {type: string, body: string}[] = [];
-        if (event.content.formatted_body) {
+        if (event.content["m.relates_to"]?.rel_type === "m.replace" && event.content["m.new_content"]) {
+            // This is an edit!
+            content = event.content["m.new_content"];
+        }
+        if (content.formatted_body) {
             formatted.push({
-                body: event.content.formatted_body,
-                type: event.content.format === "org.matrix.custom.html" ? "html" : "unknown",
+                body: content.formatted_body,
+                type: content.format === "org.matrix.custom.html" ? "html" : "unknown",
             });
         }
-        if (event.content.msgtype === "m.emote") {
-            return {body: `/me ${body}`, formatted, id: event.event_id};
+        if (content.msgtype === "m.emote") {
+            return {body: `/me ${content.body}`, formatted, id: event.event_id};
         }
         if (["m.file", "m.image", "m.video"].includes(event.content.msgtype) && event.content.url) {
             const uriBits = event.content.url.substr("mxc://".length).split("/");
             const url = (config.mediaserverUrl ? config.mediaserverUrl : config.homeserverUrl).replace(/\/$/, "");
-            event.content.info = event.content.info || {};
             return {
-                body,
+                body: content.body,
                 id: event.event_id,
                 opts: {
                     attachments: [
                         {
                             uri: `${url}/_matrix/media/v1/download/${uriBits[0]}/${uriBits[1]}`,
-                            mimetype: event.content.info.mimetype,
-                            size: event.content.info.size,
+                            mimetype: event.content.info?.mimetype,
+                            size: event.content.info?.size,
                         },
                     ],
                 },
             };
         }
-        return {body, formatted, id: event.event_id};
+        const newMsg: IBasicProtocolMessage = {body: content.body, formatted, id: event.event_id};
+        if (originalMessage) {
+            newMsg.original_message = originalMessage;
+        }
+        return newMsg;
     }
 
     public static async messageToMatrixEvent(msg: IBasicProtocolMessage, protocol: BifrostProtocol, intent?: any):
