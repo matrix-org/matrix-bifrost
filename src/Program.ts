@@ -162,12 +162,12 @@ class Program {
             onAliasQuery: (alias, aliasLocalpart) => this.eventHandler!.onAliasQuery(alias, aliasLocalpart),
             onEvent: (r) => {
                 if (this.eventHandler === undefined) {return; }
-                const p = this.eventHandler.onEvent(r).catch((err) => {
+                this.eventHandler.onEvent(r).catch((err) => {
                     log.error("onEvent err", err);
-                }).catch(() => {
-                    Metrics.requestOutcome(false, r.getDuration(), "fail");
                 }).then(() => {
                     Metrics.requestOutcome(false, r.getDuration(), "success");
+                }).catch(() => {
+                    Metrics.requestOutcome(false, r.getDuration(), "fail");
                 });
             },
             onLog: (msg: string, error: boolean) => {
