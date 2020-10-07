@@ -24,10 +24,24 @@ const log = Logging.get("MatrixRoomHandler");
 
 const ACCOUNT_LOCK_MS = 1000;
 const EVENT_MAPPING_SIZE = 16384;
+const XEP0106_ESCAPING_TRANSFORMATIONS = {
+    '"': "\\22",
+    "&": "\\26",
+    "'": "\\27",
+    "/": "\\2f",
+    ":": "\\3a",
+    "<": "\\3c",
+    ">": "\\3e",
+    "@": "\\40",
+};
 
-/**
- * Handles creation and handling of rooms.
- */
+export function XEP0106ApplyEscapingTransformations(roomId: string): string {
+    return roomId
+      .split("")
+      .map(char => XEP0106_ESCAPING_TRANSFORMATIONS[char] || char)
+      .join("");
+}
+
 export class MatrixRoomHandler {
     private bridge?: Bridge;
     private accountRoomLock: Set<string>;
@@ -167,6 +181,8 @@ export class MatrixRoomHandler {
             log.info("User joined, can now send messages");
         }
         this.roomCreationLock.delete(remoteId);
+        roomId = XEP0106ApplyEscapingTransformations(roomId!);
+        
         return roomId!;
     }
 
@@ -232,6 +248,8 @@ export class MatrixRoomHandler {
                 throw Error("Room doesn't exist, refusing to make room");
             }
             log.info(`Found ${roomId} for ${alias}`);
+            roomId = XEP0106ApplyEscapingTransformations(roomId);
+
             return roomId;
         }
 
@@ -262,6 +280,8 @@ export class MatrixRoomHandler {
         this.roomCreationLock.set(remoteId, createPromise as Promise<any>);
         await createPromise;
         this.roomCreationLock.delete(remoteId);
+        roomId = XEP0106ApplyEscapingTransformations(roomId);
+
         return roomId;
     }
 
