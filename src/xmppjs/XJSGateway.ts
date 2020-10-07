@@ -178,6 +178,8 @@ export class XmppJsGateway implements IGateway {
             kick.statusCodes.add(XMPPStatusCode.SelfKickedTechnical);
             await this.xmpp.xmppSend(kick);
             return false;
+        } else if (!member) {
+            return false;
         }
         const preserveFrom = stanza.attrs.from;
         try {
@@ -537,6 +539,7 @@ export class XmppJsGateway implements IGateway {
                 member.stateKey,
             );
         });
+        log.info(`Updating membership for ${chatName} ${room.roomId} j:${joined.length} l:${left.length}`);
     }
 
     private remoteLeft(stanza: Element) {

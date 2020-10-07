@@ -56,7 +56,8 @@ export class GatewayHandler {
             return room;
         }
         log.debug(`Got state for ${roomId}`);
-        const state = await intent.roomState(roomId, true);
+        const state = await intent.roomState(roomId, false);
+        log.debug(`Got state for ${roomId}`);
         const nameEv = state.find((e) => e.type === "m.room.name");
         const topicEv = state.find((e) => e.type === "m.room.topic");
         const bot = this.bridge.getBot();
