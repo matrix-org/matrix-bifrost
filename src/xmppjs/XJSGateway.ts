@@ -302,7 +302,7 @@ export class XmppJsGateway implements IGateway {
         }
 
         // Ensure our membership is accurate.
-        this.updateMatrixMemberListForRoom(chatName, room);
+        this.updateMatrixMemberListForRoom(chatName, room, true); // HACK: Always update members for joiners
         const members = this.members.getMembers(chatName);
 
         // Check if the nick conflicts.
@@ -520,8 +520,8 @@ export class XmppJsGateway implements IGateway {
         };
     }
 
-    private updateMatrixMemberListForRoom(chatName: string, room: IGatewayRoom) {
-        if (this.members.hasMembershipForRoom(chatName)) {
+    private updateMatrixMemberListForRoom(chatName: string, room: IGatewayRoom, allowForJoin = false) {
+        if (!allowForJoin && this.members.getMatrixMembers(chatName)) {
             return;
         }
         const joined = room.membership.filter((member) => member.membership === "join" && !member.isRemote);
