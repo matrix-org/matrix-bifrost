@@ -269,6 +269,7 @@ export class ServiceHandler {
             const discoInfo = new StzaIqDiscoInfo(toStr, from, id);
             discoInfo.feature.add(XMPPFeatures.DiscoInfo);
             discoInfo.feature.add(XMPPFeatures.Muc);
+            discoInfo.feature.add(XMPPFeatures.MessageCorrection);
             discoInfo.identity.add({
                 category: "conference",
                 name: alias,
