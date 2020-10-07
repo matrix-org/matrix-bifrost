@@ -17,6 +17,8 @@ export interface IGatewayMemberMatrix extends IGatewayMember {
     matrixId: string;
 }
 
+const FLAT_SUPPORTED = [].flat !== undefined;
+
 /**
  * Handles storage of MUC membership for matrix and xmpp users.
  */
@@ -54,7 +56,11 @@ export class GatewayMUCMembership {
     }
 
     public getXmppMembersDevices(chatName: string): Set<string> {
-        return new Set(this.getXmppMembers(chatName).map((u) => [...u.devices]).flat());
+        if (FLAT_SUPPORTED) {
+            return new Set(this.getXmppMembers(chatName).map((u) => [...u.devices]).flat());
+        } else {
+            return new Set(this.getXmppMembers(chatName).map((u) => [...u.devices]).reduce((acc, val) => [ ...acc, ...val ], []));
+        }
     }
 
     public getMatrixMembers(chatName: string): IGatewayMemberMatrix[] {
