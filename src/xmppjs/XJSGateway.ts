@@ -148,7 +148,7 @@ export class XmppJsGateway implements IGateway {
                 }
             });
         }
-
+        this.members.getXmppMembersDevices(chatName)
         users.forEach((xmppUser) => {
             xmppUser.devices!.forEach((device) => {
                 this.xmpp.xmppSend(new StzaMessage(
@@ -238,7 +238,7 @@ export class XmppJsGateway implements IGateway {
     ) {
         log.info(`Got new ${event.content.membership} for ${event.state_key} (from: ${event.sender}) in ${chatName}`);
         // Iterate around each joined member and add the new presence step.
-        const presenceEvents = await GatewayStateResolve.resolveMatrixStateToXMPP(chatName, this.members, event);
+        const presenceEvents = GatewayStateResolve.resolveMatrixStateToXMPP(chatName, this.members, event);
         if (presenceEvents.length === 0) {
             log.info(`Nothing to do for ${event.event_id}`);
             return;
