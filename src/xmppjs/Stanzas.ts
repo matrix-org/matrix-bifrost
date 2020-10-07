@@ -1,7 +1,7 @@
 import uuid from "uuid/v4";
 import he from "he";
 import { IBasicProtocolMessage } from "../MessageFormatter";
-import { XMPPStatusCode } from "./StatusCodes";
+import { XMPPStatusCode } from "./XMPPConstants";
 
 export interface IStza {
     type: string;
@@ -351,7 +351,7 @@ export class StzaIqDiscoItems extends StzaIqDisco {
 
 export class StzaIqDiscoInfo extends StzaIqDisco {
     public identity: Set<{category: string, type: string, name: string}>;
-    public feature: Set<string>;
+    public feature: Set<XMPPFeatures>;
 
     constructor(
         from: string,
