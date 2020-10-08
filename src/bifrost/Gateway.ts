@@ -9,7 +9,7 @@ export interface IGateway extends IProfileProvider {
         sender: string, body: IBasicProtocolMessage, room: IGatewayRoom,
     ): void;
     sendMatrixMembership(
-        chatName: string, event: MatrixMembershipEvent, room: IGatewayRoom,
+        chatName: string, event: MatrixMembershipEvent, room: IGatewayRoom, context: MatrixMembershipContext,
     ): void;
     sendStateChange(
         chatName: string, sender: string, type: "topic"|"name"|"avatar", room: IGatewayRoom,
@@ -33,4 +33,15 @@ export interface IGatewayRoom {
         isRemote: boolean;
     }[];
     // remotes: string[];
+}
+
+export interface MatrixMembershipContext {
+    recipient?: {
+        isRemote: boolean;
+        username: string;
+    };
+    sender?: {
+        isRemote: boolean;
+        username: string;
+    }
 }

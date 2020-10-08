@@ -8,6 +8,7 @@ import { IBasicProtocolMessage } from "./MessageFormatter";
 import { ProfileSync } from "./ProfileSync";
 import { IGatewayRoom } from "./bifrost/Gateway";
 import { MatrixMembershipEvent } from "./MatrixTypes";
+import { XMPP_PROTOCOL } from "./xmppjs/XJSInstance";
 
 const log = Logging.get("GatewayHandler");
 
@@ -130,9 +131,21 @@ export class GatewayHandler {
         }
         const room = await this.getVirtualRoom(context.matrix.getId(), this.bridge.getIntent());
         if (this.bridge.getBot().isRemoteUser(event.state_key)) {
+            const { username } = this.purple.getUsernameFromMxid(event.state_key, this.config.bridge.userPrefix);
+            // XXX: Hardcoded protocol
+            const remoteUser = (await this.store.getAccountsForMatrixUser(event.sender, XMPP_PROTOCOL.id))[0];
             // This might be a kick or ban.
             log.info(`Forwarding remote membership for ${event.state_key} in ${chatName}`);
-            this.purple.gateway.sendMatrixMembership(chatName, event, room);
+            this.purple.gateway.sendMatrixMembership(chatName, event, room, {
+                recipient: {
+                    isRemote: true,
+                    username,
+                },
+                sender: {
+                    isRemote: !remoteUser,
+                    username: remoteUser?.username,
+                }
+            });
             return;
         }
         const existingMembership = room.membership.find((ev) => ev.stateKey === event.state_key);
@@ -153,7 +166,7 @@ export class GatewayHandler {
             });
         }
         log.info(`Updating membership for ${event.state_key} in ${chatName} ${room.roomId}`);
-        this.purple.gateway.sendMatrixMembership(chatName, event, room);
+        this.purple.gateway.sendMatrixMembership(chatName, event, room, { });
     }
 
     public async rejoinRemoteUser(mxid: string, roomid: string) {
