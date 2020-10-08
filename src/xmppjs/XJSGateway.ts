@@ -147,7 +147,7 @@ export class XmppJsGateway implements IGateway {
                 }
             });
         }
-        const msgs = [...this.members.getXmppMembersDevices(chatName)].map((device) => 
+        const msgs = [...this.members.getXmppMembersDevices(chatName)].map((device) =>
             new StzaMessage(
                 from.anonymousJid.toString(),
                 device,

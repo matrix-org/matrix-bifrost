@@ -77,8 +77,8 @@ export class GatewayHandler {
                 roomId,
                 membership,
             };
-            log.debug(`Hydrated room ${roomId} '${room.name}' '${room.topic}' ${room.membership.length} `);  
-            return room;  
+            log.debug(`Hydrated room ${roomId} '${room.name}' '${room.topic}' ${room.membership.length} `);
+            return room;
         })();
         this.roomIdCache.set(roomId, promise);
         return promise;
