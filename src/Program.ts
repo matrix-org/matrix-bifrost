@@ -174,6 +174,7 @@ class Program {
                 bridgeLog[error ? "warn" : "debug"](msg);
             },
             onAliasQueried: (alias, roomId) => this.eventHandler!.onAliasQueried(alias, roomId),
+            onUserQuery: () => { throw Error('Not defined') }
           },
           domain: this.cfg.bridge.domain,
           homeserverUrl: this.cfg.bridge.homeserverUrl,
