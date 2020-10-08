@@ -33,7 +33,7 @@ const log = Logging.get("GatewayHandler");
  */
 export class GatewayHandler {
     private aliasCache: Map<string, IGatewayRoom> = new Map();
-    private roomIdCache: Map<string, IGatewayRoom> = new Map();
+    private roomIdCache: Map<string, Promise<IGatewayRoom>> = new Map();
 
     constructor(
         private purple: IBifrostInstance,
@@ -51,33 +51,37 @@ export class GatewayHandler {
     }
 
     public async getVirtualRoom(roomId: string, intent: Intent): Promise<IGatewayRoom> {
-        let room: IGatewayRoom|undefined = this.roomIdCache.get(roomId);
+        let room: IGatewayRoom|undefined = await this.roomIdCache.get(roomId);
         if (room) {
             return room;
         }
-        log.debug(`Got state for ${roomId}`);
-        const state = await intent.roomState(roomId, true);
-        const nameEv = state.find((e) => e.type === "m.room.name");
-        const topicEv = state.find((e) => e.type === "m.room.topic");
-        const bot = this.bridge.getBot();
-        const membership = state.filter((e) => e.type === "m.room.member").map((e: WeakEvent) => (
-            {
-                isRemote: bot.isRemoteUser(e.sender),
-                stateKey: e.state_key,
-                displayname: e.content.displayname,
-                sender: e.sender,
-                membership: e.content.membership,
-            }
-        ))
-        room = {
-            name: nameEv ? nameEv.content.name : "",
-            topic: topicEv ? topicEv.content.topic : "",
-            roomId,
-            membership,
-        };
-        log.debug(`Hydrated room ${roomId} '${room.name}' '${room.topic}' ${room.membership.length} `);
-        this.roomIdCache.set(roomId, room);
-        return room;
+        const promise = (async () => {
+            log.debug(`Getting state for ${roomId}`);
+            const state = await intent.roomState(roomId, false);
+            log.debug(`Got state for ${roomId}`);
+            const nameEv = state.find((e) => e.type === "m.room.name");
+            const topicEv = state.find((e) => e.type === "m.room.topic");
+            const bot = this.bridge.getBot();
+            const membership = state.filter((e) => e.type === "m.room.member").map((e: WeakEvent) => (
+                {
+                    isRemote: bot.isRemoteUser(e.sender),
+                    stateKey: e.state_key,
+                    displayname: e.content.displayname,
+                    sender: e.sender,
+                    membership: e.content.membership,
+                }
+            ))
+            room = {
+                name: nameEv ? nameEv.content.name : "",
+                topic: topicEv ? topicEv.content.topic : "",
+                roomId,
+                membership,
+            };
+            log.debug(`Hydrated room ${roomId} '${room.name}' '${room.topic}' ${room.membership.length} `);
+            return room;
+        })();
+        this.roomIdCache.set(roomId, promise);
+        return promise;
     }
 
     public async sendMatrixMessage(
@@ -147,9 +151,8 @@ export class GatewayHandler {
                 stateKey: event.state_key,
                 isRemote: false,
             });
-            this.roomIdCache.set(context.matrix.getId(), room);
         }
-        log.info(`Updating membership for ${event.state_key} in ${chatName}`);
+        log.info(`Updating membership for ${event.state_key} in ${chatName} ${room.roomId}`);
         this.purple.gateway.sendMatrixMembership(chatName, event, room);
     }
 

@@ -137,7 +137,6 @@ export class XmppJsGateway implements IGateway {
             log.error(`Cannot send ${msg.id}: No member cached.`);
             return;
         }
-        const users = this.members.getXmppMembers(chatName);
         this.xmpp.xmppAddSentMessage(msg.id!);
 
         // Ensure that the html portion is XHTMLIM
@@ -178,6 +177,8 @@ export class XmppJsGateway implements IGateway {
             kick.statusCodes.add(XMPPStatusCode.SelfKicked);
             kick.statusCodes.add(XMPPStatusCode.SelfKickedTechnical);
             await this.xmpp.xmppSend(kick);
+            return false;
+        } else if (!member) {
             return false;
         }
         const preserveFrom = stanza.attrs.from;
@@ -301,7 +302,7 @@ export class XmppJsGateway implements IGateway {
         }
 
         // Ensure our membership is accurate.
-        this.updateMatrixMemberListForRoom(chatName, room);
+        this.updateMatrixMemberListForRoom(chatName, room, true); // HACK: Always update members for joiners
         const members = this.members.getMembers(chatName);
 
         // Check if the nick conflicts.
@@ -519,7 +520,10 @@ export class XmppJsGateway implements IGateway {
         };
     }
 
-    private updateMatrixMemberListForRoom(chatName: string, room: IGatewayRoom) {
+    private updateMatrixMemberListForRoom(chatName: string, room: IGatewayRoom, allowForJoin = false) {
+        if (!allowForJoin && this.members.getMatrixMembers(chatName)) {
+            return;
+        }
         const joined = room.membership.filter((member) => member.membership === "join" && !member.isRemote);
         joined.forEach((member) => {
             this.members.addMatrixMember(
@@ -535,6 +539,7 @@ export class XmppJsGateway implements IGateway {
                 member.stateKey,
             );
         });
+        log.info(`Updating membership for ${chatName} ${room.roomId} j:${joined.length} l:${left.length}`);
     }
 
     private remoteLeft(stanza: Element) {

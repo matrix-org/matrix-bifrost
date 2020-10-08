@@ -1,5 +1,5 @@
 # Builder
-FROM node:12-slim as builder
+FROM node:14-slim as builder
 
 COPY ./package.json ./package.json
 COPY ./yarn.lock ./yarn.lock

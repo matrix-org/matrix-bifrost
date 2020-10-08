@@ -29,6 +29,10 @@ export class GatewayMUCMembership {
         this.members = new Map();
     }
 
+    public hasMembershipForRoom(chatName: string) {
+        return this.members.has(chatName);
+    }
+
     public getMemberByAnonJid<G extends IGatewayMember>(chatName: string, anonJid: string): G|undefined {
         return this.getMembers(chatName).find((user) => user.anonymousJid.toString() === anonJid) as G;
     }
