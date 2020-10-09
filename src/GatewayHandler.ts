@@ -198,7 +198,15 @@ export class GatewayHandler {
             }
             roomId = res.roomId;
             if (data.nick) {
-                await intent.setRoomUserDisplayName(roomId as string, data.nick);
+                // Set the user's displayname in the room to their nickname.
+                // Do this after a short delay, so that we don't have a race on
+                // the server setting the global displayname.
+                setTimeout(
+                    async () => {
+                        await intent.setRoomUserProfile(roomId as string, {displayname: data.nick});
+                    },
+                    1000,
+                );
             }
             const room = await this.getOrCreateGatewayRoom(data, roomId!);
             const canonAlias = room.remote?.get<IChatJoinProperties>("properties").room_alias;
