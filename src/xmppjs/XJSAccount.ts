@@ -176,8 +176,8 @@ export class XmppJsAccount implements IBifrostAccount {
                 }
                 resolve(true);
             });
+            Metrics.remoteCall("xmpp.iq.ping");
         });
-        Metrics.remoteCall("xmpp.iq.ping");
     }
 
     public reconnectToRooms() {

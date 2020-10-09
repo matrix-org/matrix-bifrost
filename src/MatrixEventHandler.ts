@@ -142,12 +142,12 @@ export class MatrixEventHandler {
                 } catch (e) {
                     log.error("Failed to handle invite for bot:", e);
                 }
-            } else if (event.content.is_direct && bridgeBot.isRemoteUser(event.state_key)) {
+            } else if (event.state_key && event.content.is_direct && bridgeBot.isRemoteUser(event.state_key)) {
                 log.debug("Got request to PM", event.state_key);
                 const {
                     username,
                     protocol,
-                } = this.purple.getUsernameFromMxid(event.state_key!, this.config.bridge.userPrefix);
+                } = this.purple.getUsernameFromMxid(event.state_key, this.config.bridge.userPrefix);
                 log.debug("Mapped username to", username);
                 const remoteData = {
                     matrixUser: event.sender,
@@ -624,6 +624,7 @@ Say \`help\` for more commands.
         const name: string = context.remote.get("room_name");
         const roomProtocol: string = context.remote.get("protocol_id");
         if (isGateway) {
+            const ghostDetails = this.purple.getUsernameFromMxid(event.state_key, this.config.bridge.userPrefix);
             await this.gatewayHandler.sendMatrixMembership(
                 name, context, event,
             );

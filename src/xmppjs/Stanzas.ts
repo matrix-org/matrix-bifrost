@@ -273,6 +273,29 @@ export class StzaMessageSubject extends StzaBase {
     }
 }
 
+export class StzaMessageInvite extends StzaBase {
+    constructor(from: string,
+        to: string,
+        public chatName: string,
+        public reason?: string,
+        id?: string) {
+            super(from, to, id);
+        }
+
+        get xml() {
+            const reason = this.reason ? `<reason>${he.encode(this.reason)}</reason>` : "";
+            return `<message
+                from='${this.from}'
+                id='${this.id}'
+                to='${this.to}'>
+                <x xmlns='http://jabber.org/protocol/muc#user'>
+                    <invite to='${this.chatName}'>${reason}
+                    </invite>
+                </x>
+            </message>`;
+        }
+}
+
 export class StzaIqPing extends StzaBase {
     protected extraContent: string = "";
     constructor(

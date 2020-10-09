@@ -3,18 +3,17 @@ import { JID, jid } from "@xmpp/jid";
 interface IGatewayMember {
     type: "xmpp"|"matrix";
     anonymousJid: JID;
+    matrixId: string;
 }
 
 export interface IGatewayMemberXmpp extends IGatewayMember {
     type: "xmpp";
     realJid: JID;
     devices: Set<string>;
-    matrixId: string;
 }
 
 export interface IGatewayMemberMatrix extends IGatewayMember {
     type: "matrix";
-    matrixId: string;
 }
 
 const FLAT_SUPPORTED = [].flat !== undefined;
@@ -35,6 +34,10 @@ export class GatewayMUCMembership {
 
     public getMemberByAnonJid<G extends IGatewayMember>(chatName: string, anonJid: string): G|undefined {
         return this.getMembers(chatName).find((user) => user.anonymousJid.toString() === anonJid) as G;
+    }
+
+    public getMemberByMatrixId(chatName: string, matrixId: string): IGatewayMember|undefined {
+        return this.getMembers(chatName).find((user) => user.matrixId === matrixId);
     }
 
     public getMatrixMemberByMatrixId(chatName: string, matrixId: string): IGatewayMemberMatrix|undefined {

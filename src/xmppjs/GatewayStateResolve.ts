@@ -1,8 +1,9 @@
 import jid from "@xmpp/jid";
 import { Logging } from "matrix-appservice-bridge";
+import { MatrixMembershipContext } from "../bifrost/Gateway";
 import { MatrixMembershipEvent } from "../MatrixTypes";
 import { GatewayMUCMembership } from "./GatewayMUCMembership";
-import { IStza, PresenceAffiliation, PresenceRole, StzaBase, StzaPresenceItem } from "./Stanzas";
+import { IStza, PresenceAffiliation, PresenceRole, StzaBase, StzaMessageInvite, StzaPresenceItem } from "./Stanzas";
 import { XMPPStatusCode } from "./XMPPConstants";
 
 const log = Logging.get("GatewayStateResolve");
@@ -24,7 +25,7 @@ function sendToAllDevices(presence: StzaPresenceItem, devices: Set<string>) {
 }
 
 export class GatewayStateResolve {
-    static resolveMatrixStateToXMPP(chatName: string, members: GatewayMUCMembership, event: MatrixMembershipEvent): IStza[] {
+    static resolveMatrixStateToXMPP(chatName: string, members: GatewayMUCMembership, event: MatrixMembershipEvent, context: MatrixMembershipContext= {}): IStza[] {
         const membership = event.content.membership;
         let stanzas: IStza[] = [];
         const allDevices = members.getXmppMembersDevices(chatName);
@@ -139,7 +140,21 @@ export class GatewayStateResolve {
                 return [];
             }
         } else if (membership === "invite") {
-            // TODO: Invites
+            if (!existingMember || !context.recipient || !context.sender) {
+                // Cannot handle an invite from someone not in the room.
+                return [];
+            }
+            if (context.recipient?.isRemote) {
+                stanzas = [new StzaMessageInvite(
+                    context.sender.username,
+                    context.recipient.username,
+                    chatName,
+                    event.content.reason,
+                    event.event_id
+                )];
+            } else {
+                // XXX: Somehow reflect to the room that the user was invited.
+            }
         }
         return stanzas;
     }

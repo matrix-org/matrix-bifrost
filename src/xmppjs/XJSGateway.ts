@@ -5,7 +5,7 @@ import { Logging } from "matrix-appservice-bridge";
 import { IConfigBridge } from "../Config";
 import { IBasicProtocolMessage } from "..//MessageFormatter";
 import { IGatewayJoin, IUserStateChanged, IStoreRemoteUser, IUserInfo } from "../bifrost/Events";
-import { IGatewayRoom } from "../bifrost/Gateway";
+import { IGatewayRoom, MatrixMembershipContext } from "../bifrost/Gateway";
 import { PresenceCache } from "./PresenceCache";
 import { XHTMLIM } from "./XHTMLIM";
 import { BifrostRemoteUser } from "../store/BifrostRemoteUser";
@@ -231,11 +231,11 @@ export class XmppJsGateway implements IGateway {
     }
 
     public async sendMatrixMembership(
-        chatName: string, event: MatrixMembershipEvent,
+        chatName: string, event: MatrixMembershipEvent, room: IGatewayRoom, context: MatrixMembershipContext,
     ) {
         log.info(`Got new ${event.content.membership} for ${event.state_key} (from: ${event.sender}) in ${chatName}`);
         // Iterate around each joined member and add the new presence step.
-        const presenceEvents = GatewayStateResolve.resolveMatrixStateToXMPP(chatName, this.members, event);
+        const presenceEvents = GatewayStateResolve.resolveMatrixStateToXMPP(chatName, this.members, event, context);
         if (presenceEvents.length === 0) {
             log.info(`Nothing to do for ${event.event_id}`);
             return;
