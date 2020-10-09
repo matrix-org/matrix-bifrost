@@ -197,6 +197,9 @@ export class GatewayHandler {
                 );
             }
             roomId = res.roomId;
+            if (data.nick) {
+                await intent.setRoomUserDisplayName(roomId as string, data.nick);
+            }
             const room = await this.getOrCreateGatewayRoom(data, roomId!);
             const canonAlias = room.remote?.get<IChatJoinProperties>("properties").room_alias;
             if (canonAlias !== data.roomAlias) {
