@@ -12,15 +12,16 @@ bridge:
 
 datastore:
   # The datastore engine to use, either "nedb" or "postgres"
-  # engine: "nedb"
+  engine: "postgres"
+
   # For NeDB:
   #   Location of the user and room database files, by default will be stored in the working directory.
   # For Postgres:
-  #   A postgres style connection string, e.g. "postgres://postgres:pass@localhost/bifrost"
-  # connectionString: "nedb://."
+  #   A postgres style connection string.
+  connectionString: "postgres://postgres:pass@localhost/bifrost"
 
 purple:
-  # For selecting a specific backend. One of "node-purple", "xmpp-js". Defaults to "node-purple"
+  # For selecting a specific backend. One of "node-purple", "xmpp-js".
   backend: "xmpp-js"
 # -- For xmpp.js - You need an existing xmpp server for this to work.
   backendOpts:
@@ -40,16 +41,16 @@ portals:
   enableGateway: false
   # List of regexes to match a alias that can be turned into a bridge.
   aliases:
-    # This matches _purple_ followed by anything
-    "/^_purple_(.+)$/":
-      # Use the prpl-jabber protocol.
-      protocol: "prpl-jabber"
+    # This matches #_bifrost_ followed by anything
+    "/^_bifrost_(.+)$/":
+      # Use the xmpp-js protocol.
+      protocol: "xmpp-js"
       properties:
         # Set room to the first regex match
         room: "regex:1"
         # Set the server to be conf.localhost
-        server: "conf.localhost"
-    # For xmpp.js, please use:
+        server: "regex:2"
+      
 
 # Automatically register users with accounts if they join/get invited
 # a room with a protocol they are not bound to.
@@ -57,11 +58,11 @@ portals:
 autoRegistration:
   enabled: true
   protocolSteps:
-# For xmpp.js, please use:
-  xmpp-js:
-    type: "implicit"
-    parameters:
-      username: "<T_LOCALPART>@matrix.localhost"
+  # For xmpp.js, please use:
+    xmpp-js:
+      type: "implicit"
+      parameters:
+        username: "<T_LOCALPART>_<T_DOMAIN>@matrix.localhost"
 
 # Set up access controls for the bridge
 # access:
