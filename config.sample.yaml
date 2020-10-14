@@ -43,7 +43,7 @@ portals:
   aliases:
     # This matches #_bifrost_ followed by anything
     "/^_bifrost_(.+)$/":
-      # Use the prpl-jabber protocol.
+      # Use the xmpp-js protocol.
       protocol: "xmpp-js"
       properties:
         # Set room to the first regex match
@@ -62,7 +62,7 @@ autoRegistration:
     xmpp-js:
       type: "implicit"
       parameters:
-        username: "<T_LOCALPART>@matrix.localhost"
+        username: "<T_LOCALPART>_<T_DOMAIN>@matrix.localhost"
 
 # Set up access controls for the bridge
 # access:
