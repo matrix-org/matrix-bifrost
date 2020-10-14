@@ -238,6 +238,9 @@ class Program {
         log.info("Bridge has started.");
         try {
             if (purple instanceof XmppJsInstance) {
+                if (!autoReg) {
+                    throw Error('AutoRegistration not enabled in config, bridge cannot start');
+                }
                 purple.preStart(this.bridge, autoReg);
             }
             await purple.start();

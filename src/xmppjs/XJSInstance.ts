@@ -69,7 +69,7 @@ export class XmppJsInstance extends EventEmitter implements IBifrostInstance {
     private defaultRes!: string;
     private connectionWasDropped: boolean;
     private bufferedMessages: {xmlMsg: Element|string, resolve: (res: Promise<void>) => void}[];
-    private autoRegister?: AutoRegistration;
+    private autoRegister!: AutoRegistration;
     private bridge!: Bridge;
     private xmppGateway: XmppJsGateway|null;
     private activeMUCUsers: Set<string>;
@@ -100,9 +100,12 @@ export class XmppJsInstance extends EventEmitter implements IBifrostInstance {
         return this.myAddress;
     }
 
-    public preStart(bridge: Bridge, autoRegister?: AutoRegistration) {
+    public preStart(bridge: Bridge, autoRegister: AutoRegistration) {
         this.autoRegister = autoRegister;
         this.bridge = bridge;
+        if (!autoRegister) {
+            throw Error('autoRegistration not defined, cannot start bridge');
+        }
     }
 
     public createBifrostAccount(username) {
