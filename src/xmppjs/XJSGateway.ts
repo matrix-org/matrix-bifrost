@@ -420,7 +420,7 @@ export class XmppJsGateway implements IGateway {
 
         // 3. Room history
         log.debug("Emitting history");
-        const history = this.roomHistory.get(room.roomId) || [];
+        const history: Element[] = this.roomHistory.get(room.roomId) || [];
         history.forEach((e) => {
             e.attrs.to = stanza.attrs.from;
             // TODO: Add delay info to this.

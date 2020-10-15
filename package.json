@@ -4,7 +4,7 @@
   "description": "Multi protocol bridging for Matrix.",
   "main": "index.js",
   "scripts": {
-    "postinstall": "npm run build",
+    "prepare": "npm run build",
     "build": "tsc",
     "lint": "tslint --project tsconfig.json --format stylish",
     "start": "node build/src/Program.js -c config.yaml",
@@ -33,7 +33,7 @@
     "htmlparser2": "^4.1.0",
     "leven": "^3.1.0",
     "marked": "^1.2.0",
-    "matrix-appservice-bridge": "^2.1.0",
+    "matrix-appservice-bridge": "^2.2.0",
     "parse-entities": "^1.2.0",
     "pg": "8.3.3",
     "prom-client": "^11.2.1",
