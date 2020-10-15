@@ -65,7 +65,7 @@ export class XHTMLIM {
                 if (tagname === "html") {
                     attribs.xmlns = XMLNS;
                 }
-                xhtml += `<${tagname}${Object.keys(attribs).map((k) => ` ${k}='${attribs[k]}'`)}>`;
+                xhtml += `<${tagname}${Object.keys(attribs).map((k) => ` ${k}='${attribs[k]}'`).join("")}>`;
             },
             ontext: (text) => {
                 xhtml += `${he.escape(text)}`;
