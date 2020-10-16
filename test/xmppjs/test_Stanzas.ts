@@ -1,16 +1,8 @@
 import * as Chai from "chai";
 import { StzaPresenceItem, StzaPresenceError, StzaMessageSubject,
     StzaMessage, StzaPresencePart, StzaPresenceKick, SztaIqError } from "../../src/xmppjs/Stanzas";
-import * as parser from "fast-xml-parser";
+import { assertXML } from "./util";
 const expect = Chai.expect;
-
-function assertXML(xml) {
-    const err = parser.validate(xml);
-    if (err !== true) {
-        // console.error(xml);
-        throw new Chai.AssertionError(err.err.code + ": " + err.err.msg);
-    }
-}
 
 describe("Stanzas", () => {
     describe("StzaPresenceItem", () => {

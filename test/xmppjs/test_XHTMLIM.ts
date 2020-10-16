@@ -1,5 +1,6 @@
 import * as Chai from "chai";
 import { XHTMLIM } from "../../src/xmppjs/XHTMLIM";
+import { assertXML } from "./util";
 
 const expect = Chai.expect;
 
@@ -49,4 +50,11 @@ describe("XHTMLIM", () => {
             + " this is a reply</html>",
         );
     });
+    //
+    it("should transform an inline image", () => {
+        const xhtmlValue = XHTMLIM.HTMLToXHTML("Here is a pretty image<span class=\"d-emoji\"><img alt=\"shadow\" title=\"shadow\" height=\"32\" src=\"http://foobar.com\" /></span>");
+        assertXML(xhtmlValue);
+        expect(xhtmlValue).to.equal("<html xmlns='http://jabber.org/protocol/xhtml-im'>Here is a pretty image<span class='d-emoji'>" +
+            "<img alt='shadow' title='shadow' height='32' src='http://foobar.com'></img></span></html>");
+    })
 });

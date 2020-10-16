@@ -270,6 +270,7 @@ export class ServiceHandler {
             discoInfo.feature.add(XMPPFeatures.DiscoInfo);
             discoInfo.feature.add(XMPPFeatures.Muc);
             discoInfo.feature.add(XMPPFeatures.MessageCorrection);
+            discoInfo.feature.add(XMPPFeatures.XHTMLIM);
             discoInfo.identity.add({
                 category: "conference",
                 name: alias,
