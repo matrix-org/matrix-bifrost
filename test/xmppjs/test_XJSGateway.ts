@@ -5,8 +5,9 @@ import { IConfigBridge, Config } from "../../src/Config";
 import { MockXJSInstance } from "../mocks/XJSInstance";
 import { IGatewayRoom } from "../../src/bifrost/Gateway";
 import { x } from "@xmpp/xml";
-import { StzaBase, StzaPresenceItem } from "../../src/xmppjs/Stanzas";
+import { StzaBase, StzaPresence, StzaPresenceItem, StzaPresenceJoin } from "../../src/xmppjs/Stanzas";
 import { XMPPStatusCode } from "../../src/xmppjs/XMPPConstants";
+import jid from "@xmpp/jid";
 
 const expect = Chai.expect;
 
@@ -210,7 +211,56 @@ describe("XJSGateway", () => {
                     id: "myjoinid1",
                 }, x("x", {xmlns: "http://jabber.org/protocol/muc"}) ),
             "#matrix:bar");
-            await gw.onRemoteJoin(null, "myjoinid1", room, "@_xmpp_baz:bar");
+            gw.handleStanza(
+                x("presence", {
+                    from: "dogboy@froguniverse/phone",
+                    to: "#matrix#bar@conference.localhost/dognick",
+                    id: "myjoinid2",
+                }, x("x", {xmlns: "http://jabber.org/protocol/muc"}) ),
+            "#matrix:bar");
+            gw.handleStanza(
+                x("presence", {
+                    from: "alice@froguniverse/phone",
+                    to: "#matrix#bar@conference.localhost/alice",
+                    id: "myjoinid3",
+                }, x("x", {xmlns: "http://jabber.org/protocol/muc"}) ),
+            "#matrix:bar");
+
+            await gw.onRemoteJoin(null, "myjoinid1", room, "@_xmpp_frognick:bar");
+            expect(gw.isJIDInMuc("#matrix#bar@conference.localhost", jid("frogman@froguniverse/frogdevice"))).to.be.true;
+
+            await gw.onRemoteJoin(null, "myjoinid2", room, "@_xmpp_dognick:bar");
+            expect(gw.isJIDInMuc("#matrix#bar@conference.localhost", jid("dogboy@froguniverse/phone"))).to.be.true;
+
+            await gw.onRemoteJoin(null, "myjoinid3", room, "@_xmpp_alice:bar");
+            expect(gw.isJIDInMuc("#matrix#bar@conference.localhost", jid("alice@froguniverse/phone"))).to.be.true;
+
+            // frogman should have got dogboy's presence
+            expect(mockXmpp.sentMessages.find((msg) => {
+                const presence = msg as StzaPresenceItem;
+                return presence.from === "#matrix#bar@conference.localhost/dognick" &&
+                    presence.to === "frogman@froguniverse/frogdevice" &&
+                    presence.affiliation === "member" &&
+                    presence.role === "participant" &&
+                    presence.statusCodes.size === 0;
+            })).to.exist;
+            // frogman & dogboy should have got alice's presence
+            expect(mockXmpp.sentMessages.find((msg) => {
+                const presence = msg as StzaPresenceItem;
+                return presence.from === "#matrix#bar@conference.localhost/alice" &&
+                    presence.to === "frogman@froguniverse/frogdevice" &&
+                    presence.affiliation === "member" &&
+                    presence.role === "participant" &&
+                    presence.statusCodes.size === 0;
+            })).to.exist;
+            expect(mockXmpp.sentMessages.find((msg) => {
+                const presence = msg as StzaPresenceItem;
+                return presence.from === "#matrix#bar@conference.localhost/alice" &&
+                    presence.to === "dogboy@froguniverse/phone" &&
+                    presence.affiliation === "member" &&
+                    presence.role === "participant" &&
+                    presence.statusCodes.size === 0;
+            })).to.exist;
         });
     });
 });
