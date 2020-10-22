@@ -85,8 +85,7 @@ export interface IGatewayRequest {
 }
 
 export interface IGatewayRoomQuery extends IGatewayRequest {
-    onlyCheck: boolean;
-    result: (err: Error|null, res?: string|IGatewayRoom) => void;
+    result: (err: Error|null, res?: string) => void;
 }
 
 export interface IGatewayPublicRoomsQuery extends IGatewayRequest {
