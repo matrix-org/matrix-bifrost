@@ -33,6 +33,22 @@ export class GatewayMUCMembership {
         return this.members.has(chatName);
     }
 
+    public getAnonJidsForXmppJid(realJid: string|JID) {
+        // Strip the resource.
+        let jids: {[chatName: string]: {devices: string[], jid: string}} = {};
+        for (const chatName of this.members.keys()) {
+            
+            const member = this.getXmppMemberByRealJid(chatName, realJid);
+            if (member) {
+                jids[chatName] = {
+                    devices: [...member.devices],
+                    jid: member.anonymousJid.toString(),
+                }
+            }
+        }
+        return jids;
+    }
+
     public getMemberByAnonJid<G extends IGatewayMember>(chatName: string, anonJid: string): G|undefined {
         return this.getMembers(chatName).find((user) => user.anonymousJid.toString() === anonJid) as G;
     }

@@ -1,4 +1,4 @@
-import { Logging, RemoteRoom } from "matrix-appservice-bridge";
+import { AppServiceBot, Logging, RemoteRoom } from "matrix-appservice-bridge";
 import { IBifrostInstance } from "./bifrost/Instance";
 import { IAccountEvent, IChatJoinProperties } from "./bifrost/Events";
 import { IStore } from "./store/Store";
@@ -48,16 +48,17 @@ export class RoomSync {
         log.info("Finished sync");
     }
 
-    private async getJoinedMembers(bot: any, roomId: string): Promise<any> {
-        let members;
+    private async getJoinedMembers(bot: AppServiceBot, roomId: string) {
         while (this.ongoingSyncs >= MAX_SYNCS) {
             await new Promise((resolve) => setTimeout(resolve, 100));
         }
         this.ongoingSyncs++;
         log.debug(`Syncing members for ${roomId} (${this.ongoingSyncs}/${MAX_SYNCS})`);
-        while (members === undefined) {
+        while (true) {
             try {
-                members = await bot.getJoinedMembers(roomId);
+                let result = await bot.getJoinedMembers(roomId);
+                this.ongoingSyncs--;
+                return result;
             } catch (ex) {
                 if (ex.errcode === "M_FORBIDDEN") {
                     throw Error("Got M_FORBIDDEN while trying to sync members for room.");
@@ -66,8 +67,6 @@ export class RoomSync {
                 await new Promise((resolve) => setTimeout(resolve, SYNC_RETRY_MS));
             }
         }
-        this.ongoingSyncs--;
-        return members;
     }
 
     /**
@@ -75,7 +74,7 @@ export class RoomSync {
      * if the backend side needs to "reconnect" to the rooms.
      * @return [description]
      */
-    private async syncAccountsToGroupRooms(bot: any): Promise<void> {
+    private async syncAccountsToGroupRooms(bot: AppServiceBot): Promise<void> {
         const rooms = await this.store.getRoomsOfType(MROOM_TYPE_GROUP);
         log.info(`Got ${rooms.length} group rooms`);
         await Promise.all(rooms.map(async (room) => {
@@ -94,7 +93,12 @@ export class RoomSync {
                 return;
             }
             const isGateway = room.remote.get<boolean>("gateway");
-            let members;
+            if (isGateway) {
+                // The gateway handler syncs via roomState.
+                this.gateway.initialMembershipSync(room);
+                return;
+            }
+            let members: {[userId: string]: {display_name: string}};
             try {
                  members = await this.getJoinedMembers(bot, roomId);
             } catch (ex) {
@@ -107,23 +111,16 @@ export class RoomSync {
                 if (bot.getUserId() === userId) {
                     continue;
                 }
-                const isRemote = bot.isRemoteUser(userId);
-                if (isRemote) {
-                    await this.syncRemoteUser(userId, roomId, room.remote!, isGateway);
-                } else {
-                    await this.syncMatrixUser(userId, roomId, room.remote!, isGateway, members[userId].display_name);
+                if (!bot.isRemoteUser(userId)) {
+                    await this.syncMatrixUser(userId, roomId, room.remote, members[userId].display_name);
                 }
             }
         }));
     }
 
     private async syncMatrixUser(userId: string, roomId: string, remoteRoom: RemoteRoom,
-                                 isGateway: boolean, displayName: string) {
+                                 displayName: string) {
         log.debug(`Syncing matrix ${userId} -> ${roomId}`);
-        if (isGateway) {
-            // Do nothing, as we are trying to sync a Matrix user to a matrix room :)
-            return;
-        }
 
         // First get an account for this matrix user.
         const protocolId = remoteRoom.get<string>("protocol_id");
@@ -148,18 +145,6 @@ export class RoomSync {
             membership: "join",
         });
         this.accountRoomMemberships.set(remoteUser.id, acctMemberList);
-    }
-
-    private async syncRemoteUser(userId: string, roomId: string, remoteRoom: RemoteRoom, isGateway: boolean) {
-        log.debug(`Syncing remote ${userId} -> ${roomId}`);
-        if (isGateway) {
-            try {
-                await this.gateway.rejoinRemoteUser(userId, roomId);
-            } catch (ex) {
-                log.warn(`Failed to rejoin gateway user ${userId} to ${roomId}`, ex);
-            }
-        }
-        // Do nothing, as we are trying to sync a Remote user to a Remote room :)
     }
 
     private async onAccountSignedin(ev: IAccountEvent) {
