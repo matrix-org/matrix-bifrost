@@ -440,7 +440,7 @@ export class XmppJsGateway implements IGateway {
         const member = this.members.getXmppMemberByMatrixId(chatName, mxId);
         const devices = new Set(member.devices).add(device.toString());
         this.xmpp.emit("store-remote-user", {
-            mxId: mxId,
+            mxId,
             remoteId: remoteId.toString(),
             protocol_id: XMPP_PROTOCOL.id,
             data: {
@@ -450,7 +450,7 @@ export class XmppJsGateway implements IGateway {
             },
         } as IStoreRemoteUser);
     }
-    
+
     public reconnectRemoteUser(user: BifrostRemoteUser, mxUserId: string, room: IGatewayRoom) {
         if (!user.extraData.devices) {
             if (user.extraData.real_jid) {
