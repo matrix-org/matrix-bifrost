@@ -116,7 +116,7 @@ export class PgDataStore implements IStore {
         // Get a user by sender + profile combo.
         const res = await this.pgPool.query(
             "SELECT * FROM remote_users WHERE protocol_id = $1 AND sender_name = $2 LIMIT 1",
-            [ sender, protocol.id ],
+            [ protocol.id, sender ],
         );
         if (!res.rowCount) {
             return null;

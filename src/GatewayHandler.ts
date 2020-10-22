@@ -8,6 +8,7 @@ import { IBasicProtocolMessage } from "./MessageFormatter";
 import { ProfileSync } from "./ProfileSync";
 import { IGatewayRoom } from "./bifrost/Gateway";
 import { MatrixMembershipEvent } from "./MatrixTypes";
+import { BifrostRemoteUser } from "./store/BifrostRemoteUser";
 
 const log = Logging.get("GatewayHandler");
 
@@ -156,19 +157,21 @@ export class GatewayHandler {
         this.purple.gateway.sendMatrixMembership(chatName, event, room);
     }
 
-    public async rejoinRemoteUser(mxid: string, roomid: string) {
+    public async initialMembershipSync(roomEntry: RoomBridgeStoreEntry) {
         if (!this.purple.gateway) {
             log.debug("Not rejoining remote user, gateway not enabled");
             return;
         }
-        const room = await this.getVirtualRoom(roomid, this.bridge.getIntent());
-        log.info(`Reconnecting ${mxid} to ${roomid}`);
-        const user = (await this.store.getRemoteUsersFromMxId(mxid))[0];
-        if (!user || !user.extraData) {
-            log.warn("Cannot reconnect a user without a remote user stored");
-            return;
+        const roomName = roomEntry.remote.get<string>("room_name");
+        const room = await this.getVirtualRoom(roomEntry.matrix.getId(), this.bridge.getIntent());
+        const remoteGhosts: BifrostRemoteUser[] = [];
+        for (const ghost of room.membership.filter((m) => m.isRemote && m.membership === "join")) {
+            const user = (await this.store.getRemoteUsersFromMxId(ghost.stateKey))[0];
+            if (user && user.extraData) {
+                remoteGhosts.push(user);
+            }
         }
-        this.purple.gateway.reconnectRemoteUser(user, mxid, room);
+        this.purple.gateway.initialMembershipSync(roomName, room, remoteGhosts);
     }
 
     private async handleRoomJoin(data: IGatewayJoin) {
@@ -187,6 +190,7 @@ export class GatewayHandler {
             if (this.config.tuning.waitOnProfileBeforeSend) {
                 await this.profileSync.updateProfile(protocol, data.sender, this.purple.gateway);
             }
+            log.info(`Attempting to join ${data.roomAlias}`)
             roomId = await intent.join(data.roomAlias);
             if (!this.config.tuning.waitOnProfileBeforeSend) {
                 await this.profileSync.updateProfile(protocol, data.sender, this.purple.gateway);

@@ -10,7 +10,7 @@ import { PresenceCache } from "./PresenceCache";
 import { XHTMLIM } from "./XHTMLIM";
 import { BifrostRemoteUser } from "../store/BifrostRemoteUser";
 import { StzaPresenceItem, StzaMessage, StzaMessageSubject,
-    StzaPresenceError, StzaBase, StzaPresenceKick, PresenceAffiliation, PresenceRole, StzaPresenceJoin } from "./Stanzas";
+    StzaPresenceError, StzaBase, StzaPresenceKick, PresenceAffiliation, PresenceRole } from "./Stanzas";
 import { IGateway } from "../bifrost/Gateway";
 import { GatewayMUCMembership, IGatewayMemberXmpp, IGatewayMemberMatrix } from "./GatewayMUCMembership";
 import { XMPPStatusCode } from "./XMPPConstants";
@@ -20,11 +20,16 @@ import { MatrixMembershipEvent } from "../MatrixTypes";
 
 const log = Logging.get("XmppJsGateway");
 
+export interface RemoteGhostExtraData {
+    rooms: {
+        [chatName: string]: {devices: string[], jid: string}
+    }
+}
+
 /**
  * This class effectively implements a MUC that sits in between the gateway interface
  * and XMPP.
  */
-
 export class XmppJsGateway implements IGateway {
     // For storing room history, should be clipped at MAX_HISTORY per room.
     private roomHistory: Map<string, [Element]>;
@@ -408,8 +413,8 @@ export class XmppJsGateway implements IGateway {
 
         this.members.addXmppMember(
             `${to.local}@${to.domain}`,
-            jid(stanza.attrs.from),
-            jid(stanza.attrs.to),
+            from,
+            to,
             ownMxid,
         );
 
@@ -430,32 +435,47 @@ export class XmppJsGateway implements IGateway {
 
         // All done, now for some house cleaning.
         // Store this user so we can reconnect them on restart.
-        this.xmpp.emit("store-remote-user", {
-            mxId: ownMxid,
-            remoteId: stanza.attrs.to,
-            protocol_id: XMPP_PROTOCOL.id,
-            data: {
-                handle: stanza.attrs.to,
-                real_jid: stanza.attrs.from,
-                room_name: `${to.local}@${to.domain}`,
-            },
-        } as IStoreRemoteUser);
+        this.upsertXMPPUser(from, ownMxid);
         log.debug(`Join complete for ${to}`);
     }
 
-    public reconnectRemoteUser(user: BifrostRemoteUser, mxUserId: string, room: IGatewayRoom) {
-        if (!user.extraData.real_jid) {
-            return;
+    private upsertXMPPUser(realJid: JID, mxId: string) {
+        const rooms = this.members.getAnonJidsForXmppJid(realJid);
+        const realJidStripped = `${realJid.local}@${realJid.domain}`;
+
+        this.xmpp.emit("store-remote-user", {
+            mxId,
+            remoteId: realJidStripped,
+            protocol_id: XMPP_PROTOCOL.id,
+            data: {
+                rooms,
+            },
+        } as IStoreRemoteUser);
+        log.debug(`Upserted XMPP user ${realJidStripped} ${realJidStripped}`);
+    }
+
+    public initialMembershipSync(chatName: string, room: IGatewayRoom, ghosts: BifrostRemoteUser[]) {
+        log.info(`Adding initial synced member list to ${chatName}`);
+        this.updateMatrixMemberListForRoom(chatName, room);
+        for (const xmppUser of ghosts) {
+            log.debug(`Connecting ${xmppUser.id} to ${chatName}`);
+            const extraData = xmppUser.extraData as RemoteGhostExtraData;
+            if (!extraData.rooms) {
+                log.debug("Didn't connect, no data");
+                return;
+            }
+            const roomData = extraData.rooms[chatName];
+            if (!roomData) {
+                log.warn(`No information stored for ${xmppUser.id} to ${chatName}`);
+                return;
+            }
+            roomData.devices.forEach((device: string) => this.members.addXmppMember(
+                chatName,
+                jid(device),
+                jid(roomData.jid),
+                xmppUser.id,
+            ));
         }
-        log.info("I have been called upon to resurrect " + user.id);
-        this.updateMatrixMemberListForRoom(user.extraData.room_name, room);
-        // Make sure we cache this
-        this.members.addXmppMember(
-            user.extraData.room_name,
-            jid(user.extraData.real_jid),
-            jid(`${user.extraData.handle}`),
-            mxUserId,
-        );
     }
 
     public async getUserInfo(who: string): Promise<IUserInfo> {
@@ -558,6 +578,7 @@ export class XmppJsGateway implements IGateway {
         );
         leaveStza.presenceType = "unavailable";
         this.xmpp.xmppWriteToStream(leaveStza);
+        this.upsertXMPPUser(stanza.attrs.from, user.matrixId);
         // If this is the last device for that member, reflect
         // that change to everyone.
         if (lastDevice) {
