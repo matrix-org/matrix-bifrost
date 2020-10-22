@@ -33,13 +33,21 @@ function createMember(stateKey: string, displayname?: string, membership: string
 }
 
 describe("XJSGateway", () => {
+    let gw: XmppJsGateway;
+    let mockXmpp: MockXJSInstance;
+    let joinCount: number;
+    beforeEach(() => {
+        joinCount = 0;
+        const createResult = createGateway();
+        gw = createResult.gw;
+        mockXmpp = createResult.mockXmpp;
+        mockXmpp.on("gateway-joinroom", () => {
+            joinCount++;
+        });
+    });
+
     describe("handleStanza", () => {
         it("should be able to join a room", () => {
-            const {gw, mockXmpp} = createGateway();
-            let joinCount = 0;
-            mockXmpp.on("gateway-joinroom", () => {
-                joinCount++;
-            });
             gw.handleStanza(
                 x("presence", {
                     from: "frogman@frogworld/froddevice",
@@ -59,7 +67,6 @@ describe("XJSGateway", () => {
     });
     describe("onRemoteJoin", () => {
         it("should fail without an existing stanza", async () => {
-            const {gw} = createGateway();
             const room: IGatewayRoom = {
                 name: "GatewayRoom",
                 topic: "GatewayTopic",
@@ -75,7 +82,6 @@ describe("XJSGateway", () => {
             throw Error("Should have thrown");
         });
         it("should join a remote user with full membership", async () => {
-            const {gw, mockXmpp} = createGateway();
             const room: IGatewayRoom = {
                 name: "GatewayRoom",
                 topic: "GatewayTopic",
@@ -133,7 +139,6 @@ describe("XJSGateway", () => {
             });
         });
         it("should handle a second device for a remote user", async () => {
-            const {gw, mockXmpp} = createGateway();
             const room: IGatewayRoom = {
                 name: "GatewayRoom",
                 topic: "GatewayTopic",
@@ -163,7 +168,6 @@ describe("XJSGateway", () => {
             await gw.onRemoteJoin(null, "myjoinid2", room, "@_xmpp_baz:bar");
         });
         it("should join a remote user to a room with a large member count", async () => {
-            const {gw, mockXmpp} = createGateway();
             const membership = [createMember("@_xmpp_baz:bar", "Baz")];
             for (let i = 1; i <= 2500; i++) {
                 membership.push(createMember(`@foo${i}:bar`, `Mr Foo${i}`));
@@ -191,6 +195,22 @@ describe("XJSGateway", () => {
             // 2500 users + 1 self presence
             expect(messages.filter((m) => m.type === "presence")).to.have.lengthOf(2501);
             expect(mockXmpp.drainWaits).to.equal(2500 / 100);
+        });
+        it("should reflect a join to all other XMPP users in the room", async () => {
+            const room: IGatewayRoom = {
+                name: "GatewayRoom",
+                topic: "GatewayTopic",
+                roomId: "!foo:bar",
+                membership: [],
+            };
+            gw.handleStanza(
+                x("presence", {
+                    from: "frogman@froguniverse/frogdevice",
+                    to: "#matrix#bar@conference.localhost/frognick",
+                    id: "myjoinid1",
+                }, x("x", {xmlns: "http://jabber.org/protocol/muc"}) ),
+            "#matrix:bar");
+            await gw.onRemoteJoin(null, "myjoinid1", room, "@_xmpp_baz:bar");
         });
     });
 });
