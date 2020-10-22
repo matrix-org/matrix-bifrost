@@ -430,32 +430,48 @@ export class XmppJsGateway implements IGateway {
 
         // All done, now for some house cleaning.
         // Store this user so we can reconnect them on restart.
-        this.xmpp.emit("store-remote-user", {
-            mxId: ownMxid,
-            remoteId: stanza.attrs.to,
-            protocol_id: XMPP_PROTOCOL.id,
-            data: {
-                handle: stanza.attrs.to,
-                real_jid: stanza.attrs.from,
-                room_name: `${to.local}@${to.domain}`,
-            },
-        } as IStoreRemoteUser);
+        this.upsertXMPPUser(ownMxid, to, from);
         log.debug(`Join complete for ${to}`);
     }
 
+    private upsertXMPPUser(mxId: string, remoteId: JID, device: JID) {
+        log.debug(`Upserted XMPP user ${mxId} ${remoteId}`);
+        const chatName = `${remoteId.local}@${remoteId.domain}`;
+        const member = this.members.getXmppMemberByMatrixId(chatName, mxId);
+        const devices = new Set(member.devices).add(device.toString());
+        this.xmpp.emit("store-remote-user", {
+            mxId: mxId,
+            remoteId: remoteId.toString(),
+            protocol_id: XMPP_PROTOCOL.id,
+            data: {
+                handle: mxId.toString(),
+                devices: [...devices],
+                room_name: chatName,
+            },
+        } as IStoreRemoteUser);
+    }
+    
     public reconnectRemoteUser(user: BifrostRemoteUser, mxUserId: string, room: IGatewayRoom) {
-        if (!user.extraData.real_jid) {
-            return;
+        if (!user.extraData.devices) {
+            if (user.extraData.real_jid) {
+                // Legacy field
+                user.extraData.devices = [user.extraData.real_jid];
+            } else {
+                return;
+            }
         }
+
         log.info("I have been called upon to resurrect " + user.id);
         this.updateMatrixMemberListForRoom(user.extraData.room_name, room);
         // Make sure we cache this
-        this.members.addXmppMember(
-            user.extraData.room_name,
-            jid(user.extraData.real_jid),
-            jid(`${user.extraData.handle}`),
-            mxUserId,
-        );
+        for (const device of user.extraData.devices) {
+            this.members.addXmppMember(
+                user.extraData.room_name,
+                jid(device),
+                jid(`${user.extraData.handle}`),
+                mxUserId,
+            );
+        }
     }
 
     public async getUserInfo(who: string): Promise<IUserInfo> {
