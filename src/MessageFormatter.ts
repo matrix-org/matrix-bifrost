@@ -128,7 +128,7 @@ export class MessageFormatter {
                 if (!attachment.size) {
                     attachment.size = parseInt(file.headers["content-length"] || "0", 10);
                 }
-                const maxSize = 
+                const maxSize =
                     (await intent.getClient().getMediaConfig().then((cfg) => cfg.m.upload.size).catch(() => -1));
 
                 if (attachment.size && maxSize > -1 && maxSize < attachment.size!) {
