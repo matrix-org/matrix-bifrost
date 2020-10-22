@@ -361,7 +361,7 @@ return `- ${account.protocol.name} (${username}) [Enabled=${account.isEnabled}] 
         }
         const requiredPl = this.config.provisioning.requiredUserPL;
         const intent = this.bridge.getIntent();
-        const powerLevels = await intent.getClient().getStateEvent(event.room_id, "m.room.power_levels");
+        const powerLevels = await intent.getStateEvent(event.room_id, "m.room.power_levels");
         const userPl = powerLevels.users[event.sender] === undefined ? powerLevels.users_default :
             powerLevels.users[event.sender];
         if (userPl < requiredPl) {

@@ -94,6 +94,8 @@ export class PurpleInstance extends EventEmitter implements IBifrostInstance {
         return true;
     }
 
+    public async close() {/* nothing to do */}
+
     public getUsernameFromMxid(
             mxid: string,
             prefix: string = ""): {username: string, protocol: BifrostProtocol} {

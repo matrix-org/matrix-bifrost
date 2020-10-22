@@ -61,6 +61,9 @@ class Program {
         });
         this.cfg = new Config();
         this.deduplicator = new Deduplicator();
+        process.on("SIGTERM", () =>
+            this.killBridge()
+        )
     }
 
     public get config(): Config {
@@ -129,6 +132,12 @@ class Program {
             }
             log.error("Failed to update profile: ", ex);
         }
+    }
+
+    private async killBridge() {
+        log.info("SIGTERM recieved, killing bridge");
+        await this.bridge.close();
+        await this.purple.close();
     }
 
     private async runBridge(port: number, config: any) {
