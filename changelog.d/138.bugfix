@@ -1,1 +1,0 @@
-Fix a bug that would cause some XMPP clients to assume that Gateway MUCs are unjoinable

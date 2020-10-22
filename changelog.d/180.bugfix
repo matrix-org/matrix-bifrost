@@ -1,1 +1,0 @@
-Fixed an issue where if creating a room for a remote chat failed, it would not allow users to retry joining

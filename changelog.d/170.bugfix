@@ -1,1 +1,0 @@
-Fix a critical issue where sending HTML with multiple attributes in a tag would cause the message to not be sent

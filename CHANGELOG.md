@@ -1,4 +1,42 @@
- 0.1.8 (2020-02-12)
+0.2.0-rc1 (2020-10-22)
+=======================
+
+Features
+--------
+
+- Report message corrections as an available feature to MUCs ([\#149](https://github.com/matrix-org/matrix-bifrost/issues/149))
+- Support Matrix -> XMPP edits ([\#154](https://github.com/matrix-org/matrix-bifrost/issues/154))
+- Set the user's displayname in the room based on their nickname ([\#161](https://github.com/matrix-org/matrix-bifrost/issues/161))
+- The bridge will now close the AS and XMPP connections on a SIGTERM signal ([\#182](https://github.com/matrix-org/matrix-bifrost/issues/182))
+
+
+Bugfixes
+--------
+
+- Fix compatibility with XEP-0045 by only sending messages after sending all presence to new joiners ([\#134](https://github.com/matrix-org/matrix-bifrost/issues/134))
+- Fix a bug that would cause some XMPP clients to assume that Gateway MUCs are unjoinable ([\#138](https://github.com/matrix-org/matrix-bifrost/issues/138))
+- Fix bug where failed messages would be reported as successful ([\#148](https://github.com/matrix-org/matrix-bifrost/issues/148))
+- Send leaves from the anonymous JID, not mxid ([\#150](https://github.com/matrix-org/matrix-bifrost/issues/150))
+- Improve performance of Matrix -> XMPP gateway messages and joining ([\#159](https://github.com/matrix-org/matrix-bifrost/issues/159))
+- Fix a critical issue where sending HTML with multiple attributes in a tag would cause the message to not be sent ([\#170](https://github.com/matrix-org/matrix-bifrost/issues/170))
+- Do not send back an additional error stanza on S2S ping ([\#171](https://github.com/matrix-org/matrix-bifrost/issues/171))
+- Self pings to gateways should check devices, not MUC JIDs ([\#177](https://github.com/matrix-org/matrix-bifrost/issues/177))
+- Fix issue where XMPP users would not be informed of other XMPP users joining ([\#179](https://github.com/matrix-org/matrix-bifrost/issues/179))
+- Fixed an issue where if creating a room for a remote chat failed, it would not allow users to retry joining ([\#180](https://github.com/matrix-org/matrix-bifrost/issues/180))
+- Fix an issue where joining a room through the XMPP gateway would sometimes fail if the user was invited ([\#181](https://github.com/matrix-org/matrix-bifrost/issues/181))
+
+
+Internal Changes
+----------------
+
+- Upgrade dependencies and types ([\#133](https://github.com/matrix-org/matrix-bifrost/issues/133))
+- Tests now show Typescript stacktraces ([\#142](https://github.com/matrix-org/matrix-bifrost/issues/142))
+- Use `/lib` for build output rather than `/build/(src|test)` ([\#169](https://github.com/matrix-org/matrix-bifrost/issues/169))
+- Improve support for multiple devices for XMPP users connected to the gateway ([\#176](https://github.com/matrix-org/matrix-bifrost/issues/176))
+- Some errors now report helpful error text ([\#178](https://github.com/matrix-org/matrix-bifrost/issues/178))
+
+
+0.1.8 (2020-02-12)
 ===================
 
 Bugfixes
