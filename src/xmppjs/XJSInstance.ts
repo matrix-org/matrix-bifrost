@@ -186,6 +186,10 @@ export class XmppJsInstance extends EventEmitter implements IBifrostInstance {
         return undefined;
     }
 
+    public async close() {
+        await this.xmpp?.stop();
+    }
+
     public async start(): Promise<void> {
         const config = this.config.purple;
         const opts = config.backendOpts as IXJSBackendOpts;

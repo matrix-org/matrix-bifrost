@@ -23,6 +23,7 @@ export interface IBifrostInstance extends EventEmitter {
     createBifrostAccount(username, protocol: BifrostProtocol): IBifrostAccount;
     getBuddyFromChat(conv: any, buddy: string): any;
     start(): Promise<void>;
+    close(): Promise<void>;
     getAccount(username: string, protocolId: string, mxid?: string): IBifrostAccount|null;
     getProtocol(id: string): BifrostProtocol|undefined;
     getProtocols(): BifrostProtocol[];
