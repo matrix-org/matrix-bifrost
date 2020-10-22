@@ -56,7 +56,7 @@ export class RoomSync {
         log.debug(`Syncing members for ${roomId} (${this.ongoingSyncs}/${MAX_SYNCS})`);
         while (true) {
             try {
-                let result = await bot.getJoinedMembers(roomId);
+                const result = await bot.getJoinedMembers(roomId);
                 this.ongoingSyncs--;
                 return result;
             } catch (ex) {

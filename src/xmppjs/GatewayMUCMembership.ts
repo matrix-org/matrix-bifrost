@@ -35,9 +35,8 @@ export class GatewayMUCMembership {
 
     public getAnonJidsForXmppJid(realJid: string|JID) {
         // Strip the resource.
-        let jids: {[chatName: string]: {devices: string[], jid: string}} = {};
+        const jids: {[chatName: string]: {devices: string[], jid: string}} = {};
         for (const chatName of this.members.keys()) {
-            
             const member = this.getXmppMemberByRealJid(chatName, realJid);
             if (member) {
                 jids[chatName] = {

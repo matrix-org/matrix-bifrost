@@ -164,12 +164,12 @@ export class GatewayHandler {
         }
         const roomName = roomEntry.remote.get<string>("room_name");
         const room = await this.getVirtualRoom(roomEntry.matrix.getId(), this.bridge.getIntent());
-        let remoteGhosts: BifrostRemoteUser[] = [];
+        const remoteGhosts: BifrostRemoteUser[] = [];
         for (const ghost of room.membership.filter((m) => m.isRemote && m.membership === "join")) {
             const user = (await this.store.getRemoteUsersFromMxId(ghost.stateKey))[0];
             if (user && user.extraData) {
-                remoteGhosts.push(user);                
-            }    
+                remoteGhosts.push(user);
+            }
         }
         this.purple.gateway.initialMembershipSync(roomName, room, remoteGhosts);
     }
