@@ -47,7 +47,7 @@ function createRoomSync(intent, rooms: RoomBridgeStoreEntry[] = []) {
     };
 
     const gateway = {
-        rejoinRemoteUser: (user, room) => remoteJoins.push({user, room}),
+        initialMembershipSync: (roomEntry) => remoteJoins.push(roomEntry),
     };
 
     const store = mockStore();
@@ -102,11 +102,6 @@ describe("RoomSync", () => {
         await store.storeAccount("@foo:bar", dummyProtocol, "foobar");
         await rs.sync(bot);
         expect(rs.getMembershipForUser("prpl-dummy://foobar")).to.not.exist;
-        expect(remoteJoins).to.deep.equal([
-            {
-                 user: "@remote_foo:bar",
-                 room: "!abc:foobar",
-            },
-        ]);
+        expect(remoteJoins[0].id).to.equal("!abc:foobar    foobar");
     });
 });
