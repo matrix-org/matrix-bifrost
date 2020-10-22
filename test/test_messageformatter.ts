@@ -12,17 +12,11 @@ const XMPP = new BifrostProtocol({
 });
 
 const intent = {
-    getClient: () => {
-        return {
-            uploadContent: (content) => {
-                return Promise.resolve("mxc://abc/def");
-            },
-            getMediaConfig: () => {
-                return Promise.resolve({"m.upload.size": 1024});
-            },
-        };
-    },
-};
+    uploadContent: async () => "mxc://abc/def",
+    getClient: () => ({
+        getMediaConfig: async () => ({"m.upload.size": 1024}),
+    }),
+} as any;
 
 describe("MessageFormatter", () => {
     describe("matrixEventToBody", () => {

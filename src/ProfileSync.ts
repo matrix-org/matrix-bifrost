@@ -83,11 +83,9 @@ export class ProfileSync {
             log.debug(`Got an avatar, setting`);
             try {
                 const {type, data} = await account.getAvatarBuffer(remoteProfileSet.avatar_uri, senderId);
-                const mxcUrl = await intent.getClient().uploadContent(data, {
+                const mxcUrl = await intent.uploadContent(data, {
                     name: path.basename(remoteProfileSet.avatar_uri),
                     type,
-                    rawResponse: false,
-                    onlyContentUri: true,
                 });
                 await intent.setAvatarUrl(mxcUrl);
                 matrixUser.set("avatar_url", remoteProfileSet.avatar_uri);
