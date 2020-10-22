@@ -187,35 +187,29 @@ export class GatewayHandler {
             if (this.config.tuning.waitOnProfileBeforeSend) {
                 await this.profileSync.updateProfile(protocol, data.sender, this.purple.gateway);
             }
-            const res = await intent.getClient().joinRoom(data.roomAlias, {syncRoom: false});
+            roomId = await intent.join(data.roomAlias);
             if (!this.config.tuning.waitOnProfileBeforeSend) {
                 await this.profileSync.updateProfile(protocol, data.sender, this.purple.gateway);
             }
-            if (!res || !res.roomId) {
-                throw Error(
-                    "Roomid not given in join",
-                );
-            }
-            roomId = res.roomId;
             if (data.nick) {
                 // Set the user's displayname in the room to their nickname.
                 // Do this after a short delay, so that we don't have a race on
                 // the server setting the global displayname.
                 setTimeout(
                     async () => {
-                        await intent.setRoomUserProfile(roomId as string, {displayname: data.nick});
+                        await intent.setRoomUserProfile(roomId, {displayname: data.nick});
                     },
                     1000,
                 );
             }
-            const room = await this.getOrCreateGatewayRoom(data, roomId!);
+            const room = await this.getOrCreateGatewayRoom(data, roomId);
             const canonAlias = room.remote?.get<IChatJoinProperties>("properties").room_alias;
             if (canonAlias !== data.roomAlias) {
                 throw Error(
                     "We do not support multiple room aliases, try " + canonAlias,
                 );
             }
-            const vroom = await this.getVirtualRoom(roomId!, intent);
+            const vroom = await this.getVirtualRoom(roomId, intent);
             await this.purple.gateway.onRemoteJoin(null, data.join_id, vroom, intentUser);
         } catch (ex) {
             if (roomId) {
@@ -231,9 +225,7 @@ export class GatewayHandler {
         try {
             const res = await this.bridge.getIntent().getClient().resolveRoomAlias(ev.roomAlias);
             log.info(`Found ${res.room_id}`);
-            if (ev.onlyCheck) {
-                ev.result(null, res.room_id);
-            }
+            ev.result(null, res.room_id);
         } catch (ex) {
             log.warn("Room not found:", ex);
             ev.result(Error("Room not found"));

@@ -1,16 +1,8 @@
 import * as Chai from "chai";
 import { StzaPresenceItem, StzaPresenceError, StzaMessageSubject,
     StzaMessage, StzaPresencePart, StzaPresenceKick, SztaIqError } from "../../src/xmppjs/Stanzas";
-import * as parser from "fast-xml-parser";
+import { assertXML } from "./util";
 const expect = Chai.expect;
-
-function assertXML(xml) {
-    const err = parser.validate(xml);
-    if (err !== true) {
-        // console.error(xml);
-        throw new Chai.AssertionError(err.err.code + ": " + err.err.msg);
-    }
-}
 
 describe("Stanzas", () => {
     describe("StzaPresenceItem", () => {
@@ -102,7 +94,7 @@ describe("Stanzas", () => {
         });
     });
     describe("SztaIqError", () => {
-        it("should create a valid stanza", () => {
+        it("should create a an error", () => {
             const xml = new SztaIqError("foo@bar", "baz@bar", "someid", "cancel", null, "not-acceptable", "foo").xml;
             assertXML(xml);
             expect(xml).to.equal(
@@ -111,5 +103,15 @@ describe("Stanzas", () => {
                  "</error></iq>",
             );
         });
+    });
+    it("should create a an error with custom text", () => {
+        const xml = new SztaIqError("foo@bar", "baz@bar", "someid", "cancel", null, "not-acceptable", "foo", "Something isn't right").xml;
+        assertXML(xml);
+        expect(xml).to.equal(
+            "<iq from='foo@bar' to='baz@bar' id='someid' type='error' xml:lang='en'>" +
+             "<error type='cancel' by='foo'><not-acceptable xmlns='urn:ietf:params:xml:ns:xmpp-stanzas'/>" +
+             "<text>Something isn&#x27;t right</text>" +
+             "</error></iq>",
+        );
     });
 });

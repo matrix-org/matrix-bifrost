@@ -1,7 +1,7 @@
 import { BifrostProtocol } from "./bifrost/Protocol";
 import { PRPL_XMPP } from "./ProtoHacks";
 import { Parser } from "htmlparser2";
-import { Logging, WeakEvent } from "matrix-appservice-bridge";
+import { Intent, Logging } from "matrix-appservice-bridge";
 import { IConfigBridge } from "./Config";
 import * as request from "request-promise-native";
 import { IMatrixMsgContents, MatrixMessageEvent } from "./MatrixTypes";
@@ -66,7 +66,7 @@ export class MessageFormatter {
         return newMsg;
     }
 
-    public static async messageToMatrixEvent(msg: IBasicProtocolMessage, protocol: BifrostProtocol, intent?: any):
+    public static async messageToMatrixEvent(msg: IBasicProtocolMessage, protocol: BifrostProtocol, intent?: Intent):
         Promise<IMatrixMsgContents> {
         log.debug("Got message:", msg);
         const matrixMsg: IMatrixMsgContents = {
@@ -128,9 +128,8 @@ export class MessageFormatter {
                 if (!attachment.size) {
                     attachment.size = parseInt(file.headers["content-length"] || "0", 10);
                 }
-                const client = intent.getClient();
-                const maxSize = client.getMediaConfig ?
-                    (await client.getMediaConfig().then((cfg) => cfg.m.upload.size).catch(() => -1)) : -1;
+                const maxSize =
+                    (await intent.getClient().getMediaConfig().then((cfg) => cfg.m.upload.size).catch(() => -1));
 
                 if (attachment.size && maxSize > -1 && maxSize < attachment.size!) {
                     log.info("File is too large, linking instead");
@@ -139,10 +138,8 @@ export class MessageFormatter {
                 }
 
                 log.info(`Uploading ${attachment.uri}...`);
-                const mxcurl = await intent.getClient().uploadContent(file.body, {
-                    onlyContentUri: true,
+                const mxcurl = await intent.uploadContent(file.body, {
                     includeFilename: false,
-                    rawResponse: false,
                     type: attachment.mimetype || "application/octect-stream",
                 });
                 matrixMsg.url = mxcurl;

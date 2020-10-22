@@ -1,4 +1,4 @@
-import { IStza, StzaIqPing, StzaPresenceJoin } from "../../src/xmppjs/Stanzas";
+import { IStza, StzaIqPing, StzaPresenceItem, StzaPresenceJoin } from "../../src/xmppjs/Stanzas";
 import { EventEmitter } from "events";
 import { x } from "@xmpp/xml";
 import { IChatJoined } from "../../src/bifrost/Events";
@@ -18,7 +18,14 @@ export class MockXJSInstance extends EventEmitter {
     }
 
     public xmppSend(msg: IStza) {
-        this.sentMessages.push(msg);
+        if (msg instanceof StzaPresenceItem) {
+            // Hack for tests, clone this.
+            const item = new StzaPresenceItem(msg.from, msg.to, msg.id, msg.affiliation, msg.role, msg.self, msg.jid, msg.presenceType);
+            msg.statusCodes.forEach(i => item.statusCodes.add(i));
+            this.sentMessages.push(item);
+        } else {
+            this.sentMessages.push(msg);
+        }
         if (msg instanceof StzaIqPing) {
             if (this.selfPingResponse === "respond-ok") {
                 this.emit("iq." + msg.id, x("iq"));

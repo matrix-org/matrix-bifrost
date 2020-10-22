@@ -143,6 +143,7 @@ export class StzaPresenceError extends StzaPresence {
         public by: string,
         public errType: string,
         public innerError: string,
+        public text?: string,
 
     ) {
         super(from, to, id, "error");
@@ -150,7 +151,9 @@ export class StzaPresenceError extends StzaPresence {
 
     public get presenceContent() {
         return `<error type='${this.errType}' by='${this.by}'><${this.innerError}`
-             + ` xmlns='urn:ietf:params:xml:ns:xmpp-stanzas'/></error>`;
+             + " xmlns='urn:ietf:params:xml:ns:xmpp-stanzas'/>"
+             + (this.text ? `<text>${he.encode(this.text)}</text>` : "")
+             + "</error>";
     }
 }
 
@@ -415,7 +418,8 @@ export class SztaIqError extends StzaBase {
         private errorType: string,
         private errorCode: number|null,
         private innerError: string,
-        private by: string|null = null,
+        private by?: string,
+        private text?: string,
     ) {
         super(from, to, id);
     }
@@ -434,7 +438,9 @@ export class SztaIqError extends StzaBase {
         }
         return `<iq from='${this.from}' to='${this.to}' id='${this.id}' type='error' xml:lang='en'>`
         + `<error type='${this.errorType}'${errorParams}><${this.innerError} ` +
-          "xmlns='urn:ietf:params:xml:ns:xmpp-stanzas'/></error></iq>";
+          "xmlns='urn:ietf:params:xml:ns:xmpp-stanzas'/>" +
+          (this.text ? `<text>${he.encode(this.text)}</text>` : "") +
+          "</error></iq>";
     }
 }
 

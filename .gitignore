@@ -1,6 +1,5 @@
 node_modules/
 coverage/
-build/
 *.db
 config.yaml
 purple-registration.yaml
@@ -8,3 +7,4 @@ bifrost-registration.yaml
 *.log*
 data/
 .nyc_output/
+lib/

@@ -1,4 +1,4 @@
-import { Bridge, MatrixUser, Intent, Logging, WeakEvent} from "matrix-appservice-bridge";
+import { Bridge, MatrixUser, Intent, Logging, WeakEvent, RoomBridgeStoreEntry} from "matrix-appservice-bridge";
 import { IBifrostInstance } from "./bifrost/Instance";
 import { MROOM_TYPE_GROUP, MROOM_TYPE_IM, IRemoteGroupData, MUSER_TYPE_GHOST } from "./store/Types";
 import {
@@ -32,7 +32,7 @@ export class MatrixRoomHandler {
     private bridge?: Bridge;
     private accountRoomLock: Set<string>;
     private remoteEventIdMapping: Map<string, string>; // remote_id -> event_id
-    private roomCreationLock: Map<string, Promise<void>>;
+    private roomCreationLock: Map<string, Promise<RoomBridgeStoreEntry>>;
     constructor(
         private purple: IBifrostInstance,
         private profileSync: ProfileSync,
@@ -156,18 +156,23 @@ export class MatrixRoomHandler {
             return this.store.storeRoom(roomId, MROOM_TYPE_IM, remoteId, remoteData);
         });
 
-        this.roomCreationLock.set(remoteId, createPromise as Promise<any>);
-        await createPromise;
-
-        if (this.config.tuning.waitOnJoinBeforePM.find((prefix) => matrixUser.localpart.startsWith(prefix))) {
-            log.info(
-                "Recipient matches waitOnJoinBeforePM, holding back sending messages until the user has joined",
-            );
-            await this.deduplicator.waitForJoin(roomId!, matrixUser.getId());
-            log.info("User joined, can now send messages");
+        try {
+            this.roomCreationLock.set(remoteId, createPromise);
+            const result = await createPromise;
+            if (this.config.tuning.waitOnJoinBeforePM.find((prefix) => matrixUser.localpart.startsWith(prefix))) {
+                log.info(
+                    "Recipient matches waitOnJoinBeforePM, holding back sending messages until the user has joined",
+                );
+                await this.deduplicator.waitForJoin(result.matrix.getId(), matrixUser.getId());
+                log.info("User joined, can now send messages");
+            }
+            return result.matrix.getId();
+        } catch (ex) {
+            log.error("Failed to create room", ex);
+            throw ex;
+        } finally {
+            this.roomCreationLock.delete(remoteId);
         }
-        this.roomCreationLock.delete(remoteId);
-        return roomId!;
     }
 
     private async createOrGetGroupChatRoom(
@@ -211,7 +216,7 @@ export class MatrixRoomHandler {
             }
             return remoteEntry.matrix?.getId();
         }
-        let roomId;
+
         // This could be that this is the first user to join a gateway room
         // so we should try to create an entry for it ahead of time.
         if ((data as any).gatewayAlias) {
@@ -224,22 +229,22 @@ export class MatrixRoomHandler {
 
             log.info("Request was a gateway request, so attempting to find room and create an entry");
             try {
-                roomId = (await this.bridge.getIntent().getClient().getRoomIdForAlias(alias)).room_id;
+                const roomId = (await this.bridge.getIntent().getClient().getRoomIdForAlias(alias)).room_id;
                 remoteData.gateway = true;
+                log.info(`Found ${roomId} for ${alias}`);
                 await this.store.storeRoom(roomId, MROOM_TYPE_GROUP, remoteId, remoteData);
+                return roomId;
             } catch (ex) {
                 log.warn("Room was not found", ex);
                 throw Error("Room doesn't exist, refusing to make room");
             }
-            log.info(`Found ${roomId} for ${alias}`);
-            return roomId;
         }
 
         if (getOnly) {
             throw new Error("Room doesn't exist, refusing to make room");
         }
 
-        const createPromise = new Promise((resolve) => {
+        const createPromise = new Promise(() => {
             // Room doesn't exist yet, create it.
             remoteData = {
                 protocol_id: data.account.protocol_id,
@@ -247,22 +252,27 @@ export class MatrixRoomHandler {
                 properties: props ? Util.sanitizeProperties(props) : {}, // for joining
             } as any;
             log.info(`Couldn't find room for ${roomName}. Creating a new one`);
-            resolve(intent.createRoom({
+            return intent.createRoom({
                 createAsClient: false,
                 options: {
                     name: roomName,
                     visibility: "private",
                 },
-            }));
+            });
         }).then((res: any) => {
-            roomId = res.room_id;
-            log.debug("Created room with id ", roomId);
-            return this.store.storeRoom(roomId, MROOM_TYPE_GROUP, remoteId, remoteData);
+            log.debug("Created room with id ", res.room_id);
+            return this.store.storeRoom(res.room_id, MROOM_TYPE_GROUP, remoteId, remoteData);
         });
-        this.roomCreationLock.set(remoteId, createPromise as Promise<any>);
-        await createPromise;
-        this.roomCreationLock.delete(remoteId);
-        return roomId;
+        try {
+            this.roomCreationLock.set(remoteId, createPromise);
+            const result = await createPromise;
+            return result.matrix.getId();
+        } catch (ex) {
+            log.error("Failed to create room", ex);
+            throw ex;
+        } finally {
+            this.roomCreationLock.delete(remoteId);
+        }
     }
 
     private async handleIncomingIM(data: IReceivedImMsg) {

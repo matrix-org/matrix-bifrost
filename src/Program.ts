@@ -93,8 +93,7 @@ class Program {
         const url = `${this.config.bridge.homeserverUrl}/_matrix/client/versions`;
         while (true) {
             try {
-                // It is a promise, I Promise
-                await (request.get(url) as unknown as Promise<unknown>);
+                await request.get(url);
                 return true;
             } catch (ex) {
                 log.warn("Failed to contact", url, "waiting..");
@@ -238,6 +237,9 @@ class Program {
         log.info("Bridge has started.");
         try {
             if (purple instanceof XmppJsInstance) {
+                if (!autoReg) {
+                    throw Error('AutoRegistration not enabled in config, bridge cannot start');
+                }
                 purple.preStart(this.bridge, autoReg);
             }
             await purple.start();

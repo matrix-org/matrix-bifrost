@@ -16,4 +16,5 @@ export enum XMPPFeatures {
     IqVersion = "jabber:iq:version",
     IqSearch = "jabber:iq:search",
     MessageCorrection = "urn:xmpp:message-correct:0",
+    XHTMLIM = "http://jabber.org/protocol/xhtml-im",
 }

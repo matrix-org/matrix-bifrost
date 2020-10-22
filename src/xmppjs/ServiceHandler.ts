@@ -220,7 +220,8 @@ export class ServiceHandler {
             log.warn(`Failed to search rooms: ${ex}`);
             // XXX: There isn't a very good way to explain why it failed,
             // so we use service unavailable.
-            await this.xmpp.xmppSend(new SztaIqError(from, to, id, "cancel", 503, "service-unavailable"));
+            await this.xmpp.xmppSend(new SztaIqError(from, to, id, "cancel", 503, "service-unavailable", undefined,
+                `Failure fetching public rooms from ${homeserver}`));
             return;
         }
 
@@ -237,11 +238,10 @@ export class ServiceHandler {
         await this.xmpp.xmppSend(response);
     }
 
-    private queryRoom(roomAlias: string, onlyCheck: boolean = false): Promise<string|IGatewayRoom> {
+    private queryRoom(roomAlias: string): Promise<string|IGatewayRoom> {
         return new Promise((resolve, reject) => {
             this.xmpp.emit("gateway-queryroom", {
                 roomAlias,
-                onlyCheck,
                 result: (err, res) => {
                     if (err) {
                         reject(err);
@@ -262,7 +262,7 @@ export class ServiceHandler {
             log.debug(`Running room discovery for ${toStr}`);
             let roomId = this.existingAliases.get(alias);
             if (!roomId) {
-                roomId = await this.queryRoom(alias, true) as string;
+                roomId = await this.queryRoom(alias) as string;
                 this.existingAliases.set(alias, roomId);
             }
             log.info(`Response for alias request ${toStr} (${alias}) -> ${roomId}`);
@@ -270,6 +270,7 @@ export class ServiceHandler {
             discoInfo.feature.add(XMPPFeatures.DiscoInfo);
             discoInfo.feature.add(XMPPFeatures.Muc);
             discoInfo.feature.add(XMPPFeatures.MessageCorrection);
+            discoInfo.feature.add(XMPPFeatures.XHTMLIM);
             discoInfo.identity.add({
                 category: "conference",
                 name: alias,
@@ -282,7 +283,7 @@ export class ServiceHandler {
             });
             await this.xmpp.xmppSend(discoInfo);
         } catch (ex) {
-            await this.xmpp.xmppSend(new SztaIqError(toStr, from, id, "cancel", 404, "item-not-found"));
+            await this.xmpp.xmppSend(new SztaIqError(toStr, from, id, "cancel", 404, "item-not-found", undefined, "Room could not be found"));
         }
     }
 
@@ -373,6 +374,7 @@ export class ServiceHandler {
     }
 
     private async handlePing(from: string, to: string, id: string) {
+        const fromJid = jid(from);
         const toJid = jid(to);
         log.debug(`Got ping from=${from} to=${to} id=${id}`);
         // https://xmpp.org/extensions/xep-0199.html
@@ -381,6 +383,7 @@ export class ServiceHandler {
             if (jid(from).domain === from) {
                 log.debug(`S2S ping result sent to ${from}`);
                 await this.xmpp.xmppSend(new StzaIqPing(to, from, id, "result"));
+                return;
             }
             // If the 'from' part is not a domain, this is not a S2S ping.
         }
@@ -393,7 +396,7 @@ export class ServiceHandler {
                 return;
             }
             const chatName = `${toJid.local}@${toJid.domain}`;
-            const result = !!this.xmpp.gateway.isAnonJIDInMuc(toJid);
+            const result = !!this.xmpp.gateway.isJIDInMuc(chatName, fromJid);
             if (result) {
                 await this.xmpp.xmppSend(new StzaIqPing(to, from, id, "result"));
             } else {

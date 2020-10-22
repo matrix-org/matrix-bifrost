@@ -69,7 +69,7 @@ export class XmppJsInstance extends EventEmitter implements IBifrostInstance {
     private defaultRes!: string;
     private connectionWasDropped: boolean;
     private bufferedMessages: {xmlMsg: Element|string, resolve: (res: Promise<void>) => void}[];
-    private autoRegister?: AutoRegistration;
+    private autoRegister!: AutoRegistration;
     private bridge!: Bridge;
     private xmppGateway: XmppJsGateway|null;
     private activeMUCUsers: Set<string>;
@@ -100,9 +100,12 @@ export class XmppJsInstance extends EventEmitter implements IBifrostInstance {
         return this.myAddress;
     }
 
-    public preStart(bridge: Bridge, autoRegister?: AutoRegistration) {
+    public preStart(bridge: Bridge, autoRegister: AutoRegistration) {
         this.autoRegister = autoRegister;
         this.bridge = bridge;
+        if (!autoRegister) {
+            throw Error('autoRegistration not defined, cannot start bridge');
+        }
     }
 
     public createBifrostAccount(username) {
@@ -128,6 +131,12 @@ export class XmppJsInstance extends EventEmitter implements IBifrostInstance {
         return this.xmppSend(xml);
     }
 
+    /**
+     * Send an XML stanza to the stream. It's safe to modify
+     * the Stanza object after calling this, as the object
+     * is immediately converted to an XML string.
+     * @param xmlMsg The XML stanza or string to send
+     */
     public xmppSend(xmlMsg: IStza|string): Promise<unknown> {
         const xml = typeof(xmlMsg) === "string" ? xmlMsg : xmlMsg.xml;
         if (this.canWrite) {

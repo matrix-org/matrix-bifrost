@@ -32,13 +32,9 @@ function createProfileSync(userInfo?: {}) {
                 setAvatarUrl: (avatarUrl) => {
                     values.avatarUrl = avatarUrl;
                 },
-                getClient: () => {
-                    return {
-                        uploadContent: (data) => {
-                            values.uploadedData = data;
-                            return "mxc://example.com/foobar";
-                        },
-                    };
+                uploadContent: (data) => {
+                    values.uploadedData = data;
+                    return "mxc://example.com/foobar";
                 },
             };
         },
@@ -65,17 +61,6 @@ function createProfileSync(userInfo?: {}) {
         values,
     };
 }
-
-/*
-const {type, data} = await account.getAvatarBuffer(remoteProfileSet.avatar_uri, senderId);
-const mxcUrl = await intent.getClient().uploadContent(data, {
-    name: path.basename(remoteProfileSet.avatar_uri),
-    type,
-    rawResponse: false,
-    onlyContentUri: true,
-});
-await intent.setAvatarUrl(mxcUrl);
- */
 
 describe("ProfileSync", () => {
     it("will sync one profile without any UserInfo", async () => {
