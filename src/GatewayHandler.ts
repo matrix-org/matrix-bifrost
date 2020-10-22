@@ -220,9 +220,7 @@ export class GatewayHandler {
         try {
             const res = await this.bridge.getIntent().getClient().resolveRoomAlias(ev.roomAlias);
             log.info(`Found ${res.room_id}`);
-            if (ev.onlyCheck) {
-                ev.result(null, res.room_id);
-            }
+            ev.result(null, res.room_id);
         } catch (ex) {
             log.warn("Room not found:", ex);
             ev.result(Error("Room not found"));

@@ -9,6 +9,7 @@
     "lint": "tslint --project tsconfig.json --format stylish",
     "start": "node build/src/Program.js -c config.yaml",
     "genreg": "node build/src/Program.js -r -c config.yaml",
+    "pretest": "npm run build",
     "test": "mocha -r ts-node/register test/test.ts test/*.ts test/**/*.ts",
     "changelog": "scripts/towncrier.sh",
     "coverage": "nyc mocha -r ts-node/register test/test.ts test/*.ts test/**/*.ts"

@@ -94,7 +94,7 @@ describe("Stanzas", () => {
         });
     });
     describe("SztaIqError", () => {
-        it("should create a valid stanza", () => {
+        it("should create a an error", () => {
             const xml = new SztaIqError("foo@bar", "baz@bar", "someid", "cancel", null, "not-acceptable", "foo").xml;
             assertXML(xml);
             expect(xml).to.equal(
@@ -103,5 +103,15 @@ describe("Stanzas", () => {
                  "</error></iq>",
             );
         });
+    });
+    it("should create a an error with custom text", () => {
+        const xml = new SztaIqError("foo@bar", "baz@bar", "someid", "cancel", null, "not-acceptable", "foo", "Something isn't right").xml;
+        assertXML(xml);
+        expect(xml).to.equal(
+            "<iq from='foo@bar' to='baz@bar' id='someid' type='error' xml:lang='en'>" +
+             "<error type='cancel' by='foo'><not-acceptable xmlns='urn:ietf:params:xml:ns:xmpp-stanzas'/>" +
+             "<text>Something isn&#x27;t right</text>" +
+             "</error></iq>",
+        );
     });
 });
