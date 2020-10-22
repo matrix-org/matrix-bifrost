@@ -195,6 +195,17 @@ export class GatewayHandler {
             if (!this.config.tuning.waitOnProfileBeforeSend) {
                 await this.profileSync.updateProfile(protocol, data.sender, this.purple.gateway);
             }
+            if (data.nick) {
+                // Set the user's displayname in the room to their nickname.
+                // Do this after a short delay, so that we don't have a race on
+                // the server setting the global displayname.
+                setTimeout(
+                    async () => {
+                        await intent.setRoomUserProfile(roomId, {displayname: data.nick});
+                    },
+                    1000,
+                );
+            }
             const room = await this.getOrCreateGatewayRoom(data, roomId);
             const canonAlias = room.remote?.get<IChatJoinProperties>("properties").room_alias;
             if (canonAlias !== data.roomAlias) {
