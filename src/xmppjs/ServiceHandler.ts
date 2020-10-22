@@ -374,6 +374,7 @@ export class ServiceHandler {
     }
 
     private async handlePing(from: string, to: string, id: string) {
+        const fromJid = jid(from);
         const toJid = jid(to);
         log.debug(`Got ping from=${from} to=${to} id=${id}`);
         // https://xmpp.org/extensions/xep-0199.html
@@ -395,7 +396,7 @@ export class ServiceHandler {
                 return;
             }
             const chatName = `${toJid.local}@${toJid.domain}`;
-            const result = !!this.xmpp.gateway.isAnonJIDInMuc(toJid);
+            const result = !!this.xmpp.gateway.isJIDInMuc(chatName, fromJid);
             if (result) {
                 await this.xmpp.xmppSend(new StzaIqPing(to, from, id, "result"));
             } else {
