@@ -187,24 +187,18 @@ export class GatewayHandler {
             if (this.config.tuning.waitOnProfileBeforeSend) {
                 await this.profileSync.updateProfile(protocol, data.sender, this.purple.gateway);
             }
-            const res = await intent.getClient().joinRoom(data.roomAlias, {syncRoom: false});
+            roomId = await intent.join(data.roomAlias);
             if (!this.config.tuning.waitOnProfileBeforeSend) {
                 await this.profileSync.updateProfile(protocol, data.sender, this.purple.gateway);
             }
-            if (!res || !res.roomId) {
-                throw Error(
-                    "Roomid not given in join",
-                );
-            }
-            roomId = res.roomId;
-            const room = await this.getOrCreateGatewayRoom(data, roomId!);
+            const room = await this.getOrCreateGatewayRoom(data, roomId);
             const canonAlias = room.remote?.get<IChatJoinProperties>("properties").room_alias;
             if (canonAlias !== data.roomAlias) {
                 throw Error(
                     "We do not support multiple room aliases, try " + canonAlias,
                 );
             }
-            const vroom = await this.getVirtualRoom(roomId!, intent);
+            const vroom = await this.getVirtualRoom(roomId, intent);
             await this.purple.gateway.onRemoteJoin(null, data.join_id, vroom, intentUser);
         } catch (ex) {
             if (roomId) {
