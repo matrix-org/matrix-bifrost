@@ -41,11 +41,17 @@ export class GatewayMUCMembership {
         return this.getMatrixMembers(chatName).find((user) => user.matrixId === matrixId);
     }
 
+    public getXmppMemberByDevice(chatName: string, realJid: string|JID): IGatewayMemberXmpp|undefined {
+        const j = typeof(realJid) !== "string" ? realJid.toString() : realJid;
+        const member = this.getXmppMembers(chatName).find((user) => user.devices.has(j));
+        return member;
+    }
+
     public getXmppMemberByRealJid(chatName: string, realJid: string|JID): IGatewayMemberXmpp|undefined {
         // Strip the resource.
         const j = typeof(realJid) === "string" ? jid(realJid) : realJid;
         const strippedJid = `${j.local}@${j.domain}`;
-        const member = this.getXmppMembers(chatName).find((user) => user.realJid!.toString() === strippedJid);
+        const member = this.getXmppMembers(chatName).find((user) => user.realJid.toString() === strippedJid);
         return member;
     }
 
