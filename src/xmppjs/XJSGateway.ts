@@ -430,25 +430,28 @@ export class XmppJsGateway implements IGateway {
 
         // All done, now for some house cleaning.
         // Store this user so we can reconnect them on restart.
-        this.upsertXMPPUser(ownMxid, to, from);
+        this.upsertXMPPUser(to);
         log.debug(`Join complete for ${to}`);
     }
 
-    private upsertXMPPUser(mxId: string, remoteId: JID, device: JID) {
-        log.debug(`Upserted XMPP user ${mxId} ${remoteId}`);
+    private upsertXMPPUser(remoteId: JID) {
         const chatName = `${remoteId.local}@${remoteId.domain}`;
-        const member = this.members.getXmppMemberByMatrixId(chatName, mxId);
-        const devices = new Set(member.devices).add(device.toString());
+        const member = this.members.getMemberByAnonJid<IGatewayMemberXmpp>(chatName, remoteId.toString());
+        if (member.type !== "xmpp") {
+            return;
+        }
         this.xmpp.emit("store-remote-user", {
-            mxId,
+            mxId: member.matrixId,
             remoteId: remoteId.toString(),
             protocol_id: XMPP_PROTOCOL.id,
             data: {
-                handle: mxId.toString(),
-                devices: [...devices],
+                handle: member.matrixId.toString(),
+                devices: [...member.devices],
                 room_name: chatName,
             },
         } as IStoreRemoteUser);
+        log.debug(`Upserted XMPP user ${member.matrixId} ${remoteId}`);
+
     }
 
     public reconnectRemoteUser(user: BifrostRemoteUser, mxUserId: string, room: IGatewayRoom) {
@@ -574,6 +577,7 @@ export class XmppJsGateway implements IGateway {
         );
         leaveStza.presenceType = "unavailable";
         this.xmpp.xmppWriteToStream(leaveStza);
+        this.upsertXMPPUser(to);
         // If this is the last device for that member, reflect
         // that change to everyone.
         if (lastDevice) {
