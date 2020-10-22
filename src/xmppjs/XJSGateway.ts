@@ -402,8 +402,8 @@ export class XmppJsGateway implements IGateway {
             PresenceRole.Participant,
             false,
             stanza.attrs.from,
-        );  
-        await this.reflectXMPPStanza(chatName, reflectedPresence);
+        );
+        this.reflectXMPPStanza(chatName, reflectedPresence);
         // FROM THIS POINT ON, WE CONSIDER THE USER JOINED.
 
         this.members.addXmppMember(

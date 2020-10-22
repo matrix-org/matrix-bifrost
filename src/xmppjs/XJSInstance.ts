@@ -135,7 +135,7 @@ export class XmppJsInstance extends EventEmitter implements IBifrostInstance {
      * Send an XML stanza to the stream. It's safe to modify
      * the Stanza object after calling this, as the object
      * is immediately converted to an XML string.
-     * @param xmlMsg 
+     * @param xmlMsg The XML stanza or string to send
      */
     public xmppSend(xmlMsg: IStza|string): Promise<unknown> {
         const xml = typeof(xmlMsg) === "string" ? xmlMsg : xmlMsg.xml;
