@@ -1,0 +1,1 @@
+Fix an issue where joining a room through the XMPP gateway would sometimes fail if the user was invited
