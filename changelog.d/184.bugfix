@@ -1,0 +1,1 @@
+XMPP self-pings to gateways will now return an error if the device is not in a MUC

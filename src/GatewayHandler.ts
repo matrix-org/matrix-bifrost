@@ -184,6 +184,7 @@ export class GatewayHandler {
         log.info(`${intentUser} is attempting to join ${data.roomAlias}`);
         const intent = this.bridge.getIntent(intentUser);
         let roomId: string|null = null;
+        let room: RoomBridgeStoreEntry|undefined;
         try {
             // XXX: We don't get the room_id from the join call, because Intents are made of fail.
             await intent.ensureRegistered();
@@ -206,7 +207,7 @@ export class GatewayHandler {
                     1000,
                 );
             }
-            const room = await this.getOrCreateGatewayRoom(data, roomId);
+            room = await this.getOrCreateGatewayRoom(data, roomId);
             const canonAlias = room.remote?.get<IChatJoinProperties>("properties").room_alias;
             if (canonAlias !== data.roomAlias) {
                 throw Error(
@@ -216,7 +217,10 @@ export class GatewayHandler {
             const vroom = await this.getVirtualRoom(roomId, intent);
             await this.purple.gateway.onRemoteJoin(null, data.join_id, vroom, intentUser);
         } catch (ex) {
-            if (roomId) {
+            const roomName = room?.remote?.get<string>("room_name");
+            // If the user is already in the room (e.g. XMPP member with a second device), don't part them.
+            const alreadyInRoom = roomName && this.purple.gateway.memberInRoom(roomName, intentUser);
+            if (roomId && !alreadyInRoom) {
                 intent.leave(roomId);
             }
             log.warn("Failed to join room:", ex.message);
