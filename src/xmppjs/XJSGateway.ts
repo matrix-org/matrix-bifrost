@@ -112,7 +112,7 @@ export class XmppJsGateway implements IGateway {
     }
 
     public isJIDInMuc(chatName: string, j: JID) {
-        return !!this.members.getXmppMemberByRealJid(chatName, j);
+        return !!this.members.getXmppMemberByDevice(chatName, j);
     }
 
     public getMatrixIDForJID(chatName: string, j: JID) {
