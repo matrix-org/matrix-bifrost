@@ -111,6 +111,10 @@ export class XmppJsGateway implements IGateway {
         log.debug("Added cached stanza for " + stanza.attrs.id);
     }
 
+    public memberInRoom(chatName: string, matrixId: string) {
+        return !!this.members.getXmppMemberByMatrixId(chatName, matrixId);
+    }
+
     public isJIDInMuc(chatName: string, j: JID) {
         return !!this.members.getXmppMemberByDevice(chatName, j);
     }
@@ -291,7 +295,7 @@ export class XmppJsGateway implements IGateway {
             // XXX: Specify the actual failure reason.
             this.xmpp.xmppSend(new StzaPresenceError(
                 stanza.attrs.to, stanza.attrs.from, stanza.attrs.id,
-                chatName, "cancel", "service-unavailable",
+                chatName, "cancel", "service-unavailable", err,
             ));
             return;
         }

@@ -18,6 +18,7 @@ export interface IGateway extends IProfileProvider {
     ): Promise<void>;
     initialMembershipSync(chatName: string, room: IGatewayRoom, remoteGhosts: BifrostRemoteUser[]): void;
     getMxidForRemote(sender: string): string;
+    memberInRoom(chatName: string, matrixId: string): boolean;
 }
 
 export interface IGatewayRoom {
