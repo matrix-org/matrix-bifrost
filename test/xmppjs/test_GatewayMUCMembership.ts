@@ -68,7 +68,12 @@ describe("GatewayMUCMembership", () => {
             expect(member?.devices.size).to.equal(1);
             expect(member?.devices.values().next().value).to.equal(XMPP_MEMBER_JID.toString())
         });
-        it("can find an XMPP member by real JID", () => {
+        it("will not find an XMPP member by a second device JID", () => {
+            members.addXmppMember(XMPP_CHAT_NAME, XMPP_MEMBER_JID, XMPP_MEMBER_ANONYMOUS, XMPP_MEMBER_MXID);
+            expect(members.getXmppMemberByDevice(XMPP_CHAT_NAME, XMPP_MEMBER_JID)).to.exist;
+            expect(members.getXmppMemberByDevice(XMPP_CHAT_NAME, XMPP_MEMBER_JID_SECOND_DEVICE)).to.be.undefined;
+        });
+        it("will not find a XMPP member by mxId", () => {
             members.addXmppMember(XMPP_CHAT_NAME, XMPP_MEMBER_JID, XMPP_MEMBER_ANONYMOUS, XMPP_MEMBER_MXID);
             const member = members.getXmppMemberByMatrixId(XMPP_CHAT_NAME, XMPP_MEMBER_MXID);
             expect(member?.realJid.toString()).to.be.equal(XMPP_MEMBER_JID_STRIPPED.toString());
