@@ -7,8 +7,8 @@
     "prepare": "npm run build",
     "build": "tsc",
     "lint": "tslint --project tsconfig.json --format stylish",
-    "start": "node build/src/Program.js -c config.yaml",
-    "genreg": "node build/src/Program.js -r -c config.yaml",
+    "start": "node lib/Program.js -c config.yaml",
+    "genreg": "node lib/Program.js -r -c config.yaml",
     "test": "mocha -r ts-node/register test/test.ts test/*.ts test/**/*.ts",
     "changelog": "scripts/towncrier.sh",
     "coverage": "nyc mocha -r ts-node/register test/test.ts test/*.ts test/**/*.ts"
