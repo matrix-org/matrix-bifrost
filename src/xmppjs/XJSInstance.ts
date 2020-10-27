@@ -158,7 +158,7 @@ export class XmppJsInstance extends EventEmitter implements IBifrostInstance {
         }
         const p: Promise<Element> = new Promise((resolve, reject) => {
             const timeout = setTimeout(() => reject(new Error("timeout")), timeoutMs);
-            this.xmpp.once("iq." + stza.id, (stanza: Element) => {
+            this.once("iq." + stza.id, (stanza: Element) => {
                 clearTimeout(timeout);
                 const error = stanza.getChild("error");
                 if (error) {
@@ -529,17 +529,24 @@ export class XmppJsInstance extends EventEmitter implements IBifrostInstance {
         }
         const to = `${props.room}@${props.server}`;
         const id = uuid();
+        log.info(`Checking if ${to} is is a MUC`);
         try {
             const result = await this.sendIq(new StzaIqDiscoInfo(this.myAddress.toString(), to, id, "get"));
-            console.log(result);
-            return true;
+            log.debug(`Found ${to}`);
+            const isMuc = result.getChild("query")?.getChildByAttr("var", "http://jabber.org/protocol/muc");
+            return !!isMuc;
         } catch (ex) {
             // TODO: Factor this out, error parsing would be useful.
-            const error = ex.error as Element;
-            const code = error.getAttr("code");
-            const type = error.getAttr("type");
-            const text = error.getChildText("text");
-            log.warn(`checkGroupExists: ${code} ${type} ${text}`);
+            log.info(`Could not find ${to}`);
+            if (ex.error) {
+                const error = ex.error as Element;
+                const code = error.getAttr("code");
+                const type = error.getAttr("type");
+                const text = error.getChildText("text");
+                log.info(`checkGroupExists: ${code} ${type} ${text}`);
+            } else {
+                log.info(`checkGroupExists: ${ex}`);
+            }
             return false;
         }
     }

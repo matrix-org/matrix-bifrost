@@ -72,7 +72,7 @@ export class MatrixEventHandler {
         }
 
         if(!await this.purple.checkGroupExists(properties, protocol)) {
-            log.error(`Protocol reported that ${aliasLocalpart} does not exist, not bridging`);
+            log.warn(`Protocol reported that ${aliasLocalpart} does not exist, not bridging`);
             return null;
         }
 
