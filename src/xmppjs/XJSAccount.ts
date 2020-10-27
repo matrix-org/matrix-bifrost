@@ -160,24 +160,20 @@ export class XmppJsAccount implements IBifrostAccount {
     public async selfPing(to: string): Promise<boolean> {
         const id = uuid();
         log.debug(`Self-pinging ${to}`);
-        await this.xmpp.xmppSend(new StzaIqPing(
+        const pingStanza = new StzaIqPing(
             `${this.remoteId}/${this.resource}`,
             to,
             id,
             "get",
-        ));
-        return new Promise((resolve, reject) => {
-            const timeout = setTimeout(() => resolve(false), 1000);
-            this.xmpp.on("iq." + id, (stanza: Element) => {
-                clearTimeout(timeout);
-                const error = stanza.getChild("error");
-                if (error) {
-                    resolve(false);
-                }
-                resolve(true);
-            });
-        });
+        );
         Metrics.remoteCall("xmpp.iq.ping");
+        try {
+            await this.xmpp.sendIq(pingStanza);
+            return true;
+        }
+        catch (ex) {
+            return false;
+        }
     }
 
     public reconnectToRooms() {

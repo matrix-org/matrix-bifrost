@@ -71,6 +71,11 @@ export class MatrixEventHandler {
             throw Error("Failed to get room from room store.");
         }
 
+        if(!await this.purple.checkGroupExists(properties, protocol)) {
+            log.error(`Protocol reported that ${aliasLocalpart} does not exist, not bridging`);
+            return null;
+        }
+
         log.info(`Creating new room for ${protocol.id} with`, properties);
         this.pendingRoomAliases.set(alias, {protocol, props: properties});
         return {

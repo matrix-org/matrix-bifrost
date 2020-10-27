@@ -14,6 +14,7 @@ import { IEventBody,
     IStoreRemoteUser,
     IChatReadReceipt,
     IGatewayPublicRoomsQuery,
+    IChatJoinProperties,
 } from "./Events";
 import { EventEmitter } from "events";
 import { IGateway } from "./Gateway";
@@ -30,6 +31,7 @@ export interface IBifrostInstance extends EventEmitter {
     findProtocol(nameOrId: string): BifrostProtocol|undefined;
     getNickForChat(conv: any): string;
     getUsernameFromMxid(mxid: string, prefix: string): {username: string, protocol: BifrostProtocol};
+    checkGroupExists(properties: IChatJoinProperties, protocol: BifrostProtocol): Promise<boolean>;
     on(name: string, cb: (ev: IEventBody) => void);
     on(
         name: "account-connection-error"|"account-signed-on"|"account-signed-off",
