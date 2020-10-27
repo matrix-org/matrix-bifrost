@@ -206,10 +206,10 @@ export class XmppJsGateway implements IGateway {
 
     public reflectXMPPStanza(chatName: string, stanza: StzaBase) {
         const xmppDevices = [...this.members.getXmppMembersDevices(chatName)];
-        xmppDevices.forEach((device) => {
+        return Promise.all(xmppDevices.map((device) => {
             stanza.to = device;
-            this.xmpp.xmppSend(stanza);
-        });
+            return this.xmpp.xmppSend(stanza);
+        }));
     }
 
     public reflectPM(stanza: Element) {
@@ -387,7 +387,20 @@ export class XmppJsGateway implements IGateway {
         await Promise.all(allMembershipPromises);
 
         log.debug("Emitting membership of self");
-        // 2. self presence
+        // 2. Send everyone else the users new presence.
+        const reflectedPresence = new StzaPresenceItem(
+            stanza.attrs.to,
+            "",
+            undefined,
+            PresenceAffiliation.Member,
+            PresenceRole.Participant,
+            false,
+            stanza.attrs.from,
+        );
+        await this.reflectXMPPStanza(chatName, reflectedPresence);
+        // FROM THIS POINT ON, WE CONSIDER THE USER JOINED.
+
+        // 3. Send the user self presence
         const selfPresence = new StzaPresenceItem(
             stanza.attrs.to,
             stanza.attrs.from,
@@ -402,18 +415,6 @@ export class XmppJsGateway implements IGateway {
         selfPresence.statusCodes.add(XMPPStatusCode.RoomLoggingEnabled);
         await this.xmpp.xmppSend(selfPresence);
 
-        // Send everyone else the users new presence.
-        const reflectedPresence = new StzaPresenceItem(
-            stanza.attrs.to,
-            "",
-            undefined,
-            PresenceAffiliation.Member,
-            PresenceRole.Participant,
-            false,
-            stanza.attrs.from,
-        );
-        this.reflectXMPPStanza(chatName, reflectedPresence);
-        // FROM THIS POINT ON, WE CONSIDER THE USER JOINED.
 
         this.members.addXmppMember(
             `${to.local}@${to.domain}`,
@@ -422,7 +423,7 @@ export class XmppJsGateway implements IGateway {
             ownMxid,
         );
 
-        // 3. Room history
+        // 4. Room history
         log.debug("Emitting history");
         const history: Element[] = this.roomHistory.get(room.roomId) || [];
         history.forEach((e) => {
@@ -430,8 +431,9 @@ export class XmppJsGateway implements IGateway {
             // TODO: Add delay info to this.
             this.xmpp.xmppWriteToStream(e);
         });
+
         log.debug("Emitting subject");
-        // 4. The room subject
+        // 5. The room subject
         this.xmpp.xmppSend(new StzaMessageSubject(chatName, stanza.attrs.from, undefined,
             `${room.name || ""} ${room.topic ? "| " + room.topic : ""}`,
         ));
