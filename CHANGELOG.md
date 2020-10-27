@@ -1,3 +1,20 @@
+ 0.2.0-rc2 (2020-10-27)
+=======================
+
+Features
+--------
+
+- Check if a MUC room exists before creating a portal ([\#188](https://github.com/matrix-org/matrix-bifrost/issues/188))
+
+
+Bugfixes
+--------
+
+- XMPP self-pings to gateways will now return an error if the device is not in a MUC ([\#184](https://github.com/matrix-org/matrix-bifrost/issues/184))
+- The bridge will no longer part remote users who have another device joined to a gateway room ([\#185](https://github.com/matrix-org/matrix-bifrost/issues/185))
+- Ensure stanzas are emitted in the right order when an XMPP user joins a MUC ([\#189](https://github.com/matrix-org/matrix-bifrost/issues/189))
+
+
 0.2.0-rc1 (2020-10-22)
 =======================
 
