@@ -41,7 +41,7 @@ properties:
             backendOpts:
                 type: object
                 additionalProperties:
-                    type: string
+                # Any type
     portals:
         type: "object"
         properties:
