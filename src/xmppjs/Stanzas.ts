@@ -365,8 +365,9 @@ export class StzaIqDiscoInfo extends StzaIqDisco {
     constructor(
         from: string,
         to: string,
-        id: string) {
-        super(from, to, id, "result", "http://jabber.org/protocol/disco#info");
+        id: string,
+        iqType = "result") {
+        super(from, to, id, iqType, "http://jabber.org/protocol/disco#info");
         this.identity = new Set();
         this.feature = new Set();
     }

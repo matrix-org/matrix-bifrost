@@ -24,6 +24,11 @@ export class PurpleInstance extends EventEmitter implements IBifrostInstance {
         return new PurpleAccount(username, protocol);
     }
 
+    public async checkGroupExists() {
+        // We don't check this, so just return true.
+        return true;
+    }
+
     public get gateway(): null {
         return null; // Not supported.
     }

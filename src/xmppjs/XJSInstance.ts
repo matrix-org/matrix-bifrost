@@ -16,7 +16,8 @@ import { IAccountEvent,
     IStoreRemoteUser,
     IChatReadReceipt,
     IChatStringState,
-    IEventBody} from "../bifrost/Events";
+    IEventBody,
+    IChatJoinProperties} from "../bifrost/Events";
 import { IBasicProtocolMessage, IMessageAttachment } from "../MessageFormatter";
 import { PresenceCache } from "./PresenceCache";
 import { Metrics } from "../Metrics";
@@ -24,7 +25,7 @@ import { ServiceHandler } from "./ServiceHandler";
 import { XJSConnection } from "./XJSConnection";
 import { AutoRegistration } from "../AutoRegistration";
 import { XmppJsGateway } from "./XJSGateway";
-import { IStza, StzaIqVcardRequest } from "./Stanzas";
+import { IStza, StzaBase, StzaIqDisco, StzaIqDiscoInfo, StzaIqPing, StzaIqPingError, StzaIqVcardRequest } from "./Stanzas";
 import { Util } from "../Util";
 import uuid from "uuid/v4";
 
@@ -148,6 +149,26 @@ export class XmppJsInstance extends EventEmitter implements IBifrostInstance {
         if (typeof(xmlMsg) !== "string") {
             Metrics.remoteCall(`xmpp.${xmlMsg.type}`);
         }
+        return p;
+    }
+
+    public async sendIq(stza: StzaBase, timeoutMs = 10000): Promise<Element> {
+        if (stza.type !== "iq") {
+            throw Error("Stanza type must be of type IQ");
+        }
+        const p: Promise<Element> = new Promise((resolve, reject) => {
+            const timeout = setTimeout(() => reject(new Error("timeout")), timeoutMs);
+            this.once("iq." + stza.id, (stanza: Element) => {
+                clearTimeout(timeout);
+                const error = stanza.getChild("error");
+                if (error) {
+                    reject({error, stanza});
+                }
+                resolve(stanza);
+            });
+        });
+        await this.xmppSend(stza);
+        Metrics.remoteCall("xmpp.iq");
         return p;
     }
 
@@ -494,6 +515,42 @@ export class XmppJsInstance extends EventEmitter implements IBifrostInstance {
         }
         Metrics.requestOutcome(true, Date.now() - startedAt, "success");
     }
+
+    public async checkGroupExists(properties: IChatJoinProperties) {
+        const props = {
+            room: properties.room as string,
+            server: properties.server as string,
+        }
+        if (!props.server) {
+            throw Error("Missing property server");
+        }
+        if (!props.room) {
+            throw Error("Missing property room");
+        }
+        const to = `${props.room}@${props.server}`;
+        const id = uuid();
+        log.info(`Checking if ${to} is is a MUC`);
+        try {
+            const result = await this.sendIq(new StzaIqDiscoInfo(this.myAddress.toString(), to, id, "get"));
+            log.debug(`Found ${to}`);
+            const isMuc = result.getChild("query")?.getChildByAttr("var", "http://jabber.org/protocol/muc");
+            return !!isMuc;
+        } catch (ex) {
+            // TODO: Factor this out, error parsing would be useful.
+            log.info(`Could not find ${to}`);
+            if (ex.error) {
+                const error = ex.error as Element;
+                const code = error.getAttr("code");
+                const type = error.getAttr("type");
+                const text = error.getChildText("text");
+                log.info(`checkGroupExists: ${code} ${type} ${text}`);
+            } else {
+                log.info(`checkGroupExists: ${ex}`);
+            }
+            return false;
+        }
+    }
+
 
     private async handleMessageStanza(stanza: Element, alias: string|null) {
         if (!stanza.attrs.from || !stanza.attrs.to) {
