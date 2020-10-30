@@ -1,4 +1,13 @@
- 0.2.0-rc2 (2020-10-27)
+ 0.2.0 (2020-10-30)
+===================
+
+Internal Changes
+----------------
+
+- Add CONTRIBUTING.md ([\#189](https://github.com/matrix-org/matrix-bifrost/issues/189))
+
+
+0.2.0-rc2 (2020-10-27)
 =======================
 
 Features
