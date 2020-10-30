@@ -8,6 +8,10 @@ This bridge is in very active development currently and intended mainly for expe
 
 This has been tested to work on `Node.JS v10` and `Synapse 0.34.0`.
 
+## Helping out
+
+If you wish to file an issue or create a PR, **please read [CONTRIBUTING.md](./CONTRIBUTING.md) first.
+
 **NOTE: You must read this README carefully as simply installing required dependencies may NOT be enough for some backends**
 
 ## Backends
