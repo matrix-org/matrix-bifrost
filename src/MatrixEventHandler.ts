@@ -56,14 +56,19 @@ export class MatrixEventHandler {
             throw Error("Could not match against an alias");
         }
         const protocol = res.protocol;
-        // XXX: Check if this chat already has a portal and refuse to bridge it.
+
         const properties = Util.sanitizeProperties(res.properties);
         try {
-            if (await this.store.getRoomByRemoteData({
+            // Check if this chat already has a portal and refuse to bridge it.
+            const existing = await this.store.getRoomByRemoteData({
                 properties, // for joining
                 protocol_id: protocol.id,
-            })) {
-                log.warn("Room for", properties, "already exists, not allowing alias.");
+            });
+            if (existing) {
+                log.info("Room for", properties, "already exists, not allowing alias.");
+                // Set the alias on the room.
+                const botIntent = this.bridge.getIntent();
+                await botIntent.createAlias(alias, existing.matrix.getId());
                 return null;
             }
         } catch (ex) {
