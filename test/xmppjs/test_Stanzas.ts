@@ -110,7 +110,7 @@ describe("Stanzas", () => {
         expect(xml).to.equal(
             "<iq from='foo@bar' to='baz@bar' id='someid' type='error' xml:lang='en'>" +
              "<error type='cancel' by='foo'><not-acceptable xmlns='urn:ietf:params:xml:ns:xmpp-stanzas'/>" +
-             "<text>Something isn&#x27;t right</text>" +
+             `<text xmlns="urn:ietf:params:xml:ns:xmpp-stanzas">Something isn&#x27;t right</text>` +
              "</error></iq>",
         );
     });

@@ -152,7 +152,7 @@ export class StzaPresenceError extends StzaPresence {
     public get presenceContent() {
         return `<error type='${this.errType}' by='${this.by}'><${this.innerError}`
              + " xmlns='urn:ietf:params:xml:ns:xmpp-stanzas'/>"
-             + (this.text ? `<text>${he.encode(this.text)}</text>` : "")
+             + (this.text ? `<text xmlns="urn:ietf:params:xml:ns:xmpp-stanzas">${he.encode(this.text)}</text>` : "")
              + "</error>";
     }
 }
@@ -440,7 +440,7 @@ export class SztaIqError extends StzaBase {
         return `<iq from='${this.from}' to='${this.to}' id='${this.id}' type='error' xml:lang='en'>`
         + `<error type='${this.errorType}'${errorParams}><${this.innerError} ` +
           "xmlns='urn:ietf:params:xml:ns:xmpp-stanzas'/>" +
-          (this.text ? `<text>${he.encode(this.text)}</text>` : "") +
+          (this.text ? `<text xmlns="urn:ietf:params:xml:ns:xmpp-stanzas">${he.encode(this.text)}</text>` : "") +
           "</error></iq>";
     }
 }
