@@ -120,7 +120,10 @@ export class MessageFormatter {
                     log.warn("Don't know how to handle attachment for message, not a http format uri");
                     return matrixMsg;
                 }
-                const file = (await request.get(attachment.uri, {resolveWithFullResponse: true}).promise())!;
+                const file = (await request.get(attachment.uri, {
+                    resolveWithFullResponse: true,
+                    encoding: null,
+                }).promise())!;
                 // Use the headers if a type isn't given.
                 if (!attachment.mimetype) {
                     attachment.mimetype = file.headers["content-type"];
