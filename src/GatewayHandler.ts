@@ -52,9 +52,9 @@ export class GatewayHandler {
     }
 
     public async getVirtualRoom(roomId: string, intent: Intent): Promise<IGatewayRoom> {
-        let room: IGatewayRoom|undefined = await this.roomIdCache.get(roomId);
-        if (room) {
-            return room;
+        const existingRoom = this.roomIdCache.get(roomId);
+        if (existingRoom) {
+            return existingRoom;
         }
         const promise = (async () => {
             log.debug(`Getting state for ${roomId}`);
@@ -72,7 +72,7 @@ export class GatewayHandler {
                     membership: e.content.membership,
                 }
             ))
-            room = {
+            const room: IGatewayRoom = {
                 name: nameEv ? nameEv.content.name : "",
                 topic: topicEv ? topicEv.content.topic : "",
                 roomId,

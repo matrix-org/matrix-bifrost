@@ -140,12 +140,14 @@ export class XmppJsInstance extends EventEmitter implements IBifrostInstance {
      */
     public xmppSend(xmlMsg: IStza|string): Promise<unknown> {
         const xml = typeof(xmlMsg) === "string" ? xmlMsg : xmlMsg.xml;
+        let p: Promise<unknown>;
         if (this.canWrite) {
-            return this.xmpp.write(xml);
+            p = this.xmpp.write(xml);
+        } else {
+            p = new Promise((resolve) => {
+                this.bufferedMessages.push({xmlMsg: xml, resolve});
+            });
         }
-        const p = new Promise((resolve) => {
-            this.bufferedMessages.push({xmlMsg: xml, resolve});
-        });
         if (typeof(xmlMsg) !== "string") {
             Metrics.remoteCall(`xmpp.${xmlMsg.type}`);
         }
@@ -170,19 +172,6 @@ export class XmppJsInstance extends EventEmitter implements IBifrostInstance {
         await this.xmppSend(stza);
         Metrics.remoteCall("xmpp.iq");
         return p;
-    }
-
-    public xmppWaitForDrain(timeoutMs: number = 30000): Promise<void> {
-        return new Promise((resolve, reject) => {
-            const timeout = setTimeout(() => {
-                reject("Timed out waiting for drain");
-            }, timeoutMs);
-            log.debug("Waiting for drain");
-            this.xmpp.socket.once("drain", () => {
-                clearTimeout(timeout);
-                resolve();
-            });
-        });
     }
 
     public xmppAddSentMessage(id: string) {
