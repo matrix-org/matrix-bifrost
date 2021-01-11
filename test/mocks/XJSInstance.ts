@@ -11,7 +11,6 @@ export class MockXJSInstance extends EventEmitter {
     public sentPackets: Element[] = [];
     public selfPingResponse: "respond-ok"|"respond-error"|"no-response" = "respond-error";
     public accountUsername!: string;
-    public drainWaits: number = 0;
 
     public xmppAddSentMessage(id: string) {
         this.sentMessageIDs.push(id);
@@ -51,10 +50,5 @@ export class MockXJSInstance extends EventEmitter {
 
     public xmppWriteToStream(msg: Element) {
         this.sentPackets.push(msg);
-    }
-
-    public xmppWaitForDrain(): Promise<void> {
-        this.drainWaits++;
-        return Promise.resolve();
     }
 }

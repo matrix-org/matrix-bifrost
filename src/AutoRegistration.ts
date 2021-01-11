@@ -54,7 +54,7 @@ export class AutoRegistration {
         if (step.type === "http") {
             res = await this.handleHttpRegistration(mxId, step);
         } else if (step.type === "implicit") {
-            const params = this.generateParameters(step.parameters, mxId);
+            const params = AutoRegistration.generateParameters(step.parameters, mxId);
             await this.store.storeAccount(mxId, proto, params.username);
             return this.protoInstance.getAccount(params.username, protocol, mxId)!;
         } else {
@@ -130,30 +130,30 @@ export class AutoRegistration {
      * @param mxId The user's mxid
      */
     public generateParametersFor(protocol: string, mxId: string) {
-            if (this.nameCache.has(protocol+mxId)) {
-                return this.nameCache.get(protocol+mxId);
-            }
-            if (!this.isSupported(protocol)) {
-                throw new Error("Protocol unsupported");
-            }
-            // We assume the caller has already validated this.
-            const step = this.autoRegConfig.protocolSteps![protocol];
-            const result = this.generateParameters(step.parameters, mxId);
-            this.nameCache.set(protocol+mxId, result);
-            return result;
+        if (this.nameCache.has(protocol+mxId)) {
+            return this.nameCache.get(protocol+mxId);
+        }
+        if (!this.isSupported(protocol)) {
+            throw new Error("Protocol unsupported");
+        }
+        // We assume the caller has already validated this.
+        const step = this.autoRegConfig.protocolSteps![protocol];
+        const result = AutoRegistration.generateParameters(step.parameters, mxId);
+        this.nameCache.set(protocol+mxId, result);
+        return result;
     }
 
-    public generateParameters(parameters: {[key: string]: string}, mxId: string, profile?: {displayname: string; avatar_url: string})
+    public static generateParameters(parameters: {[key: string]: string}, mxId: string, profile?: {displayname: string; avatar_url: string})
         : {[key: string]: string} {
         const body = {};
         const mxUser = new MatrixUser(mxId);
-        for (const key of Object.keys(parameters)) {
-            body[key] = this.generateParameter(body[key], mxUser, profile);
+        for (const [key, value] of Object.entries(parameters)) {
+            body[key] = this.generateParameter(value, mxUser, profile);
         }
         return body;
     }
 
-    private generateParameter(val: string, mxUser: MatrixUser, profile?: {displayname: string; avatar_url: string}) {
+    private static generateParameter(val: string, mxUser: MatrixUser, profile?: {displayname: string; avatar_url: string}) {
         val = val.replace("<T_MXID>", mxUser.getId());
         val = val.replace("<T_MXID_SANE>", this.getSaneMxId(mxUser.getId()));
         val = val.replace("<T_LOCALPART>", mxUser.localpart);
@@ -164,7 +164,7 @@ export class AutoRegistration {
         return val;
     }
 
-    private getSaneMxId(mxId: string) {
+    private static getSaneMxId(mxId: string) {
         let sane = mxId.replace(/:/g, "_");
         sane = sane.startsWith("@") ? sane.substr(1) : sane;
         return sane.replace(/([A-Z])/g, "^$1".toLowerCase());
@@ -187,7 +187,7 @@ export class AutoRegistration {
         }
 
         log.debug("HttpReg: Got profile", profile);
-        const body = this.generateParameters(step.parameters, mxId, profile);
+        const body = AutoRegistration.generateParameters(step.parameters, mxId, profile);
         log.debug("HttpReg: Set parameters:", body);
         try {
             let username;

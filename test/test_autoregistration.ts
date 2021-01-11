@@ -1,25 +1,12 @@
 // tslint:disable: no-any
 import * as Chai from "chai";
 import { AutoRegistration } from "../src/AutoRegistration";
+import { Config } from "../src/Config";
 const expect = Chai.expect;
-
-function createAR() {
-    const bridge = {};
-    const store = {};
-    const purple = {};
-    return new AutoRegistration(
-        {} as any,
-        {},
-        bridge as any,
-        store as any,
-        purple as any,
-    );
-}
 
 describe("AutoRegistration", () => {
     it("generateParameters", () => {
-        const ar = createAR();
-        const params = ar.generateParameters(
+        const params = AutoRegistration.generateParameters(
             {
                 mxid_test: "<T_MXID>:foo",
                 mxid_sane_test: "<T_MXID_SANE>:foo",
