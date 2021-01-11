@@ -372,7 +372,7 @@ export class XmppJsGateway implements IGateway {
                         false,
                         realJid,
                     ),
-                ) 
+                )
             })());
         }
 
