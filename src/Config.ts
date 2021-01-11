@@ -30,6 +30,7 @@ export class Config {
     };
 
     public readonly autoRegistration: IConfigAutoReg = {
+        registrationNameCacheSize: 15000,
         enabled: false,
         protocolSteps: undefined,
     };
@@ -113,6 +114,7 @@ export interface IConfigPurple {
 export interface IConfigAutoReg {
     enabled: boolean;
     protocolSteps: {[protocol: string]: IAutoRegStep} | undefined;
+    registrationNameCacheSize: number;
 }
 
 export interface IConfigBridgeBot {
@@ -144,7 +146,6 @@ export interface IConfigAccessControl {
         whitelist?: string[],
     };
 }
-
 interface IConfigMetrics {
     enabled: boolean;
 }

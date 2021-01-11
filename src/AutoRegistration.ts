@@ -7,8 +7,8 @@ import { IStore } from "./store/Store";
 import { IBifrostInstance } from "./bifrost/Instance";
 import { IBifrostAccount } from "./bifrost/Account";
 import { BifrostProtocol } from "./bifrost/Protocol";
+import QuickLRU from "quick-lru";
 const log = Logging.get("AutoRegistration");
-
 export interface IAutoRegHttpOpts {
     method: string;
     usernameResult: string|null;
@@ -24,6 +24,7 @@ export interface IAutoRegStep {
 }
 
 export class AutoRegistration {
+    private nameCache = new QuickLRU<string, {[key: string]: string}>({ maxSize: this.autoRegConfig.registrationNameCacheSize });
     constructor(
         private autoRegConfig: IConfigAutoReg,
         private accessConfig: IConfigAccessControl,
@@ -122,31 +123,45 @@ export class AutoRegistration {
         return this.registerUser(protocol.id, mxid);
     }
 
+    /**
+     * Generate a set of parameters for a given profile and mxid.
+     * This function is backed by a cache.
+     * @param protocol The protocol in use.
+     * @param mxId The user's mxid
+     */
     public generateParametersFor(protocol: string, mxId: string) {
+            if (this.nameCache.has(protocol+mxId)) {
+                return this.nameCache.get(protocol+mxId);
+            }
             if (!this.isSupported(protocol)) {
                 throw new Error("Protocol unsupported");
             }
             // We assume the caller has already validated this.
             const step = this.autoRegConfig.protocolSteps![protocol];
-            return this.generateParameters(step.parameters, mxId);
+            const result = this.generateParameters(step.parameters, mxId);
+            this.nameCache.set(protocol+mxId, result);
+            return result;
     }
 
-    public generateParameters(parameters: {[key: string]: string}, mxId: string, profile: any = {})
+    public generateParameters(parameters: {[key: string]: string}, mxId: string, profile?: {displayname: string; avatar_url: string})
         : {[key: string]: string} {
         const body = {};
         const mxUser = new MatrixUser(mxId);
         for (const key of Object.keys(parameters)) {
-            let val = parameters[key];
-            val = val.replace("<T_MXID>", mxUser.getId());
-            val = val.replace("<T_MXID_SANE>", this.getSaneMxId(mxUser.getId()));
-            val = val.replace("<T_LOCALPART>", mxUser.localpart);
-            val = val.replace("<T_DOMAIN>", mxUser.host);
-            val = val.replace("<T_DISPLAYNAME>", profile.displayname || mxUser.localpart);
-            val = val.replace("<T_GENERATEPWD>", Util.passwordGen(32));
-            val = val.replace("<T_AVATAR>", profile.avatar_url || "");
-            body[key] = val;
+            body[key] = this.generateParameter(body[key], mxUser, profile);
         }
         return body;
+    }
+
+    private generateParameter(val: string, mxUser: MatrixUser, profile?: {displayname: string; avatar_url: string}) {
+        val = val.replace("<T_MXID>", mxUser.getId());
+        val = val.replace("<T_MXID_SANE>", this.getSaneMxId(mxUser.getId()));
+        val = val.replace("<T_LOCALPART>", mxUser.localpart);
+        val = val.replace("<T_DOMAIN>", mxUser.host);
+        val = val.replace("<T_DISPLAYNAME>", profile?.displayname || mxUser.localpart);
+        val = val.replace("<T_GENERATEPWD>", Util.passwordGen(32));
+        val = val.replace("<T_AVATAR>", profile?.avatar_url || "");
+        return val;
     }
 
     private getSaneMxId(mxId: string) {
