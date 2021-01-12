@@ -186,6 +186,9 @@ export class GatewayHandler {
         let roomId: string|null = null;
         let room: RoomBridgeStoreEntry|undefined;
         try {
+            if (this.config.getRoomRule(data.roomAlias) === "deny") {
+                throw Error("This room has been denied");
+            } 
             // XXX: We don't get the room_id from the join call, because Intents are made of fail.
             await intent.ensureRegistered();
             if (this.config.tuning.waitOnProfileBeforeSend) {
@@ -193,6 +196,9 @@ export class GatewayHandler {
             }
             log.info(`Attempting to join ${data.roomAlias}`)
             roomId = await intent.join(data.roomAlias);
+            if (this.config.getRoomRule(data.roomAlias) === "deny") {
+                throw Error("This room has been denied");
+            } 
             if (!this.config.tuning.waitOnProfileBeforeSend) {
                 await this.profileSync.updateProfile(protocol, data.sender, this.purple.gateway);
             }

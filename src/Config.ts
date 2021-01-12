@@ -16,6 +16,8 @@ export class Config {
         appservicePort: 9555,
     };
 
+    public readonly roomRules: IConfigRoomRule[] = [];
+
     public readonly datastore: IConfigDatastore = {
         engine: "nedb",
         connectionString: "nedb://.",
@@ -70,6 +72,15 @@ export class Config {
     };
 
     public readonly access: IConfigAccessControl = { };
+
+    public getRoomRule(roomIdOrAlias?: string) {
+        const aliasRule = this.roomRules.find((r) => r.room === roomIdOrAlias);
+        if (aliasRule && aliasRule.filter === "deny") {
+            return "deny";
+        }
+        const roomIdRule = this.roomRules.find((r) => r.room === roomIdOrAlias);
+        return roomIdRule?.filter || "allow";
+    }
 
     /**
      * Apply a set of keys and values over the default config.
@@ -170,4 +181,15 @@ export interface IConfigDatastore {
     engine: "nedb"|"postgres";
     connectionString: string;
     opts: undefined|PgDataStoreOpts;
+}
+
+export interface IConfigRoomRule {
+    /**
+     * Room ID or alias
+     */
+    room: string;
+    /**
+     * Should the room be allowed, or denied.
+     */
+    filter: "allow"|"deny";
 }
