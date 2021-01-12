@@ -348,39 +348,32 @@ export class XmppJsGateway implements IGateway {
         // 1. membership of others.
         log.debug(`Emitting membership of other users (${members.length})`);
         // Ensure we chunk this
-        let sent = 0;
         const allMembershipPromises: Promise<unknown>[] = [];
         for (const member of members) {
-            sent++;
             if (member.anonymousJid.toString() === stanza.attrs.to) {
                 continue;
             }
-            if (sent % 100 === 0) {
-                try {
-                    await this.xmpp.xmppWaitForDrain(250);
-                } catch (ex) {
-                    log.warn("Drain didn't arrive, oh well");
+            allMembershipPromises.push((async () => {
+                let realJid;
+                if ((member as IGatewayMemberXmpp).realJid) {
+                    realJid = (member as IGatewayMemberXmpp).realJid.toString();
+                } else {
+                    realJid = this.registration.generateParametersFor(
+                        XMPP_PROTOCOL.id, (member as IGatewayMemberMatrix).matrixId,
+                    ).username;
                 }
-            }
-            let realJid;
-            if ((member as IGatewayMemberXmpp).realJid) {
-                realJid = (member as IGatewayMemberXmpp).realJid.toString();
-            } else {
-                realJid = this.registration.generateParametersFor(
-                    XMPP_PROTOCOL.id, (member as IGatewayMemberMatrix).matrixId,
-                ).username;
-            }
-            allMembershipPromises.push(this.xmpp.xmppSend(
-                new StzaPresenceItem(
-                    member.anonymousJid.toString(),
-                    stanza.attrs.from,
-                    undefined,
-                    PresenceAffiliation.Member,
-                    PresenceRole.Participant,
-                    false,
-                    realJid,
-                ),
-            ));
+                return this.xmpp.xmppSend(
+                    new StzaPresenceItem(
+                        member.anonymousJid.toString(),
+                        stanza.attrs.from,
+                        undefined,
+                        PresenceAffiliation.Member,
+                        PresenceRole.Participant,
+                        false,
+                        realJid,
+                    ),
+                )
+            })());
         }
 
         // Wait for all presence to be sent first.

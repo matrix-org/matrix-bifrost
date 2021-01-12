@@ -195,7 +195,6 @@ describe("XJSGateway", () => {
             });
             // 2500 users + 1 self presence
             expect(messages.filter((m) => m.type === "presence")).to.have.lengthOf(2501);
-            expect(mockXmpp.drainWaits).to.equal(2500 / 100);
         });
         it("should reflect a join to all other XMPP users in the room", async () => {
             const room: IGatewayRoom = {
