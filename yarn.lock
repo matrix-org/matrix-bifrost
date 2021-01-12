@@ -143,10 +143,10 @@
   resolved "https://registry.yarnpkg.com/@babel/parser/-/parser-7.11.5.tgz#c7ff6303df71080ec7a4f5b8c003c58f1cf51037"
   integrity sha512-X9rD8qqm695vgmeaQ4fvz/o3+Wk4ZzQvSHkDBgpYKxpD4qTAUm88ZKtHkVqIOsYFFbIQ6wQYhC6q7pjqVK0E0Q==
 
-"@babel/runtime@^7.11.2":
-  version "7.12.1"
-  resolved "https://registry.yarnpkg.com/@babel/runtime/-/runtime-7.12.1.tgz#b4116a6b6711d010b2dad3b7b6e43bf1b9954740"
-  integrity sha512-J5AIf3vPj3UwXaAzb5j1xM4WAQDX3EMgemF8rjCP3SoW09LfRKAXQKt6CoVYl230P6iWdRcBbnLDDdnqWxZSCA==
+"@babel/runtime@^7.12.5":
+  version "7.12.5"
+  resolved "https://registry.yarnpkg.com/@babel/runtime/-/runtime-7.12.5.tgz#410e7e487441e1b360c29be715d870d9b985882e"
+  integrity sha512-plcc+hbExy3McchJCEQG3knOsuh3HH+Prx1P6cLIkET/0dLuQDEnrT+s27Axgc9bqfsmNUNHfscgMUdBpC9xfg==
   dependencies:
     regenerator-runtime "^0.13.4"
 
@@ -2378,10 +2378,10 @@ logform@^2.2.0:
     ms "^2.1.1"
     triple-beam "^1.3.0"
 
-loglevel@^1.7.0:
-  version "1.7.0"
-  resolved "https://registry.yarnpkg.com/loglevel/-/loglevel-1.7.0.tgz#728166855a740d59d38db01cf46f042caa041bb0"
-  integrity sha512-i2sY04nal5jDcagM3FMfG++T69GEEM8CYuOfeOIvmXzOIcwE9a/CJPR0MFM97pYMj/u10lzz7/zd7+qwhrBTqQ==
+loglevel@^1.7.1:
+  version "1.7.1"
+  resolved "https://registry.yarnpkg.com/loglevel/-/loglevel-1.7.1.tgz#005fde2f5e6e47068f935ff28573e125ef72f197"
+  integrity sha512-Hesni4s5UkWkwCGJMQGAh71PaLUmKFM60dHvq0zi/vDhhrzuk+4GgNbTXJ12YYQJn6ZKBDNIjYcuQGKudvqrIw==
 
 ltx@^2.5.0, ltx@^2.6.2, ltx@^2.8.1, ltx@^2.9.2:
   version "2.10.0"
@@ -2407,17 +2407,17 @@ marked@^1.2.0:
   resolved "https://registry.yarnpkg.com/marked/-/marked-1.2.0.tgz#7221ce2395fa6cf6d722e6f2871a32d3513c85ca"
   integrity sha512-tiRxakgbNPBr301ihe/785NntvYyhxlqcL3YaC8CaxJQh7kiaEtrN9B/eK2I2943Yjkh5gw25chYFDQhOMCwMA==
 
-matrix-appservice-bridge@^2.3.0-rc3:
-  version "2.3.0-rc3"
-  resolved "https://registry.yarnpkg.com/matrix-appservice-bridge/-/matrix-appservice-bridge-2.3.0-rc3.tgz#396eaa82a2fa834cfb4a02c2a1f78529c75991f2"
-  integrity sha512-putWYKJwo4XphCl8Op4WspHVPcqyTEBizNsJIMtrWYDgizzH+crs6mfk5aADNlSBTa7W6HgXPtphp7S3CCZq2A==
+matrix-appservice-bridge@^2.4.1:
+  version "2.4.1"
+  resolved "https://registry.yarnpkg.com/matrix-appservice-bridge/-/matrix-appservice-bridge-2.4.1.tgz#2bf873586b7f5445a6edca6165bddc0ed2ff8c06"
+  integrity sha512-X6kdJZMBJrw1Oj/t/AiimpyHqySwaPwRDpovCZuaAalvMfT1z8epbmCBiPb/CSvY6jKXhL50GzMiYZKOxTv4Rg==
   dependencies:
     chalk "^4.1.0"
     extend "^3.0.2"
     is-my-json-valid "^2.20.5"
     js-yaml "^3.14.0"
-    matrix-appservice "^0.6.0"
-    matrix-js-sdk "^8.4.1"
+    matrix-appservice "^0.7.1"
+    matrix-js-sdk "^9.1.0"
     nedb "^1.8.0"
     nopt "^4.0.3"
     p-queue "^6.6.2"
@@ -2425,10 +2425,10 @@ matrix-appservice-bridge@^2.3.0-rc3:
     winston "^3.3.3"
     winston-daily-rotate-file "^4.5.0"
 
-matrix-appservice@^0.6.0:
-  version "0.6.0"
-  resolved "https://registry.yarnpkg.com/matrix-appservice/-/matrix-appservice-0.6.0.tgz#c650005faabc6e75ed8931da590febbc55e01aa3"
-  integrity sha512-MkM4PzBeNBi/AcSDWgUD6zWlGY2ckBSF3dn8IgXWf44uHDx6WZfWyIt4E/KKsx9iy3EO78IfWmK+7Qva4eug5A==
+matrix-appservice@^0.7.1:
+  version "0.7.1"
+  resolved "https://registry.yarnpkg.com/matrix-appservice/-/matrix-appservice-0.7.1.tgz#4a2f192d44dec0e83aa30e31c0d804a9637129ec"
+  integrity sha512-oUjEz+eKfBw66FnQ3/D7PWcq+/oq9gzJVlNOMQUSGXgK70o8JT3toeFMYsJChaIimU5fIsHbTVyHC+eVGb7MSQ==
   dependencies:
     "@types/express" "^4.17.8"
     body-parser "^1.19.0"
@@ -2436,17 +2436,17 @@ matrix-appservice@^0.6.0:
     js-yaml "^3.14.0"
     morgan "^1.10.0"
 
-matrix-js-sdk@^8.4.1:
-  version "8.5.0"
-  resolved "https://registry.yarnpkg.com/matrix-js-sdk/-/matrix-js-sdk-8.5.0.tgz#02d77e0e95fe32dcc74e0a94707f9103badfdca5"
-  integrity sha512-RJCqK/QkesL+63rX4C4mShEFw/ZR20D1UMw1RKY8pQhv1/7Skz+v5BTv/UCqG45E3rRYMarNOwy13CZ+yq33FA==
+matrix-js-sdk@^9.1.0:
+  version "9.4.1"
+  resolved "https://registry.yarnpkg.com/matrix-js-sdk/-/matrix-js-sdk-9.4.1.tgz#dc15ed0a8c2a2b588e2ce5011f881717bc6efd53"
+  integrity sha512-6iCzKym869OpZnose+g/Xg3GMNrVXn2TFJnlPEy7rshOHeKLVCoFuQcIdApcGftnfh3fi0t3qRuD7o17xt2wiA==
   dependencies:
-    "@babel/runtime" "^7.11.2"
+    "@babel/runtime" "^7.12.5"
     another-json "^0.2.0"
     browser-request "^0.3.3"
     bs58 "^4.0.1"
     content-type "^1.0.4"
-    loglevel "^1.7.0"
+    loglevel "^1.7.1"
     qs "^6.9.4"
     request "^2.88.2"
     unhomoglyph "^1.0.6"
@@ -3045,6 +3045,11 @@ qs@~6.5.2:
   version "6.5.2"
   resolved "https://registry.yarnpkg.com/qs/-/qs-6.5.2.tgz#cb3ae806e8740444584ef154ce8ee98d403f3e36"
   integrity sha512-N5ZAX4/LxJmF+7wN74pUD6qAh9/wnvdQcjq9TZjevvXzSUo7bfmw91saqMjzGS2xq91/odN2dW/WOl7qQHNDGA==
+
+quick-lru@^5.1.1:
+  version "5.1.1"
+  resolved "https://registry.yarnpkg.com/quick-lru/-/quick-lru-5.1.1.tgz#366493e6b3e42a3a6885e2e99d18f80fb7a8c932"
+  integrity sha512-WuyALRjWPDGtt/wzJiadO5AXY+8hZ80hVpe6MyivgraREW751X3SbhRvG3eLKOYN+8VEvqLcf3wdnt44Z4S4SA==
 
 randombytes@^2.0.1, randombytes@^2.1.0:
   version "2.1.0"
