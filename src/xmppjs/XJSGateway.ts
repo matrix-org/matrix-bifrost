@@ -274,6 +274,7 @@ export class XmppJsGateway implements IGateway {
     public async onRemoteJoin(
         err: string|null, joinId: string, room: IGatewayRoom|undefined, ownMxid: string|undefined,
     ) {
+        const startTs = Date.now();
         log.debug("Handling remote join for " + joinId);
         const stanza = this.stanzaCache.get(joinId);
         this.stanzaCache.delete(joinId);
@@ -435,7 +436,7 @@ export class XmppJsGateway implements IGateway {
         // All done, now for some house cleaning.
         // Store this user so we can reconnect them on restart.
         this.upsertXMPPUser(from, ownMxid);
-        log.debug(`Join complete for ${to}`);
+        log.debug(`Join complete for ${to}. Took ${Date.now() - startTs}ms`);
     }
 
     private upsertXMPPUser(realJid: JID, mxId: string) {
