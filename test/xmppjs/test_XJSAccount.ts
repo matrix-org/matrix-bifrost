@@ -67,7 +67,7 @@ describe("XJSAccount", () => {
                     server: "remote.server",
                 }, instance as any, 50, true);
             } catch (ex) {
-                expect(ex.message).to.equal("Missing room, server or handle");
+                expect(ex.message).to.equal("Missing handle");
                 return;
             }
             throw Error("Didn't throw");

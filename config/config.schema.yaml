@@ -114,6 +114,20 @@ properties:
                     additionalProperties:
                         type: "string"
                         enum: ["error","warn","info","debug"]
+    
+    roomRules:
+        type: array
+        items:
+            type: "object"
+            properties:
+                room:
+                    type: "string"
+                    pattern: "^(!|#).+:.+$"
+                action:
+                    type: "string"
+                    enum: ["allow", "deny"]
+                
+
 
     tuning:
         type: "object"

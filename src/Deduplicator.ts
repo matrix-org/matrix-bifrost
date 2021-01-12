@@ -42,7 +42,7 @@ export class Deduplicator {
     public waitForJoin(roomId: string, userId: string, timeoutMs: number = 60000) {
         log.debug(`Waiting for ${userId} to join ${roomId}..`);
         let timeout: NodeJS.Timeout;
-        return new Promise((resolve, reject) => {
+        return new Promise<void>((resolve, reject) => {
             this.waitJoinList.set(`${roomId}:${userId}`, resolve);
             timeout = setTimeout(() => reject("Wait for join timeout expired"), timeoutMs);
         }).then(() => {

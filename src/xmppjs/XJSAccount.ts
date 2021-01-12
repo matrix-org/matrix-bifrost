@@ -213,11 +213,14 @@ export class XmppJsAccount implements IBifrostAccount {
         timeout: number = 5000,
         setWaiting: boolean = true)
         : Promise<IConversationEvent|void> {
+            if (!components.fullRoomName && (!components.room || !components.server)) {
+                throw Error("Missing fullRoomName OR room|server");
+            }
+            if (!components.handle) {
+                throw Error("Missing handle");
+            }
             const roomName = components.fullRoomName || `${components.room}@${components.server}`;
             const to = `${roomName}/${components.handle}`;
-            if (!components.fullRoomName && (!components.room || !components.server || !components.handle)) {
-                throw Error("Missing room, server or handle");
-            }
             log.debug(`joinChat:`, this.remoteId, components);
             if (this.isInRoom(roomName)) {
                 log.debug("Didn't join, already joined");

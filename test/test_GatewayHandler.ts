@@ -48,6 +48,14 @@ function createGH() {
         updateProfile: () => { watch.profileUpdated = true; },
     };
     const config = new Config();
+    config.roomRules.push({
+        action: "deny",
+        room: "#badroom:example.com"
+    });
+    config.roomRules.push({
+        action: "deny",
+        room: "!evilroom:example.com"
+    });
     config.portals.enableGateway = true;
     config.bridge.domain = "localhost";
     config.bridge.userPrefix = "_prefix_";
@@ -104,6 +112,21 @@ describe("GatewayHandler", () => {
         expect(watch.remoteJoin.joinId).to.equal("!roomId2:localhost");
         expect(watch.remoteJoin.err).to.equal(
             "This room is already bridged to #roomAlias2#localhost@bridge.place",
+        );
+    });
+    it("will block joining to a gateway if the alias is banned.", async () => {
+        const {purple, watch} = createGH();
+        purple.emit("gateway-joinroom", {
+            sender: "frogman@frogworld",
+            protocol_id: dummyProtocol.id,
+            join_id: "!roomId2:localhost",
+            roomAlias: "#badroom:example.com",
+        } as IGatewayJoin);
+        await watch.remoteJoinPromise;
+        expect(watch.intent).to.not.be.null;
+        expect(watch.intent.ensureRegisteredCalled).to.be.false;
+        expect(watch.remoteJoin.err).to.equal(
+            "This room has been denied",
         );
     });
 });

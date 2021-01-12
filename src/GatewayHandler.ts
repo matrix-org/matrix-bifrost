@@ -52,9 +52,9 @@ export class GatewayHandler {
     }
 
     public async getVirtualRoom(roomId: string, intent: Intent): Promise<IGatewayRoom> {
-        let room: IGatewayRoom|undefined = await this.roomIdCache.get(roomId);
-        if (room) {
-            return room;
+        const existingRoom = this.roomIdCache.get(roomId);
+        if (existingRoom) {
+            return existingRoom;
         }
         const promise = (async () => {
             log.debug(`Getting state for ${roomId}`);
@@ -72,7 +72,7 @@ export class GatewayHandler {
                     membership: e.content.membership,
                 }
             ))
-            room = {
+            const room: IGatewayRoom = {
                 name: nameEv ? nameEv.content.name : "",
                 topic: topicEv ? topicEv.content.topic : "",
                 roomId,
@@ -186,13 +186,18 @@ export class GatewayHandler {
         let roomId: string|null = null;
         let room: RoomBridgeStoreEntry|undefined;
         try {
-            // XXX: We don't get the room_id from the join call, because Intents are made of fail.
+            if (this.config.getRoomRule(data.roomAlias) === "deny") {
+                throw Error("This room has been denied");
+            }
             await intent.ensureRegistered();
             if (this.config.tuning.waitOnProfileBeforeSend) {
                 await this.profileSync.updateProfile(protocol, data.sender, this.purple.gateway);
             }
             log.info(`Attempting to join ${data.roomAlias}`)
             roomId = await intent.join(data.roomAlias);
+            if (this.config.getRoomRule(roomId) === "deny") {
+                throw Error("This room has been denied");
+            }
             if (!this.config.tuning.waitOnProfileBeforeSend) {
                 await this.profileSync.updateProfile(protocol, data.sender, this.purple.gateway);
             }
