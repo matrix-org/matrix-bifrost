@@ -10,6 +10,12 @@ bridge:
   # Set this to the port you want the bridge to listen on.
   appservicePort: 9555
 
+roomRules: []
+# - room: "#badroom:example.com"
+#   action: "deny"
+# - room: "!badroom:example.com"
+#   action: "deny"
+
 datastore:
   # The datastore engine to use, either "nedb" or "postgres"
   engine: "postgres"

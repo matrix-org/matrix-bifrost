@@ -75,11 +75,11 @@ export class Config {
 
     public getRoomRule(roomIdOrAlias?: string) {
         const aliasRule = this.roomRules.find((r) => r.room === roomIdOrAlias);
-        if (aliasRule && aliasRule.filter === "deny") {
+        if (aliasRule && aliasRule.action === "deny") {
             return "deny";
         }
         const roomIdRule = this.roomRules.find((r) => r.room === roomIdOrAlias);
-        return roomIdRule?.filter || "allow";
+        return roomIdRule?.action || "allow";
     }
 
     /**
@@ -191,5 +191,5 @@ export interface IConfigRoomRule {
     /**
      * Should the room be allowed, or denied.
      */
-    filter: "allow"|"deny";
+    action: "allow"|"deny";
 }
