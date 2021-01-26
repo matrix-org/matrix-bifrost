@@ -753,6 +753,7 @@ export class XmppJsInstance extends EventEmitter implements IBifrostInstance {
 
         if (type === "groupchat") {
             log.debug("Emitting group message", message);
+            this.emit("received-chat-msg-xmpp", convName, stanza);
             this.emit("received-chat-msg", {
                 eventName: "received-chat-msg",
                 sender: from.toString(),

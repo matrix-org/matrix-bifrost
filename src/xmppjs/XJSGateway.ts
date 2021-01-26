@@ -1,10 +1,17 @@
 import { XmppJsInstance, XMPP_PROTOCOL } from "./XJSInstance";
 import { Element, x } from "@xmpp/xml";
+import parse from "@xmpp/xml/lib/parse";
 import { jid, JID } from "@xmpp/jid";
 import { Logging } from "matrix-appservice-bridge";
 import { IConfigBridge } from "../Config";
 import { IBasicProtocolMessage } from "..//MessageFormatter";
-import { IGatewayJoin, IUserStateChanged, IStoreRemoteUser, IUserInfo } from "../bifrost/Events";
+import {
+    IGatewayJoin,
+    IUserStateChanged,
+    IStoreRemoteUser,
+    IUserInfo,
+    IReceivedImMsg
+} from "../bifrost/Events";
 import { IGatewayRoom } from "../bifrost/Gateway";
 import { PresenceCache } from "./PresenceCache";
 import { XHTMLIM } from "./XHTMLIM";
@@ -17,6 +24,7 @@ import { XMPPStatusCode } from "./XMPPConstants";
 import { AutoRegistration } from "../AutoRegistration";
 import { GatewayStateResolve } from "./GatewayStateResolve";
 import { MatrixMembershipEvent } from "../MatrixTypes";
+import { IHistoryLimits, HistoryManager, MemoryStorage } from "./HistoryManager";
 
 const log = Logging.get("XmppJsGateway");
 
@@ -31,18 +39,24 @@ export interface RemoteGhostExtraData {
  * and XMPP.
  */
 export class XmppJsGateway implements IGateway {
-    // For storing room history, should be clipped at MAX_HISTORY per room.
-    private roomHistory: Map<string, [Element]>;
+    // For storing room history
+    private roomHistory: HistoryManager;
     // For storing requests to be responded to, like joins
     private stanzaCache: Map<string, Element>; // id -> stanza
     private presenceCache: PresenceCache;
     // Storing every XMPP user and their anonymous.
     private members: GatewayMUCMembership;
     constructor(private xmpp: XmppJsInstance, private registration: AutoRegistration, private config: IConfigBridge) {
-        this.roomHistory = new Map();
+        this.roomHistory = new HistoryManager(new MemoryStorage(50));
         this.stanzaCache = new Map();
         this.members = new GatewayMUCMembership();
         this.presenceCache = new PresenceCache(true);
+        xmpp.on("received-chat-msg-xmpp", (convName: string, stanza: Element) => {
+            this.roomHistory.addMessage(
+                convName, stanza,
+                this.members.getXmppMemberByDevice(convName, stanza.attrs.from).anonymousJid,
+            );
+        });
     }
 
     public handleStanza(stanza: Element, gatewayAlias: string) {
@@ -163,6 +177,16 @@ export class XmppJsGateway implements IGateway {
                 "groupchat",
             )
         );
+
+        // add the message to the room history
+        const historyStanza = new StzaMessage(
+            from.anonymousJid.toString(),
+            "",
+            msg,
+            "groupchat",
+        );
+        this.roomHistory.addMessage(chatName, parse(historyStanza.xml), from.anonymousJid);
+
         return this.xmpp.xmppSendBulk(msgs);
     }
 
@@ -419,10 +443,14 @@ export class XmppJsGateway implements IGateway {
 
         // 4. Room history
         log.debug("Emitting history");
-        const history: Element[] = this.roomHistory.get(room.roomId) || [];
+        const historyLimits: IHistoryLimits = {};
+        const historyRequest = stanza.getChild("x", "http://jabber.org/protocol/muc")?.getChild("history");
+        if (historyRequest !== undefined) {
+            console.log(historyRequest);
+        }
+        const history: Element[] = await this.roomHistory.getHistory(chatName, historyLimits);
         history.forEach((e) => {
             e.attrs.to = stanza.attrs.from;
-            // TODO: Add delay info to this.
             this.xmpp.xmppWriteToStream(e);
         });
 
