@@ -446,7 +446,7 @@ export class XmppJsGateway implements IGateway {
         const historyLimits: IHistoryLimits = {};
         const historyRequest = stanza.getChild("x", "http://jabber.org/protocol/muc")?.getChild("history");
         if (historyRequest !== undefined) {
-            console.log(historyRequest);
+            // FIXME: actually set limits
         }
         const history: Element[] = await this.roomHistory.getHistory(chatName, historyLimits);
         history.forEach((e) => {
