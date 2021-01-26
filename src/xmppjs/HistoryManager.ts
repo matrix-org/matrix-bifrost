@@ -80,12 +80,10 @@ export class HistoryManager {
     ) {}
 
     async addMessage(chatName: string, message: Element, jid: JID): Promise<void> {
-        console.log("adding message for room", chatName, message, jid);
         return this.storage.addMessage(chatName, message, jid);
     }
 
     async getHistory(chatName: string, limits: IHistoryLimits): Promise<Element[]> {
-        console.log("getting messages for room", chatName);
         if (limits.seconds) {
             const since = new Date(Date.now() - limits.seconds * 1000);
             if (limits.since === undefined || limits.since < since) {
@@ -99,7 +97,6 @@ export class HistoryManager {
             history = history.slice(-limits.maxStanzas);
         }
         // FIXME: filter by since, maxchars
-        console.log(history);
         return history;
     }
 }
