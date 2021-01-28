@@ -83,26 +83,37 @@ export class HistoryManager {
         }
         let history: Element[] = await this.storage.getHistory(chatName, limits);
 
+        // index of the first history element that we will keep after applying
+        // the limits
+        let idx = 0;
+
         if ("maxstanzas" in limits && history.length > limits.maxstanzas) {
-            history = history.slice(-limits.maxstanzas);
+            idx = history.length - limits.maxstanzas;
         }
 
         if ("since" in limits) {
             // FIXME: binary search would be better than linear search
-            const idx = history.findIndex((el) => {
+            for (; idx < history.length; idx++) {
                 try {
-                    const ts = el.getChild("delay", "urn:xmpp:delay")?.attr("stamp");
-                    console.log(ts);
-                    return new Date(Date.parse(ts)) >= limits.since;
-                } catch (e) {
-                    return false;
-                }
-            });
-            if (idx > 0) {
-                history = history.slice(idx);
+                    const ts = history[idx].getChild("delay", "urn:xmpp:delay")?.attr("stamp");
+                    if (new Date(Date.parse(ts)) >= limits.since) {
+                        break;
+                    }
+                } catch (e) {}
             }
         }
-        // FIXME: filter by maxchars
+
+        if ("maxchars" in limits) {
+            let numChars = 0;
+            let i = history.length;
+            for (; i > idx && numChars < limits.maxchars; i--) {
+                numChars += history[i - 1].toString().length;
+            }
+        }
+
+        if (idx > 0) {
+            history = history.slice(idx);
+        }
 
         return history;
     }
