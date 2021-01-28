@@ -446,7 +446,33 @@ export class XmppJsGateway implements IGateway {
         const historyLimits: IHistoryLimits = {};
         const historyRequest = stanza.getChild("x", "http://jabber.org/protocol/muc")?.getChild("history");
         if (historyRequest !== undefined) {
-            // FIXME: actually set limits
+            const getIntValue = (x) => {
+                if (!x.match(/^\d+$/)) {
+                    throw new Error("Not a number");
+                }
+                return parseInt(x);
+            };
+            const getDateValue = (x) => {
+                const val = Date.parse(x);
+                if (isNaN(val)) {
+                    throw new Error("Not a date");
+                }
+                return new Date(val); // Date.parse returns a number, which we need to turn into a Date object
+            };
+            const getHistoryParam = (name: string, parser: (string) => any): void => {
+                const param = historyRequest.getAttr(name);
+                if (param !== undefined) {
+                    try {
+                        historyLimits[name] = parser(param);
+                    } catch (e) {
+                        log.debug(`Invalid ${name} in history management: "${param}" (${e})`);
+                    }
+                }
+            };
+            getHistoryParam("maxchars", getIntValue);
+            getHistoryParam("maxstanzas", getIntValue);
+            getHistoryParam("seconds", getIntValue);
+            getHistoryParam("since", getDateValue);
         }
         const history: Element[] = await this.roomHistory.getHistory(chatName, historyLimits);
         history.forEach((e) => {
