@@ -2,10 +2,10 @@ import { Element } from "@xmpp/xml";
 import { JID } from "@xmpp/jid";
 
 export interface IHistoryLimits {
-    maxChars?: number | undefined,
-    maxStanzas?: number | undefined,
-    seconds?: number | undefined,
-    since?: Date | undefined,
+    maxchars?: number,
+    maxstanzas?: number,
+    seconds?: number,
+    since?: Date,
 }
 
 /**
@@ -13,17 +13,12 @@ export interface IHistoryLimits {
  */
 interface IHistoryStorage {
     // add a message to the history of a given room
-    addMessage: (chatName: string, message: Element, jid: JID) => Promise<void>;
+    addMessage: (chatName: string, message: Element, jid: JID) => unknown;
     // get the history of a room.  The storage should apply the limits that it
     // wishes too, and remove the limits that it applied from the `limits`
     // parameter.  The returned list of Elements must include the Delayed
     // Delivery information.
     getHistory: (chatName: string, limits: IHistoryLimits) => Promise<Element[]>;
-}
-
-// pad a number to be two digits long
-function pad2(n: number) {
-    return n < 10 ? "0" + n.toString() : n.toString();
 }
 
 /**
@@ -35,7 +30,7 @@ export class MemoryStorage implements IHistoryStorage {
         this.history = new Map();
     }
 
-    async addMessage(chatName: string, message: Element, jid: JID): Promise<void> {
+    addMessage(chatName: string, message: Element, jid: JID): void {
         if (!this.history.has(chatName)) {
             this.history.set(chatName, []);
         }
@@ -45,18 +40,10 @@ export class MemoryStorage implements IHistoryStorage {
         const copiedMessage = new Element(message.name, message.attrs);
         copiedMessage.append(message.children as Element[]);
         copiedMessage.attr("from", jid.toString());
-        const now = new Date();
         copiedMessage.append(new Element("delay", {
             xmlns: "urn:xmpp:delay",
             from: chatName,
-            // based on the polyfill at
-            // https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Date/toISOString
-            stamp: now.getUTCFullYear() +
-                "-" + pad2(now.getUTCMonth() + 1) +
-                "-" + pad2(now.getUTCDate()) +
-                "T" + pad2(now.getUTCHours()) +
-                ":" + pad2(now.getUTCMinutes()) +
-                ":" + pad2(now.getUTCSeconds()) + "Z",
+            stamp: (new Date()).toISOString(),
         }));
 
         currRoomHistory.push(copiedMessage);
@@ -66,10 +53,13 @@ export class MemoryStorage implements IHistoryStorage {
         }
     }
 
-    async getHistory(chatName: string, limits: IHistoryLimits) {
+    async getHistory(chatName: string, limits: IHistoryLimits): Promise<Element[]> {
         return this.history.get(chatName) || [];
     }
 }
+
+// TODO: make a class that stores in PostgreSQL so that we don't lose history
+// when we restart
 
 /**
  * Manage room history for a MUC
@@ -79,7 +69,7 @@ export class HistoryManager {
         private storage: IHistoryStorage,
     ) {}
 
-    async addMessage(chatName: string, message: Element, jid: JID): Promise<void> {
+    addMessage(chatName: string, message: Element, jid: JID): unknown {
         return this.storage.addMessage(chatName, message, jid);
     }
 
@@ -93,10 +83,27 @@ export class HistoryManager {
         }
         let history: Element[] = await this.storage.getHistory(chatName, limits);
 
-        if ("maxStanzas" in limits && history.length > limits.maxStanzas) {
-            history = history.slice(-limits.maxStanzas);
+        if ("maxstanzas" in limits && history.length > limits.maxstanzas) {
+            history = history.slice(-limits.maxstanzas);
         }
-        // FIXME: filter by since, maxchars
+
+        if ("since" in limits) {
+            // FIXME: binary search would be better than linear search
+            const idx = history.findIndex((el) => {
+                try {
+                    const ts = el.getChild("delay", "urn:xmpp:delay")?.attr("stamp");
+                    console.log(ts);
+                    return new Date(Date.parse(ts)) >= limits.since;
+                } catch (e) {
+                    return false;
+                }
+            });
+            if (idx > 0) {
+                history = history.slice(idx);
+            }
+        }
+        // FIXME: filter by maxchars
+
         return history;
     }
 }
