@@ -446,20 +446,20 @@ export class XmppJsGateway implements IGateway {
         const historyLimits: IHistoryLimits = {};
         const historyRequest = stanza.getChild("x", "http://jabber.org/protocol/muc")?.getChild("history");
         if (historyRequest !== undefined) {
-            const getIntValue = (x) => {
-                if (!x.match(/^\d+$/)) {
+            const getIntValue = (str) => {
+                if (!str.match(/^\d+$/)) {
                     throw new Error("Not a number");
                 }
-                return parseInt(x);
+                return parseInt(str);
             };
-            const getDateValue = (x) => {
-                const val = Date.parse(x);
+            const getDateValue = (str) => {
+                const val = Date.parse(str);
                 if (isNaN(val)) {
                     throw new Error("Not a date");
                 }
                 return new Date(val); // Date.parse returns a number, which we need to turn into a Date object
             };
-            const getHistoryParam = (name: string, parser: (string) => any): void => {
+            const getHistoryParam = (name: string, parser: (str: string) => any): void => {
                 const param = historyRequest.getAttr(name);
                 if (param !== undefined) {
                     try {
