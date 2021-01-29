@@ -473,6 +473,9 @@ export class XmppJsGateway implements IGateway {
             getHistoryParam("maxstanzas", getIntValue);
             getHistoryParam("seconds", getIntValue);
             getHistoryParam("since", getDateValue);
+        } else {
+            // default to 20 stanzas if the client doesn't specify
+            historyLimits.maxstanzas = 20;
         }
         const history: Element[] = await this.roomHistory.getHistory(chatName, historyLimits);
         history.forEach((e) => {
