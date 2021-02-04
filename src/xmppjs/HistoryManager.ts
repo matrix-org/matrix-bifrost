@@ -109,6 +109,7 @@ export class HistoryManager {
             for (; i > idx && numChars < limits.maxchars; i--) {
                 numChars += history[i - 1].toString().length;
             }
+            idx = i;
         }
 
         if (idx > 0) {
