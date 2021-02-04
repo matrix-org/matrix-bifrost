@@ -454,7 +454,9 @@ export class XmppJsGateway implements IGateway {
             };
             const getDateValue = (str) => {
                 const val = new Date(str);
-                if (isNaN(val)) {
+                // TypeScript doesn't like giving a Date to isNaN, even though it
+                // works.  And it doesn't like converting directly to number.
+                if (isNaN(val as unknown as number)) {
                     throw new Error("Not a date");
                 }
                 return val;
