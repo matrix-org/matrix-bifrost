@@ -96,10 +96,10 @@ export class HistoryManager {
             for (; idx < history.length; idx++) {
                 try {
                     const ts = history[idx].getChild("delay", "urn:xmpp:delay")?.attr("stamp");
-                    if (new Date(Date.parse(ts)) >= limits.since) {
+                    if (new Date(ts) >= limits.since) {
                         break;
                     }
-                } catch (e) {}
+                } catch {}
             }
         }
 
