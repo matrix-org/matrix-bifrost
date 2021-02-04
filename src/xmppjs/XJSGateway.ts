@@ -457,7 +457,7 @@ export class XmppJsGateway implements IGateway {
                 if (isNaN(val)) {
                     throw new Error("Not a date");
                 }
-                return val; // Date.parse returns a number, which we need to turn into a Date object
+                return val;
             };
             const getHistoryParam = (name: string, parser: (str: string) => any): void => {
                 const param = historyRequest.getAttr(name);
