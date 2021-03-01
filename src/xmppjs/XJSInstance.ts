@@ -28,6 +28,7 @@ import { XmppJsGateway } from "./XJSGateway";
 import { IStza, StzaBase, StzaIqDisco, StzaIqDiscoInfo, StzaIqPing, StzaIqPingError, StzaIqVcardRequest } from "./Stanzas";
 import { Util } from "../Util";
 import uuid from "uuid/v4";
+import { XMPPFeatures } from "./XMPPConstants";
 
 const xLog = Logging.get("XMPP-conn");
 const log = Logging.get("XmppJsInstance");
@@ -58,6 +59,7 @@ class XmppProtocol extends BifrostProtocol {
 
 export const XMPP_PROTOCOL = new XmppProtocol();
 const SEEN_MESSAGES_SIZE = 16384;
+const FEATURE_SET_EXPIRES_AFTER_MS = 24 * 60 * 60 * 1000; // 24hs
 
 export class XmppJsInstance extends EventEmitter implements IBifrostInstance {
     public readonly presenceCache: PresenceCache;
@@ -75,6 +77,7 @@ export class XmppJsInstance extends EventEmitter implements IBifrostInstance {
     private xmppGateway: XmppJsGateway|null;
     private activeMUCUsers: Set<string>;
     private lastMessageInMUC: Map<string, {originIsMatrix: boolean, id: string}>;
+    private remoteServerFeatures = new Map<string, {expiresAfter: number, features: XMPPFeatures[]}>();
     constructor(private config: Config) {
         super();
         this.canWrite = false;
@@ -427,23 +430,38 @@ export class XmppJsInstance extends EventEmitter implements IBifrostInstance {
         const whoJid = jid(who);
         who = `${whoJid.local}@${whoJid.domain}`;
         log.info(`Fetching vCard for ${who}`);
-        const res = new Promise((resolve: (e: Element) => void, reject) => {
-            const timeout = setTimeout(() => reject(Error("Timeout")), 5000);
-            this.once(`iq.${id}`, (stanza: Element) => {
-                clearTimeout(timeout);
-                const vCard = (stanza.getChild("vCard") as unknown as Element); // Bad typigns.
-                if (vCard) {
-                    resolve(vCard);
-                }
-                reject(Error("No vCard given"));
-            });
-        });
-        // Remove the resource
-        await this.xmppSend(
-            new StzaIqVcardRequest(sender || this.xmppAddress.toString(), who, id),
-        );
+        const iqRequest = new StzaIqVcardRequest(sender || this.xmppAddress.toString(), who, id);
         Metrics.remoteCall("xmpp.iq.vc2");
-        return res;
+        const stanza = await this.sendIq(iqRequest);
+        const vCard = (stanza.getChild("vCard") as unknown as Element); // Bad typigns.
+        if (vCard) {
+            return vCard;
+        }
+        throw Error("No vCard in response");
+    }
+
+    public async checkFeaturesForServer(server: string): Promise<XMPPFeatures[]> {
+        const cachedFeatures = this.remoteServerFeatures.get(server);
+        if (cachedFeatures && cachedFeatures.expiresAfter < Date.now()) {
+            return cachedFeatures.features;
+        } 
+        const iqRequest = new StzaIqDiscoInfo(this.myAddress.toString(), server, uuid());
+        try {
+            const result = await this.sendIq(iqRequest);
+            const features: XMPPFeatures[] = result.getChild("query").getChildren("feature").map((e) => e.attr('var'));
+            this.remoteServerFeatures.set(
+                server,
+                {
+                    expiresAfter: Date.now() + FEATURE_SET_EXPIRES_AFTER_MS,
+                    features,
+                }
+            );
+            return features;
+        }
+        catch (ex) {
+            log.warn(`Failed to determine server features`);
+            return [];
+        }
     }
 
     private generateIdforMsg(stanza: Element) {
@@ -539,7 +557,6 @@ export class XmppJsInstance extends EventEmitter implements IBifrostInstance {
             return false;
         }
     }
-
 
     private async handleMessageStanza(stanza: Element, alias: string|null) {
         if (!stanza.attrs.from || !stanza.attrs.to) {
