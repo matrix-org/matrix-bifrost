@@ -13,7 +13,7 @@ import { StzaPresenceItem, StzaMessage, StzaMessageSubject,
     StzaPresenceError, StzaBase, StzaPresenceKick, PresenceAffiliation, PresenceRole } from "./Stanzas";
 import { IGateway } from "../bifrost/Gateway";
 import { GatewayMUCMembership, IGatewayMemberXmpp, IGatewayMemberMatrix } from "./GatewayMUCMembership";
-import { XMPPStatusCode } from "./XMPPConstants";
+import { XMPPFeatures, XMPPStatusCode } from "./XMPPConstants";
 import { AutoRegistration } from "../AutoRegistration";
 import { GatewayStateResolve } from "./GatewayStateResolve";
 import { MatrixMembershipEvent } from "../MatrixTypes";
@@ -190,10 +190,21 @@ export class XmppJsGateway implements IGateway {
         const preserveFrom = stanza.attrs.from;
         try {
             stanza.attrs.from = member!.anonymousJid;
-            const devices = this.members.getXmppMembersDevices(chatName);
-            for (const deviceJid of devices) {
-                stanza.attrs.to = deviceJid;
-                this.xmpp.xmppWriteToStream(stanza);
+            const members = this.members.getXmppMembers(chatName);
+            for (const member of members) {
+                // This is cached.
+                const canMulticast = (await this.xmpp.checkFeaturesForServer(member.realJid.domain)).includes(
+                    XMPPFeatures.ExtendedStanzaAddressing,
+                )
+                if (canMulticast) {
+                    stanza.attrs.to = member.realJid;
+                    this.xmpp.xmppSend(stanza.toString());
+                } else {
+                    member.devices.forEach((device) => {
+                        stanza.attrs.to = device;
+                        this.xmpp.xmppSend(stanza.toString());
+                    });
+                }
             }
         } catch (err) {
             log.warn("Failed to reflect XMPP message:", err);
@@ -205,6 +216,7 @@ export class XmppJsGateway implements IGateway {
     }
 
     public reflectXMPPStanza(chatName: string, stanza: StzaBase) {
+        // TODO: Consider optimising by using multicast
         const xmppDevices = [...this.members.getXmppMembersDevices(chatName)];
         return Promise.all(xmppDevices.map((device) => {
             stanza.to = device;
