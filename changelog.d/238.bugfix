@@ -1,0 +1,1 @@
+Add `roomRules[].roomRegex` to block a room based on a regex

@@ -15,7 +15,7 @@ describe("configuration files", () =>{
             validator.validate(SAMPLE_FILE);
         } catch (ex) {
             // tslint:disable-next-line: no-console
-            console.log(ex._validationErrors);
+            console.log(ex);
             throw Error('Sample config did not validate');
         }
     });
