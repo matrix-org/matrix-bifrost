@@ -120,9 +120,12 @@ properties:
         items:
             type: "object"
             properties:
-                room:
-                    type: "string"
-                    pattern: "^(!|#).+:.+$"
+                oneOf:
+                    room:
+                        type: "string"
+                        pattern: "^(!|#).+:.+$"
+                    roomAlias:
+                        type: "string"
                 action:
                     type: "string"
                     enum: ["allow", "deny"]
