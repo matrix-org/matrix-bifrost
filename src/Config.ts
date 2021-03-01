@@ -190,13 +190,13 @@ export interface IConfigDatastore {
 export interface IConfigRoomRule {
     /**
      * Room ID or alias. Optional.
-     * 
+     *
      * Either `room` or `roomRegex` must be provided.
      */
     room?: string;
     /**
-     * A regex to match a roomId or alias. Optional.
-     * 
+     * A regex to match a Room ID or alias. Optional.
+     *
      * Either `room` or `roomRegex` must be provided.
      */
     roomRegex?: string;
