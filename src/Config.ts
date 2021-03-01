@@ -73,13 +73,17 @@ export class Config {
 
     public readonly access: IConfigAccessControl = { };
 
-    public getRoomRule(roomIdOrAlias?: string) {
-        const aliasRule = this.roomRules.find((r) => r.room === roomIdOrAlias);
-        if (aliasRule && aliasRule.action === "deny") {
+    public getRoomRule(roomIdOrAlias: string) {
+        const rule = this.roomRules.find((r) => {
+            if (r.room === roomIdOrAlias) {
+                return true;
+            }
+            return (r.roomRegex && roomIdOrAlias.match(r.roomRegex));
+        });
+        if (rule && rule.action === "deny") {
             return "deny";
         }
-        const roomIdRule = this.roomRules.find((r) => r.room === roomIdOrAlias);
-        return roomIdRule?.action || "allow";
+        return "allow";
     }
 
     /**
@@ -185,9 +189,17 @@ export interface IConfigDatastore {
 
 export interface IConfigRoomRule {
     /**
-     * Room ID or alias
+     * Room ID or alias. Optional.
+     *
+     * Either `room` or `roomRegex` must be provided.
      */
-    room: string;
+    room?: string;
+    /**
+     * A regex to match a Room ID or alias. Optional.
+     *
+     * Either `room` or `roomRegex` must be provided.
+     */
+    roomRegex?: string;
     /**
      * Should the room be allowed, or denied.
      */
