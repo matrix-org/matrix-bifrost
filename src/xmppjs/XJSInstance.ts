@@ -430,23 +430,15 @@ export class XmppJsInstance extends EventEmitter implements IBifrostInstance {
         const whoJid = jid(who);
         who = `${whoJid.local}@${whoJid.domain}`;
         log.info(`Fetching vCard for ${who}`);
-        const res = new Promise((resolve: (e: Element) => void, reject) => {
-            const timeout = setTimeout(() => reject(Error("Timeout")), 5000);
-            this.once(`iq.${id}`, (stanza: Element) => {
-                clearTimeout(timeout);
-                const vCard = (stanza.getChild("vCard") as unknown as Element); // Bad typigns.
-                if (vCard) {
-                    resolve(vCard);
-                }
-                reject(Error("No vCard given"));
-            });
-        });
-        // Remove the resource
-        await this.xmppSend(
-            new StzaIqVcardRequest(sender || this.xmppAddress.toString(), who, id),
-        );
+        const iqRequest = new StzaIqVcardRequest(sender || this.xmppAddress.toString(), who, id);
         Metrics.remoteCall("xmpp.iq.vc2");
-        return res;
+        const stanza = await this.sendIq(iqRequest);
+        const vCard = (stanza.getChild("vCard") as unknown as Element); // Bad typigns.
+        if (vCard) {
+            return vCard;
+        }
+        throw Error("No vCard in response");
+    }
 
     public async checkFeaturesForServer(server: string): Promise<XMPPFeatures[]> {
         const cachedFeatures = this.remoteServerFeatures.get(server);
