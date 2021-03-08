@@ -34,7 +34,7 @@
     "he": "^1.2.0",
     "htmlparser2": "^4.1.0",
     "leven": "^3.1.0",
-    "marked": "^1.2.0",
+    "marked": "^2.0.0",
     "matrix-appservice-bridge": "^2.4.1",
     "parse-entities": "^1.2.0",
     "pg": "8.3.3",
