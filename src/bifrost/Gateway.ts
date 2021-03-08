@@ -26,6 +26,7 @@ export interface IGatewayRoom {
     topic: string;
     avatar?: string;
     roomId: string;
+    allowHistory: boolean;
     membership: {
         sender: string;
         stateKey: string;

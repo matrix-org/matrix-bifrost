@@ -51,16 +51,6 @@ export class XmppJsGateway implements IGateway {
         this.stanzaCache = new Map();
         this.members = new GatewayMUCMembership();
         this.presenceCache = new PresenceCache(true);
-        xmpp.on("received-chat-msg-xmpp", (convName: string, stanza: Element) => {
-            try {
-                this.roomHistory.addMessage(
-                    convName, stanza,
-                    this.members.getXmppMemberByDevice(convName, stanza.attrs.from).anonymousJid,
-                );
-            } catch (ex) {
-                log.warn(`Failed to add message for ${convName} to history cache`);
-            }
-        });
     }
 
     public handleStanza(stanza: Element, gatewayAlias: string) {
@@ -189,7 +179,9 @@ export class XmppJsGateway implements IGateway {
             msg,
             "groupchat",
         );
-        this.roomHistory.addMessage(chatName, parse(historyStanza.xml), from.anonymousJid);
+        if (room.allowHistory) {
+            this.roomHistory.addMessage(chatName, parse(historyStanza.xml), from.anonymousJid);
+        }
 
         return this.xmpp.xmppSendBulk(msgs);
     }
@@ -229,6 +221,16 @@ export class XmppJsGateway implements IGateway {
             return false;
         }
         stanza.attrs.from = preserveFrom;
+        try {
+            // TODO: Currently we have no way to determine if this room has private history,
+            // so we may be adding more strain to the cache than nessacery.
+            this.roomHistory.addMessage(
+                chatName, stanza,
+                member.anonymousJid,
+            );
+        } catch (ex) {
+            log.warn(`Failed to add message for ${chatName} to history cache`);
+        }
         return true;
     }
 
@@ -446,48 +448,52 @@ export class XmppJsGateway implements IGateway {
         );
 
         // 4. Room history
-        log.debug("Emitting history");
-        const historyLimits: IHistoryLimits = {};
-        const historyRequest = stanza.getChild("x", "http://jabber.org/protocol/muc")?.getChild("history");
-        if (historyRequest !== undefined) {
-            const getIntValue = (str) => {
-                if (!/^\d+$/.test(str)) {
-                    throw new Error("Not a number");
-                }
-                return parseInt(str);
-            };
-            const getDateValue = (str) => {
-                const val = new Date(str);
-                // TypeScript doesn't like giving a Date to isNaN, even though it
-                // works.  And it doesn't like converting directly to number.
-                if (isNaN(val as unknown as number)) {
-                    throw new Error("Not a date");
-                }
-                return val;
-            };
-            const getHistoryParam = (name: string, parser: (str: string) => any): void => {
-                const param = historyRequest.getAttr(name);
-                if (param !== undefined) {
-                    try {
-                        historyLimits[name] = parser(param);
-                    } catch (e) {
-                        log.debug(`Invalid ${name} in history management: "${param}" (${e})`);
+        if (room.allowHistory) {
+            log.debug("Emitting history");
+            const historyLimits: IHistoryLimits = {};
+            const historyRequest = stanza.getChild("x", "http://jabber.org/protocol/muc")?.getChild("history");
+            if (historyRequest !== undefined) {
+                const getIntValue = (str) => {
+                    if (!/^\d+$/.test(str)) {
+                        throw new Error("Not a number");
                     }
-                }
-            };
-            getHistoryParam("maxchars", getIntValue);
-            getHistoryParam("maxstanzas", getIntValue);
-            getHistoryParam("seconds", getIntValue);
-            getHistoryParam("since", getDateValue);
+                    return parseInt(str);
+                };
+                const getDateValue = (str) => {
+                    const val = new Date(str);
+                    // TypeScript doesn't like giving a Date to isNaN, even though it
+                    // works.  And it doesn't like converting directly to number.
+                    if (isNaN(val as unknown as number)) {
+                        throw new Error("Not a date");
+                    }
+                    return val;
+                };
+                const getHistoryParam = (name: string, parser: (str: string) => any): void => {
+                    const param = historyRequest.getAttr(name);
+                    if (param !== undefined) {
+                        try {
+                            historyLimits[name] = parser(param);
+                        } catch (e) {
+                            log.debug(`Invalid ${name} in history management: "${param}" (${e})`);
+                        }
+                    }
+                };
+                getHistoryParam("maxchars", getIntValue);
+                getHistoryParam("maxstanzas", getIntValue);
+                getHistoryParam("seconds", getIntValue);
+                getHistoryParam("since", getDateValue);
+            } else {
+                // default to 20 stanzas if the client doesn't specify
+                historyLimits.maxstanzas = 20;
+            }
+            const history: Element[] = await this.roomHistory.getHistory(chatName, historyLimits);
+            history.forEach((e) => {
+                e.attrs.to = stanza.attrs.from;
+                this.xmpp.xmppWriteToStream(e);
+            });
         } else {
-            // default to 20 stanzas if the client doesn't specify
-            historyLimits.maxstanzas = 20;
+            log.debug("Not emitting history, room does not have visibility turned on");
         }
-        const history: Element[] = await this.roomHistory.getHistory(chatName, historyLimits);
-        history.forEach((e) => {
-            e.attrs.to = stanza.attrs.from;
-            this.xmpp.xmppWriteToStream(e);
-        });
 
         log.debug("Emitting subject");
         // 5. The room subject
