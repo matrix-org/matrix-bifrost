@@ -12,6 +12,8 @@ import { BifrostRemoteUser } from "./store/BifrostRemoteUser";
 
 const log = new Logger("GatewayHandler");
 
+const HISTORY_SAFE_ENUMS = ['shared', 'world_readable'];
+
 /**
  * Responsible for handling querys & events on behalf of a gateway style bridge.
  * The gateway system in the bridge is complex, so pull up a a pew and let's dig in.
@@ -61,6 +63,7 @@ export class GatewayHandler {
             log.debug(`Got state for ${roomId}`);
             const nameEv = state.find((e) => e.type === "m.room.name");
             const topicEv = state.find((e) => e.type === "m.room.topic");
+            const historyVis = state.find((e) => e.type === "m.room.history_visibility");
             const bot = this.bridge.getBot();
             const membership = state.filter((e) => e.type === "m.room.member").map((e: WeakEvent) => (
                 {
@@ -72,6 +75,12 @@ export class GatewayHandler {
                 }
             ));
             const room: IGatewayRoom = {
+                // Default to private
+                allowHistory: HISTORY_SAFE_ENUMS.includes(
+                    typeof historyVis?.content?.history_visibility === "string"
+                        ? historyVis.content.history_visibility
+                        : "joined",
+                ),
                 name: typeof nameEv?.content?.name === "string" ? nameEv.content.name : "",
                 topic: typeof topicEv?.content?.topic === "string" ? topicEv.content.topic : "",
                 roomId,
