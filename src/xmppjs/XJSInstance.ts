@@ -561,6 +561,7 @@ export class XmppJsInstance extends EventEmitter implements IBifrostInstance {
                     log.warn(`Message could not be sent, not forwarding to Matrix`);
                     return;
                 }
+                this.emit("received-chat-msg-xmpp", convName, stanza);
                 // We deliberately do not anonymize the JID here.
                 // We do however strip the resource
                 from = jid(`${from.local}@${from.domain}`);
@@ -753,7 +754,6 @@ export class XmppJsInstance extends EventEmitter implements IBifrostInstance {
 
         if (type === "groupchat") {
             log.debug("Emitting group message", message);
-            this.emit("received-chat-msg-xmpp", convName, stanza);
             this.emit("received-chat-msg", {
                 eventName: "received-chat-msg",
                 sender: from.toString(),
