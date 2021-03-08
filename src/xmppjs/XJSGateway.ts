@@ -52,10 +52,14 @@ export class XmppJsGateway implements IGateway {
         this.members = new GatewayMUCMembership();
         this.presenceCache = new PresenceCache(true);
         xmpp.on("received-chat-msg-xmpp", (convName: string, stanza: Element) => {
-            this.roomHistory.addMessage(
-                convName, stanza,
-                this.members.getXmppMemberByDevice(convName, stanza.attrs.from).anonymousJid,
-            );
+            try {
+                this.roomHistory.addMessage(
+                    convName, stanza,
+                    this.members.getXmppMemberByDevice(convName, stanza.attrs.from).anonymousJid,
+                );
+            } catch (ex) {
+                log.warn(`Failed to add message for ${convName} to history cache`);
+            }
         });
     }
 
