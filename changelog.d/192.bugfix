@@ -1,1 +1,0 @@
-- Add @xmpp/component-core and @xmpp/reconnect dependencies so the project is installed well with pnpm (#173). Thanks to @bodqhrohro

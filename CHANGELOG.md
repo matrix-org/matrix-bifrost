@@ -1,4 +1,30 @@
- 0.2.0 (2020-10-30)
+0.3.0 (2021-04-26)
+==================
+
+Features
+--------
+
+- Add `roomRules` configuration to block rooms. ([\#224](https://github.com/matrix-org/matrix-bifrost/issues/224))
+
+
+Bugfixes
+--------
+
+- - Add @xmpp/component-core and @xmpp/reconnect dependencies so the project is installed well with pnpm (#173). Thanks to @bodqhrohro ([\#192](https://github.com/matrix-org/matrix-bifrost/issues/192))
+- If the bridge is already connected to a remote room requested via an alias, add that alias to the room. ([\#208](https://github.com/matrix-org/matrix-bifrost/issues/208))
+- Fix bridge errors not showing human error text due to a missing attribute on a stanza. ([\#209](https://github.com/matrix-org/matrix-bifrost/issues/209))
+- Download files as binary instead of as UTF-8 string. ([\#220](https://github.com/matrix-org/matrix-bifrost/issues/220))
+- Fix TypeError in MatrixEventHandler ([\#221](https://github.com/matrix-org/matrix-bifrost/issues/221))
+
+
+Internal Changes
+----------------
+
+- Improve remote gateway join performance ([\#222](https://github.com/matrix-org/matrix-bifrost/issues/222))
+- Validate room joins to ensure they contain a handle, domain and localparts ([\#225](https://github.com/matrix-org/matrix-bifrost/issues/225))
+
+
+0.2.0 (2020-10-30)
 ===================
 
 Internal Changes
