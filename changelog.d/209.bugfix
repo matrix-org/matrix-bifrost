@@ -1,1 +1,0 @@
-Fix bridge errors not showing human error text due to a missing attribute on a stanza.
