@@ -2335,10 +2335,10 @@ marked@^2.0.0:
   resolved "https://registry.yarnpkg.com/marked/-/marked-2.0.3.tgz#3551c4958c4da36897bda2a16812ef1399c8d6b0"
   integrity sha512-5otztIIcJfPc2qGTN8cVtOJEjNJZ0jwa46INMagrYfk0EvqtRuEHLsEe0LrFS0/q+ZRKT0+kXK7P2T1AN5lWRA==
 
-matrix-appservice-bridge@^2.6.0:
-  version "2.6.0"
-  resolved "https://registry.yarnpkg.com/matrix-appservice-bridge/-/matrix-appservice-bridge-2.6.0.tgz#98504a3f362bad51acb12135490c5c42596ca7ba"
-  integrity sha512-o1KHQHG1GdfUhTFBXVLztwbTowuCFO9/h8n2zdkRK/bZsdcXSFQVfUwDtRULcyinD4N7r0Lrwlg1LyR0pg2WSw==
+matrix-appservice-bridge@^2.6.1:
+  version "2.6.1"
+  resolved "https://registry.yarnpkg.com/matrix-appservice-bridge/-/matrix-appservice-bridge-2.6.1.tgz#058d5a564efbe7f5903fad773339ac6b69412223"
+  integrity sha512-XNOziYVQoTQ9cym3Z2acXy8CKRXPVcEbni0XXCUfvu4O9+cBjUPywtRmhDBENsl/bgGbFKqbJNr68E/j9j+Tbw==
   dependencies:
     chalk "^4.1.0"
     extend "^3.0.2"
