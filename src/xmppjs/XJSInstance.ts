@@ -74,7 +74,8 @@ export class XmppJsInstance extends EventEmitter implements IBifrostInstance {
     private bridge!: Bridge;
     private xmppGateway: XmppJsGateway|null;
     private activeMUCUsers: Set<string>;
-    private lastMessageInMUC: Map<string, {originIsMatrix: boolean, id: string}>;
+    private lastMessageInMUC: Map<string, { originIsMatrix: boolean, id: string }>;
+    private checkMUCCache: Set<string>;
     constructor(private config: Config) {
         super();
         this.canWrite = false;
@@ -86,6 +87,7 @@ export class XmppJsInstance extends EventEmitter implements IBifrostInstance {
         this.connectionWasDropped = false;
         this.activeMUCUsers = new Set();
         this.lastMessageInMUC = new Map();
+        this.checkMUCCache = new Set();
         this.xmppGateway = null;
     }
 
@@ -426,9 +428,18 @@ export class XmppJsInstance extends EventEmitter implements IBifrostInstance {
         const id = uuid();
         const whoJid = jid(who);
         who = `${whoJid.local}@${whoJid.domain}`;
+        let muc = this.checkMUCCache.has(who);
+        if (!muc) {
+            muc = await this.checkGroupExists({
+                ["room"]: whoJid.local, ["server"]: whoJid.domain
+            } as IChatJoinProperties)
+        }
         log.info(`Fetching vCard for ${who}`);
         const res = new Promise((resolve: (e: Element) => void, reject) => {
             const timeout = setTimeout(() => reject(Error("Timeout")), 5000);
+            if (muc) {
+                reject(Error("Not fetching vCard from the MUC"));
+            }
             this.once(`iq.${id}`, (stanza: Element) => {
                 clearTimeout(timeout);
                 const vCard = (stanza.getChild("vCard") as unknown as Element); // Bad typigns.
@@ -518,11 +529,12 @@ export class XmppJsInstance extends EventEmitter implements IBifrostInstance {
         }
         const to = `${props.room}@${props.server}`;
         const id = uuid();
-        log.info(`Checking if ${to} is is a MUC`);
+        log.info(`Checking if ${to} is a MUC`);
         try {
             const result = await this.sendIq(new StzaIqDiscoInfo(this.myAddress.toString(), to, id, "get"));
             log.debug(`Found ${to}`);
-            const isMuc = result.getChild("query")?.getChildByAttr("var", "http://jabber.org/protocol/muc");
+            const isMuc = result.getChild("query") ?.getChildByAttr("var", "http://jabber.org/protocol/muc");
+            this.checkMUCCache.set(to);
             return !!isMuc;
         } catch (ex) {
             // TODO: Factor this out, error parsing would be useful.
@@ -536,6 +548,7 @@ export class XmppJsInstance extends EventEmitter implements IBifrostInstance {
             } else {
                 log.info(`checkGroupExists: ${ex}`);
             }
+            this.checkMUCCache.delete(to);
             return false;
         }
     }
