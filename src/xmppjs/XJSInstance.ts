@@ -75,7 +75,7 @@ export class XmppJsInstance extends EventEmitter implements IBifrostInstance {
     private xmppGateway: XmppJsGateway|null;
     private activeMUCUsers: Set<string>;
     private lastMessageInMUC: Map<string, { originIsMatrix: boolean, id: string }>;
-    private checkMUCCache: Set<string>;
+    private checkMUCCache: Map<string, boolean>;
     constructor(private config: Config) {
         super();
         this.canWrite = false;
@@ -87,7 +87,7 @@ export class XmppJsInstance extends EventEmitter implements IBifrostInstance {
         this.connectionWasDropped = false;
         this.activeMUCUsers = new Set();
         this.lastMessageInMUC = new Map();
-        this.checkMUCCache = new Set();
+        this.checkMUCCache = new Map();
         this.xmppGateway = null;
     }
 
@@ -428,8 +428,8 @@ export class XmppJsInstance extends EventEmitter implements IBifrostInstance {
         const id = uuid();
         const whoJid = jid(who);
         who = `${whoJid.local}@${whoJid.domain}`;
-        let muc = this.checkMUCCache.has(who);
-        if (!muc) {
+        let muc = this.checkMUCCache.get(who);
+        if (!muc && !this.checkMUCCache.has(who)) {
             muc = await this.checkGroupExists({
                 ["room"]: whoJid.local, ["server"]: whoJid.domain
             } as IChatJoinProperties)
@@ -533,8 +533,12 @@ export class XmppJsInstance extends EventEmitter implements IBifrostInstance {
         try {
             const result = await this.sendIq(new StzaIqDiscoInfo(this.myAddress.toString(), to, id, "get"));
             log.debug(`Found ${to}`);
-            const isMuc = result.getChild("query") ?.getChildByAttr("var", "http://jabber.org/protocol/muc");
-            this.checkMUCCache.add(to);
+            const isMuc = result.getChild("query")?.getChildByAttr("var", "http://jabber.org/protocol/muc");
+            if (isMuc) {
+                this.checkMUCCache.set(to, true);
+            } else {
+                this.checkMUCCache.set(to, false);
+            }
             return !!isMuc;
         } catch (ex) {
             // TODO: Factor this out, error parsing would be useful.
