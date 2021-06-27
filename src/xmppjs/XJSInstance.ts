@@ -534,7 +534,7 @@ export class XmppJsInstance extends EventEmitter implements IBifrostInstance {
             const result = await this.sendIq(new StzaIqDiscoInfo(this.myAddress.toString(), to, id, "get"));
             log.debug(`Found ${to}`);
             const isMuc = result.getChild("query") ?.getChildByAttr("var", "http://jabber.org/protocol/muc");
-            this.checkMUCCache.set(to);
+            this.checkMUCCache.add(to);
             return !!isMuc;
         } catch (ex) {
             // TODO: Factor this out, error parsing would be useful.
