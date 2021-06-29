@@ -6,9 +6,13 @@ import { IBifrostInstance } from "../bifrost/Instance";
 import { Logging } from "matrix-appservice-bridge";
 import * as path from "path";
 import { IConfigPurple } from "../Config";
-import { IUserInfo, IConversationEvent, IEventBody } from "../bifrost/Events";
+import { IUserInfo, IConversationEvent } from "../bifrost/Events";
 import { BifrostProtocol } from "../bifrost/Protocol";
 const log = Logging.get("PurpleInstance");
+export interface IPurpleBackendOpts {
+    enableDebug: boolean;
+    pluginDir: string;
+}
 
 export class PurpleInstance extends EventEmitter implements IBifrostInstance {
     private protocols: BifrostProtocol[];
@@ -35,10 +39,11 @@ export class PurpleInstance extends EventEmitter implements IBifrostInstance {
 
     public async start() {
         log.info("Starting purple instance");
-        const pluginDir = path.resolve(this.config.pluginDir);
+        const opts = this.config.backendOpts as IPurpleBackendOpts;
+        const pluginDir = path.resolve(opts.pluginDir);
         log.info("Plugin search path is set to ", pluginDir);
         helper.setupPurple({
-            debugEnabled: this.config.enableDebug ? 1 : 0,
+            debugEnabled: opts.enableDebug ? 1 : 0,
             pluginDir,
             userDir: undefined,
         });

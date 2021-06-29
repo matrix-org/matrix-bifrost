@@ -27,8 +27,6 @@ export class Config {
     public readonly purple: IConfigPurple = {
         backendOpts: undefined,
         backend: "node-purple",
-        enableDebug: false,
-        pluginDir: "./node_modules/node-purple/deps/libpurple/",
     };
 
     public readonly autoRegistration: IConfigAutoReg = {
@@ -118,8 +116,6 @@ export interface IConfigBridge {
 export interface IConfigPurple {
     backendOpts: {}|IXJSBackendOpts|undefined;
     backend: "node-purple"|"xmpp-js";
-    enableDebug: boolean;
-    pluginDir: string;
 }
 
 export interface IConfigAutoReg {
