@@ -8,9 +8,13 @@ import * as path from "path";
 import { IConfigPurple } from "../Config";
 import { IUserInfo, IConversationEvent } from "../bifrost/Events";
 import { BifrostProtocol } from "../bifrost/Protocol";
+import { promises as fs } from "fs";
+
 const log = Logging.get("PurpleInstance");
+
+const DEFAULT_PLUGIN_DIR = "/usr/lib/purple-2";
 export interface IPurpleBackendOpts {
-    enableDebug: boolean;
+    debugEnabled: boolean;
     pluginDir: string;
 }
 
@@ -40,10 +44,18 @@ export class PurpleInstance extends EventEmitter implements IBifrostInstance {
     public async start() {
         log.info("Starting purple instance");
         const opts = this.config.backendOpts as IPurpleBackendOpts;
-        const pluginDir = path.resolve(opts.pluginDir);
-        log.info("Plugin search path is set to ", pluginDir);
+        const pluginDir = path.resolve(opts.pluginDir || DEFAULT_PLUGIN_DIR);
+        try {
+            await fs.access(pluginDir);
+        } catch (ex) {
+            throw Error(
+                `Could not verify purple plugin directory "${opts.pluginDir}" exists.` + 
+                "You may need to install libpurple plugins OR set the correct directory in your config.",
+            );
+        }
+        log.info("Plugin search path is set to", pluginDir);
         helper.setupPurple({
-            debugEnabled: opts.enableDebug ? 1 : 0,
+            debugEnabled: opts.debugEnabled ? 1 : 0,
             pluginDir,
             userDir: undefined,
         });
@@ -75,7 +87,10 @@ export class PurpleInstance extends EventEmitter implements IBifrostInstance {
     }
 
     public getProtocol(id: string): BifrostProtocol|undefined {
-        return this.protocols.find((proto) => proto.id === id);
+        return this.protocols.find((proto) => {
+            console.log(proto.id, "===", id);
+            return proto.id === id;
+        });
     }
 
     public getProtocols(): BifrostProtocol[] {
@@ -104,16 +119,28 @@ export class PurpleInstance extends EventEmitter implements IBifrostInstance {
         return true;
     }
 
-    public async close() {/* nothing to do */}
+    public async close() {
+        if (this.interval) {
+            clearInterval(this.interval);
+            this.interval = undefined;
+        }
+    }
 
     public getUsernameFromMxid(
             mxid: string,
             prefix: string = ""): {username: string, protocol: BifrostProtocol} {
-        throw Error("Not implemented yet");
-    }
-
-    public pushEvent() {
-        // This is for gateways, and we aren't a gateway yet.
+        const local = mxid.substring(`@${prefix}`.length).split(":")[0];
+        const [protocolId, ...usernameParts] = local.split("_");
+        // As per bifrost/Protocol.ts, we remove prpl-
+        const protocol = this.getProtocol(`prpl-${protocolId}`);
+        const senderId = usernameParts.join("_").replace(/=3a/g, ":").replace(/=40/g, "@");
+        if (!protocol) {
+            throw Error(`Could not find protocol ${protocol}`);
+        }
+        return {
+                protocol: protocol,
+                username: senderId,
+        }
     }
 
     public eventAck() {
