@@ -17,6 +17,7 @@ import { ProtoHacks } from "./ProtoHacks";
 import { RoomAliasSet } from "./RoomAliasSet";
 import { MessageFormatter } from "./MessageFormatter";
 import { GatewayHandler } from "./GatewayHandler";
+import { BifrostRemoteUser } from "./store/BifrostRemoteUser";
 const log = Logging.get("MatrixEventHandler");
 
 /**
@@ -259,10 +260,10 @@ export class MatrixEventHandler {
         const intent = this.bridge.getIntent();
         if (args[0] === "protocols" && args.length === 1) {
             const protocols = this.purple.getProtocols();
-            let body = "Available protocols:\n";
+            let body = "Available protocols:\n\n";
             body += protocols.map((plugin: BifrostProtocol) =>
                 ` \`${plugin.name}\` - ${plugin.summary}`,
-            ).join("\n");
+            ).join("\n\n");
             await intent.sendMessage(event.room_id, {
                 msgtype: "m.notice",
                 body,
@@ -275,21 +276,19 @@ export class MatrixEventHandler {
                 body: "\/\/Placeholder",
             });
         } else if (args[0] === "accounts" && args.length === 1) {
-            const users = await this.bridge.getUserStore()?.getRemoteUsersFromMatrixId(event.sender) || [];
+            const users = await this.store.getRemoteUsersFromMxId(event.sender) || [];
             let body = "Linked accounts:\n";
-            body += users.map((remoteUser: RemoteUser) => {
-                const pid = remoteUser.get<string>("protocolId");
-                const username = remoteUser.get<string>("username");
+            body += users.map((remoteUser: BifrostRemoteUser) => {
                 let account: IBifrostAccount|null = null;
                 try {
-                    account = this.purple.getAccount(username, pid, event.sender);
+                    account = this.purple.getAccount(remoteUser.username, remoteUser.protocolId, event.sender);
                 } catch (ex) {
                     log.error("Account not found:", ex);
                 }
                 if (account) {
-return `- ${account.protocol.name} (${username}) [Enabled=${account.isEnabled}] [Connected=${account.connected}]`;
+return `- ${account.protocol.name} (${remoteUser.username}) [Enabled=${account.isEnabled}] [Connected=${account.connected}]`;
                 } else {
-                    return `- ${pid} [Protocol not enabled] (${username})`;
+                    return `- ${remoteUser.protocolId} [Protocol not enabled] (${remoteUser.username})`;
                 }
             }).join("\n");
             await intent.sendMessage(event.room_id, {
@@ -304,7 +303,7 @@ return `- ${account.protocol.name} (${username}) [Enabled=${account.isEnabled}] 
             } catch (err) {
                 await intent.sendMessage(event.room_id, {
                     msgtype: "m.notice",
-                    body: "Failed to add account:" + err.message,
+                    body: "Failed to add account: " + err.message,
                 });
             }
         } else if (args[0] === "accounts" && ["enable", "disable"].includes(args[1])) {
