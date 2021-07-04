@@ -94,14 +94,6 @@ export class Config {
             }
             configLayer[key] = newConfig[key];
         });
-
-        if (this === configLayer) {
-            const enableGateway = (this.purple.backendOpts as any).enableGateway;
-            if (enableGateway !== undefined) {
-                log.warn("purple.backendOpts.enableGateway has been moved to portals.enableGateway");
-                this.portals.enableGateway = enableGateway;
-            }
-        }
     }
 }
 
