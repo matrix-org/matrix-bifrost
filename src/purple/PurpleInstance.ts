@@ -9,6 +9,7 @@ import { IConfigPurple } from "../Config";
 import { IUserInfo, IConversationEvent } from "../bifrost/Events";
 import { BifrostProtocol } from "../bifrost/Protocol";
 import { promises as fs } from "fs";
+import { throws } from "node:assert";
 
 const log = Logging.get("PurpleInstance");
 
@@ -88,7 +89,6 @@ export class PurpleInstance extends EventEmitter implements IBifrostInstance {
 
     public getProtocol(id: string): BifrostProtocol|undefined {
         return this.protocols.find((proto) => {
-            console.log(proto.id, "===", id);
             return proto.id === id;
         });
     }
