@@ -497,7 +497,7 @@ Say \`help\` for more commands.
             throw new Error("You need to specify a password");
         }
         const account = this.purple.createBifrostAccount(args[0], protocol);
-        account.createNew(args[1]);
+        account.createNew(args[1], this.config.purple.defaultAccountSettings[protocol.id] || {});
         await this.store.storeAccount(event.sender, protocol, args[0]);
         await this.bridge?.getIntent().sendMessage(event.room_id, {
             msgtype: "m.notice",

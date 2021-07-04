@@ -59,8 +59,9 @@ export class PurpleAccount implements IBifrostAccount {
         this.enabled = accounts.get_enabled(this.acctData.handle);
     }
 
-    public createNew(password?: string) {
-        accounts.new(this.username, this.protocol.id, password);
+    public createNew(password?: string, extraConfig?: Record<string, string|boolean|number>) {
+        const handle = accounts.new(this.username, this.protocol.id, password);
+        accounts.configure(handle.handle, extraConfig);
     }
 
     public setEnabled(enable: boolean) {

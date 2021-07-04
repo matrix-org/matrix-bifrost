@@ -3,6 +3,7 @@ import { IRoomAlias } from "./RoomAliasSet";
 import { IXJSBackendOpts } from "./xmppjs/XJSBackendOpts";
 import { Logging } from "matrix-appservice-bridge";
 import { PgDataStoreOpts } from "./store/postgres/PgDatastore";
+import { IAccountExtraConfig } from "./bifrost/Account";
 
 const log = Logging.get("Config");
 
@@ -27,6 +28,7 @@ export class Config {
     public readonly purple: IConfigPurple = {
         backendOpts: undefined,
         backend: "node-purple",
+        defaultAccountSettings: {},
     };
 
     public readonly autoRegistration: IConfigAutoReg = {
@@ -108,6 +110,7 @@ export interface IConfigBridge {
 export interface IConfigPurple {
     backendOpts: {}|IXJSBackendOpts|undefined;
     backend: "node-purple"|"xmpp-js";
+    defaultAccountSettings: {[key: string]: IAccountExtraConfig};
 }
 
 export interface IConfigAutoReg {
