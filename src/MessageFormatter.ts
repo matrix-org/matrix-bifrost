@@ -1,5 +1,5 @@
 import { BifrostProtocol } from "./bifrost/Protocol";
-import { PRPL_XMPP } from "./ProtoHacks";
+import { PRPL_S4B, PRPL_XMPP } from "./ProtoHacks";
 import { Parser } from "htmlparser2";
 import { Intent, Logging } from "matrix-appservice-bridge";
 import { IConfigBridge } from "./Config";
@@ -77,7 +77,7 @@ export class MessageFormatter {
             matrixMsg.remote_id = msg.id;
         }
         const hasAttachment = msg.opts && msg.opts.attachments && msg.opts.attachments.length;
-        if (protocol.id === PRPL_XMPP) {
+        if ([PRPL_XMPP, PRPL_S4B].includes(protocol.id)) {
             if (matrixMsg.body.startsWith("<")) {
                 // It *might* be HTML so go for it.
                 try {
