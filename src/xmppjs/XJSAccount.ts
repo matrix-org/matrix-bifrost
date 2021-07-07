@@ -371,4 +371,14 @@ export class XmppJsAccount implements IBifrostAccount {
         };
 
     }
+
+    public setStatus() {
+        // No-op
+        return;
+    }
+
+    public sendIMTyping() {
+        // No-op
+        return;
+    }
 }

@@ -26,6 +26,7 @@ export interface IBifrostAccount extends IProfileProvider {
     createNew(password?: string, extraConfig?: IAccountExtraConfig);
     setEnabled(enable: boolean);
     sendIM(recipient: string, body: IBasicProtocolMessage);
+    sendIMTyping(recipient: string, isTyping: boolean);
     sendChat(chatName: string, body: IBasicProtocolMessage);
     getBuddy(user: string): any|undefined;
     getJoinPropertyForRoom(roomName: string, key: string): string|undefined;
@@ -41,4 +42,5 @@ export interface IBifrostAccount extends IProfileProvider {
     rejectChat(components: IChatJoinProperties);
     getConversation(name: string): any|undefined;
     getChatParamsForProtocol(): IChatJoinOptions[];
+    setStatus(statusId: string, active: boolean);
 }

@@ -76,7 +76,8 @@ export class MatrixRoomHandler {
         purple.on("chat-user-kick", this.handleRemoteUserState.bind(this));
         /* This also handles chat names, which are just set as the conv.name */
         purple.on("chat-topic", this.handleTopic.bind(this));
-        purple.on("chat-typing", this.handleTyping.bind(this));
+        purple.on("im-typing", this.handleIMTyping.bind(this));
+        purple.on("chat-typing", this.handleChatTyping.bind(this));
         purple.on("store-remote-user", (storeUser: IStoreRemoteUser) => {
             log.info(`Storing remote ghost for ${storeUser.mxId} -> ${storeUser.remoteId}`);
             this.store.storeGhost(
@@ -115,13 +116,8 @@ export class MatrixRoomHandler {
         }
     }
 
-    private async createOrGetIMRoom(data: IReceivedImMsg, matrixUser: MatrixUser, intent: Intent): Promise<string> {
+    private async getIMRoomId(data: {account: { protocol_id: string}, sender: string}, matrixUser: MatrixUser) {
         // Check to see if we have a room for this IM.
-        let remoteData = {
-            matrixUser: matrixUser.getId(),
-            protocol_id: data.account.protocol_id,
-            recipient: data.sender,
-        };
         const remoteId = Buffer.from(
             `${matrixUser.getId()}:${data.account.protocol_id}:${data.sender}`,
         ).toString("base64");
@@ -134,10 +130,21 @@ export class MatrixRoomHandler {
         if (remoteEntries != null && remoteEntries.matrix) {
             return remoteEntries.matrix.getId();
         }
+        return null;
+    }
+
+    private async createOrGetIMRoom(data: IReceivedImMsg, matrixUser: MatrixUser, intent: Intent): Promise<string> {
+        const existingRoomId = await this.getIMRoomId(data, matrixUser);
+        if (existingRoomId) {
+            return existingRoomId;
+        }
+        const remoteId = Buffer.from(
+            `${matrixUser.getId()}:${data.account.protocol_id}:${data.sender}`,
+        ).toString("base64");
 
         // Room doesn't exist yet, create it.
         log.info(`Couldn't find room for IM ${matrixUser.getId()} <-> ${data.sender}. Creating a new one`);
-        remoteData = {
+        const remoteData = {
             matrixUser: matrixUser.getId(),
             protocol_id: data.account.protocol_id,
             recipient: data.sender,
@@ -535,8 +542,28 @@ export class MatrixRoomHandler {
             });
         }
     }
+    private async handleIMTyping(data: IChatTyping) {
+        if (!this.bridge) {
+            throw Error("Couldn't handleIMTyping, bridge was not defined");
+        }
+        const matrixUser = await this.store.getMatrixUserForAccount(data.account);
+        if (matrixUser === null) {
+            return;
+        }
+        const roomId = await this.getIMRoomId(data, matrixUser);
+        if (!roomId) {
+            return;
+        }
+        log.debug(`Setting typing status for ${roomId} ${data.sender}: ${data.typing}`);
+        const intent = this.bridge.getIntent(this.purple.getProtocol(data.account.protocol_id)!.getMxIdForProtocol(
+            data.sender,
+            this.config.bridge.domain,
+            this.config.bridge.userPrefix,
+        ).userId);
+        await intent.sendTyping(roomId, data.typing);
+    }
 
-    private async handleTyping(data: IChatTyping) {
+    private async handleChatTyping(data: IChatTyping) {
         if (!this.bridge) {
             throw Error("Couldn't handleTyping, bridge was not defined");
         }

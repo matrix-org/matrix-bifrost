@@ -28,7 +28,7 @@ export class Config {
     public readonly purple: IConfigPurple = {
         backendOpts: undefined,
         backend: "node-purple",
-        defaultAccountSettings: {},
+        defaultAccountSettings: undefined,
     };
 
     public readonly autoRegistration: IConfigAutoReg = {

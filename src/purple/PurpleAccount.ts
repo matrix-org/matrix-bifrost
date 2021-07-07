@@ -3,7 +3,7 @@
  */
 
 // @ts-ignore - These are optional.
-import { buddy, accounts, messaging, Buddy, Account, Conversation, notify } from "node-purple";
+import { buddy, accounts, messaging, Buddy, Account, Conversation, notify, TypingState } from "node-purple";
 import { promises as fs } from "fs";
 import { Logging } from "matrix-appservice-bridge";
 import { BifrostProtocol } from "../bifrost/Protocol";
@@ -60,8 +60,8 @@ export class PurpleAccount implements IBifrostAccount {
     }
 
     public createNew(password?: string, extraConfig?: Record<string, string|boolean|number>) {
-        const handle = accounts.new(this.username, this.protocol.id, password);
-        accounts.configure(handle.handle, extraConfig);
+        this.acctData = accounts.new(this.username, this.protocol.id, password);
+        accounts.configure(this.acctData.handle, extraConfig);
     }
 
     public setEnabled(enable: boolean) {
@@ -76,21 +76,28 @@ export class PurpleAccount implements IBifrostAccount {
         if (!this.handle) {
             throw Error("No account is binded to this instance. Call findAccount()");
         }
-        messaging.sendIM(this.acctData!.handle, recipient, msg.body);
+        messaging.sendIM(this.handle, recipient, msg.body);
+    }
+
+    public sendIMTyping(recipient: string, isTyping: boolean) {
+        if (!this.handle) {
+            throw Error("No account is binded to this instance. Call findAccount()");
+        }
+        messaging.setIMTypingState(this.handle, recipient, isTyping ? 1 : 0);
     }
 
     public sendChat(chatName: string, msg: IBasicProtocolMessage) {
         if (!this.handle) {
             throw Error("No account is binded to this instance. Call findAccount()");
         }
-        messaging.sendChat(this.acctData!.handle, chatName, msg.body);
+        messaging.sendChat(this.handle, chatName, msg.body);
     }
 
     public getBuddy(user: string): Buddy {
         if (!this.handle) {
             throw Error("No account is binded to this instance. Call findAccount()");
         }
-        return buddy.find(this.acctData!.handle, user);
+        return buddy.find(this.handle, user);
     }
 
     public getJoinPropertyForRoom(roomName: string, key: string): string|undefined {
@@ -177,5 +184,9 @@ export class PurpleAccount implements IBifrostAccount {
             type: "image/jpeg",
             data: await fs.readFile(iconPath),
         };
+    }
+
+    public setStatus(statusId: string, active: boolean) {
+        accounts.set_status(this.handle, statusId, active);
     }
 }

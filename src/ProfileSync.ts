@@ -49,7 +49,7 @@ export class ProfileSync {
                 log.info("Fetching user info for", senderIdToLookup);
                 const uinfo = await account.getUserInfo(senderIdToLookup);
                 log.debug("getUserInfo got:", uinfo);
-                remoteProfileSet.nick = uinfo.Nickname as string;
+                remoteProfileSet.nick = uinfo.Nickname as string || uinfo["Display name"] as string;
                 if (uinfo.Avatar) {
                     remoteProfileSet.avatar_uri = uinfo.Avatar as string;
                 }

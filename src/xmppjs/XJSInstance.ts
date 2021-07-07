@@ -101,6 +101,10 @@ export class XmppJsInstance extends EventEmitter implements IBifrostInstance {
         return this.myAddress;
     }
 
+    public usingSingleProtocol() {
+        return XMPP_PROTOCOL.id;
+    }
+
     public preStart(bridge: Bridge, autoRegister: AutoRegistration) {
         this.autoRegister = autoRegister;
         this.bridge = bridge;

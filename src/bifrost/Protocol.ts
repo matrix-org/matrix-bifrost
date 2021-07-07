@@ -20,10 +20,6 @@ export class BifrostProtocol {
         senderId: string,
         domain: string,
         prefix: string = ""): MatrixUser {
-        // This is a little bad, but we drop the prpl- because it's a bit ugly.
-        const protocolName = this.id.startsWith("prpl-") ? this.id.substr("prpl-".length) : this.id;
-        // senderId containing : can mess things up
-        senderId = senderId.replace(/\:/g, "=3a").replace(/=40/g, "@");
-        return new MatrixUser(`@${prefix}${protocolName}_${senderId}:${domain}`);
+        throw Error('This must be overrriden by the implementing class');
     }
 }

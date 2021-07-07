@@ -9,7 +9,7 @@ import { IConfigPurple } from "../Config";
 import { IUserInfo, IConversationEvent } from "../bifrost/Events";
 import { BifrostProtocol } from "../bifrost/Protocol";
 import { promises as fs } from "fs";
-import { throws } from "node:assert";
+import { PurpleProtocol } from "./PurpleProtocol";
 
 const log = Logging.get("PurpleInstance");
 
@@ -17,19 +17,33 @@ const DEFAULT_PLUGIN_DIR = "/usr/lib/purple-2";
 export interface IPurpleBackendOpts {
     debugEnabled: boolean;
     pluginDir: string;
+    dataDir?: string;
+    soloProtocol?: string;
+    protocolOptions?: {[pluginName: string]: {
+        // E.g. {0}@foo,FOO/{0}
+        usernameFormat: string;
+    }}
 }
 
 export class PurpleInstance extends EventEmitter implements IBifrostInstance {
     private protocols: BifrostProtocol[];
     private accounts: Map<string, PurpleAccount>;
     private interval?: NodeJS.Timeout;
+    private backendOpts?: IPurpleBackendOpts;
     constructor(private config: IConfigPurple) {
         super();
+        this.backendOpts = this.config.backendOpts as IPurpleBackendOpts;
         this.protocols = [];
         this.accounts = new Map();
     }
 
     public createBifrostAccount(username, protocol: BifrostProtocol) {
+        // We might want to format this one.
+        const protocolOptions = (this.backendOpts?.protocolOptions || {})[protocol.id];
+        if (protocolOptions?.usernameFormat) {
+            // Replaces %-foo with username-foo
+            username = protocolOptions.usernameFormat.replace(/\%/g, username);
+        } 
         return new PurpleAccount(username, protocol);
     }
 
@@ -42,29 +56,40 @@ export class PurpleInstance extends EventEmitter implements IBifrostInstance {
         return null; // Not supported.
     }
 
+    public usingSingleProtocol() {
+        return this.backendOpts.soloProtocol;
+    }
+
     public async start() {
         log.info("Starting purple instance");
-        const opts = this.config.backendOpts as IPurpleBackendOpts;
-        const pluginDir = path.resolve(opts.pluginDir || DEFAULT_PLUGIN_DIR);
+        const pluginDir = path.resolve(this.backendOpts?.pluginDir || DEFAULT_PLUGIN_DIR);
         try {
             await fs.access(pluginDir);
         } catch (ex) {
             throw Error(
-                `Could not verify purple plugin directory "${opts.pluginDir}" exists.` + 
+                `Could not verify purple plugin directory "${pluginDir}" exists.` + 
                 "You may need to install libpurple plugins OR set the correct directory in your config.",
             );
         }
         log.info("Plugin search path is set to", pluginDir);
+        const userDir = this.backendOpts?.dataDir ? path.resolve(this.backendOpts.dataDir) : undefined;
+        log.info("User directory is set to", userDir);
         helper.setupPurple({
-            debugEnabled: opts.debugEnabled ? 1 : 0,
+            debugEnabled: this.backendOpts?.debugEnabled ? 1 : 0,
             pluginDir,
-            userDir: undefined,
+            userDir,
         });
         log.info("Started purple instance");
         this.protocols = plugins.get_protocols().map(
-            (data) => new BifrostProtocol(data),
+            (data) => new PurpleProtocol(data, !!this.backendOpts.soloProtocol),
         );
         log.info("Got supported protocols:", this.protocols.map((p) => p.id).join(" "));
+        if (this.backendOpts.soloProtocol) {
+            log.info(`Using solo plugin ${this.backendOpts.soloProtocol}`);
+            if (!this.getProtocol(this.backendOpts.soloProtocol)) {
+                throw Error('Solo plugin defined but not in list of supported plugins')
+            }
+        }
         this.interval = setInterval(this.eventHandler.bind(this), 300);
     }
 
@@ -131,8 +156,12 @@ export class PurpleInstance extends EventEmitter implements IBifrostInstance {
             prefix: string = ""): {username: string, protocol: BifrostProtocol} {
         const local = mxid.substring(`@${prefix}`.length).split(":")[0];
         const [protocolId, ...usernameParts] = local.split("_");
+        if (this.backendOpts.soloProtocol) {
+            // This is using a solo protocol, so ignore the leading protocol name.
+            usernameParts.splice(0,0, protocolId);
+        }
         // As per bifrost/Protocol.ts, we remove prpl-
-        const protocol = this.getProtocol(`prpl-${protocolId}`);
+        const protocol = this.getProtocol(this.backendOpts.soloProtocol || `prpl-${protocolId}`);
         const senderId = usernameParts.join("_").replace(/=3a/g, ":").replace(/=40/g, "@");
         if (!protocol) {
             throw Error(`Could not find protocol ${protocol}`);
