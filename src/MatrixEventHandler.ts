@@ -340,7 +340,6 @@ return `- ${account.protocol.name} (${remoteUser.username}) [Enabled=${account.i
                     await this.handleNewAccount(args[2], args.slice(3), event);
                 }
             } catch (err) {
-                console.log(err);
                 await intent.sendMessage(event.room_id, {
                     msgtype: "m.notice",
                     body: "Failed to add account: " + err.message,
@@ -549,7 +548,6 @@ Say \`help\` for more commands.
             throw new Error("You need to specify a password");
         }
         const account = this.purple.createBifrostAccount(args[0], protocol);
-        console.log("cfg:",protocol.id, this.config.purple.defaultAccountSettings[protocol.id], {});
         account.createNew(args[1], this.config.purple.defaultAccountSettings[protocol.id] || {});
         await this.store.storeAccount(event.sender, protocol, account.name);
         await this.bridge?.getIntent().sendMessage(event.room_id, {

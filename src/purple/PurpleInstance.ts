@@ -43,7 +43,7 @@ export class PurpleInstance extends EventEmitter implements IBifrostInstance {
         if (protocolOptions?.usernameFormat) {
             // Replaces %-foo with username-foo
             username = protocolOptions.usernameFormat.replace(/\%/g, username);
-        } 
+        }
         return new PurpleAccount(username, protocol);
     }
 
@@ -67,7 +67,7 @@ export class PurpleInstance extends EventEmitter implements IBifrostInstance {
             await fs.access(pluginDir);
         } catch (ex) {
             throw Error(
-                `Could not verify purple plugin directory "${pluginDir}" exists.` + 
+                `Could not verify purple plugin directory "${pluginDir}" exists.` +
                 "You may need to install libpurple plugins OR set the correct directory in your config.",
             );
         }
@@ -162,13 +162,13 @@ export class PurpleInstance extends EventEmitter implements IBifrostInstance {
         }
         // As per bifrost/Protocol.ts, we remove prpl-
         const protocol = this.getProtocol(this.backendOpts.soloProtocol || `prpl-${protocolId}`);
-        const senderId = usernameParts.join("_").replace(/=3a/g, ":").replace(/=40/g, "@");
+        const username = usernameParts.join("_").replace(/=3a/g, ":").replace(/=40/g, "@");
         if (!protocol) {
             throw Error(`Could not find protocol ${protocol}`);
         }
         return {
-                protocol: protocol,
-                username: senderId,
+            protocol,
+            username,
         }
     }
 
