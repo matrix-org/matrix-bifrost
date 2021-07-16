@@ -2,7 +2,7 @@ import { MatrixUser } from "matrix-appservice-bridge";
 import { BifrostProtocol } from "../bifrost/Protocol";
 
 export class PurpleProtocol extends BifrostProtocol {
-    constructor(opts: {id: string, name: string, homepage?: string, summary?: string}, private isSoloProtocol: boolean) {
+    constructor(opts: {id: string, name: string, homepage?: string, summary?: string}, private isSoloProtocol = false) {
         super(opts, true, true);
     }
 

@@ -262,7 +262,7 @@ export class MessageFormatter {
                 markdown += text + "\n";
             },
             onopentag: (name, attribs) => {
-                if (["body", "html", "font", "span"].includes(name)) {
+                if (["body", "html", "font"].includes(name)) {
                     return; // We don't need these.
                 }
                 let htmlAttribs = "";
@@ -273,7 +273,7 @@ export class MessageFormatter {
                 tagToMarkdown(name, true, attribs);
             },
             onclosetag: (name) => {
-                if (["body", "html", "font", "span"].includes(name)) {
+                if (["body", "html", "font"].includes(name)) {
                     return; // We don't need these.
                 }
                 html += `<\\${name}>`;
