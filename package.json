@@ -2,7 +2,7 @@
   "name": "matrix-bifrost",
   "version": "0.3.0",
   "description": "Multi protocol bridging for Matrix.",
-  "main": "index.js",
+  "main": "lib/Program.js",
   "scripts": {
     "prepare": "npm run build",
     "build": "tsc",
