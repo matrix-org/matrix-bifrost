@@ -2922,9 +2922,9 @@ node-preload@^0.2.1:
   dependencies:
     process-on-spawn "^1.0.0"
 
-"node-purple@git+https://github.com/matrix-org/node-purple#hs/event-loop-fixes":
+"node-purple@git+https://github.com/matrix-org/node-purple#8ad1572d544d9b5e5add446626a37903b4576c11":
   version "0.0.2"
-  resolved "git+https://github.com/matrix-org/node-purple#a762654a64771ea733b4fd8bccf3635197d0663f"
+  resolved "git+https://github.com/matrix-org/node-purple#8ad1572d544d9b5e5add446626a37903b4576c11"
   dependencies:
     node-gyp "^8.1.0"
     node-pre-gyp "^0.17.0"
