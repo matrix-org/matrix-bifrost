@@ -110,7 +110,7 @@ export interface IConfigBridge {
 export interface IConfigPurple {
     backendOpts: {}|IXJSBackendOpts|undefined;
     backend: "node-purple"|"xmpp-js";
-    defaultAccountSettings: {[key: string]: IAccountExtraConfig};
+    defaultAccountSettings?: {[key: string]: IAccountExtraConfig};
 }
 
 export interface IConfigAutoReg {
