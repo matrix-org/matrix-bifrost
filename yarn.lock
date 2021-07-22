@@ -2595,23 +2595,23 @@ marked@^2.0.0:
   resolved "https://registry.npmjs.org/marked/-/marked-2.0.3.tgz"
   integrity sha512-5otztIIcJfPc2qGTN8cVtOJEjNJZ0jwa46INMagrYfk0EvqtRuEHLsEe0LrFS0/q+ZRKT0+kXK7P2T1AN5lWRA==
 
-matrix-appservice-bridge@^2.6.1:
-  version "2.6.1"
-  resolved "https://registry.npmjs.org/matrix-appservice-bridge/-/matrix-appservice-bridge-2.6.1.tgz"
-  integrity sha512-XNOziYVQoTQ9cym3Z2acXy8CKRXPVcEbni0XXCUfvu4O9+cBjUPywtRmhDBENsl/bgGbFKqbJNr68E/j9j+Tbw==
+matrix-appservice-bridge@^2.7.0:
+  version "2.7.0"
+  resolved "https://registry.yarnpkg.com/matrix-appservice-bridge/-/matrix-appservice-bridge-2.7.0.tgz#1e224978a70bd324b2d3e8ba71a54550408994ed"
+  integrity sha512-2KVUHMC0fVRX0CmNzkI0X+NqnWqDlXOXKandrf1a0U4OpIUoF4x1lKfC4H95MP1I/NCh4uy6rT96XE2d/8zLUg==
   dependencies:
     chalk "^4.1.0"
     extend "^3.0.2"
     is-my-json-valid "^2.20.5"
     js-yaml "^4.0.0"
     matrix-appservice "^0.8.0"
-    matrix-js-sdk "^9.5.0"
+    matrix-js-sdk "^9.9.0"
     nedb "^1.8.0"
     nopt "^5.0.0"
     p-queue "^6.6.2"
-    prom-client "^13.0.0"
+    prom-client "^13.1.0"
     winston "^3.3.3"
-    winston-daily-rotate-file "^4.5.0"
+    winston-daily-rotate-file "^4.5.1"
 
 matrix-appservice@^0.8.0:
   version "0.8.0"
@@ -2624,9 +2624,9 @@ matrix-appservice@^0.8.0:
     js-yaml "^3.14.0"
     morgan "^1.10.0"
 
-matrix-js-sdk@^9.5.0:
+matrix-js-sdk@^9.9.0:
   version "9.11.0"
-  resolved "https://registry.npmjs.org/matrix-js-sdk/-/matrix-js-sdk-9.11.0.tgz"
+  resolved "https://registry.yarnpkg.com/matrix-js-sdk/-/matrix-js-sdk-9.11.0.tgz#57ba60dfbcf2b32917eb6d7232d0e81cf0de0d3a"
   integrity sha512-wP28ybOxyQ7lbC48QddRORYr8atEwbTqDOsu8H6u9jTTgB2qqczI/bkSoXHtutODuSeLY5x0UuwLcxVCy4yxVQ==
   dependencies:
     "@babel/runtime" "^7.12.5"
@@ -3338,9 +3338,9 @@ prom-client@^11.2.1:
   dependencies:
     tdigest "^0.1.1"
 
-prom-client@^13.0.0:
+prom-client@^13.1.0:
   version "13.1.0"
-  resolved "https://registry.npmjs.org/prom-client/-/prom-client-13.1.0.tgz"
+  resolved "https://registry.yarnpkg.com/prom-client/-/prom-client-13.1.0.tgz#1185caffd8691e28d32e373972e662964e3dba45"
   integrity sha512-jT9VccZCWrJWXdyEtQddCDszYsiuWj5T0ekrPszi/WEegj3IZy6Mm09iOOVM86A4IKMWq8hZkT2dD9MaSe+sng==
   dependencies:
     tdigest "^0.1.1"
@@ -4186,10 +4186,10 @@ winston-daily-rotate-file@^3.3.2:
     winston-compat "^0.1.4"
     winston-transport "^4.2.0"
 
-winston-daily-rotate-file@^4.5.0:
-  version "4.5.2"
-  resolved "https://registry.npmjs.org/winston-daily-rotate-file/-/winston-daily-rotate-file-4.5.2.tgz"
-  integrity sha512-DpAz9djExzFGVGRIKCKzsjOQaIINbjOUJ8CRsZGz0SQOMMcO1kM7jqTdzQAM9CRTEksZV9bBw9TT0ddQBGxs9g==
+winston-daily-rotate-file@^4.5.1:
+  version "4.5.5"
+  resolved "https://registry.yarnpkg.com/winston-daily-rotate-file/-/winston-daily-rotate-file-4.5.5.tgz#cfa3a89f4eb0e4126917592b375759b772bcd972"
+  integrity sha512-ds0WahIjiDhKCiMXmY799pDBW+58ByqIBtUcsqr4oDoXrAI3Zn+hbgFdUxzMfqA93OG0mPLYVMiotqTgE/WeWQ==
   dependencies:
     file-stream-rotator "^0.5.7"
     object-hash "^2.0.1"
