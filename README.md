@@ -18,15 +18,16 @@ If you wish to file an issue or create a PR, **please read [CONTRIBUTING.md](./C
 
 This bridge features multiple backends for spinning up bridges on different types of network.
 The following are supported:
-* `xmpp.js` *Supported on Docker*
+* `xmpp.js`
     Designed to bridge to XMPP networks directly, without purple. Good for setups requiring an extremely scalable XMPP bridge. Uses XMPP components.
 * `node-purple`
     Uses libpurple to bridge to a number of networks supported by libpurple2. Good for simple bridges for a small number of users, or for bridging to less available protocols.
-    * **WARNING**: If using `node-purple` then you MUST install the dependency: `npm i node-purple`
+    `node-purple` is an optional dependency, which is installed by default. We currently don't publish prebuilt packages for it, so you will need to install buildtime dependencies
+    listed [on the README](https://github.com/matrix-org/node-purple).
 
 ## Docker
 
-If you wish to use the `xmpp.js` backend, you can go straight ahead and use the provided Dockerfile
+Both backends are supported in Docker. You can go straight ahead and use the provided Dockerfile
 to build the bridge. You can build the docker image with `docker build -t bifrost:latest` and then
 run the image with: `docker run -v /your/path/to/data:/data bifrost:latest -p 5000:9555`.
 
@@ -44,22 +45,15 @@ An image is available on [Dockerhub](https://hub.docker.com/r/matrixdotorg/matri
 
 ### Dependencies
 
-For `node-purple` to compile correctly, you will need (for Debian):
-
-* build-essential
-* libuv1
-
-You can install this on Ubuntu/Debian using `sudo apt install build-essential libuv1`.
-
-Instructions for other distributions will come soon.
+Simply run `yarn install` as normal. Dependencies for `node-purple` can in it's [README](https://github.com/matrix-org/node-purple#node-purple)
 
 ### Installing & Configuring
 
 **NOTE: You must carefully read the config.sample.yaml and use the bits appropriate for you. Do NOT copy and paste it verbatim as it won't work.**
 
 ```shell
-npm install # Install dependencies
-npm run build # Build files
+yarn install # Install dependencies
+yarn build # Build files
 cp config.sample.yaml config.yaml
 # ... Set the domain name, homeserver url, and then review the rest of the config
 sed -i  "s/domain: \"localhost\"/domain: \"$YOUR_MATRIX_DOMAIN\"/g" config.yaml
@@ -68,7 +62,7 @@ sed -i  "s/domain: \"localhost\"/domain: \"$YOUR_MATRIX_DOMAIN\"/g" config.yaml
 You must also generate a registration file:
 
 ```shell
-npm run genreg -- -u http://localhost:9555 # Set listener url here.
+yarn genreg -- -u http://localhost:9555 # Set listener url here.
 ```
 
 This file should be accessible by your **homeserver**, which will use this file to get the correct url and tokens to push events to.
@@ -103,7 +97,7 @@ The `start.sh` script will auto preload the build libpurple library and offers a
 If you are not using the `node-purple` backend, you can just start the service with:
 
 ```shell
-npm run start -- -p 9555
+yarn start -- -p 9555
 ```
 
 ## Help
@@ -119,22 +113,10 @@ sending `accounts add-existing $PROTOCOL $USERNAME` where the protocol and usern
 
 You should also run `accounts enable $PROTOCOL $USERNAME` to enable the account for the bridge, and then it should connect automatically.
 
-#### Bridging XMPP room (on node-purple)
-
-Connect to your matrix server and open a chat with `@_purple_bot:$YOUR_MATRIX_DOMAIN`.
-```
-accounts add-existing prpl-jabber $USERNAME@$XMPP_SERVER/$CLIENT_NAME
-accounts enable prpl-jabber $USERNAME@$XMPP_SERVER/$CLIENT_NAME
-accounts
-join xmpp $ROOM $XMPP_SERVER
-```
-
 ### My bridge crashed with a segfault
 
 The `node-purple` rewrite is still not quite bugfree and we are working hard to iron out the kinks in it. We ask that you report
 if certain purple plugins cause more crashes, or if anything in particular lead up to it.
-
-
 ## Testing
 
-Running the tests is as simple as doing `npm run test`
+Running the tests is as simple as doing `yarn test`
