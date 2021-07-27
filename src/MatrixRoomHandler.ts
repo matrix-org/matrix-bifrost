@@ -116,7 +116,7 @@ export class MatrixRoomHandler {
         }
     }
 
-    private async getIMRoomId(data: {account: { protocol_id: string}, sender: string}, matrixUser: MatrixUser) {
+    private async getIMRoomId(data: {account: { protocol_id: string}, sender: string}, matrixUser: MatrixUser): Promise<string|null> {
         // Check to see if we have a room for this IM.
         const remoteId = Buffer.from(
             `${matrixUser.getId()}:${data.account.protocol_id}:${data.sender}`,

@@ -1,6 +1,6 @@
 import { MatrixUser } from "matrix-appservice-bridge";
 
-export class BifrostProtocol {
+export abstract class BifrostProtocol {
     public readonly id: string;
     public readonly name: string;
     public readonly summary?: string;
