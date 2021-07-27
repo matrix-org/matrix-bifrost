@@ -22,7 +22,6 @@ export interface IBifrostAccount extends IProfileProvider {
     connected: boolean;
     protocol: BifrostProtocol;
 
-    findAccount();
     createNew(password?: string, extraConfig?: IAccountExtraConfig);
     setEnabled(enable: boolean);
     sendIM(recipient: string, body: IBasicProtocolMessage);

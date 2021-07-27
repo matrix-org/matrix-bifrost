@@ -93,7 +93,7 @@ export class PurpleInstance extends EventEmitter implements IBifrostInstance {
         this.interval = setInterval(this.eventHandler.bind(this), 300);
     }
 
-    public getAccount(username: string, protocolId: string, mxid: string, force: boolean = false): PurpleAccount|null {
+    public getAccount(username: string, protocolId: string, mxid: string, force: boolean = false): PurpleAccount {
         const key = `${protocolId}://${username}`;
         let acct = this.accounts.get(key);
         if (!acct || force) {
@@ -102,11 +102,6 @@ export class PurpleInstance extends EventEmitter implements IBifrostInstance {
                 throw new Error("Protocol not found");
             }
             acct = new PurpleAccount(username, protocol);
-            try {
-                acct.findAccount();
-            } catch (ex) {
-                return null;
-            }
             this.accounts.set(key, acct);
         }
         return acct;

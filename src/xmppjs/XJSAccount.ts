@@ -72,10 +72,6 @@ export class XmppJsAccount implements IBifrostAccount {
         clearInterval(this.checkInterval);
     }
 
-    public findAccount() {
-        // TODO: What do we actually need to find.
-    }
-
     public xmppBumpLastStanzaTs(roomName: string) {
         this.lastStanzaTs.set(roomName, Date.now());
     }

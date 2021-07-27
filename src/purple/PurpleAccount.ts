@@ -22,7 +22,7 @@ export interface IChatJoinOptions {
 }
 
 export class PurpleAccount implements IBifrostAccount {
-    private acctData: Account | undefined;
+    private acctData: Account;
     private enabled: boolean;
     private waitingJoinRoomProperties: IChatJoinProperties | undefined;
     private joinPropertiesForRooms: Map<string, IChatJoinProperties>;
@@ -31,6 +31,13 @@ export class PurpleAccount implements IBifrostAccount {
         this.enabled = false;
         this.userAccountInfoPromises = new Map();
         this.joinPropertiesForRooms = new Map();
+        // Find the account
+        const data = accounts.find(this.username, this.protocol.id);
+        if (!data) {
+            throw new Error("Account not found");
+        }
+        this.acctData = data;
+        this.enabled = accounts.get_enabled(this.acctData.handle);
     }
 
     get _waitingJoinRoomProps(): IChatJoinProperties|undefined { return this.waitingJoinRoomProperties; }
@@ -44,19 +51,7 @@ export class PurpleAccount implements IBifrostAccount {
     get isEnabled(): boolean { return this.enabled; }
 
     get connected(): boolean {
-        if (!this.acctData) {
-            return false;
-        }
         return accounts.is_connected(this.acctData.handle);
-    }
-
-    public findAccount() {
-        const data = accounts.find(this.username, this.protocol.id);
-        if (!data) {
-            throw new Error("Account not found");
-        }
-        this.acctData = data;
-        this.enabled = accounts.get_enabled(this.acctData.handle);
     }
 
     public createNew(password?: string, extraConfig?: Record<string, string|boolean|number>) {
@@ -65,38 +60,23 @@ export class PurpleAccount implements IBifrostAccount {
     }
 
     public setEnabled(enable: boolean) {
-        if (!this.handle) {
-            throw Error("No account is binded to this instance. Call findAccount()");
-        }
         accounts.set_enabled(this.acctData!.handle, enable);
         this.enabled = enable;
     }
 
     public sendIM(recipient: string, msg: IBasicProtocolMessage) {
-        if (!this.handle) {
-            throw Error("No account is binded to this instance. Call findAccount()");
-        }
         messaging.sendIM(this.handle, recipient, msg.body);
     }
 
     public sendIMTyping(recipient: string, isTyping: boolean) {
-        if (!this.handle) {
-            throw Error("No account is binded to this instance. Call findAccount()");
-        }
         messaging.setIMTypingState(this.handle, recipient, isTyping ? 1 : 0);
     }
 
     public sendChat(chatName: string, msg: IBasicProtocolMessage) {
-        if (!this.handle) {
-            throw Error("No account is binded to this instance. Call findAccount()");
-        }
         messaging.sendChat(this.handle, chatName, msg.body);
     }
 
     public getBuddy(user: string): Buddy {
-        if (!this.handle) {
-            throw Error("No account is binded to this instance. Call findAccount()");
-        }
         return buddy.find(this.handle, user);
     }
 
