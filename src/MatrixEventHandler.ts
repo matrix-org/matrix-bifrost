@@ -238,50 +238,44 @@ export class MatrixEventHandler {
         if (event.type !== "m.room.message") {
             // We are only handling bridged room messages now.
             return;
-        }
-
-        if (roomType === MROOM_TYPE_IM) {
+        } else if (roomType === MROOM_TYPE_IM) {
             await this.handleImMessage(ctx, event);
-            return;
-        }
-
-        if (roomType === MROOM_TYPE_GROUP) {
+        } else if (roomType === MROOM_TYPE_GROUP) {
             await this.handleGroupMessage(ctx, event);
-            return;
         }
     }
 
     public async onTyping(r: Request<TypingEvent>) {
         const typing = r.getData();
-        const ctx: RoomBridgeStoreEntry = (await this.store.getRoomEntryByMatrixId(typing.room_id) || {
-            matrix: undefined,
-            remote: undefined,
-            data: {},
-        });
-        const roomType: string|null = ctx.matrix ? ctx.matrix.get("type") : null;
-
-        if (roomType === MROOM_TYPE_IM) {
-            // We only support this on IM rooms for now.
-            // Assuming only one Matrix user present.
-            log.info(`Handling IM typing for ${typing.room_id}`);
-            if (!ctx.remote) {
-                throw Error('Cannot handle message, remote or matrix not defined');
-            }
-            const isUserTyping = !!typing.content.user_ids.filter(u => !this.bridge.getBot().isRemoteUser(u))[0];
-            const matrixUser = ctx.remote.get<string>("matrixUser");
-            let acct: IBifrostAccount;
-            const roomProtocol: string = ctx.remote.get("protocol_id");
-            try {
-                acct = (await this.getAccountForMxid(matrixUser, roomProtocol)).acct;
-            } catch (ex) {
-                log.error(`Couldn't handle ${matrixUser}'s typing event, ${ex}`);
-                return;
-            }
-            const recipient: string = ctx.remote.get("recipient");
-            log.info(`Sending typing to ${recipient}`);
-            acct.sendIMTyping(recipient, isUserTyping);
+        const ctx: RoomBridgeStoreEntry = await this.store.getRoomEntryByMatrixId(typing.room_id);
+        if (!ctx) {
+            // Cannot handle a room without typing
             return;
         }
+        const roomType: string|null = ctx.matrix?.get("type") || null;
+
+        if (roomType !== MROOM_TYPE_IM) {
+            return;
+        }
+        // We only support this on IM rooms for now.
+        // Assuming only one Matrix user present.
+        log.info(`Handling IM typing for ${typing.room_id}`);
+        if (!ctx.remote) {
+            throw Error('Cannot handle message, remote not defined');
+        }
+        const isUserTyping = !!typing.content.user_ids.filter(u => !this.bridge.getBot().isRemoteUser(u))[0];
+        const matrixUser = ctx.remote.get<string>("matrixUser");
+        let acct: IBifrostAccount;
+        const roomProtocol: string = ctx.remote.get("protocol_id");
+        try {
+            acct = (await this.getAccountForMxid(matrixUser, roomProtocol)).acct;
+        } catch (ex) {
+            log.error(`Couldn't handle ${matrixUser}'s typing event, ${ex}`);
+            return;
+        }
+        const recipient = ctx.remote.get<string>("recipient");
+        log.debug(`Sending typing to ${recipient}`);
+        acct.sendIMTyping(recipient, isUserTyping);
     }
 
     /* NOTE: Command handling should really be it's own class, but I am cutting corners.*/
