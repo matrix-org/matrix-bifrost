@@ -2,6 +2,9 @@
   "name": "matrix-bifrost",
   "version": "0.3.0",
   "description": "Multi protocol bridging for Matrix.",
+  "engines": {
+    "node": ">=12"
+  },
   "main": "lib/Program.js",
   "scripts": {
     "prepare": "npm run build",
