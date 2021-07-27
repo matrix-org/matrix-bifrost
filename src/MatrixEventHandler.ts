@@ -325,11 +325,7 @@ return `- ${account.protocol.name} (${remoteUser.username}) [Enabled=${account.i
             try {
                 if (soloProtocol) {
                     const acct = await this.handleNewAccount(soloProtocol, args.slice(2), event);
-                    // TODO: This is hacky
-                    log.info("Waiting 5000ms before enabling account");
-                    setTimeout(() => {
-                        acct.setEnabled(true);
-                    }, 5000);
+                    acct.setEnabled(true);
                 } else {
                     await this.handleNewAccount(args[2], args.slice(3), event);
                 }
