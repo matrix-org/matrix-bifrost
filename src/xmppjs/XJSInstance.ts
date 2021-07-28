@@ -437,11 +437,10 @@ export class XmppJsInstance extends EventEmitter implements IBifrostInstance {
         const res = new Promise((resolve: (e: Element) => void, reject) => {
             const timeout = setTimeout(() => reject(Error("Timeout")), 5000);
             if (muc) {
-                const opts = this.config.purple.backendOpts as IXJSBackendOpts;
                 for (let [username, account] of this.accounts) {
                     log.info(`Checking if ${username} is in ${who}`);
                     if (account.isInRoom(who)) {
-                        sender = username + "/" + (opts.defaultResource || "matrix-bridge");
+                        sender = username + "/" + this.defaultRes;
                         who = `${whoJid.local}@${whoJid.domain}/${whoJid.resource}`;
                         log.info(`Sending IQ from ${username}`);
                         break;
