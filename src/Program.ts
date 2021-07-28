@@ -63,7 +63,7 @@ class Program {
         });
         this.cfg = new Config();
         this.deduplicator = new Deduplicator();
-        process.on("SIGTERM", () =>
+        process.on("SIGINT", () =>
             this.killBridge()
         )
     }
@@ -137,10 +137,10 @@ class Program {
     }
 
     private async killBridge() {
-        log.info("SIGTERM recieved, killing bridge");
+        log.info("SIGINT recieved, killing bridge");
         await this.bridge.close();
-        await this.purple.close();
         await this.bifrostInstance.close();
+        process.exit(0);
     }
 
     private async runBridge(port: number, config: any) {
