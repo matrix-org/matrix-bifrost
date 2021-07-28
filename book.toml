@@ -1,0 +1,27 @@
+[book]
+title = "Matrix Bifrost"
+authors = ["The Matrix.org Foundation C.I.C."]
+language = "en"
+multilingual = false
+src = "docs"
+
+
+[build]
+# Prevent markdown pages from being automatically generated when they're
+# linked to in SUMMARY.md
+create-missing = false
+
+
+[output.html]
+# The URL visitors will be directed to when they try to edit a page
+edit-url-template = "https://github.com/matrix-org/matrix-bifrost/edit/develop/docs/{path}"
+
+# Remove the numbers that appear before each item in the sidebar, as they can
+# get quite messy as we nest deeper
+no-section-label = true
+
+# The source code URL of the repository
+git-repository-url = "https://github.com/matrix-org/matrix-bifrost"
+
+# The path that the docs are hosted on
+site-url = "/matrix-bifrost/"
