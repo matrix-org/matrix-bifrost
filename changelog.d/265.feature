@@ -1,0 +1,1 @@
+Send a notice when the bridge connects or disconnects a user from their account.
