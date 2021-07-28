@@ -43,13 +43,12 @@
     "pg": "8.3.3",
     "prom-client": "^11.2.1",
     "quick-lru": "^5.1.1",
-    "request": "^2.88.0",
-    "request-promise-native": "^1.0.5",
     "source-map-support": "^0.5.16",
     "uuid": "^3.3.2",
     "winston": "^3.0.0",
     "winston-daily-rotate-file": "^3.3.2",
     "xmpp.js": "^0.6.1"
+    "axios": "^0.21.1",
   },
   "devDependencies": {
     "@istanbuljs/nyc-config-typescript": "^1.0.1",
