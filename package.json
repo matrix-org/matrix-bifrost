@@ -9,7 +9,7 @@
   "scripts": {
     "prepare": "npm run build",
     "build": "tsc",
-    "lint": "eslint -c .eslintrc --max-warnings 0 'test/**/*.ts' 'src/**/*.ts'",
+    "lint": "eslint -c .eslintrc 'test/**/*.ts' 'src/**/*.ts'",
     "start": "node lib/Program.js -c config.yaml",
     "genreg": "node lib/Program.js -r -c config.yaml",
     "test": "mocha -r ts-node/register test/test.ts test/*.ts test/**/*.ts",
