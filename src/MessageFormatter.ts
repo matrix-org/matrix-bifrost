@@ -67,7 +67,7 @@ export class MessageFormatter {
     }
 
     public static async messageToMatrixEvent(msg: IBasicProtocolMessage, protocol: BifrostProtocol, intent?: Intent):
-        Promise<IMatrixMsgContents> {
+    Promise<IMatrixMsgContents> {
         log.debug("Got message:", msg);
         const matrixMsg: IMatrixMsgContents = {
             msgtype: "m.text",

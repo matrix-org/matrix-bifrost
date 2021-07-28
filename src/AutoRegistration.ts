@@ -30,8 +30,7 @@ export class AutoRegistration {
         private accessConfig: IConfigAccessControl,
         private bridge: Bridge,
         private store: IStore,
-        private protoInstance: IBifrostInstance) {
-    }
+        private protoInstance: IBifrostInstance) { }
 
     public isSupported(protocol: string) {
         return Object.keys(this.autoRegConfig.protocolSteps!).includes(protocol);
@@ -126,6 +125,7 @@ export class AutoRegistration {
     /**
      * Generate a set of parameters for a given profile and mxid.
      * This function is backed by a cache.
+     *
      * @param protocol The protocol in use.
      * @param mxId The user's mxid
      */

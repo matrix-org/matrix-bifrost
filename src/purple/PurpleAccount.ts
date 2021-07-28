@@ -40,7 +40,7 @@ export class PurpleAccount implements IBifrostAccount {
         this.enabled = accounts.get_enabled(this.acctData.handle);
     }
 
-    get _waitingJoinRoomProps(): IChatJoinProperties|undefined { return this.waitingJoinRoomProperties; }
+    get waitingJoinRoomProps(): IChatJoinProperties|undefined { return this.waitingJoinRoomProperties; }
 
     get remoteId(): string { return Util.createRemoteId(this.protocol.id, this.username); }
 
@@ -110,8 +110,8 @@ export class PurpleAccount implements IBifrostAccount {
         messaging.joinChat(this.handle, components);
         if (purple) {
             return new Promise((resolve, reject) => {
-                let cb;
                 const timer = setTimeout(reject, timeout);
+                let cb = null;
                 cb = (ev: IConversationEvent) => {
                     if (ev.account.username === this.username && ev.account.protocol_id === this.protocol.id) {
                         resolve(ev);

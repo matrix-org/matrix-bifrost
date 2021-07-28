@@ -13,7 +13,7 @@ const dummyProtocol = new PurpleProtocol({
     summary: undefined,
 });
 
-function createProfileSync(userInfo?: {}) {
+function createProfileSync(userInfo?: Record<string, unknown>) {
     const values = {
         displayname: "",
         avatarUrl: "",

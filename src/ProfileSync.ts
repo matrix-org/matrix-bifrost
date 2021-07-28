@@ -26,10 +26,10 @@ export class ProfileSync {
         matrixUser.set("last_check", Date.now());
         if (!force &&
             lastCheck != null && (Date.now() - lastCheck) < this.config.profile.updateInterval) {
-                return; // Don't need to check.
+            return; // Don't need to check.
         }
         log.debug(
-`Checking for profile updates for ${matrixUser.getId()} since their last_check time expired ${lastCheck}`);
+            `Checking for profile updates for ${matrixUser.getId()} since their last_check time expired ${lastCheck}`);
         const remoteProfileSet:
         {
             nick: string|undefined,
@@ -97,7 +97,7 @@ export class ProfileSync {
     }
 
     private async getOrCreateStoreUsers(protocol: BifrostProtocol, senderId: string)
-    : Promise<{matrixUser: MatrixUser, remoteUser: BifrostRemoteUser}> {
+        : Promise<{matrixUser: MatrixUser, remoteUser: BifrostRemoteUser}> {
         const userId: string = protocol.getMxIdForProtocol(
             senderId,
             this.config.bridge.domain,

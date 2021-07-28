@@ -32,7 +32,7 @@ export class Metrics {
             name: "remote_request_seconds",
             help: "Histogram of processing durations of received remote messages",
             labels: ["outcome"],
-    });
+        });
     }
 
     public static requestOutcome(isRemote: boolean, duration: number, outcome: string) {

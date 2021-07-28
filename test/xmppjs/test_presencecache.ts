@@ -56,25 +56,25 @@ const bobLeave = x("presence", {
 ]);
 
 const aliceKick = x("presence", {
-        xmlns: "jabber:client",
-        to: "bob@xmpp.matrix.org/fakedevice",
-        from: "aroom@conf.xmpp.matrix.org/alice",
-        type: "unavailable",
-    },
-    x("x", {
-        xmlns: "http://jabber.org/protocol/muc#user",
-    },
-    [
-        x("status", {
-            code: "307",
+    xmlns: "jabber:client",
+    to: "bob@xmpp.matrix.org/fakedevice",
+    from: "aroom@conf.xmpp.matrix.org/alice",
+    type: "unavailable",
+},
+x("x", {
+    xmlns: "http://jabber.org/protocol/muc#user",
+},
+[
+    x("status", {
+        code: "307",
+    }),
+    x("item", undefined, [
+        x("actor", {
+            nick: "bob",
         }),
-        x("item", undefined, [
-            x("actor", {
-                nick: "bob",
-            }),
-            x("reason", undefined, "Didn't like em much"),
-        ]),
-    ],
+        x("reason", undefined, "Didn't like em much"),
+    ]),
+],
 ));
 
 describe("PresenceCache", () => {

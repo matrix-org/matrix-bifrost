@@ -114,6 +114,7 @@ export class GatewayMUCMembership {
 
     /**
      * Add an XMPP member to a MUC chat.
+     *
      * @param chatName The MUC name.
      * @param realJid The real JID for the XMPP user.
      * @param anonymousJid The anonymous JID for the the user in the context of the MUC.
@@ -150,6 +151,7 @@ export class GatewayMUCMembership {
 
     /**
      * Remove an XMPP member from the gateway membership.
+     *
      * @param chatName The MUC the user is part of
      * @param realJid The real JID of the user
      * @returns True if this is the last device for this member, false otherwise.

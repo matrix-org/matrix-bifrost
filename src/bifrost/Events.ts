@@ -58,9 +58,9 @@ export interface IUserStateChanged extends IConversationEvent {
     id: string;
 }
 
-export interface IChatStringState extends IConversationEvent {
+export interface IChatTopicState extends IConversationEvent {
     sender: string;
-    string: string;
+    topic: string;
 }
 
 export interface IUserInfo extends IAccountEvent {

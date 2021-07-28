@@ -51,7 +51,6 @@ export class PgDataStore implements IStore {
         const keys = keyNames.join(", ");
         const keysValues = `\$${keyNames.map((k, i) => i + 1).join(", $")}`;
         const keysSets = keyNames.map((k, i) => `${k} = \$${i + 1}`).join(", ");
-        // tslint:disable-next-line: max-line-length
         const statement = `INSERT INTO ${table} (${keys}) VALUES (${keysValues}) ON CONFLICT ${constraint} DO UPDATE SET ${keysSets}`;
         return statement;
     }
@@ -137,16 +136,14 @@ export class PgDataStore implements IStore {
             "SELECT * FROM remote_users WHERE user_id = $1",
             [ userId ],
         );
-        return res.rows.map((row) => {
-            return new BifrostRemoteUser(
-                Util.createRemoteId(row.protocol_id, row.sender_name),
-                row.sender_name,
-                row.protocol_id,
-                true,
-                row.displayname,
-                row.extra_data,
-            );
-        });
+        return res.rows.map((row) => new BifrostRemoteUser(
+            Util.createRemoteId(row.protocol_id, row.sender_name),
+            row.sender_name,
+            row.protocol_id,
+            true,
+            row.displayname,
+            row.extra_data,
+        ));
     }
 
     public async getAccountsForMatrixUser(userId: string, protocolId: string): Promise<BifrostRemoteUser[]> {
@@ -154,16 +151,14 @@ export class PgDataStore implements IStore {
             "SELECT * FROM accounts WHERE user_id = $1",
             [ userId ],
         );
-        return res.rows.map((row) => {
-            return new BifrostRemoteUser(
-                Util.createRemoteId(row.protocol_id, row.username),
-                row.username,
-                row.protocol_id,
-                false,
-                "",
-                row.extra_data,
-            );
-        });
+        return res.rows.map((row) => new BifrostRemoteUser(
+            Util.createRemoteId(row.protocol_id, row.username),
+            row.username,
+            row.protocol_id,
+            false,
+            "",
+            row.extra_data,
+        ));
     }
 
     public async getRoomByRemoteData(remoteData: IRemoteGroupData): Promise<RoomBridgeStoreEntry|null> {
@@ -279,7 +274,7 @@ export class PgDataStore implements IStore {
             sender_name: username,
             protocol_id: protocol.id,
             extra_data: "{}",
-        // tslint:disable-next-line: no-any
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         } as any;
         if (extraData) {
             acctProps.extra_data = JSON.stringify(extraData) ;
@@ -349,7 +344,7 @@ export class PgDataStore implements IStore {
     }
 
     public async storeRoom(matrixId: string, type: MROOM_TYPES, remoteId: string, remoteData: IRemoteRoomData)
-    : Promise<RoomBridgeStoreEntry> {
+        : Promise<RoomBridgeStoreEntry> {
         log.debug("Storing room", matrixId);
         let statement: string;
         const res = {
@@ -433,6 +428,7 @@ export class PgDataStore implements IStore {
         let currentVersion = await this.getSchemaVersion();
         while (currentVersion < PgDataStore.LATEST_SCHEMA) {
             log.info(`Updating schema to v${currentVersion + 1}`);
+            // eslint-disable-next-line @typescript-eslint/no-var-requires
             const runSchema = require(`./schema/v${currentVersion + 1}`).runSchema;
             try {
                 await runSchema(this.pgPool);

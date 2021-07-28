@@ -65,7 +65,7 @@ export class GatewayStateResolve {
             }
             // Matrix leave
             members.removeMatrixMember(chatName, event.state_key);
-                // Reflect to all
+            // Reflect to all
             stanzas = sendToAllDevices(
                 new StzaPresenceItem(
                     existingMember.anonymousJid.toString(),
