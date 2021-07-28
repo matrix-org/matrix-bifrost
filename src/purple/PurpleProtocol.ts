@@ -7,9 +7,9 @@ export class PurpleProtocol extends BifrostProtocol {
     }
 
     public getMxIdForProtocol(
-            senderId: string,
-            domain: string,
-            prefix: string = "") {
+        senderId: string,
+        domain: string,
+        prefix: string = "") {
         // senderId containing : can mess things up
         senderId = senderId.replace(/\:/g, "=3a").replace(/=40/g, "@");
         if (this.isSoloProtocol) {

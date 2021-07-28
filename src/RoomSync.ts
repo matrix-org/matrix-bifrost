@@ -72,6 +72,7 @@ export class RoomSync {
     /**
      * This function will collect all the members of the group rooms and decide
      * if the backend side needs to "reconnect" to the rooms.
+     *
      * @return [description]
      */
     private async syncAccountsToGroupRooms(bot: AppServiceBot): Promise<void> {
@@ -100,7 +101,7 @@ export class RoomSync {
             }
             let members: {[userId: string]: {display_name: string}};
             try {
-                 members = await this.getJoinedMembers(bot, roomId);
+                members = await this.getJoinedMembers(bot, roomId);
             } catch (ex) {
                 log.warn(`Not syncing ${roomId} because we could not get room members: ${ex}`);
                 return;
@@ -119,7 +120,7 @@ export class RoomSync {
     }
 
     private async syncMatrixUser(userId: string, roomId: string, remoteRoom: RemoteRoom,
-                                 displayName: string) {
+        displayName: string) {
         log.debug(`Syncing matrix ${userId} -> ${roomId}`);
 
         // First get an account for this matrix user.

@@ -44,18 +44,20 @@ export class Util {
     }
 
     public static unescapeUserId(userId: string): string {
-         return userId.replace(/(=[0-9a-z]{2})/g, (code) =>
-             String.fromCharCode(parseInt(code.substr(1), 16)),
-         );
+        return userId.replace(/(=[0-9a-z]{2})/g, (code) =>
+            String.fromCharCode(parseInt(code.substr(1), 16)),
+        );
     }
 
     public static async getMessagesBeforeJoin(
         intent: Intent, roomId: string): Promise<WeakEvent[]> {
         const client = intent.getClient();
         // Because the JS SDK expects this to be set :/
+        // eslint-disable-next-line no-underscore-dangle
         client._clientOpts = {
             lazyLoadMembers: false,
         };
+        // eslint-disable-next-line no-underscore-dangle
         const res = await client._createMessagesRequest(roomId, undefined, undefined, "b");
         const msgs: WeakEvent[] = [];
         for (const msg of res.chunk.reverse()) {

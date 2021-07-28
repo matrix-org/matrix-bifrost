@@ -76,9 +76,7 @@ describe("Util", () => {
                 "my.wonderful.property": "foo",
                 "normal_property": "bar",
             })).to.deep.equal({
-                // tslint:disable-next-line: object-literal-key-quotes
                 "my·wonderful·property": "foo",
-                // tslint:disable-next-line: object-literal-key-quotes
                 "normal_property": "bar",
             });
         });
@@ -86,9 +84,7 @@ describe("Util", () => {
     describe("desanitizeProperties", () => {
         it("should desanitize properties", () => {
             expect(Util.desanitizeProperties({
-                // tslint:disable-next-line: object-literal-key-quotes
                 "my·wonderful·property": "foo",
-                // tslint:disable-next-line: object-literal-key-quotes
                 "normal_property": "bar",
             })).to.deep.equal({
                 "my.wonderful.property": "foo",

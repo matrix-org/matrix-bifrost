@@ -163,7 +163,7 @@ describe("MessageFormatter", () => {
         it("should transform an ordinary message to plaintext", async () => {
             const contents = await MessageFormatter.messageToMatrixEvent(
                 {body: "This is an ordinary message"},
-            dummyProtocol);
+                dummyProtocol);
             expect(
                 contents,
             ).to.deep.equal({
@@ -177,7 +177,7 @@ describe("MessageFormatter", () => {
                     body: "This is an ordinary message",
                     id: "foobarID",
                 },
-            dummyProtocol);
+                dummyProtocol);
             expect(
                 contents,
             ).to.deep.equal({
@@ -189,7 +189,7 @@ describe("MessageFormatter", () => {
         it("should transform an /me to m.emote", async () => {
             const contents = await MessageFormatter.messageToMatrixEvent(
                 {body: "/me wags tail"},
-            dummyProtocol);
+                dummyProtocol);
             expect(
                 contents,
             ).to.deep.equal({
@@ -208,7 +208,7 @@ describe("MessageFormatter", () => {
                         },
                     ],
                 },
-            dummyProtocol);
+                dummyProtocol);
             expect(
                 contents,
             ).to.deep.equal({
@@ -223,7 +223,7 @@ describe("MessageFormatter", () => {
                 {body: "awoo", opts: {
                     attachments: [{uri: "fake://thing"}],
                 }},
-            dummyProtocol, intent);
+                dummyProtocol, intent);
             expect(
                 contents,
             ).to.deep.equal({
@@ -236,7 +236,7 @@ describe("MessageFormatter", () => {
                 {body: "awoo", opts: {
                     attachments: [{uri: "https://matrix.org/blog/wp-content/uploads/2015/01/logo1.png"}],
                 }},
-            dummyProtocol, intent);
+                dummyProtocol, intent);
             expect(
                 contents,
             ).to.deep.equal({
@@ -270,21 +270,21 @@ describe("MessageFormatter", () => {
         });
         it("prpl-jabber: should transform an HTML message to Matrix HTML", async () => {
             const contents = await MessageFormatter.messageToMatrixEvent({
-body: `<html xmlns='http://jabber.org/protocol/xhtml-im'>
+                body: `<html xmlns='http://jabber.org/protocol/xhtml-im'>
     <body xmlns='http://www.w3.org/1999/xhtml'>
         <p>
             <span style='font-family: Helvetica; font-size: x-large;'>hello halfshot!</span>
         </p>
     </body>
 </html>`},
-                XMPP,
+            XMPP,
             );
             expect(
                 contents,
             ).to.deep.equal({
                 msgtype: "m.text",
                 format: "org.matrix.custom.html",
-            formatted_body: "<p><span style='font-family: Helvetica; font-size: x-large;'>hello halfshot!<\\span><\\p>",
+                formatted_body: "<p><span style='font-family: Helvetica; font-size: x-large;'>hello halfshot!<\\span><\\p>",
                 body: "## hello halfshot!",
             });
         });
@@ -294,7 +294,7 @@ body: `<html xmlns='http://jabber.org/protocol/xhtml-im'>
                     body: "This is an edited message",
                     original_message: "This is the original message",
                 },
-            dummyProtocol);
+                dummyProtocol);
             expect(
                 contents,
             ).to.deep.equal({
@@ -303,12 +303,12 @@ body: `<html xmlns='http://jabber.org/protocol/xhtml-im'>
                 "format": undefined,
                 "formatted_body": undefined,
                 "m.new_content": {
-                  "body": "This is an edited message",
-                  "msgtype": "m.text",
+                    "body": "This is an edited message",
+                    "msgtype": "m.text",
                 },
                 "m.relates_to": {
-                  event_id: "This is the original message",
-                  rel_type: "m.replace",
+                    event_id: "This is the original message",
+                    rel_type: "m.replace",
                 },
             });
         });

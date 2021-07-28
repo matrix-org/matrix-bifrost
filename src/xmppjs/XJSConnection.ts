@@ -25,8 +25,8 @@ export class XJSConnection {
         });
 
         return Object.assign(entity, {
-          entity,
-          reconnect,
+            entity,
+            reconnect,
         });
     }
 }

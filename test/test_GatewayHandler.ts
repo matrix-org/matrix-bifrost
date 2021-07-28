@@ -24,22 +24,18 @@ function createGH() {
             watch.intent = new MockIntent(userId);
             return watch.intent;
         },
-        getBot: () => {
-            return {
-                isRemoteUser: (userId: string) => userId.startsWith("@_prefix_"),
-            };
-        },
+        getBot: () => ({
+            isRemoteUser: (userId: string) => userId.startsWith("@_prefix_"),
+        }),
     };
     let purple: any = {
         gateway: {
             onRemoteJoin: (
                 err: string|null, joinId: string, room: IGatewayRoom|undefined, ownMxid: string|undefined) => {
-                    watch.remoteJoin = {err, joinId, room, ownMxid};
-                    remoteJoinResolve();
+                watch.remoteJoin = {err, joinId, room, ownMxid};
+                remoteJoinResolve();
             },
-            getMxidForRemote: (sender: string) => {
-                return `@_prefix_${sender}:localhost`;
-            },
+            getMxidForRemote: (sender: string) => `@_prefix_${sender}:localhost`,
         },
         getProtocol: () => dummyProtocol,
     };

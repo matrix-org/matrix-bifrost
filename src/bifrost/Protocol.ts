@@ -9,7 +9,7 @@ export abstract class BifrostProtocol {
         data: { name: string, summary?: string, homepage?: string, id: string},
         public readonly canAddExisting: boolean = true,
         public readonly canCreateNew: boolean = true,
-        ) {
+    ) {
         this.name = data.name;
         this.summary = data.summary;
         this.homepage = data.homepage;

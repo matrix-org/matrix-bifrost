@@ -1,3 +1,4 @@
+/* eslint-disable max-classes-per-file */
 import uuid from "uuid/v4";
 import he from "he";
 import { IBasicProtocolMessage } from "../MessageFormatter";

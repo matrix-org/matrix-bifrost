@@ -168,6 +168,7 @@ export class XmppJsGateway implements IGateway {
 
     /**
      * Send a XMPP message to the occupants of a gateway.
+     *
      * @param chatName The XMPP MUC name
      * @param stanza The XMPP stanza message
      * @returns If the message was sent successfully.
@@ -261,8 +262,8 @@ export class XmppJsGateway implements IGateway {
         }
         this.reflectXMPPStanza(chatName,
             new StzaMessageSubject(chatName, "", undefined,
-            `${room.name || ""} ${room.topic ? "| " + room.topic : ""}`,
-        ));
+                `${room.name || ""} ${room.topic ? "| " + room.topic : ""}`,
+            ));
     }
 
     public getMxidForRemote(sender: string) {

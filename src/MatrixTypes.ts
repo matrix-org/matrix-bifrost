@@ -1,8 +1,8 @@
 import { MatrixUser, RemoteUser, MatrixRoom, RemoteRoom, WeakEvent, UserMembership } from "matrix-appservice-bridge";
 
- /**
-  * This is actually just a matrix event, as far as we care.
-  */
+/**
+ * This is actually just a matrix event, as far as we care.
+ */
 export interface IPublicRoomsResponse {
     total_room_count_estimate: number;
     chunk: IPublicRoom[];
@@ -17,7 +17,7 @@ export interface IPublicRoom {
     topic: string|undefined; // The topic of the room, if any.
     world_readable: boolean; // Whether the room may be viewed by guest users without joining.
     guest_can_join: boolean; // Whether guest users may join the room and participate in it.
-                             // If they can, they will be subject to ordinary power level rules like any other user.
+    // If they can, they will be subject to ordinary power level rules like any other user.
     avatar_url: string|undefined; // The URL for the room's avatar, if one is set.
 }
 

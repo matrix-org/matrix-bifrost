@@ -43,21 +43,21 @@ class Program {
 
     constructor() {
         this.cli = new Cli({
-          bridgeConfig: {
-            affectsRegistration: true,
-            schema: "./config/config.schema.yaml",
-            defaults: {},
-          },
-          registrationPath: "bifrost-registration.yaml",
-          generateRegistration: this.generateRegistration,
-          run: async (port: number, config: any) => {
+            bridgeConfig: {
+                affectsRegistration: true,
+                schema: "./config/config.schema.yaml",
+                defaults: {},
+            },
+            registrationPath: "bifrost-registration.yaml",
+            generateRegistration: this.generateRegistration,
+            run: async (port: number, config: any) => {
                 try {
                     await this.runBridge(port, config);
                 } catch (ex) {
                     log.error("Failed to start:", ex);
                     process.exit(1);
                 }
-          }
+            }
         });
         this.cfg = new Config();
         this.deduplicator = new Deduplicator();
@@ -81,14 +81,14 @@ class Program {
     }
 
     private generateRegistration(reg: AppServiceRegistration, callback) {
-      reg.setId(AppServiceRegistration.generateToken());
-      reg.setHomeserverToken(AppServiceRegistration.generateToken());
-      reg.setAppServiceToken(AppServiceRegistration.generateToken());
-      reg.setSenderLocalpart("bifrost");
-      reg.addRegexPattern("users", "@_bifrost_.*", true);
-      reg.addRegexPattern("aliases", "#bifrost_.*", true);
-      reg.pushEphemeral = true;
-      callback(reg);
+        reg.setId(AppServiceRegistration.generateToken());
+        reg.setHomeserverToken(AppServiceRegistration.generateToken());
+        reg.setAppServiceToken(AppServiceRegistration.generateToken());
+        reg.setSenderLocalpart("bifrost");
+        reg.addRegexPattern("users", "@_bifrost_.*", true);
+        reg.addRegexPattern("aliases", "#bifrost_.*", true);
+        reg.pushEphemeral = true;
+        callback(reg);
     }
 
     private async waitForHomeserver() {
@@ -166,49 +166,51 @@ class Program {
             };
         }
         this.bridge = new Bridge({
-          controller: {
+            controller: {
             // onUserQuery: userQuery,
-            onAliasQuery: (alias, aliasLocalpart) => this.eventHandler!.onAliasQuery(alias, aliasLocalpart),
-            onEvent: (r) => {
-                if (this.eventHandler === undefined) {return; }
-                this.eventHandler.onEvent(r).catch((err) => {
-                    log.error("onEvent err", err);
-                }).then(() => {
-                    Metrics.requestOutcome(false, r.getDuration(), "success");
-                }).catch(() => {
-                    Metrics.requestOutcome(false, r.getDuration(), "fail");
-                });
-            },
-            onEphemeralEvent: (r) => {
-                if (r.getData().type === "m.typing") {
-                    this.eventHandler.onTyping(r as Request<TypingEvent>).catch((err) => {
-                        log.error("onTyping err", err);
+                onAliasQuery: (alias, aliasLocalpart) => this.eventHandler!.onAliasQuery(alias, aliasLocalpart),
+                onEvent: (r) => {
+                    if (this.eventHandler === undefined) {return; }
+                    this.eventHandler.onEvent(r).catch((err) => {
+                        log.error("onEvent err", err);
                     }).then(() => {
                         Metrics.requestOutcome(false, r.getDuration(), "success");
                     }).catch(() => {
                         Metrics.requestOutcome(false, r.getDuration(), "fail");
                     });
-                }
+                },
+                onEphemeralEvent: (r) => {
+                    if (r.getData().type === "m.typing") {
+                        this.eventHandler.onTyping(r as Request<TypingEvent>).catch((err) => {
+                            log.error("onTyping err", err);
+                        }).then(() => {
+                            Metrics.requestOutcome(false, r.getDuration(), "success");
+                        }).catch(() => {
+                            Metrics.requestOutcome(false, r.getDuration(), "fail");
+                        });
+                    }
+                },
+                onLog: (msg: string, error: boolean) => {
+                    bridgeLog[error ? "warn" : "debug"](msg);
+                },
+                onAliasQueried: (alias, roomId) => this.eventHandler!.onAliasQueried(alias, roomId),
+                onUserQuery: () => { throw Error('Not defined') }
             },
-            onLog: (msg: string, error: boolean) => {
-                bridgeLog[error ? "warn" : "debug"](msg);
-            },
-            onAliasQueried: (alias, roomId) => this.eventHandler!.onAliasQueried(alias, roomId),
-            onUserQuery: () => { throw Error('Not defined') }
-          },
-          domain: this.cfg.bridge.domain,
-          homeserverUrl: this.cfg.bridge.homeserverUrl,
-          disableContext: true,
-          registration: this.cli.getRegistrationFilePath(),
-          ...storeParams,
+            domain: this.cfg.bridge.domain,
+            homeserverUrl: this.cfg.bridge.homeserverUrl,
+            disableContext: true,
+            registration: this.cli.getRegistrationFilePath(),
+            ...storeParams,
         });
         log.info("Starting appservice listener on port", port);
         await this.bridge.run(port, this.cfg);
         if (this.cfg.purple.backend === "node-purple") {
             log.info("Selecting node-purple as a backend");
+            // eslint-disable-next-line @typescript-eslint/no-var-requires
             this.purple = new (require("./purple/PurpleInstance").PurpleInstance)(this.cfg.purple);
         } else if (this.cfg.purple.backend === "xmpp-js") {
             log.info("Selecting xmpp-js as a backend");
+            // eslint-disable-next-line @typescript-eslint/no-var-requires
             this.purple = new (require("./xmppjs/XJSInstance").XmppJsInstance)(this.cfg);
         } else {
             throw new Error(`Backend ${this.cfg.purple.backend} not supported`);

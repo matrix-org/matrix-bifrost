@@ -17,15 +17,11 @@ const dummyProtocol = new PurpleProtocol({
 
 function createBotAndIntent() {
     const bot = {
-        getJoinedMembers: async () => {
-            return {
-                "@foo:bar": {},
-                "@remote_foo:bar": {},
-            };
-        },
-        isRemoteUser: (userId: string) => {
-            return userId.startsWith("@remote");
-        },
+        getJoinedMembers: async () => ({
+            "@foo:bar": {},
+            "@remote_foo:bar": {},
+        }),
+        isRemoteUser: (userId: string) => userId.startsWith("@remote"),
         getUserId: () => "@bot:localhost",
     };
     const intent = {
