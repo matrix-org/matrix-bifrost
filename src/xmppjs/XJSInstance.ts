@@ -432,13 +432,22 @@ export class XmppJsInstance extends EventEmitter implements IBifrostInstance {
         if (!muc && !this.checkMUCCache.has(who)) {
             muc = await this.checkGroupExists({
                 ["room"]: whoJid.local, ["server"]: whoJid.domain
-            } as IChatJoinProperties)
+            } as IChatJoinProperties);
         }
-        log.info(`Fetching vCard for ${who}`);
         const res = new Promise((resolve: (e: Element) => void, reject) => {
             const timeout = setTimeout(() => reject(Error("Timeout")), 5000);
             if (muc) {
-                reject(Error("Not fetching vCard from the MUC"));
+                const opts = this.config.purple.backendOpts as IXJSBackendOpts;
+                for (let [username, account] of this.accounts) {
+                    if (account.isInRoom(who)) {
+                        sender = username + "/" + (opts.defaultResource || "matrix-bridge");
+                        who = `${whoJid.local}@${whoJid.domain}/${whoJid.resource}`;
+                        break;
+                    }
+                }
+                if (!sender) {
+                    reject(Error("Not fetching vCard from the MUC, no sender"));
+                }
             }
             this.once(`iq.${id}`, (stanza: Element) => {
                 clearTimeout(timeout);
@@ -449,7 +458,8 @@ export class XmppJsInstance extends EventEmitter implements IBifrostInstance {
                 reject(Error("No vCard given"));
             });
         });
-        // Remove the resource
+        // Send the request
+        log.info(`Fetching vCard for ${who}`);
         await this.xmppSend(
             new StzaIqVcardRequest(sender || this.xmppAddress.toString(), who, id),
         );

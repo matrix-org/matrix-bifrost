@@ -24,12 +24,12 @@ export class ProfileSync {
         const {matrixUser, remoteUser} = await this.getOrCreateStoreUsers(protocol, senderId);
         const lastCheck = matrixUser.get<number>("last_check");
         matrixUser.set("last_check", Date.now());
-        if (!force &&
-            lastCheck != null && (Date.now() - lastCheck) < this.config.profile.updateInterval) {
+        if (!force && lastCheck != null && (Date.now() - lastCheck) < this.config.profile.updateInterval) {
                 return; // Don't need to check.
         }
         log.debug(
-`Checking for profile updates for ${matrixUser.getId()} since their last_check time expired ${lastCheck}`);
+            `Checking for profile updates for ${matrixUser.getId()} since their last_check time expired ${lastCheck}`
+        );
         const remoteProfileSet:
         {
             nick: string|undefined,
