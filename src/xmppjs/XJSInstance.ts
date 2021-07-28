@@ -28,7 +28,7 @@ import { AutoRegistration } from "../AutoRegistration";
 import { XmppJsGateway } from "./XJSGateway";
 import { IStza, StzaBase, StzaIqDisco, StzaIqDiscoInfo, StzaIqPing, StzaIqPingError, StzaIqVcardRequest } from "./Stanzas";
 import { Util } from "../Util";
-import uuid from "uuid/v4";
+import { v4 as uuid } from "uuid";
 
 const xLog = Logging.get("XMPP-conn");
 const log = Logging.get("XmppJsInstance");

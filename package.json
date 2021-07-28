@@ -49,6 +49,7 @@
     "winston-daily-rotate-file": "^3.3.2",
     "xmpp.js": "^0.6.1"
     "axios": "^0.21.1",
+    "uuid": "^8.3.2",
   },
   "devDependencies": {
     "@istanbuljs/nyc-config-typescript": "^1.0.1",
