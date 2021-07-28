@@ -67,7 +67,6 @@ export class XmppJsInstance extends EventEmitter implements IBifrostInstance {
     private myAddress!: JID;
     private accounts: Map<string, XmppJsAccount>;
     private seenMessages: Set<string>;
-    private canWrite: boolean;
     private defaultRes!: string;
     private connectionWasDropped: boolean;
     private bufferedMessages: {xmlMsg: Element|string, resolve: (res: Promise<void>) => void}[];
@@ -78,7 +77,6 @@ export class XmppJsInstance extends EventEmitter implements IBifrostInstance {
     private lastMessageInMUC: Map<string, {originIsMatrix: boolean, id: string}>;
     constructor(private config: Config) {
         super();
-        this.canWrite = false;
         this.accounts = new Map();
         this.bufferedMessages = [];
         this.seenMessages = new Set();
@@ -242,7 +240,6 @@ export class XmppJsInstance extends EventEmitter implements IBifrostInstance {
         xmpp.on("online", (address) => {
             xLog.info("gone online as " + address);
             this.myAddress = address;
-            this.canWrite = true;
             log.info(`flushing ${this.bufferedMessages.length} buffered messages`);
             if (this.connectionWasDropped) {
                 log.warn("Connection was dropped, attempting reconnect..");
@@ -262,9 +259,6 @@ export class XmppJsInstance extends EventEmitter implements IBifrostInstance {
 
         // Debug
         xmpp.on("status", (status) => {
-            if (status === "disconnecting" || status === "disconnected") {
-                this.canWrite = false;
-            }
             if (status === "disconnect") {
                 log.error("Connection to XMPP server was lost..");
                 this.connectionWasDropped = true;
@@ -279,7 +273,6 @@ export class XmppJsInstance extends EventEmitter implements IBifrostInstance {
         xmpp.on("reconnected", () => {
             xLog.info("status: reconnecting");
         });
-
 
         if (opts.logRawStream) {
             xmpp.on("input", (input) => {
@@ -937,5 +930,9 @@ export class XmppJsInstance extends EventEmitter implements IBifrostInstance {
                 } as IUserStateChanged);
             }
         }
+    }
+
+    private get canWrite(): boolean {
+        return this.xmpp?.status === 'online';
     }
 }
