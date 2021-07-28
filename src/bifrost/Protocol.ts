@@ -16,10 +16,8 @@ export abstract class BifrostProtocol {
         this.id = data.id;
     }
 
-    public getMxIdForProtocol(
+    public abstract getMxIdForProtocol(
         senderId: string,
         domain: string,
-        prefix: string = ""): MatrixUser {
-        throw Error('This must be overrriden by the implementing class');
-    }
+        prefix?: string): MatrixUser
 }
