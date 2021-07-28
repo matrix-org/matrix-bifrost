@@ -146,7 +146,16 @@ export class XmppJsInstance extends EventEmitter implements IBifrostInstance {
         const xml = typeof(xmlMsg) === "string" ? xmlMsg : xmlMsg.xml;
         let p: Promise<unknown>;
         if (this.canWrite) {
-            p = this.xmpp.write(xml);
+            this.xmpp.write(xml).catch((err: Error) => {
+                // This should only happen in case of a connection error
+                // that xmpp.js hasn't noticed yet for some reason.
+                // xmpp.js recovers from these automatically,
+                // so we can reschedule this for post-connection and hope it goes through then.
+                log.error("Error writing xmpp stanza:", err.toString(), "scheduling it for later");
+                p = new Promise((resolve) => {
+                    this.bufferedMessages.push({xmlMsg: xml, resolve});
+                });
+            });
         } else {
             p = new Promise((resolve) => {
                 this.bufferedMessages.push({xmlMsg: xml, resolve});
