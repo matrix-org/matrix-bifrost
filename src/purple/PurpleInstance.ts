@@ -6,21 +6,44 @@ import { IBifrostInstance } from "../bifrost/Instance";
 import { Logging } from "matrix-appservice-bridge";
 import * as path from "path";
 import { IConfigPurple } from "../Config";
-import { IUserInfo, IConversationEvent, IEventBody } from "../bifrost/Events";
+import { IUserInfo, IConversationEvent } from "../bifrost/Events";
 import { BifrostProtocol } from "../bifrost/Protocol";
+import { promises as fs } from "fs";
+import { PurpleProtocol } from "./PurpleProtocol";
+
 const log = Logging.get("PurpleInstance");
+
+const DEFAULT_PLUGIN_DIR = "/usr/lib/purple-2";
+export interface IPurpleBackendOpts {
+    debugEnabled: boolean;
+    pluginDir: string;
+    dataDir?: string;
+    soloProtocol?: string;
+    protocolOptions?: {[pluginName: string]: {
+        // E.g. {0}@foo,FOO/{0}
+        usernameFormat: string;
+    }}
+}
 
 export class PurpleInstance extends EventEmitter implements IBifrostInstance {
     private protocols: BifrostProtocol[];
     private accounts: Map<string, PurpleAccount>;
     private interval?: NodeJS.Timeout;
+    private backendOpts?: IPurpleBackendOpts;
     constructor(private config: IConfigPurple) {
         super();
+        this.backendOpts = this.config.backendOpts as IPurpleBackendOpts;
         this.protocols = [];
         this.accounts = new Map();
     }
 
     public createBifrostAccount(username, protocol: BifrostProtocol) {
+        // We might want to format this one.
+        const protocolOptions = (this.backendOpts?.protocolOptions || {})[protocol.id];
+        if (protocolOptions?.usernameFormat) {
+            // Replaces %-foo with username-foo
+            username = protocolOptions.usernameFormat.replace(/\%/g, username);
+        }
         return new PurpleAccount(username, protocol);
     }
 
@@ -33,24 +56,44 @@ export class PurpleInstance extends EventEmitter implements IBifrostInstance {
         return null; // Not supported.
     }
 
+    public usingSingleProtocol() {
+        return this.backendOpts.soloProtocol;
+    }
+
     public async start() {
         log.info("Starting purple instance");
-        const pluginDir = path.resolve(this.config.pluginDir);
-        log.info("Plugin search path is set to ", pluginDir);
+        const pluginDir = path.resolve(this.backendOpts?.pluginDir || DEFAULT_PLUGIN_DIR);
+        try {
+            await fs.access(pluginDir);
+        } catch (ex) {
+            throw Error(
+                `Could not verify purple plugin directory "${pluginDir}" exists.` +
+                "You may need to install libpurple plugins OR set the correct directory in your config.",
+            );
+        }
+        log.info("Plugin search path is set to", pluginDir);
+        const userDir = this.backendOpts?.dataDir ? path.resolve(this.backendOpts.dataDir) : undefined;
+        log.info("User directory is set to", userDir);
         helper.setupPurple({
-            debugEnabled: this.config.enableDebug ? 1 : 0,
+            debugEnabled: this.backendOpts?.debugEnabled ? 1 : 0,
             pluginDir,
-            userDir: undefined,
+            userDir,
         });
         log.info("Started purple instance");
         this.protocols = plugins.get_protocols().map(
-            (data) => new BifrostProtocol(data),
+            (data) => new PurpleProtocol(data, !!this.backendOpts.soloProtocol),
         );
         log.info("Got supported protocols:", this.protocols.map((p) => p.id).join(" "));
+        if (this.backendOpts.soloProtocol) {
+            log.info(`Using solo plugin ${this.backendOpts.soloProtocol}`);
+            if (!this.getProtocol(this.backendOpts.soloProtocol)) {
+                throw Error('Solo plugin defined but not in list of supported plugins')
+            }
+        }
         this.interval = setInterval(this.eventHandler.bind(this), 300);
     }
 
-    public getAccount(username: string, protocolId: string, mxid: string, force: boolean = false): PurpleAccount|null {
+    public getAccount(username: string, protocolId: string, mxid: string, force: boolean = false): PurpleAccount {
         const key = `${protocolId}://${username}`;
         let acct = this.accounts.get(key);
         if (!acct || force) {
@@ -59,18 +102,15 @@ export class PurpleInstance extends EventEmitter implements IBifrostInstance {
                 throw new Error("Protocol not found");
             }
             acct = new PurpleAccount(username, protocol);
-            try {
-                acct.findAccount();
-            } catch (ex) {
-                return null;
-            }
             this.accounts.set(key, acct);
         }
         return acct;
     }
 
     public getProtocol(id: string): BifrostProtocol|undefined {
-        return this.protocols.find((proto) => proto.id === id);
+        return this.protocols.find((proto) => {
+            return proto.id === id;
+        });
     }
 
     public getProtocols(): BifrostProtocol[] {
@@ -99,16 +139,32 @@ export class PurpleInstance extends EventEmitter implements IBifrostInstance {
         return true;
     }
 
-    public async close() {/* nothing to do */}
+    public async close() {
+        if (this.interval) {
+            clearInterval(this.interval);
+            this.interval = undefined;
+        }
+    }
 
     public getUsernameFromMxid(
             mxid: string,
             prefix: string = ""): {username: string, protocol: BifrostProtocol} {
-        throw Error("Not implemented yet");
-    }
-
-    public pushEvent() {
-        // This is for gateways, and we aren't a gateway yet.
+        const local = mxid.substring(`@${prefix}`.length).split(":")[0];
+        const [protocolId, ...usernameParts] = local.split("_");
+        if (this.backendOpts.soloProtocol) {
+            // This is using a solo protocol, so ignore the leading protocol name.
+            usernameParts.splice(0,0, protocolId);
+        }
+        // As per bifrost/Protocol.ts, we remove prpl-
+        const protocol = this.getProtocol(this.backendOpts.soloProtocol || `prpl-${protocolId}`);
+        const username = usernameParts.join("_").replace(/=3a/g, ":").replace(/=40/g, "@");
+        if (!protocol) {
+            throw Error(`Could not find protocol ${protocol}`);
+        }
+        return {
+            protocol,
+            username,
+        }
     }
 
     public eventAck() {

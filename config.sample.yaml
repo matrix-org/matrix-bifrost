@@ -28,8 +28,8 @@ datastore:
 
 purple:
   # For selecting a specific backend. One of "node-purple", "xmpp-js".
-  backend: "xmpp-js"
 # -- For xmpp.js - You need an existing xmpp server for this to work.
+  backend: "xmpp-js"
   backendOpts:
     # endpoint to reach the component on. The default port is 5347
     service: "xmpp://localhost:5347"
@@ -37,6 +37,41 @@ purple:
     domain: "matrix.localhost"
     # password needed by the component.
     password: "jam"
+
+  # Default settings to set for new accounts, useful for node-purple. NOT used for xmpp.js
+  # defaultAccountSettings:
+  #   # The protocol ID (e.g. prpl-sipe)
+  #   prpl-plugin:
+  #     # A set of strings -> values for a plugin's settings.
+  #     # Consult the documentation for your protocol for options in here
+  #     server: sip.unstable.technology:5061
+  #     encryption-policy: obey-server
+  # backendOpts:
+  # # Should the backend output extra logging.
+  #   debugEnabled: false
+  # # Where are the plugin libraries stored.
+  #   pluginsDir: "/usr/lib/purple-2"
+  # # Where should purple account data be stored.
+  #   dataDir: "./purple-data"
+  # # Should only one plugin be enabled (to simplify userIds / commands).
+  #   soloProtocol: "prpl-sipe"
+  # # Extra options for protocols.
+  #   protocolOptions:
+  #   # The protocol ID (e.g. prpl-sipe)
+  #     prpl-plugin:
+  #       # When the user passes in a username to "accounts add", it should use this format.
+  #       # The format will replace % with the passed in username.
+  #       usernameFormat: "%@my-domain"
+
+  # OR
+  # backend: "node-purple"
+  # backendOpts:
+  #   # endpoint to reach the component on. The default port is 5347
+  #   service: "xmpp://localhost:5347"
+  #   # domin assigned to the component.
+  #   domain: "matrix.localhost"
+  #   # password needed by the component.
+  #   password: "jam"
 
 # Matrix forwards room aliases join requests matching a regex in the
 # registration file to the owner's bridge, if the room doesn't exist.

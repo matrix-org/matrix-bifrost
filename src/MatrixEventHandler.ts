@@ -1,4 +1,4 @@
-import { Bridge, RemoteUser, MatrixUser, Request, WeakEvent, RoomBridgeStoreEntry, UserMembership } from "matrix-appservice-bridge";
+import { Bridge, RemoteUser, MatrixUser, Request, WeakEvent, RoomBridgeStoreEntry, UserMembership, TypingEvent } from "matrix-appservice-bridge";
 import { MatrixMembershipEvent, MatrixMessageEvent } from "./MatrixTypes";
 import { MROOM_TYPE_UADMIN, MROOM_TYPE_IM, MROOM_TYPE_GROUP,
     IRemoteUserAdminData } from "./store/Types";
@@ -17,6 +17,7 @@ import { ProtoHacks } from "./ProtoHacks";
 import { RoomAliasSet } from "./RoomAliasSet";
 import { MessageFormatter } from "./MessageFormatter";
 import { GatewayHandler } from "./GatewayHandler";
+import { BifrostRemoteUser } from "./store/BifrostRemoteUser";
 const log = Logging.get("MatrixEventHandler");
 
 /**
@@ -237,17 +238,44 @@ export class MatrixEventHandler {
         if (event.type !== "m.room.message") {
             // We are only handling bridged room messages now.
             return;
-        }
-
-        if (roomType === MROOM_TYPE_IM) {
+        } else if (roomType === MROOM_TYPE_IM) {
             await this.handleImMessage(ctx, event);
-            return;
-        }
-
-        if (roomType === MROOM_TYPE_GROUP) {
+        } else if (roomType === MROOM_TYPE_GROUP) {
             await this.handleGroupMessage(ctx, event);
+        }
+    }
+
+    public async onTyping(r: Request<TypingEvent>) {
+        const typing = r.getData();
+        const ctx: RoomBridgeStoreEntry = await this.store.getRoomEntryByMatrixId(typing.room_id);
+        if (!ctx) {
+            // Cannot handle a room without typing
             return;
         }
+        const roomType: string|null = ctx.matrix?.get("type") || null;
+
+        if (roomType !== MROOM_TYPE_IM) {
+            return;
+        }
+        // We only support this on IM rooms for now.
+        // Assuming only one Matrix user present.
+        log.info(`Handling IM typing for ${typing.room_id}`);
+        if (!ctx.remote) {
+            throw Error('Cannot handle message, remote not defined');
+        }
+        const isUserTyping = !!typing.content.user_ids.filter(u => !this.bridge.getBot().isRemoteUser(u))[0];
+        const matrixUser = ctx.remote.get<string>("matrixUser");
+        let acct: IBifrostAccount;
+        const roomProtocol: string = ctx.remote.get("protocol_id");
+        try {
+            acct = (await this.getAccountForMxid(matrixUser, roomProtocol)).acct;
+        } catch (ex) {
+            log.error(`Couldn't handle ${matrixUser}'s typing event, ${ex}`);
+            return;
+        }
+        const recipient = ctx.remote.get<string>("recipient");
+        log.debug(`Sending typing to ${recipient}`);
+        acct.sendIMTyping(recipient, isUserTyping);
     }
 
     /* NOTE: Command handling should really be it's own class, but I am cutting corners.*/
@@ -255,41 +283,36 @@ export class MatrixEventHandler {
         if (!this.bridge) {
             throw Error('Bridge is not defined');
         }
+        // Are we running a bridge for one protocol?
+        const soloProtocol = this.purple.usingSingleProtocol();
         log.debug(`Handling command from ${event.sender} ${args.join(" ")}`);
         const intent = this.bridge.getIntent();
-        if (args[0] === "protocols" && args.length === 1) {
+        if (args[0] === "protocols" && args.length === 1 && !soloProtocol) {
             const protocols = this.purple.getProtocols();
-            let body = "Available protocols:\n";
+            let body = "Available protocols:\n\n";
             body += protocols.map((plugin: BifrostProtocol) =>
                 ` \`${plugin.name}\` - ${plugin.summary}`,
-            ).join("\n");
+            ).join("\n\n");
             await intent.sendMessage(event.room_id, {
                 msgtype: "m.notice",
                 body,
                 format: "org.matrix.custom.html",
                 formatted_body: marked(body),
             });
-        } else if (args[0] === "protocols" && args.length === 2) {
-            await intent.sendMessage(event.room_id, {
-                msgtype: "m.notice",
-                body: "\/\/Placeholder",
-            });
         } else if (args[0] === "accounts" && args.length === 1) {
-            const users = await this.bridge.getUserStore()?.getRemoteUsersFromMatrixId(event.sender) || [];
+            const users = await this.store.getRemoteUsersFromMxId(event.sender) || [];
             let body = "Linked accounts:\n";
-            body += users.map((remoteUser: RemoteUser) => {
-                const pid = remoteUser.get<string>("protocolId");
-                const username = remoteUser.get<string>("username");
+            body += users.map((remoteUser: BifrostRemoteUser) => {
                 let account: IBifrostAccount|null = null;
                 try {
-                    account = this.purple.getAccount(username, pid, event.sender);
+                    account = this.purple.getAccount(remoteUser.username, remoteUser.protocolId, event.sender);
                 } catch (ex) {
                     log.error("Account not found:", ex);
                 }
                 if (account) {
-return `- ${account.protocol.name} (${username}) [Enabled=${account.isEnabled}] [Connected=${account.connected}]`;
+return `- ${account.protocol.name} (${remoteUser.username}) [Enabled=${account.isEnabled}] [Connected=${account.connected}]`;
                 } else {
-                    return `- ${pid} [Protocol not enabled] (${username})`;
+                    return `- ${remoteUser.protocolId} [Protocol not enabled] (${remoteUser.username})`;
                 }
             }).join("\n");
             await intent.sendMessage(event.room_id, {
@@ -300,23 +323,32 @@ return `- ${account.protocol.name} (${username}) [Enabled=${account.isEnabled}] 
             });
         } else if (args[0] === "accounts" && args[1] === "add") {
             try {
-                await this.handleNewAccount(args[2], args.slice(3), event);
+                if (soloProtocol) {
+                    const acct = await this.handleNewAccount(soloProtocol, args.slice(2), event);
+                    acct.setEnabled(true);
+                } else {
+                    await this.handleNewAccount(args[2], args.slice(3), event);
+                }
             } catch (err) {
                 await intent.sendMessage(event.room_id, {
                     msgtype: "m.notice",
-                    body: "Failed to add account:" + err.message,
+                    body: "Failed to add account: " + err.message,
                 });
             }
         } else if (args[0] === "accounts" && ["enable", "disable"].includes(args[1])) {
             try {
-                await this.handleEnableAccount(args[2], args[3], event.sender, args[1] === "enable");
+                if (soloProtocol) {
+                    await this.handleEnableAccount(soloProtocol, args[2], event.sender, args[1] === "enable");
+                } else {
+                    await this.handleEnableAccount(args[2], args[3], event.sender, args[1] === "enable");
+                }
             } catch (err) {
                 await intent.sendMessage(event.room_id, {
                     msgtype: "m.notice",
                     body: "Failed to enable account:" + err.message,
                 });
             }
-        } else if (args[0] === "accounts" && args[1] === "add-existing") {
+        } else if (args[0] === "accounts" && args[1] === "add-existing" && !soloProtocol) {
             try {
                 await this.handleAddExistingAccount(args[2], args[3], event);
             } catch (err) {
@@ -336,16 +368,25 @@ return `- ${account.protocol.name} (${username}) [Enabled=${account.isEnabled}] 
                 });
             }
         } else if (args[0] === "help") {
-            const body = `
-- \`protocols\` List available protocols.
-- \`protocol $PROTOCOL\` List details about a protocol, including account options.
-- \`accounts\` List accounts mapped to your matrix account.
-- \`accounts add $PROTOCOL ...$OPTS\` Add a new account, this will take some options given.
-- \`accounts add-existing $PROTOCOL $NAME\` Add an existing account from accounts.xml.
-- \`accounts enable|disable $PROTOCOL $USERNAME\` Enables or disables an account.
-- \`join $PROTOCOL opts\` Join a chat. Don't include opts to find out what you need to supply.
-- \`help\` This help prompt
-`;
+            let body = "\n";
+            if (soloProtocol) {
+                body += "- \`accounts\` List accounts mapped to your matrix account.\n";
+                body += "- `accounts add $USERNAME $PASSWORD` Add a new account, this will take some options given.\n";
+                body += "- `accounts enable|disable $USERNAME` Enables or disables an account.\n";
+                body += "- `join` List required options for joining a chat.";
+                body += "- `join $OPTS` Join a chat.";
+            } else {
+                body += `
+                - \`protocols\` List available protocols.
+                - \`accounts\` List accounts mapped to your matrix account.
+                - \`accounts add $PROTOCOL ...$OPTS\` Add a new account, this will take some options given.
+                - \`accounts add-existing $PROTOCOL $NAME\` Add an existing account from accounts.xml.
+                - \`accounts enable|disable $PROTOCOL $USERNAME\` Enables or disables an account.
+                - \`join $PROTOCOL opts\` Join a chat. Don't include opts to find out what you need to supply.
+                `;
+            }
+            body += "- `help` This help prompt";
+
             await intent.sendMessage(event.room_id, {
                 msgtype: "m.notice",
                 body,
@@ -353,10 +394,10 @@ return `- ${account.protocol.name} (${username}) [Enabled=${account.isEnabled}] 
                 formatted_body: marked(body),
             });
         } else {
-            // await intent.sendMessage(event.room_id, {
-            //     msgtype: "m.notice",
-            //     body: "Command not understood",
-            // });
+            await intent.sendMessage(event.room_id, {
+                msgtype: "m.notice",
+                body: "Command not understood",
+            });
         }
     }
 
@@ -497,12 +538,13 @@ Say \`help\` for more commands.
             throw new Error("You need to specify a password");
         }
         const account = this.purple.createBifrostAccount(args[0], protocol);
-        account.createNew(args[1]);
-        await this.store.storeAccount(event.sender, protocol, args[0]);
+        account.createNew(args[1], this.config.purple.defaultAccountSettings?.[protocol.id] || {});
+        await this.store.storeAccount(event.sender, protocol, account.name);
         await this.bridge?.getIntent().sendMessage(event.room_id, {
             msgtype: "m.notice",
             body: "Created new account",
         });
+        return account;
     }
 
     private async handleAddExistingAccount(protocolId: string, name: string, event: WeakEvent) {

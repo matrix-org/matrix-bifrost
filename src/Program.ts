@@ -1,9 +1,9 @@
-import { Cli, Bridge, AppServiceRegistration, Logging, WeakEvent } from "matrix-appservice-bridge";
+import { Cli, Bridge, AppServiceRegistration, Logging, WeakEvent, TypingEvent, Request } from "matrix-appservice-bridge";
 import { EventEmitter } from "events";
 import { MatrixEventHandler } from "./MatrixEventHandler";
 import { MatrixRoomHandler } from "./MatrixRoomHandler";
 import { IBifrostInstance } from "./bifrost/Instance";
-import {  IAccountEvent } from "./bifrost/Events";
+import { IAccountEvent } from "./bifrost/Events";
 import { ProfileSync } from "./ProfileSync";
 import { RoomSync } from "./RoomSync";
 import { IStore, initiateStore } from "./store/Store";
@@ -80,13 +80,14 @@ class Program {
         }
     }
 
-    private generateRegistration(reg, callback) {
+    private generateRegistration(reg: AppServiceRegistration, callback) {
       reg.setId(AppServiceRegistration.generateToken());
       reg.setHomeserverToken(AppServiceRegistration.generateToken());
       reg.setAppServiceToken(AppServiceRegistration.generateToken());
-      reg.setSenderLocalpart("_purple_bot");
-      reg.addRegexPattern("users", "@_purple_.*", true);
-      reg.addRegexPattern("aliases", "#_purple_.*", true);
+      reg.setSenderLocalpart("bifrost");
+      reg.addRegexPattern("users", "@_bifrost_.*", true);
+      reg.addRegexPattern("aliases", "#bifrost_.*", true);
+      reg.pushEphemeral = true;
       callback(reg);
     }
 
@@ -178,6 +179,17 @@ class Program {
                     Metrics.requestOutcome(false, r.getDuration(), "fail");
                 });
             },
+            onEphemeralEvent: (r) => {
+                if (r.getData().type === "m.typing") {
+                    this.eventHandler.onTyping(r as Request<TypingEvent>).catch((err) => {
+                        log.error("onTyping err", err);
+                    }).then(() => {
+                        Metrics.requestOutcome(false, r.getDuration(), "success");
+                    }).catch(() => {
+                        Metrics.requestOutcome(false, r.getDuration(), "fail");
+                    });
+                }
+            },
             onLog: (msg: string, error: boolean) => {
                 bridgeLog[error ? "warn" : "debug"](msg);
             },
@@ -265,6 +277,7 @@ class Program {
         }
         this.purple!.on("account-signed-on", (ev: IAccountEvent) => {
             log.info(`${ev.account.protocol_id}://${ev.account.username} signed on`);
+            this.purple.getAccount(ev.account.username, ev.account.protocol_id, ).setStatus('available', true);
         });
         this.purple!.on("account-connection-error", (ev: IAccountEvent) => {
             log.warn(`${ev.account.protocol_id}://${ev.account.username} had a connection error`, ev);

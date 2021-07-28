@@ -53,6 +53,7 @@ export interface IBifrostInstance extends EventEmitter {
 
     needsDedupe(): boolean;
     needsAccountLock(): boolean;
+    usingSingleProtocol(): string|undefined;
     // getMXIDForSender(sender: string, domain: string, prefix: string, protocol: Protocol);
     // parseMxIdForSender(mxid: string): {protocol: BifrostProtocol, sender: string};
 }
