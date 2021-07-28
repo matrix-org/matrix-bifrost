@@ -7,6 +7,7 @@ const log = Logging.get("ProtoHacks");
 
 export const PRPL_MATRIX = "prpl-matrix";
 export const PRPL_XMPP = "prpl-jabber";
+export const PRPL_S4B = "prpl-sipe";
 export const XMPP_JS = "xmpp-js";
 
 /**

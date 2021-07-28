@@ -3,6 +3,7 @@ import { IRoomAlias } from "./RoomAliasSet";
 import { IXJSBackendOpts } from "./xmppjs/XJSBackendOpts";
 import { Logging } from "matrix-appservice-bridge";
 import { PgDataStoreOpts } from "./store/postgres/PgDatastore";
+import { IAccountExtraConfig } from "./bifrost/Account";
 
 const log = Logging.get("Config");
 
@@ -27,8 +28,7 @@ export class Config {
     public readonly purple: IConfigPurple = {
         backendOpts: undefined,
         backend: "node-purple",
-        enableDebug: false,
-        pluginDir: "./node_modules/node-purple/deps/libpurple/",
+        defaultAccountSettings: undefined,
     };
 
     public readonly autoRegistration: IConfigAutoReg = {
@@ -96,14 +96,6 @@ export class Config {
             }
             configLayer[key] = newConfig[key];
         });
-
-        if (this === configLayer) {
-            const enableGateway = (this.purple.backendOpts as any).enableGateway;
-            if (enableGateway !== undefined) {
-                log.warn("purple.backendOpts.enableGateway has been moved to portals.enableGateway");
-                this.portals.enableGateway = enableGateway;
-            }
-        }
     }
 }
 
@@ -118,8 +110,7 @@ export interface IConfigBridge {
 export interface IConfigPurple {
     backendOpts: {}|IXJSBackendOpts|undefined;
     backend: "node-purple"|"xmpp-js";
-    enableDebug: boolean;
-    pluginDir: string;
+    defaultAccountSettings?: {[key: string]: IAccountExtraConfig};
 }
 
 export interface IConfigAutoReg {

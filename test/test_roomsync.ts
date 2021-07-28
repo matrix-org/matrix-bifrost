@@ -1,6 +1,6 @@
 // tslint:disable: no-any
 import * as Chai from "chai";
-import { BifrostProtocol } from "../src/bifrost/Protocol";
+import { PurpleProtocol } from "../src/purple/PurpleProtocol";
 import { RoomSync } from "../src/RoomSync";
 import { Deduplicator } from "../src/Deduplicator";
 import { MROOM_TYPE_GROUP, IRemoteGroupData } from "../src/store/Types";
@@ -8,7 +8,7 @@ import { mockStore } from "./mocks/store";
 import { RoomBridgeStoreEntry } from "matrix-appservice-bridge";
 const expect = Chai.expect;
 
-const dummyProtocol = new BifrostProtocol({
+const dummyProtocol = new PurpleProtocol({
     id: "prpl-dummy",
     name: "Dummy",
     homepage: undefined,

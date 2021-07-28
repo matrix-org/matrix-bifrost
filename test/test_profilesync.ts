@@ -1,12 +1,12 @@
 // tslint:disable: no-any
 import * as Chai from "chai";
 import { mockStore } from "./mocks/store";
-import { BifrostProtocol } from "../src/bifrost/Protocol";
 import { ProfileSync } from "../src/ProfileSync";
 import { Config } from "../src/Config";
+import { PurpleProtocol } from "../src/purple/PurpleProtocol";
 const expect = Chai.expect;
 
-const dummyProtocol = new BifrostProtocol({
+const dummyProtocol = new PurpleProtocol({
     id: "prpl-dummy",
     name: "Dummy",
     homepage: undefined,
