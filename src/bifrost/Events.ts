@@ -26,6 +26,12 @@ export interface IAccountEvent extends IEventBody {
     account: any|IAccountMinimal;
 }
 
+export interface IAccountErrorEvent extends IEventBody {
+    account: any|IAccountMinimal;
+    type: number;
+    description: string;
+}
+
 export interface IConversationEvent extends IAccountEvent {
     conv: any | IConversationMinimal;
 }

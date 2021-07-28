@@ -28,6 +28,7 @@ export class Config {
     public readonly purple: IConfigPurple = {
         backendOpts: undefined,
         backend: "node-purple",
+        sendConnectionNotices: false,
         defaultAccountSettings: undefined,
     };
 
@@ -110,6 +111,7 @@ export interface IConfigBridge {
 export interface IConfigPurple {
     backendOpts: {}|IXJSBackendOpts|undefined;
     backend: "node-purple"|"xmpp-js";
+    sendConnectionNotices?: boolean;
     defaultAccountSettings?: {[key: string]: IAccountExtraConfig};
 }
 

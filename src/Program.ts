@@ -20,6 +20,7 @@ const log = Logging.get("Program");
 const bridgeLog = Logging.get("bridge");
 
 import { install as installSMS } from "source-map-support";
+import { AccountHandler } from "./AccountHandler";
 
 installSMS();
 
@@ -36,10 +37,11 @@ class Program {
     private gatewayHandler!: GatewayHandler;
     private profileSync: ProfileSync|undefined;
     private roomSync: RoomSync|undefined;
-    private purple?: IBifrostInstance;
+    private bifrostInstance?: IBifrostInstance;
     private store!: IStore;
     private cfg: Config;
     private deduplicator: Deduplicator;
+    private accountHandler?: AccountHandler;
 
     constructor() {
         this.cli = new Cli({
@@ -72,7 +74,6 @@ class Program {
 
     public start() {
         Logging.configure({console: "debug"});
-
         try {
             this.cli.run();
         } catch (ex) {
@@ -139,6 +140,7 @@ class Program {
         log.info("SIGTERM recieved, killing bridge");
         await this.bridge.close();
         await this.purple.close();
+        await this.bifrostInstance.close();
     }
 
     private async runBridge(port: number, config: any) {
@@ -167,7 +169,6 @@ class Program {
         }
         this.bridge = new Bridge({
           controller: {
-            // onUserQuery: userQuery,
             onAliasQuery: (alias, aliasLocalpart) => this.eventHandler!.onAliasQuery(alias, aliasLocalpart),
             onEvent: (r) => {
                 if (this.eventHandler === undefined) {return; }
@@ -202,18 +203,18 @@ class Program {
           registration: this.cli.getRegistrationFilePath(),
           ...storeParams,
         });
-        log.info("Starting appservice listener on port", port);
-        await this.bridge.run(port, this.cfg);
+        await this.bridge.initalise();
         if (this.cfg.purple.backend === "node-purple") {
             log.info("Selecting node-purple as a backend");
-            this.purple = new (require("./purple/PurpleInstance").PurpleInstance)(this.cfg.purple);
+            this.bifrostInstance = new (require("./purple/PurpleInstance").PurpleInstance)(this.cfg.purple);
         } else if (this.cfg.purple.backend === "xmpp-js") {
             log.info("Selecting xmpp-js as a backend");
-            this.purple = new (require("./xmppjs/XJSInstance").XmppJsInstance)(this.cfg);
+            this.bifrostInstance = new (require("./xmppjs/XJSInstance").XmppJsInstance)(this.cfg);
         } else {
             throw new Error(`Backend ${this.cfg.purple.backend} not supported`);
         }
-        const purple = this.purple!;
+        const bifrostInstance = this.bifrostInstance!;
+
 
         if (this.cfg.metrics.enabled) {
             log.info("Enabling metrics");
@@ -233,14 +234,14 @@ class Program {
 
         this.profileSync = new ProfileSync(this.bridge, this.cfg, this.store);
         this.roomHandler = new MatrixRoomHandler(
-            this.purple!, this.profileSync, this.store, this.cfg, this.deduplicator,
+            this.bifrostInstance!, this.profileSync, this.store, this.cfg, this.deduplicator,
         );
-        this.gatewayHandler = new GatewayHandler(purple, this.bridge, this.cfg, this.store, this.profileSync);
+        this.gatewayHandler = new GatewayHandler(bifrostInstance, this.bridge, this.cfg, this.store, this.profileSync);
         this.roomSync = new RoomSync(
-            purple, this.store, this.deduplicator, this.gatewayHandler, this.bridge.getIntent(),
+            bifrostInstance, this.store, this.deduplicator, this.gatewayHandler, this.bridge.getIntent(),
         );
         this.eventHandler = new MatrixEventHandler(
-            purple, this.store, this.deduplicator, this.config, this.gatewayHandler,
+            bifrostInstance, this.store, this.deduplicator, this.config, this.gatewayHandler,
         );
         let autoReg: AutoRegistration|undefined;
         if (this.config.autoRegistration.enabled && this.config.autoRegistration.protocolSteps !== undefined) {
@@ -249,7 +250,7 @@ class Program {
                 this.config.access,
                 this.bridge,
                 this.store,
-                purple,
+                bifrostInstance,
             );
         }
 
@@ -257,33 +258,26 @@ class Program {
         this.roomHandler.setBridge(this.bridge);
         log.info("Bridge has started.");
         try {
-            if (purple instanceof XmppJsInstance) {
+            if (bifrostInstance instanceof XmppJsInstance) {
                 if (!autoReg) {
                     throw Error('AutoRegistration not enabled in config, bridge cannot start');
                 }
-                purple.preStart(this.bridge, autoReg);
+                bifrostInstance.preStart(this.bridge, autoReg);
             }
-            await purple.start();
+            await bifrostInstance.start();
+            this.accountHandler = new AccountHandler(bifrostInstance, this.store, this.bridge, this.config);
             await this.roomSync.sync(this.bridge.getBot());
-            if (purple instanceof XmppJsInstance) {
+            if (bifrostInstance instanceof XmppJsInstance) {
                 log.debug("Signing in accounts...");
-                purple.signInAccounts(
-                    await this.store.getUsernameMxidForProtocol(purple.getProtocols()[0]),
+                bifrostInstance.signInAccounts(
+                    await this.store.getUsernameMxidForProtocol(bifrostInstance.getProtocols()[0]),
                 );
             }
         } catch (ex) {
             log.error("Encountered an error starting the backend:", ex);
             process.exit(1);
         }
-        this.purple!.on("account-signed-on", (ev: IAccountEvent) => {
-            log.info(`${ev.account.protocol_id}://${ev.account.username} signed on`);
-            this.purple.getAccount(ev.account.username, ev.account.protocol_id, ).setStatus('available', true);
-        });
-        this.purple!.on("account-connection-error", (ev: IAccountEvent) => {
-            log.warn(`${ev.account.protocol_id}://${ev.account.username} had a connection error`, ev);
-        });
-        this.purple!.on("account-signed-off", (ev: IAccountEvent) => {
-            log.info(`${ev.account.protocol_id}://${ev.account.username} signed off.`);
+        bifrostInstance.on("account-signed-off", (ev: IAccountEvent) => {
             this.deduplicator.removeChosenOneFromAllRooms(
                 Util.createRemoteId(ev.account.protocol_id, ev.account.username),
             );

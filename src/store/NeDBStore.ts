@@ -107,17 +107,28 @@ export class NeDBStore implements IStore {
         return null;
     }
 
-    public async getIMRoom(matrixUserId: string, protocolId: string, remoteUserId: string): Promise<RoomBridgeStoreEntry|null> {
+    public async getIMRoom(matrixUser: string, protocolId: string, recipient: string): Promise<RoomBridgeStoreEntry|null> {
         const remoteEntries = await this.roomStore.getEntriesByRemoteRoomData({
-            matrixUser: matrixUserId,
+            matrixUser,
             protocol_id: protocolId,
-            recipient: remoteUserId,
+            recipient,
         } as IRemoteImData as Record<string, unknown>);
         const suitableEntries = remoteEntries.filter((e) => e.matrix?.get("type") === MROOM_TYPE_IM)[0];
         if (!suitableEntries) {
             return null;
         }
         return suitableEntries;
+    }
+
+    public async getAdminRoom(matrixUser: string): Promise<MatrixRoom|null> {
+        const remoteEntries = await this.roomStore.getEntriesByRemoteRoomData({
+            matrixUser,
+        } as IRemoteImData as Record<string, unknown>);
+        const suitableEntries = remoteEntries.filter((e) => e.matrix?.get("type") === MROOM_TYPE_UADMIN)[0];
+        if (!suitableEntries || !suitableEntries.matrix) {
+            return null;
+        }
+        return suitableEntries.matrix;
     }
 
     public async getUsernameMxidForProtocol(protocol: BifrostProtocol): Promise<{[mxid: string]: string}> {
