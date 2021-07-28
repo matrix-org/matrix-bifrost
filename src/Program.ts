@@ -1,26 +1,27 @@
-import { Cli, Bridge, AppServiceRegistration, Logging, WeakEvent, TypingEvent, Request } from "matrix-appservice-bridge";
+import { AccountHandler } from "./AccountHandler";
+import { AutoRegistration } from "./AutoRegistration";
+import { Cli, Bridge, AppServiceRegistration, Logging, TypingEvent, Request, RoomBridgeStoreEntry } from "matrix-appservice-bridge";
+import { Config } from "./Config";
+import { Deduplicator } from "./Deduplicator";
 import { EventEmitter } from "events";
+import { GatewayHandler } from "./GatewayHandler";
+import { IAccountEvent } from "./bifrost/Events";
+import { IBifrostInstance } from "./bifrost/Instance";
+import { install as installSMS } from "source-map-support";
+import { IRemoteUserAdminData, MROOM_TYPE_UADMIN } from "./store/Types";
+import { IStore, initiateStore } from "./store/Store";
 import { MatrixEventHandler } from "./MatrixEventHandler";
 import { MatrixRoomHandler } from "./MatrixRoomHandler";
-import { IBifrostInstance } from "./bifrost/Instance";
-import { IAccountEvent } from "./bifrost/Events";
+import { Metrics } from "./Metrics";
 import { ProfileSync } from "./ProfileSync";
 import { RoomSync } from "./RoomSync";
-import { IStore, initiateStore } from "./store/Store";
-import { Deduplicator } from "./Deduplicator";
-import { Config } from "./Config";
 import { Util } from "./Util";
 import { XmppJsInstance } from "./xmppjs/XJSInstance";
-import { Metrics } from "./Metrics";
-import { AutoRegistration } from "./AutoRegistration";
-import { GatewayHandler } from "./GatewayHandler";
 import * as request from "request-promise-native";
 
 const log = Logging.get("Program");
 const bridgeLog = Logging.get("bridge");
 
-import { install as installSMS } from "source-map-support";
-import { AccountHandler } from "./AccountHandler";
 
 installSMS();
 
