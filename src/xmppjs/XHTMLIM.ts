@@ -1,5 +1,5 @@
 import { Parser } from "htmlparser2";
-import he from "he";
+import he from "html-entities";
 
 const XMLNS = "http://jabber.org/protocol/xhtml-im";
 
@@ -68,7 +68,7 @@ export class XHTMLIM {
                 xhtml += `<${tagname}${Object.keys(attribs).map((k) => ` ${k}='${attribs[k]}'`).join("")}>`;
             },
             ontext: (text) => {
-                xhtml += `${he.escape(text)}`;
+                xhtml += `${he.encode(text)}`;
             },
             onclosetag: (name) => {
                 if (VALID_ELEMENT_ATTRIBUTES[name] === undefined) {
