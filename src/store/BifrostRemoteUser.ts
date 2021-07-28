@@ -18,7 +18,7 @@ export class BifrostRemoteUser {
         public readonly protocolId: string,
         public readonly isRemote: boolean,
         public readonly displayname?: string,
-        // tslint:disable-next-line: no-any
-        public readonly extraData: any = {}) {
+        public readonly extraData: unknown = {}) {
+        // do nothing
     }
 }

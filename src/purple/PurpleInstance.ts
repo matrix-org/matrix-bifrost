@@ -108,9 +108,7 @@ export class PurpleInstance extends EventEmitter implements IBifrostInstance {
     }
 
     public getProtocol(id: string): BifrostProtocol|undefined {
-        return this.protocols.find((proto) => {
-            return proto.id === id;
-        });
+        return this.protocols.find((proto) => proto.id === id);
     }
 
     public getProtocols(): BifrostProtocol[] {
@@ -148,8 +146,8 @@ export class PurpleInstance extends EventEmitter implements IBifrostInstance {
     }
 
     public getUsernameFromMxid(
-            mxid: string,
-            prefix: string = ""): {username: string, protocol: BifrostProtocol} {
+        mxid: string,
+        prefix: string = ""): {username: string, protocol: BifrostProtocol} {
         const local = mxid.substring(`@${prefix}`.length).split(":")[0];
         const [protocolId, ...usernameParts] = local.split("_");
         if (this.backendOpts.soloProtocol) {
@@ -181,9 +179,9 @@ export class PurpleInstance extends EventEmitter implements IBifrostInstance {
                 const chatJoined = evt as IConversationEvent;
                 const purpleAccount = this.getAccount(chatJoined.account.username, chatJoined.account.protocol_id, "");
                 if (purpleAccount) {
-                    if (purpleAccount._waitingJoinRoomProps) {
+                    if (purpleAccount.waitingJoinRoomProps) {
                         // tslint:disable-next-line
-                        const join_properties = purpleAccount._waitingJoinRoomProps;
+                        const join_properties = purpleAccount.waitingJoinRoomProps;
                         this.emit("chat-joined-new", Object.assign(evt, {
                             purpleAccount,
                             join_properties,

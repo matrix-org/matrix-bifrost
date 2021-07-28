@@ -21,7 +21,7 @@ const log = Logging.get("XmppJsAccount");
 
 export class XmppJsAccount implements IBifrostAccount {
 
-    get _waitingJoinRoomProps(): IChatJoinProperties|undefined {
+    get waitingJoinRoomProps(): undefined {
         return undefined;
     }
 
@@ -209,77 +209,77 @@ export class XmppJsAccount implements IBifrostAccount {
         timeout: number = 5000,
         setWaiting: boolean = true)
         : Promise<IConversationEvent|void> {
-            if (!components.fullRoomName && (!components.room || !components.server)) {
-                throw Error("Missing fullRoomName OR room|server");
-            }
-            if (!components.handle) {
-                throw Error("Missing handle");
-            }
-            const roomName = components.fullRoomName || `${components.room}@${components.server}`;
-            const to = `${roomName}/${components.handle}`;
-            log.debug(`joinChat:`, this.remoteId, components);
-            if (this.isInRoom(roomName)) {
-                log.debug("Didn't join, already joined");
-                return {
-                    eventName: "already-joined",
-                    account: {
-                        username: this.remoteId,
-                        protocol_id: XMPP_PROTOCOL.id,
-                    } as IAccountMinimal,
-                    conv: {
-                        name: roomName,
-                    },
-                };
-            }
-            if (await this.selfPing(to)) {
-                log.debug("Didn't join, self ping says we are joined");
-                this.roomHandles.set(roomName, components.handle);
-                return {
-                    eventName: "already-joined",
-                    account: {
-                        username: this.remoteId,
-                        protocol_id: XMPP_PROTOCOL.id,
-                    } as IAccountMinimal,
-                    conv: {
-                        name: roomName,
-                    },
-                };
-            }
-            const from = `${this.remoteId}/${this.resource}`;
-            log.info(`Joining to=${to} from=${from}`);
-            const message = new StzaPresenceJoin(
-                from,
-                to,
-            );
+        if (!components.fullRoomName && (!components.room || !components.server)) {
+            throw Error("Missing fullRoomName OR room|server");
+        }
+        if (!components.handle) {
+            throw Error("Missing handle");
+        }
+        const roomName = components.fullRoomName || `${components.room}@${components.server}`;
+        const to = `${roomName}/${components.handle}`;
+        log.debug(`joinChat:`, this.remoteId, components);
+        if (this.isInRoom(roomName)) {
+            log.debug("Didn't join, already joined");
+            return {
+                eventName: "already-joined",
+                account: {
+                    username: this.remoteId,
+                    protocol_id: XMPP_PROTOCOL.id,
+                } as IAccountMinimal,
+                conv: {
+                    name: roomName,
+                },
+            };
+        }
+        if (await this.selfPing(to)) {
+            log.debug("Didn't join, self ping says we are joined");
             this.roomHandles.set(roomName, components.handle);
-            if (setWaiting) {
-                this.waitingToJoin.add(roomName);
-            }
-            let p: Promise<IChatJoined>|undefined;
-            if (instance) {
-                p = new Promise((resolve, reject) => {
-                    const timer = setTimeout(reject, timeout);
-                    const cb = (data: IChatJoined) => {
-                        if (data.conv.name === roomName) {
-                            this.waitingToJoin.delete(roomName);
-                            log.info(`Got ack for join ${roomName}`);
-                            clearTimeout(timer);
-                            this.xmpp.removeListener("chat-joined", cb);
-                            resolve(data);
-                        }
-                    };
-                    this.xmpp.on("chat-joined", cb);
-                });
-            }
-            // To catch out races, we will emit this first.
-            this.xmpp.emit("store-remote-user", {
-                mxId: this.mxId,
-                remoteId: to,
-                protocol_id: XMPP_PROTOCOL.id,
-            } as IStoreRemoteUser);
-            await this.xmpp.xmppSend(message);
-            Metrics.remoteCall("xmpp.presence.join");
-            return p;
+            return {
+                eventName: "already-joined",
+                account: {
+                    username: this.remoteId,
+                    protocol_id: XMPP_PROTOCOL.id,
+                } as IAccountMinimal,
+                conv: {
+                    name: roomName,
+                },
+            };
+        }
+        const from = `${this.remoteId}/${this.resource}`;
+        log.info(`Joining to=${to} from=${from}`);
+        const message = new StzaPresenceJoin(
+            from,
+            to,
+        );
+        this.roomHandles.set(roomName, components.handle);
+        if (setWaiting) {
+            this.waitingToJoin.add(roomName);
+        }
+        let p: Promise<IChatJoined>|undefined;
+        if (instance) {
+            p = new Promise((resolve, reject) => {
+                const timer = setTimeout(reject, timeout);
+                const cb = (data: IChatJoined) => {
+                    if (data.conv.name === roomName) {
+                        this.waitingToJoin.delete(roomName);
+                        log.info(`Got ack for join ${roomName}`);
+                        clearTimeout(timer);
+                        this.xmpp.removeListener("chat-joined", cb);
+                        resolve(data);
+                    }
+                };
+                this.xmpp.on("chat-joined", cb);
+            });
+        }
+        // To catch out races, we will emit this first.
+        this.xmpp.emit("store-remote-user", {
+            mxId: this.mxId,
+            remoteId: to,
+            protocol_id: XMPP_PROTOCOL.id,
+        } as IStoreRemoteUser);
+        await this.xmpp.xmppSend(message);
+        Metrics.remoteCall("xmpp.presence.join");
+        return p;
     }
 
     public async xmppRetryJoin(from: JID) {

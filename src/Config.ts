@@ -4,6 +4,7 @@ import { IXJSBackendOpts } from "./xmppjs/XJSBackendOpts";
 import { Logging } from "matrix-appservice-bridge";
 import { PgDataStoreOpts } from "./store/postgres/PgDatastore";
 import { IAccountExtraConfig } from "./bifrost/Account";
+import { IPurpleBackendOpts } from "./purple/PurpleInstance";
 
 const log = Logging.get("Config");
 
@@ -85,6 +86,7 @@ export class Config {
 
     /**
      * Apply a set of keys and values over the default config.
+     *
      * @param newConfig Config keys
      * @param configLayer Private parameter
      */
@@ -92,8 +94,8 @@ export class Config {
         Object.keys(newConfig).forEach((key) => {
             if (typeof(configLayer[key]) === "object" &&
                 !Array.isArray(configLayer[key])) {
-                    this.ApplyConfig(newConfig[key], this[key]);
-                    return;
+                this.ApplyConfig(newConfig[key], this[key]);
+                return;
             }
             configLayer[key] = newConfig[key];
         });
@@ -109,7 +111,7 @@ export interface IConfigBridge {
 }
 
 export interface IConfigPurple {
-    backendOpts: {}|IXJSBackendOpts|undefined;
+    backendOpts: IPurpleBackendOpts|IXJSBackendOpts|undefined;
     backend: "node-purple"|"xmpp-js";
     sendConnectionNotices?: boolean;
     defaultAccountSettings?: {[key: string]: IAccountExtraConfig};

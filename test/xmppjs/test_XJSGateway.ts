@@ -55,14 +55,14 @@ describe("XJSGateway", () => {
                     to: "#worldoffrogs#frogworld.net/SlippyNick",
                     id: "myjoinid",
                 }, x("x", {xmlns: "http://jabber.org/protocol/muc"}) ),
-            "#matrix:bar");
+                "#matrix:bar");
             gw.handleStanza(
                 x("presence", {
                     from: "frogman@frogworld/froddevice",
                     to: "#worldoffrogs2#frogworld.net/SlippyNick",
                     id: "myjoinid",
                 }, x("x", {xmlns: "http://jabber.org/protocol/muc"}) ),
-            "#matrix:bar");
+                "#matrix:bar");
             expect(joinCount).to.equal(2);
         });
     });
@@ -100,7 +100,7 @@ describe("XJSGateway", () => {
                     to: "#matrix#bar@conference.localhost/frognick",
                     id: "myjoinid",
                 }, x("x", {xmlns: "http://jabber.org/protocol/muc"}) ),
-            "#matrix:bar");
+                "#matrix:bar");
             await gw.onRemoteJoin(null, "myjoinid", room, "@_xmpp_baz:bar");
             // Check ordering of events
             const messages = mockXmpp.sentMessages.map((msg) => {
@@ -157,7 +157,7 @@ describe("XJSGateway", () => {
                     to: "#matrix#bar@conference.localhost/frognick",
                     id: "myjoinid",
                 }, x("x", {xmlns: "http://jabber.org/protocol/muc"}) ),
-            "#matrix:bar");
+                "#matrix:bar");
             await gw.onRemoteJoin(null, "myjoinid", room, "@_xmpp_baz:bar");
             gw.handleStanza(
                 x("presence", {
@@ -165,7 +165,7 @@ describe("XJSGateway", () => {
                     to: "#matrix#bar@conference.localhost/frognick",
                     id: "myjoinid2",
                 }, x("x", {xmlns: "http://jabber.org/protocol/muc"}) ),
-            "#matrix:bar");
+                "#matrix:bar");
             await gw.onRemoteJoin(null, "myjoinid2", room, "@_xmpp_baz:bar");
         });
         it("should join a remote user to a room with a large member count", async () => {
@@ -185,7 +185,7 @@ describe("XJSGateway", () => {
                     to: "#matrix#bar@conference.localhost/frognick",
                     id: "myjoinid",
                 }, x("x", {xmlns: "http://jabber.org/protocol/muc"}) ),
-            "#matrix:bar");
+                "#matrix:bar");
             await gw.onRemoteJoin(null, "myjoinid", room, "@_xmpp_baz:bar");
             // Check ordering of events
             const messages = mockXmpp.sentMessages.map((msg) => {
@@ -209,21 +209,21 @@ describe("XJSGateway", () => {
                     to: "#matrix#bar@conference.localhost/frognick",
                     id: "myjoinid1",
                 }, x("x", {xmlns: "http://jabber.org/protocol/muc"}) ),
-            "#matrix:bar");
+                "#matrix:bar");
             gw.handleStanza(
                 x("presence", {
                     from: "dogboy@froguniverse/phone",
                     to: "#matrix#bar@conference.localhost/dognick",
                     id: "myjoinid2",
                 }, x("x", {xmlns: "http://jabber.org/protocol/muc"}) ),
-            "#matrix:bar");
+                "#matrix:bar");
             gw.handleStanza(
                 x("presence", {
                     from: "alice@froguniverse/phone",
                     to: "#matrix#bar@conference.localhost/alice",
                     id: "myjoinid3",
                 }, x("x", {xmlns: "http://jabber.org/protocol/muc"}) ),
-            "#matrix:bar");
+                "#matrix:bar");
 
             await gw.onRemoteJoin(null, "myjoinid1", room, "@_xmpp_frognick:bar");
             expect(gw.isJIDInMuc("#matrix#bar@conference.localhost", jid("frogman@froguniverse/frogdevice"))).to.be.true;

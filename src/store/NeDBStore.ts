@@ -1,3 +1,4 @@
+/* eslint-disable no-underscore-dangle */
 import { Bridge, MatrixRoom, RemoteRoom, RemoteUser,
     MatrixUser, UserBridgeStore, RoomBridgeStore, Logging, AppServiceBot, RoomBridgeStoreEntry } from "matrix-appservice-bridge";
 import { Util } from "../Util";
@@ -134,10 +135,10 @@ export class NeDBStore implements IStore {
     public async getUsernameMxidForProtocol(protocol: BifrostProtocol): Promise<{[mxid: string]: string}> {
         const set = {};
         const users = (await this.userStore.getByRemoteData({protocol_id: protocol.id, type: MUSER_TYPE_ACCOUNT}))
-        .concat(await this.userStore.getByRemoteData({protocolId: protocol.id, type: MUSER_TYPE_ACCOUNT}),
-        ).filter(
-            (u) => u.data.isRemoteUser !== true,
-        );
+            .concat(await this.userStore.getByRemoteData({protocolId: protocol.id, type: MUSER_TYPE_ACCOUNT}),
+            ).filter(
+                (u) => u.data.isRemoteUser !== true,
+            );
         for (const remoteUser of users) {
             const username = remoteUser.get("username");
             const matrixUsers = await this.userStore.getMatrixUsersFromRemoteId(remoteUser.getId());
@@ -155,16 +156,16 @@ export class NeDBStore implements IStore {
 
     public async storeAccount(userId: string, protocol: BifrostProtocol, username: string, extraData: any = {}) {
         const id = Util.createRemoteId(protocol.id, username);
-        await this._storeUser(userId, protocol, username, MUSER_TYPE_ACCOUNT, extraData);
+        await this.storeUser(userId, protocol, username, MUSER_TYPE_ACCOUNT, extraData);
     }
 
     public async storeGhost(userId: string, protocol: BifrostProtocol, username: string, extraData: any = {})
-                            : Promise<{remote: BifrostRemoteUser, matrix: MatrixUser}> {
+        : Promise<{remote: BifrostRemoteUser, matrix: MatrixUser}> {
         const id = Util.createRemoteId(protocol.id, username);
         await this.userLock.get(id);
-        const p = this._storeUser(userId, protocol, username, MUSER_TYPE_GHOST, extraData);
+        const p = this.storeUser(userId, protocol, username, MUSER_TYPE_GHOST, extraData);
         log.debug("Locking ", id);
-        this.userLock.set(id, p.then(() => { /*for typing*/ }));
+        this.userLock.set(id, p.then(() => { /* for typing*/ }));
         const res = await p;
         log.debug("Unlocking ", id);
         this.userLock.delete(id);
@@ -195,7 +196,7 @@ export class NeDBStore implements IStore {
     }
 
     public async storeRoom(matrixId: string, type: MROOM_TYPES, remoteId: string, remoteData: IRemoteRoomData)
-    : Promise<RoomBridgeStoreEntry> {
+        : Promise<RoomBridgeStoreEntry> {
         // XXX: If a room with all these identifiers already exists, replace it.
         log.info(`Storing remote room (${type}) ${matrixId}`);
         log.debug("with data ", remoteData);
@@ -225,6 +226,7 @@ export class NeDBStore implements IStore {
 
     /**
      * This will check to see if there are multiple instances of a user or room.
+     *
      * @return [description]
      */
     public async integrityCheck(canWrite: boolean): Promise<void> {
@@ -327,9 +329,9 @@ export class NeDBStore implements IStore {
         }
     }
 
-    private async _storeUser(userId: string, protocol: BifrostProtocol,
-                             username: string, type: MUSER_TYPES, extraData: any = {})
-                            : Promise<{remote: BifrostRemoteUser, matrix: MatrixUser}> {
+    private async storeUser(userId: string, protocol: BifrostProtocol,
+        username: string, type: MUSER_TYPES, extraData: any = {})
+        : Promise<{remote: BifrostRemoteUser, matrix: MatrixUser}> {
         let remote: BifrostRemoteUser;
         const id = Util.createRemoteId(protocol.id, username);
         const mxUser = (await this.userStore.getMatrixUser(userId)) || new MatrixUser(userId);

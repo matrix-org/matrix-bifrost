@@ -9,11 +9,11 @@ const log = Logging.get("AccountHandler");
  * Class to manage account settings, including commands sent from Matrix users
  */
 export class AccountHandler {
-    
-    constructor(private instance: IBifrostInstance, 
-                private store: IStore,
-                private bridge: Bridge,
-                private config: Config) {
+
+    constructor(private instance: IBifrostInstance,
+        private store: IStore,
+        private bridge: Bridge,
+        private config: Config) {
         instance.on("account-signed-on", (ev: IAccountEvent) => {
             this.onAccountSignedOn(ev);
         });
@@ -25,7 +25,7 @@ export class AccountHandler {
         });
     }
 
-    private async _getInstanceEventContext(ev: IAccountEvent)  {
+    private async getInstanceEventContext(ev: IAccountEvent)  {
         const account = this.instance.getAccount(ev.account.username, ev.account.protocol_id);
         const user = await this.store.getMatrixUserForAccount(ev.account);
         const protocol = this.instance.getProtocol(ev.account.protocol_id);
@@ -48,7 +48,7 @@ export class AccountHandler {
 
     private async onAccountSignedOn(ev: IAccountEvent) {
         log.info(`${ev.account.protocol_id}://${ev.account.username} signed on`);
-        const {account, adminRoom, protocol} = await this._getInstanceEventContext(ev);
+        const {account, adminRoom, protocol} = await this.getInstanceEventContext(ev);
         account.setStatus('available', true);
         if (!this.config.purple.sendConnectionNotices) {
             return;
@@ -64,7 +64,7 @@ export class AccountHandler {
         if (!this.config.purple.sendConnectionNotices) {
             return;
         }
-        const {protocol, adminRoom} = await this._getInstanceEventContext(ev);
+        const {protocol, adminRoom} = await this.getInstanceEventContext(ev);
         await this.bridge.getIntent().sendMessage(adminRoom.roomId, {
             msgtype: "m.notice",
             body: `⚠️ ${ev.account.username} (${protocol.name}) had a connection error: ${ev.description}`
@@ -73,7 +73,7 @@ export class AccountHandler {
 
     private async onAccountSignedOff(ev: IAccountEvent) {
         log.info(`${ev.account.protocol_id}://${ev.account.username} signed off.`);
-        const {protocol, adminRoom} = await this._getInstanceEventContext(ev);
+        const {protocol, adminRoom} = await this.getInstanceEventContext(ev);
         if (!this.config.purple.sendConnectionNotices) {
             return;
         }
