@@ -41,7 +41,7 @@
     "matrix-appservice-bridge": "^2.7.0",
     "parse-entities": "^1.2.0",
     "pg": "8.3.3",
-    "prom-client": "^11.2.1",
+    "prom-client": "^13.1.0",
     "quick-lru": "^5.1.1",
     "source-map-support": "^0.5.16",
     "uuid": "^3.3.2",
