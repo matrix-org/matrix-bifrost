@@ -44,9 +44,11 @@ export class Util {
     }
 
     public static unescapeUserId(userId: string): string {
-         return userId.replace(/(=[0-9a-z]{2})/g, (code) =>
-             String.fromCharCode(parseInt(code.substr(1), 16)),
-         );
+        userId = userId.replace(/(.+)=2f(.+)=40(.+)/g, "$1/$2@$3");
+        userId = userId.replace(/(=40.+)=40(.+)/g, "$1@$2");
+        return userId.replace(/(=[0-9a-f]{2,4})/g, (code) =>
+            String.fromCharCode(parseInt(code.substr(1), 16)),
+        );
     }
 
     public static async getMessagesBeforeJoin(
