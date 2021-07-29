@@ -7,7 +7,7 @@ import {
     IChatJoined,
     IConversationEvent,
     IUserStateChanged,
-    IChatStringState,
+    IChatTopicState,
     IChatTyping,
     IStoreRemoteUser,
     IChatReadReceipt,
@@ -18,7 +18,7 @@ import { ProtoHacks } from "./ProtoHacks";
 import { IStore } from "./store/Store";
 import { Deduplicator } from "./Deduplicator";
 import { Config } from "./Config";
-import entityDecode from "parse-entities";
+import { decode as entityDecode } from "html-entities";
 import { MessageFormatter } from "./MessageFormatter";
 const log = Logging.get("MatrixRoomHandler");
 
@@ -94,6 +94,7 @@ export class MatrixRoomHandler {
     /**
      * Set the bridge for us to use. This must be called after MatrixEventHandler
      * has been created.
+     *
      * @return [description]
      */
     public setBridge(bridge: Bridge) {
@@ -370,7 +371,7 @@ export class MatrixRoomHandler {
             remoteId,
             data.message.body,
         )) {
-                return;
+            return;
         }
 
         if (this.purple.needsDedupe() && !this.deduplicator.isTheChosenOneForRoom(data.conv.name, acctId)) {
@@ -516,12 +517,12 @@ export class MatrixRoomHandler {
         }
     }
 
-    private async handleTopic(data: IChatStringState) {
+    private async handleTopic(data: IChatTopicState) {
         if (!this.bridge) {
             throw Error("Couldn't handleTopic, bridge was not defined");
         }
         const intent = this.bridge.getIntent();
-        log.info(`Setting topic for ${data.conv.name}: ${data.string}`);
+        log.info(`Setting topic for ${data.conv.name}: ${data.topic}`);
         const roomId = await this.createOrGetGroupChatRoom(data, intent, true, true);
         if (roomId === false) {
             log.info("Room does not support setting topic");
@@ -531,8 +532,8 @@ export class MatrixRoomHandler {
         const nameEv = state.find((ev) => ev.type === "m.room.name");
         const currentName = nameEv ? nameEv.content.name : "";
         const currentTopic = topicEv ? topicEv.content.name : "";
-        if (currentTopic !== data.string ? data.string : "") {
-            intent.setRoomTopic(roomId, data.string || "").catch((err) => {
+        if (currentTopic !== data.topic ? data.topic : "") {
+            intent.setRoomTopic(roomId, data.topic || "").catch((err) => {
                 log.warn("Failed to set topic of", roomId, err);
             });
         }

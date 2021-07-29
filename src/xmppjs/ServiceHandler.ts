@@ -2,7 +2,7 @@ import { Element, x } from "@xmpp/xml";
 import { XmppJsInstance } from "./XJSInstance";
 import { jid, JID } from "@xmpp/jid";
 import { Logging } from "matrix-appservice-bridge";
-import * as request from "request-promise-native";
+import request from "axios";
 import { IGatewayRoom } from "../bifrost/Gateway";
 import { IGatewayRoomQuery, IGatewayPublicRoomsQuery } from "../bifrost/Events";
 import { StzaIqDiscoInfo, StzaIqPing, StzaIqDiscoItems, StzaIqSearchFields, SztaIqError, StzaIqPingError } from "./Stanzas";
@@ -14,7 +14,7 @@ const log = Logging.get("ServiceHandler");
 
 let version = "Unknown";
 try {
-    // tslint:disable-next-line: no-var-requires
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
     version = require("../../../package.json").version;
 } catch (ex) {
     // This might not exist.
@@ -94,7 +94,7 @@ export class ServiceHandler {
             }
 
             if (stanza.getChildByAttr("xmlns", "http://jabber.org/protocol/disco#info") && local) {
-                 return this.handleRoomDiscovery(to, from, id);
+                return this.handleRoomDiscovery(to, from, id);
             }
         }
 
@@ -104,13 +104,13 @@ export class ServiceHandler {
             to: from,
             id,
         }, x("error", {
-                    type: "cancel",
-                    code: "503",
-                },
-                x("service-unavailable", {
-                    xmlns: "urn:ietf:params:xml:ns:xmpp-stanzas",
-                }),
-            ),
+            type: "cancel",
+            code: "503",
+        },
+        x("service-unavailable", {
+            xmlns: "urn:ietf:params:xml:ns:xmpp-stanzas",
+        }),
+        ),
         ));
     }
 
@@ -122,16 +122,16 @@ export class ServiceHandler {
                 from,
                 id,
             }, x(type, {
-                    xmlns,
-                },
-                x("error", {
-                        type: "cancel",
-                        code: "404",
-                    },
-                    x("item-not-found", {
-                        xmlns: "urn:ietf:params:xml:ns:xmpp-stanzas",
-                    }),
-                ),
+                xmlns,
+            },
+            x("error", {
+                type: "cancel",
+                code: "404",
+            },
+            x("item-not-found", {
+                xmlns: "urn:ietf:params:xml:ns:xmpp-stanzas",
+            }),
+            ),
             )));
     }
 
@@ -143,14 +143,14 @@ export class ServiceHandler {
                 from,
                 id,
             }, x("query", {
-                    xmlns: "jabber:iq:version",
-                },
-                [
-                    x("name", undefined, "matrix-bifrost"),
-                    x("version", undefined, version),
-                ],
+                xmlns: "jabber:iq:version",
+            },
+            [
+                x("name", undefined, "matrix-bifrost"),
+                x("version", undefined, version),
+            ],
             ),
-        ));
+            ));
     }
 
     private async handleDiscoInfo(to: string, from: string, id: string) {
@@ -161,7 +161,7 @@ export class ServiceHandler {
     }
 
     private async handleDiscoItems(to: string, from: string, id: string, type: string,
-                                   searchElement?: Element): Promise<void> {
+        searchElement?: Element): Promise<void> {
         log.info("Got disco items request, looking up public rooms");
         let searchString = "";
         let homeserver: string|null = null;
@@ -299,13 +299,11 @@ export class ServiceHandler {
             return undefined;
         }
 
-        const file = (await request.get({
-            uri: thumbUrl,
-            encoding: null, // make response body to Buffer.
-            resolveWithFullResponse: true,
-        }).promise())!;
+        const file = await request.get(thumbUrl, {
+            responseType: "arraybuffer",
+        });
         avatar = {
-            data: Buffer.from(file.body),
+            data: Buffer.from(file.data),
             type: file.headers["content-type"],
         };
         this.avatarCache.set(avatarUrl, avatar);
@@ -366,11 +364,11 @@ export class ServiceHandler {
                 from: to,
                 id,
             }, x("vCard", {
-                    xmlns: "vcard-temp",
-                },
-                vCard,
+                xmlns: "vcard-temp",
+            },
+            vCard,
             ),
-        ));
+            ));
     }
 
     private async handlePing(from: string, to: string, id: string) {

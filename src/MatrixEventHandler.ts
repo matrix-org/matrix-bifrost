@@ -42,6 +42,7 @@ export class MatrixEventHandler {
     /**
      * Set the bridge for us to use. This must be called after MatrixEventHandler
      * has been created.
+     *
      * @return [description]
      */
     public setBridge(bridge: Bridge, autoReg?: AutoRegistration) {
@@ -166,7 +167,7 @@ export class MatrixEventHandler {
                     recipient: username,
                 } as any;
                 const ghostIntent = this.bridge.getIntent(event.state_key);
-                 // If the join fails to join because it's not registered, it tries to get invited which will fail.
+                // If the join fails to join because it's not registered, it tries to get invited which will fail.
                 log.debug(`Joining ${event.state_key} to ${event.room_id}.`);
                 await ghostIntent.join(event.room_id);
                 const remoteId = Buffer.from(
@@ -310,7 +311,7 @@ export class MatrixEventHandler {
                     log.error("Account not found:", ex);
                 }
                 if (account) {
-return `- ${account.protocol.name} (${remoteUser.username}) [Enabled=${account.isEnabled}] [Connected=${account.connected}]`;
+                    return `- ${account.protocol.name} (${remoteUser.username}) [Enabled=${account.isEnabled}] [Connected=${account.connected}]`;
                 } else {
                     return `- ${remoteUser.protocolId} [Protocol not enabled] (${remoteUser.username})`;
                 }
@@ -514,7 +515,7 @@ You can then connect your account to one of these protocols via \`create $PROTOC
 See \`protocol $PROTOCOL\` for help on what options they take.
 Say \`help\` for more commands.
 `;
-        /*await intent.sendMessage(event.room_id, {
+        /* await intent.sendMessage(event.room_id, {
             msgtype: "m.notice",
             body,
             format: "org.matrix.custom.html",
@@ -583,7 +584,7 @@ Say \`help\` for more commands.
 
     private async handleImMessage(context: RoomBridgeStoreEntry, event: WeakEvent) {
         log.info("Handling IM message");
-            if (!context.remote) {
+        if (!context.remote) {
             throw Error('Cannot handle message, remote or matrix not defined');
         }
         let acct: IBifrostAccount;
@@ -753,7 +754,7 @@ Say \`help\` for more commands.
     }
 
     private async getJoinParametersForCommand(acct: IBifrostAccount, args: string[], roomId: string, command: string)
-    : Promise<IChatJoinProperties|null> {
+        : Promise<IChatJoinProperties|null> {
         if (!this.bridge) {
             throw Error('Cannot handle getJoinParametersForCommand, bridge not defined');
         }
@@ -831,7 +832,7 @@ E.g. \`${command} ${acct.protocol.id}\` ${required.join(" ")} ${optional.join(" 
         if (!acct.connected) {
             log.debug("Account is not connected, deferring join until connected");
             return new Promise((resolve, reject) => {
-                let cb;
+                let cb = null;
                 cb = (joinEvent: IAccountEvent) => {
                     if (joinEvent.account.username === acct.name &&
                         acct.protocol.id === joinEvent.account.protocol_id) {

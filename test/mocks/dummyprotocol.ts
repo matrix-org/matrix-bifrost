@@ -12,9 +12,9 @@ class DummyProtocol extends BifrostProtocol {
     }
 
     public getMxIdForProtocol(
-            senderId: string,
-            domain: string,
-            prefix: string = "") {
+        senderId: string,
+        domain: string,
+        prefix: string = "") {
         return new MatrixUser(`@${prefix}${senderId}:${domain}`);
     }
 }

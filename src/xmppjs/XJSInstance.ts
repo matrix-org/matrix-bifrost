@@ -1,3 +1,4 @@
+/* eslint-disable max-classes-per-file */
 import { EventEmitter } from "events";
 import { Logging, MatrixUser, Bridge } from "matrix-appservice-bridge";
 import { Element } from "@xmpp/xml";
@@ -15,7 +16,7 @@ import { IAccountEvent,
     IChatTyping,
     IStoreRemoteUser,
     IChatReadReceipt,
-    IChatStringState,
+    IChatTopicState,
     IEventBody,
     IChatJoinProperties} from "../bifrost/Events";
 import { IBasicProtocolMessage, IMessageAttachment } from "../MessageFormatter";
@@ -27,7 +28,7 @@ import { AutoRegistration } from "../AutoRegistration";
 import { XmppJsGateway } from "./XJSGateway";
 import { IStza, StzaBase, StzaIqDisco, StzaIqDiscoInfo, StzaIqPing, StzaIqPingError, StzaIqVcardRequest } from "./Stanzas";
 import { Util } from "../Util";
-import uuid from "uuid/v4";
+import { v4 as uuid } from "uuid";
 
 const xLog = Logging.get("XMPP-conn");
 const log = Logging.get("XmppJsInstance");
@@ -43,9 +44,9 @@ class XmppProtocol extends BifrostProtocol {
     }
 
     public getMxIdForProtocol(
-            senderId: string,
-            domain: string,
-            prefix: string = "") {
+        senderId: string,
+        domain: string,
+        prefix: string = "") {
         const j = jid(senderId);
         /* is not allowed in a JID localpart so it is used as a seperator.
            =2F is /, =40 is @
@@ -142,6 +143,7 @@ export class XmppJsInstance extends EventEmitter implements IBifrostInstance {
      * Send an XML stanza to the stream. It's safe to modify
      * the Stanza object after calling this, as the object
      * is immediately converted to an XML string.
+     *
      * @param xmlMsg The XML stanza or string to send
      */
     public xmppSend(xmlMsg: IStza|string): Promise<unknown> {
@@ -262,14 +264,14 @@ export class XmppJsInstance extends EventEmitter implements IBifrostInstance {
 
         // Debug
         xmpp.on("status", (status) => {
-          if (status === "disconnecting" || status === "disconnected") {
-              this.canWrite = false;
-          }
-          if (status === "disconnect") {
-              log.error("Connection to XMPP server was lost..");
-              this.connectionWasDropped = true;
-          }
-          xLog.info("status:", status);
+            if (status === "disconnecting" || status === "disconnected") {
+                this.canWrite = false;
+            }
+            if (status === "disconnect") {
+                log.error("Connection to XMPP server was lost..");
+                this.connectionWasDropped = true;
+            }
+            xLog.info("status:", status);
         });
 
         xmpp.on("reconnecting", () => {
@@ -371,8 +373,8 @@ export class XmppJsInstance extends EventEmitter implements IBifrostInstance {
     }
 
     public getUsernameFromMxid(
-            mxid: string,
-            prefix: string = ""): {username: string, protocol: BifrostProtocol} {
+        mxid: string,
+        prefix: string = ""): {username: string, protocol: BifrostProtocol} {
         // This is for GHOST accts
         const uName = Util.unescapeUserId(new MatrixUser(mxid, {}, false).localpart);
         const rPrefix = prefix ? `(${prefix})` : "";
@@ -734,9 +736,9 @@ export class XmppJsInstance extends EventEmitter implements IBifrostInstance {
                     username: localAcct.remoteId,
                 },
                 sender: from.toString(),
-                string: subject,
+                topic: subject,
                 isGateway: false,
-            } as IChatStringState);
+            } as IChatTopicState);
         }
 
         const body = stanza.getChild("body");
@@ -748,7 +750,7 @@ export class XmppJsInstance extends EventEmitter implements IBifrostInstance {
     }
 
     private handleTextMessage(stanza: Element, localAcct: XmppJsAccount, from: JID,
-                              convName: string, forceMucPM: boolean) {
+        convName: string, forceMucPM: boolean) {
         const body = stanza.getChildText("body");
         const replace = stanza.getChildByAttr("xmlns", "urn:xmpp:message-correct:0");
         const type = stanza.attrs.type;

@@ -1,4 +1,4 @@
-import { Cli, Bridge, AppServiceRegistration, Logging, WeakEvent, TypingEvent, Request } from "matrix-appservice-bridge";
+import { Cli, Bridge, AppServiceRegistration, Logging, WeakEvent, TypingEvent, Request, RoomBridgeStoreEntry } from "matrix-appservice-bridge";
 import { EventEmitter } from "events";
 import { MatrixEventHandler } from "./MatrixEventHandler";
 import { MatrixRoomHandler } from "./MatrixRoomHandler";
@@ -14,12 +14,13 @@ import { XmppJsInstance } from "./xmppjs/XJSInstance";
 import { Metrics } from "./Metrics";
 import { AutoRegistration } from "./AutoRegistration";
 import { GatewayHandler } from "./GatewayHandler";
-import * as request from "request-promise-native";
+import request from "axios";
 
 const log = Logging.get("Program");
 const bridgeLog = Logging.get("bridge");
 
 import { install as installSMS } from "source-map-support";
+import { IRemoteUserAdminData, MROOM_TYPE_UADMIN } from "./store/Types";
 
 installSMS();
 
@@ -43,21 +44,21 @@ class Program {
 
     constructor() {
         this.cli = new Cli({
-          bridgeConfig: {
-            affectsRegistration: true,
-            schema: "./config/config.schema.yaml",
-            defaults: {},
-          },
-          registrationPath: "bifrost-registration.yaml",
-          generateRegistration: this.generateRegistration,
-          run: async (port: number, config: any) => {
+            bridgeConfig: {
+                affectsRegistration: true,
+                schema: "./config/config.schema.yaml",
+                defaults: {},
+            },
+            registrationPath: "bifrost-registration.yaml",
+            generateRegistration: this.generateRegistration,
+            run: async (port: number, config: any) => {
                 try {
                     await this.runBridge(port, config);
                 } catch (ex) {
                     log.error("Failed to start:", ex);
                     process.exit(1);
                 }
-          }
+            }
         });
         this.cfg = new Config();
         this.deduplicator = new Deduplicator();
@@ -81,14 +82,14 @@ class Program {
     }
 
     private generateRegistration(reg: AppServiceRegistration, callback) {
-      reg.setId(AppServiceRegistration.generateToken());
-      reg.setHomeserverToken(AppServiceRegistration.generateToken());
-      reg.setAppServiceToken(AppServiceRegistration.generateToken());
-      reg.setSenderLocalpart("bifrost");
-      reg.addRegexPattern("users", "@_bifrost_.*", true);
-      reg.addRegexPattern("aliases", "#bifrost_.*", true);
-      reg.pushEphemeral = true;
-      callback(reg);
+        reg.setId(AppServiceRegistration.generateToken());
+        reg.setHomeserverToken(AppServiceRegistration.generateToken());
+        reg.setAppServiceToken(AppServiceRegistration.generateToken());
+        reg.setSenderLocalpart("bifrost");
+        reg.addRegexPattern("users", "@_bifrost_.*", true);
+        reg.addRegexPattern("aliases", "#bifrost_.*", true);
+        reg.pushEphemeral = true;
+        callback(reg);
     }
 
     private async waitForHomeserver() {
@@ -141,10 +142,26 @@ class Program {
         await this.purple.close();
     }
 
+    private async pingBridge() {
+        let internalRoom: RoomBridgeStoreEntry|null;
+        try {
+            internalRoom = await this.store.getRoomByRemoteData({matrixUser: "-internal-"} as IRemoteUserAdminData);
+            if (!internalRoom) {
+                const result = await this.bridge.getIntent().createRoom({ options: {}});
+                internalRoom = await this.store.storeRoom(result.room_id, MROOM_TYPE_UADMIN, "-internal-", {matrixUser: "-internal-"} as IRemoteUserAdminData);
+            }
+            const time = await this.bridge.pingAppserviceRoute(internalRoom.matrix.roomId);
+            log.info(`Successfully pinged the bridge. Round trip took ${time}ms`);
+        }
+        catch (ex) {
+            log.error("Homeserver cannot reach the bridge. You probably need to adjust your configuration.", ex);
+        }
+    }
+
     private async runBridge(port: number, config: any) {
         const checkOnly = process.env.BIFROST_CHECK_ONLY === "true";
         this.cfg.ApplyConfig(config);
-        port = this.cfg.bridge.appservicePort || port;
+        port = port || this.cfg.bridge.appservicePort;
         if (checkOnly && this.config.logging.console === "off") {
             // Force console if we are doing an integrity check only.
             Logging.configure({
@@ -166,59 +183,56 @@ class Program {
             };
         }
         this.bridge = new Bridge({
-          controller: {
+            controller: {
             // onUserQuery: userQuery,
-            onAliasQuery: (alias, aliasLocalpart) => this.eventHandler!.onAliasQuery(alias, aliasLocalpart),
-            onEvent: (r) => {
-                if (this.eventHandler === undefined) {return; }
-                this.eventHandler.onEvent(r).catch((err) => {
-                    log.error("onEvent err", err);
-                }).then(() => {
-                    Metrics.requestOutcome(false, r.getDuration(), "success");
-                }).catch(() => {
-                    Metrics.requestOutcome(false, r.getDuration(), "fail");
-                });
-            },
-            onEphemeralEvent: (r) => {
-                if (r.getData().type === "m.typing") {
-                    this.eventHandler.onTyping(r as Request<TypingEvent>).catch((err) => {
-                        log.error("onTyping err", err);
+                onAliasQuery: (alias, aliasLocalpart) => this.eventHandler!.onAliasQuery(alias, aliasLocalpart),
+                onEvent: (r) => {
+                    if (this.eventHandler === undefined) {return; }
+                    this.eventHandler.onEvent(r).catch((err) => {
+                        log.error("onEvent err", err);
                     }).then(() => {
                         Metrics.requestOutcome(false, r.getDuration(), "success");
                     }).catch(() => {
                         Metrics.requestOutcome(false, r.getDuration(), "fail");
                     });
-                }
+                },
+                onEphemeralEvent: (r) => {
+                    if (r.getData().type === "m.typing") {
+                        this.eventHandler.onTyping(r as Request<TypingEvent>).catch((err) => {
+                            log.error("onTyping err", err);
+                        }).then(() => {
+                            Metrics.requestOutcome(false, r.getDuration(), "success");
+                        }).catch(() => {
+                            Metrics.requestOutcome(false, r.getDuration(), "fail");
+                        });
+                    }
+                },
+                onLog: (msg: string, error: boolean) => {
+                    bridgeLog[error ? "warn" : "debug"](msg);
+                },
+                onAliasQueried: (alias, roomId) => this.eventHandler!.onAliasQueried(alias, roomId),
+                onUserQuery: () => { throw Error('Not defined') }
             },
-            onLog: (msg: string, error: boolean) => {
-                bridgeLog[error ? "warn" : "debug"](msg);
-            },
-            onAliasQueried: (alias, roomId) => this.eventHandler!.onAliasQueried(alias, roomId),
-            onUserQuery: () => { throw Error('Not defined') }
-          },
-          domain: this.cfg.bridge.domain,
-          homeserverUrl: this.cfg.bridge.homeserverUrl,
-          disableContext: true,
-          registration: this.cli.getRegistrationFilePath(),
-          ...storeParams,
+            domain: this.cfg.bridge.domain,
+            homeserverUrl: this.cfg.bridge.homeserverUrl,
+            disableContext: true,
+            registration: this.cli.getRegistrationFilePath(),
+            ...storeParams,
         });
-        log.info("Starting appservice listener on port", port);
-        await this.bridge.run(port, this.cfg);
         if (this.cfg.purple.backend === "node-purple") {
             log.info("Selecting node-purple as a backend");
+            // eslint-disable-next-line @typescript-eslint/no-var-requires
             this.purple = new (require("./purple/PurpleInstance").PurpleInstance)(this.cfg.purple);
         } else if (this.cfg.purple.backend === "xmpp-js") {
             log.info("Selecting xmpp-js as a backend");
+            // eslint-disable-next-line @typescript-eslint/no-var-requires
             this.purple = new (require("./xmppjs/XJSInstance").XmppJsInstance)(this.cfg);
         } else {
             throw new Error(`Backend ${this.cfg.purple.backend} not supported`);
         }
         const purple = this.purple!;
+        await this.bridge.initalise();
 
-        if (this.cfg.metrics.enabled) {
-            log.info("Enabling metrics");
-            Metrics.init(this.bridge);
-        }
 
         this.store = await initiateStore(this.config.datastore, this.bridge);
         const ignoreIntegrity = process.env.BIFROST_INTEGRITY_WRITE;
@@ -229,7 +243,15 @@ class Program {
             process.exit(0);
         }
         await this.waitForHomeserver();
+        await this.bridge.listen(port);
+        log.info("Started appservice listener on port", port);
+        await this.pingBridge();
         await this.registerBot();
+
+        if (this.cfg.metrics.enabled) {
+            log.info("Enabling metrics");
+            Metrics.init(this.bridge);
+        }
 
         this.profileSync = new ProfileSync(this.bridge, this.cfg, this.store);
         this.roomHandler = new MatrixRoomHandler(

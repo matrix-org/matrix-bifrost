@@ -7,19 +7,17 @@ import { GatewayStateResolve } from "../../src/xmppjs/GatewayStateResolve";
 import { XMPP_CHAT_NAME, MATRIX_MEMBER_ANONYMOUS, MATRIX_MEMBER_MXID, XMPP_MEMBER_ANONYMOUS, XMPP_MEMBER_JID, XMPP_MEMBER_MXID } from "./fixtures";
 
 
-const generateMember = (membership: "join"|"leave", mxid: string): MatrixMembershipEvent => {
-    return {
-        sender: mxid,
-        state_key: mxid,
-        content: {
-            membership,
-        },
-        room_id: "!foo:bar",
-        origin_server_ts: 123456,
-        event_id: "$abc:def",
-        type: "m.room.member",
-    };
-};
+const generateMember = (membership: "join"|"leave", mxid: string): MatrixMembershipEvent => ({
+    sender: mxid,
+    state_key: mxid,
+    content: {
+        membership,
+    },
+    room_id: "!foo:bar",
+    origin_server_ts: 123456,
+    event_id: "$abc:def",
+    type: "m.room.member",
+});
 
 describe("GatewayStateResolve", () => {
     let members: GatewayMUCMembership;

@@ -32,7 +32,7 @@ export class Metrics {
             name: "remote_request_seconds",
             help: "Histogram of processing durations of received remote messages",
             labels: ["outcome"],
-    });
+        });
     }
 
     public static requestOutcome(isRemote: boolean, duration: number, outcome: string) {
@@ -56,9 +56,9 @@ export class Metrics {
     }
 
     private static metrics;
-    private static remoteCallCounter: Counter;
-    private static remoteRequest: Histogram;
-    private static matrixRequest: Histogram;
+    private static remoteCallCounter: Counter<string>;
+    private static remoteRequest: Histogram<string>;
+    private static matrixRequest: Histogram<string>;
     private static bridgeGauges: IBridgeGauges = {
         matrixRoomConfigs: 0,
         remoteRoomConfigs: 0,

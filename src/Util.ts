@@ -55,9 +55,11 @@ export class Util {
         intent: Intent, roomId: string): Promise<WeakEvent[]> {
         const client = intent.getClient();
         // Because the JS SDK expects this to be set :/
+        // eslint-disable-next-line no-underscore-dangle
         client._clientOpts = {
             lazyLoadMembers: false,
         };
+        // eslint-disable-next-line no-underscore-dangle
         const res = await client._createMessagesRequest(roomId, undefined, undefined, "b");
         const msgs: WeakEvent[] = [];
         for (const msg of res.chunk.reverse()) {

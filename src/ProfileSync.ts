@@ -97,7 +97,7 @@ export class ProfileSync {
     }
 
     private async getOrCreateStoreUsers(protocol: BifrostProtocol, senderId: string)
-    : Promise<{matrixUser: MatrixUser, remoteUser: BifrostRemoteUser}> {
+        : Promise<{matrixUser: MatrixUser, remoteUser: BifrostRemoteUser}> {
         const userId: string = protocol.getMxIdForProtocol(
             senderId,
             this.config.bridge.domain,
