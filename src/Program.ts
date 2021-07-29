@@ -138,7 +138,7 @@ class Program {
     }
 
     private async killBridge() {
-        log.info("SIGINT recieved, killing bridge");
+        log.info("SIGINT received, killing bridge");
         await this.bridge.close();
         await this.bifrostInstance.close();
         process.exit(0);

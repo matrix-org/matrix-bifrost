@@ -30,11 +30,11 @@ export class AccountHandler {
         const user = await this.store.getMatrixUserForAccount(ev.account);
         const protocol = this.instance.getProtocol(ev.account.protocol_id);
         if (!account) {
-            log.warn("Account not registered with Bifrost, ignoring");
+            log.warn(`Account ${ev.account.username} not registered with Bifrost, ignoring`);
             return;
         }
         if (!user) {
-            log.warn(`Account registered with Bifrost, but not assigned to a user!!`);
+            log.warn(`Account ${ev.account.username} registered with Bifrost, but not assigned to a user!!`);
             return;
         }
         const adminRoom = await this.store.getAdminRoom(user.getId());
