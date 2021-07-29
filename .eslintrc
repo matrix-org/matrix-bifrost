@@ -10,8 +10,7 @@
     "plugins": [
         "eslint-plugin-import",
         "eslint-plugin-jsdoc",
-        "@typescript-eslint",
-        "@typescript-eslint/tslint"
+        "@typescript-eslint"
     ],
     "rules": {
         "@typescript-eslint/adjacent-overload-signatures": "error",
