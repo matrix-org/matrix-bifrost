@@ -1,6 +1,6 @@
 import { AccountHandler } from "./AccountHandler";
 import { AutoRegistration } from "./AutoRegistration";
-import { Cli, Bridge, AppServiceRegistration, Logging, TypingEvent, Request, RoomBridgeStoreEntry } from "matrix-appservice-bridge";
+import { Cli, Bridge, AppServiceRegistration, Logging, WeakEvent, TypingEvent, Request, RoomBridgeStoreEntry } from "matrix-appservice-bridge";
 import { Config } from "./Config";
 import { Deduplicator } from "./Deduplicator";
 import { EventEmitter } from "events";
@@ -17,7 +17,6 @@ import { ProfileSync } from "./ProfileSync";
 import { RoomSync } from "./RoomSync";
 import { Util } from "./Util";
 import { XmppJsInstance } from "./xmppjs/XJSInstance";
-import * as request from "request-promise-native";
 
 const log = Logging.get("Program");
 const bridgeLog = Logging.get("bridge");
@@ -144,6 +143,22 @@ class Program {
         process.exit(0);
     }
 
+    private async pingBridge() {
+        let internalRoom: RoomBridgeStoreEntry|null;
+        try {
+            internalRoom = await this.store.getRoomByRemoteData({matrixUser: "-internal-"} as IRemoteUserAdminData);
+            if (!internalRoom) {
+                const result = await this.bridge.getIntent().createRoom({ options: {}});
+                internalRoom = await this.store.storeRoom(result.room_id, MROOM_TYPE_UADMIN, "-internal-", {matrixUser: "-internal-"} as IRemoteUserAdminData);
+            }
+            const time = await this.bridge.pingAppserviceRoute(internalRoom.matrix.roomId);
+            log.info(`Successfully pinged the bridge. Round trip took ${time}ms`);
+        }
+        catch (ex) {
+            log.error("Homeserver cannot reach the bridge. You probably need to adjust your configuration.", ex);
+        }
+    }
+
     private async runBridge(port: number, config: any) {
         const checkOnly = process.env.BIFROST_CHECK_ONLY === "true";
         this.cfg.ApplyConfig(config);
@@ -219,10 +234,6 @@ class Program {
         const bifrostInstance = this.bifrostInstance!;
 
 
-        if (this.cfg.metrics.enabled) {
-            log.info("Enabling metrics");
-            Metrics.init(this.bridge);
-        }
 
         this.store = await initiateStore(this.config.datastore, this.bridge);
         const ignoreIntegrity = process.env.BIFROST_INTEGRITY_WRITE;
@@ -232,8 +243,16 @@ class Program {
             log.warn("BIFROST_CHECK_ONLY is set, exiting");
             process.exit(0);
         }
+        log.info("Starting appservice listener on port", port);
+        await this.bridge.listen(port);
+        await this.pingBridge();
         await this.waitForHomeserver();
         await this.registerBot();
+
+        if (this.cfg.metrics.enabled) {
+            log.info("Enabling metrics");
+            Metrics.init(this.bridge);
+        }
 
         this.profileSync = new ProfileSync(this.bridge, this.cfg, this.store);
         this.roomHandler = new MatrixRoomHandler(
