@@ -35,7 +35,6 @@ export interface IMatrixUserData {
 }
 
 export interface IRemoteUserAccount {
-    // XXX: We are mixing camel case and snake case in here.
     type: MUSER_TYPES;
     username: string;
     protocolId: string;

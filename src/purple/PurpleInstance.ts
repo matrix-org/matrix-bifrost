@@ -1,5 +1,5 @@
 // @ts-ignore - These are optional.
-import { helper, plugins, messaging, Conversation } from "node-purple";
+import { helper, plugins, messaging, Conversation, core } from "node-purple";
 import { EventEmitter } from "events";
 import { PurpleAccount } from "./PurpleAccount";
 import { IBifrostInstance } from "../bifrost/Instance";
@@ -141,6 +141,7 @@ export class PurpleInstance extends EventEmitter implements IBifrostInstance {
         if (this.interval) {
             clearInterval(this.interval);
             this.interval = undefined;
+            core.quit();
         }
     }
 

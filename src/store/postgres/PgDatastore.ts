@@ -17,7 +17,7 @@ limitations under the License.
 import { Pool } from "pg";
 import { MatrixRoom, RemoteRoom, MatrixUser, Logging, RoomBridgeStoreEntry } from "matrix-appservice-bridge";
 import { IRemoteRoomData, IRemoteGroupData, MROOM_TYPES,
-    IRemoteImData, IRemoteUserAdminData, MROOM_TYPE_IM } from "../Types";
+    IRemoteImData, IRemoteUserAdminData, MROOM_TYPE_IM, MROOM_TYPE_UADMIN } from "../Types";
 import { BifrostProtocol } from "../../bifrost/Protocol";
 import { IAccountMinimal } from "../../bifrost/Events";
 import { BifrostRemoteUser } from "../BifrostRemoteUser";
@@ -215,6 +215,18 @@ export class PgDataStore implements IStore {
             }),
             data: {}
         };
+    }
+
+    public async getAdminRoom(matrixUserId: string): Promise<MatrixRoom|null> {
+        const res = await this.pgPool.query(
+            "SELECT room_id FROM admin_rooms WHERE user_id = $1",
+            [ matrixUserId ],
+        );
+        if (res.rowCount === 0) {
+            return null;
+        }
+        const row = res.rows[0];
+        return new MatrixRoom(row.room_id, { extras: { type: MROOM_TYPE_UADMIN } });
     }
 
     public async getUsernameMxidForProtocol(protocol: BifrostProtocol): Promise<{ [mxid: string]: string; }> {
