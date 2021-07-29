@@ -32,6 +32,8 @@ properties:
         type: "object"
         properties:
             required: ["backend", "backendOpts"]
+            sendConnectionNotices:
+                type: boolean
             backend:
                 type: string
                 enum:
