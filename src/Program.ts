@@ -219,8 +219,6 @@ class Program {
             registration: this.cli.getRegistrationFilePath(),
             ...storeParams,
         });
-        log.info("Starting appservice listener on port", port);
-        await this.bridge.run(port, this.cfg);
         if (this.cfg.purple.backend === "node-purple") {
             log.info("Selecting node-purple as a backend");
             // eslint-disable-next-line @typescript-eslint/no-var-requires
@@ -233,6 +231,7 @@ class Program {
             throw new Error(`Backend ${this.cfg.purple.backend} not supported`);
         }
         const purple = this.purple!;
+        await this.bridge.initalise();
 
 
         this.store = await initiateStore(this.config.datastore, this.bridge);
@@ -243,10 +242,10 @@ class Program {
             log.warn("BIFROST_CHECK_ONLY is set, exiting");
             process.exit(0);
         }
-        log.info("Starting appservice listener on port", port);
-        await this.bridge.listen(port);
-        await this.pingBridge();
         await this.waitForHomeserver();
+        await this.bridge.listen(port);
+        log.info("Started appservice listener on port", port);
+        await this.pingBridge();
         await this.registerBot();
 
         if (this.cfg.metrics.enabled) {
