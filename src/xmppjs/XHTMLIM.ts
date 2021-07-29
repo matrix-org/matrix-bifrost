@@ -1,5 +1,5 @@
 import { Parser } from "htmlparser2";
-import he from "html-entities";
+import * as he from "html-entities";
 
 const XMLNS = "http://jabber.org/protocol/xhtml-im";
 

@@ -55,17 +55,17 @@ describe("Stanzas", () => {
             assertXML(stanza.xml);
             expect(stanza.xml).to.equal(
                 "<message from=\"foo@bar\" to=\"baz@bar\" id=\"someid\" type='groupchat'>"
-                + "<body>Viva la matrix&#x32D;</body><markable xmlns='urn:xmpp:chat-markers:0'/></message>",
+                + "<body>Viva la matrix&#813;</body><markable xmlns='urn:xmpp:chat-markers:0'/></message>",
             );
         });
         it("should create a valid stanza for a html message", () => {
             const stanza = new StzaMessage("foo@bar", "baz@bar", "someid", "groupchat");
             stanza.body = "Viva la matrix̭";
-            stanza.html = "<html><p><strong>Viva la</strong> matrix&#x32D;</p></html>";
+            stanza.html = "<html><p><strong>Viva la</strong> matrix&#813;</p></html>";
             assertXML(stanza.xml);
             expect(stanza.xml).to.equal(
                 "<message from=\"foo@bar\" to=\"baz@bar\" id=\"someid\" type='groupchat'><html><p>"
-                + "<strong>Viva la</strong> matrix&#x32D;</p></html><body>Viva la matrix&#x32D;</body>"
+                + "<strong>Viva la</strong> matrix&#813;</p></html><body>Viva la matrix&#813;</body>"
                 + "<markable xmlns='urn:xmpp:chat-markers:0'/></message>",
             );
         });
@@ -110,7 +110,7 @@ describe("Stanzas", () => {
         expect(xml).to.equal(
             "<iq from='foo@bar' to='baz@bar' id='someid' type='error' xml:lang='en'>" +
              "<error type='cancel' by='foo'><not-acceptable xmlns='urn:ietf:params:xml:ns:xmpp-stanzas'/>" +
-             `<text xmlns="urn:ietf:params:xml:ns:xmpp-stanzas">Something isn&#x27;t right</text>` +
+             `<text xmlns="urn:ietf:params:xml:ns:xmpp-stanzas">Something isn&apos;t right</text>` +
              "</error></iq>",
         );
     });
