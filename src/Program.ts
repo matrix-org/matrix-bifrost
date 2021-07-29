@@ -161,7 +161,7 @@ class Program {
     private async runBridge(port: number, config: any) {
         const checkOnly = process.env.BIFROST_CHECK_ONLY === "true";
         this.cfg.ApplyConfig(config);
-        port = this.cfg.bridge.appservicePort || port;
+        port = port || this.cfg.bridge.appservicePort;
         if (checkOnly && this.config.logging.console === "off") {
             // Force console if we are doing an integrity check only.
             Logging.configure({
