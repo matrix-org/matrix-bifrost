@@ -17,6 +17,7 @@ import { ProfileSync } from "./ProfileSync";
 import { RoomSync } from "./RoomSync";
 import { Util } from "./Util";
 import { XmppJsInstance } from "./xmppjs/XJSInstance";
+import axios from "axios";
 
 const log = Logging.get("Program");
 const bridgeLog = Logging.get("bridge");
@@ -98,7 +99,7 @@ class Program {
         const url = `${this.config.bridge.homeserverUrl}/_matrix/client/versions`;
         while (true) {
             try {
-                await request.get(url);
+                await axios.get(url);
                 return true;
             } catch (ex) {
                 log.warn("Failed to contact", url, "waiting..");
