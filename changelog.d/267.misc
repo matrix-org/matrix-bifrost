@@ -1,0 +1,1 @@
+Update dependencies including `axios`, `prom-client` and `uuid`. The handling of entities in XMPP messages is now XML compliant rather than HTML5 complaint.

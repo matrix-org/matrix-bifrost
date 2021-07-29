@@ -2,7 +2,7 @@ import { Element, x } from "@xmpp/xml";
 import { XmppJsInstance } from "./XJSInstance";
 import { jid, JID } from "@xmpp/jid";
 import { Logging } from "matrix-appservice-bridge";
-import * as request from "request-promise-native";
+import request from "axios";
 import { IGatewayRoom } from "../bifrost/Gateway";
 import { IGatewayRoomQuery, IGatewayPublicRoomsQuery } from "../bifrost/Events";
 import { StzaIqDiscoInfo, StzaIqPing, StzaIqDiscoItems, StzaIqSearchFields, SztaIqError, StzaIqPingError } from "./Stanzas";
@@ -299,13 +299,11 @@ export class ServiceHandler {
             return undefined;
         }
 
-        const file = (await request.get({
-            uri: thumbUrl,
-            encoding: null, // make response body to Buffer.
-            resolveWithFullResponse: true,
-        }).promise())!;
+        const file = await request.get(thumbUrl, {
+            responseType: "arraybuffer",
+        });
         avatar = {
-            data: Buffer.from(file.body),
+            data: Buffer.from(file.data),
             type: file.headers["content-type"],
         };
         this.avatarCache.set(avatarUrl, avatar);

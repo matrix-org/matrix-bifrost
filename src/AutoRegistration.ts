@@ -1,6 +1,6 @@
 import { IConfigAutoReg, IConfigAccessControl } from "./Config";
 import { Bridge, MatrixUser } from "matrix-appservice-bridge";
-import * as request from "request-promise-native";
+import request from "axios";
 import { Util } from "./Util";
 import { Logging } from "matrix-appservice-bridge";
 import { IStore } from "./store/Store";
@@ -10,7 +10,7 @@ import { BifrostProtocol } from "./bifrost/Protocol";
 import QuickLRU from "quick-lru";
 const log = Logging.get("AutoRegistration");
 export interface IAutoRegHttpOpts {
-    method: string;
+    method: "get"|"post"|"put";
     usernameResult: string|null;
 }
 
@@ -196,16 +196,16 @@ export class AutoRegistration {
                 ...step.headers,
             };
             log.debug("HttpReg: Attempting request to ", step.path, headers);
-            const res = await request[opts.method.toLowerCase()]({
+            const res = await request.request({
+                method: opts.method,
                 url: step.path,
                 headers,
-                json: true && opts.usernameResult, // This will also parse, which we might not want.
-                body: JSON.stringify(body),
+                data: body,
             });
             if (!opts.usernameResult) { // fetch it from the body.
-                username = res;
+                username = res.data;
             } else {
-                username = res[opts.usernameResult];
+                username = res.data[opts.usernameResult];
             }
             log.info(`Registered ${mxId} as ${username}`);
             return {username, extraParams: body};

@@ -18,7 +18,7 @@ import { ProtoHacks } from "./ProtoHacks";
 import { IStore } from "./store/Store";
 import { Deduplicator } from "./Deduplicator";
 import { Config } from "./Config";
-import entityDecode from "parse-entities";
+import { decode as entityDecode } from "html-entities";
 import { MessageFormatter } from "./MessageFormatter";
 const log = Logging.get("MatrixRoomHandler");
 

@@ -3,7 +3,7 @@ import { PRPL_S4B, PRPL_XMPP } from "./ProtoHacks";
 import { Parser } from "htmlparser2";
 import { Intent, Logging } from "matrix-appservice-bridge";
 import { IConfigBridge } from "./Config";
-import * as request from "request-promise-native";
+import request from "axios";
 import { IMatrixMsgContents, MatrixMessageEvent } from "./MatrixTypes";
 const log = Logging.get("MessageFormatter");
 
@@ -120,10 +120,9 @@ export class MessageFormatter {
                     log.warn("Don't know how to handle attachment for message, not a http format uri");
                     return matrixMsg;
                 }
-                const file = (await request.get(attachment.uri, {
-                    resolveWithFullResponse: true,
-                    encoding: null,
-                }).promise())!;
+                const file = await request.get(attachment.uri, {
+                    responseType: "arraybuffer",
+                });
                 // Use the headers if a type isn't given.
                 if (!attachment.mimetype) {
                     attachment.mimetype = file.headers["content-type"];
@@ -141,7 +140,7 @@ export class MessageFormatter {
                 }
 
                 log.info(`Uploading ${attachment.uri}...`);
-                const mxcurl = await intent.uploadContent(file.body, {
+                const mxcurl = await intent.uploadContent(file.data, {
                     includeFilename: false,
                     type: attachment.mimetype || "application/octect-stream",
                 });

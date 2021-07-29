@@ -14,7 +14,7 @@ import { XmppJsInstance } from "./xmppjs/XJSInstance";
 import { Metrics } from "./Metrics";
 import { AutoRegistration } from "./AutoRegistration";
 import { GatewayHandler } from "./GatewayHandler";
-import * as request from "request-promise-native";
+import request from "axios";
 
 const log = Logging.get("Program");
 const bridgeLog = Logging.get("bridge");

@@ -1,8 +1,12 @@
 /* eslint-disable max-classes-per-file */
-import uuid from "uuid/v4";
-import he from "he";
+import { v4 as uuid } from "uuid";
+import * as he from "html-entities";
 import { IBasicProtocolMessage } from "../MessageFormatter";
 import { XMPPFeatures, XMPPStatusCode } from "./XMPPConstants";
+
+function encode(text) {
+    return he.encode(text, { level: "xml", mode: "nonAscii"});
+}
 
 export interface IStza {
     type: string;
@@ -41,20 +45,20 @@ export abstract class StzaBase implements IStza {
     get from() { return this.hFrom; }
 
     set from(val: string) {
-        this.hFrom = he.encode(val);
+        this.hFrom = encode(val);
     }
 
     get to() { return this.hTo; }
 
     set to(val: string) {
-        this.hTo = he.encode(val);
+        this.hTo = encode(val);
     }
 
     get id(): string|undefined { return this.hId || undefined; }
 
     set id(val: string|undefined) {
         if (!val) { return; }
-        this.hId = he.encode(val);
+        this.hId = encode(val);
     }
 
 }
@@ -126,10 +130,10 @@ export class StzaPresenceItem extends StzaPresence {
         }
         xml += ">";
         if (this.actor) {
-            xml += `<actor nick='${he.encode(this.actor)}'/>`
+            xml += `<actor nick='${encode(this.actor)}'/>`
         }
         if (this.reason) {
-            xml += `<reason>${he.encode(this.reason)}</reason>`
+            xml += `<reason>${encode(this.reason)}</reason>`
         }
         xml += "</item>";
         return xml;
@@ -153,7 +157,7 @@ export class StzaPresenceError extends StzaPresence {
     public get presenceContent() {
         return `<error type='${this.errType}' by='${this.by}'><${this.innerError}`
              + " xmlns='urn:ietf:params:xml:ns:xmpp-stanzas'/>"
-             + (this.text ? `<text xmlns="urn:ietf:params:xml:ns:xmpp-stanzas">${he.encode(this.text)}</text>` : "")
+             + (this.text ? `<text xmlns="urn:ietf:params:xml:ns:xmpp-stanzas">${encode(this.text)}</text>` : "")
              + "</error>";
     }
 }
@@ -240,7 +244,7 @@ export class StzaMessage extends StzaBase {
     get xml(): string {
         const type = this.messageType ? `type='${this.messageType}'` : "";
         const attachments = this.attachments.map((a) =>
-            `<x xmlns='jabber:x:oob'><url>${he.encode(a)}</url></x>`,
+            `<x xmlns='jabber:x:oob'><url>${encode(a)}</url></x>`,
         );
         if (this.attachments.length === 1) {
             // For reasons unclear to me, XMPP reccomend we make the body == attachment url to make them show up inline.
@@ -251,7 +255,7 @@ export class StzaMessage extends StzaBase {
         // XEP-0308
         const replaces = this.replacesId ? `<replace id='${this.replacesId}' xmlns='urn:xmpp:message-correct:0'/>` : "";
         return `<message from="${this.from}" to="${this.to}" id="${this.id}" ${type}>`
-             + `${this.html}<body>${he.encode(this.body)}</body>${attachments}${markable}${replaces}</message>`;
+             + `${this.html}<body>${encode(this.body)}</body>${attachments}${markable}${replaces}</message>`;
     }
 }
 
@@ -273,7 +277,7 @@ export class StzaMessageSubject extends StzaBase {
 
     get xml(): string {
         return `<message from="${this.from}" to="${this.to}" id="${this.id}" type='groupchat'>`
-             + `<subject>${he.encode(this.subject)}</subject></message>`;
+             + `<subject>${encode(this.subject)}</subject></message>`;
     }
 }
 
@@ -349,7 +353,7 @@ export class StzaIqDiscoItems extends StzaIqDisco {
 
     get queryContent(): string {
         const items = this.items.map((item) =>
-            `<item jid='${he.encode(item.jid)}' name='${he.encode(item.name)}'/>`,
+            `<item jid='${encode(item.jid)}' name='${encode(item.name)}'/>`,
         ).join("");
         return items;
     }
@@ -407,7 +411,7 @@ export class StzaIqSearchFields extends StzaBase {
     get xml(): string {
         const fields = Object.keys(this.fields).map((field) => `<${field}>${this.fields[field]}</${field}>`).join("");
         return `<iq from='${this.from}' to='${this.to}' id='${this.id}' type='result' xml:lang='en'>`
-        + `<query xmlns='jabber:iq:search'><instructions>${he.encode(this.instructions)}</instructions>`
+        + `<query xmlns='jabber:iq:search'><instructions>${encode(this.instructions)}</instructions>`
         + `${fields}</query></iq>`;
     }
 }
@@ -441,7 +445,7 @@ export class SztaIqError extends StzaBase {
         return `<iq from='${this.from}' to='${this.to}' id='${this.id}' type='error' xml:lang='en'>`
         + `<error type='${this.errorType}'${errorParams}><${this.innerError} ` +
           "xmlns='urn:ietf:params:xml:ns:xmpp-stanzas'/>" +
-          (this.text ? `<text xmlns="urn:ietf:params:xml:ns:xmpp-stanzas">${he.encode(this.text)}</text>` : "") +
+          (this.text ? `<text xmlns="urn:ietf:params:xml:ns:xmpp-stanzas">${encode(this.text)}</text>` : "") +
           "</error></iq>";
     }
 }

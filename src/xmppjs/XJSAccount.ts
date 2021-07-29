@@ -9,7 +9,7 @@ import { jid, JID } from "@xmpp/jid";
 import { IBasicProtocolMessage } from "../MessageFormatter";
 import { Metrics } from "../Metrics";
 import { Logging } from "matrix-appservice-bridge";
-import uuid from "uuid/v4";
+import { v4 as uuid } from "uuid";
 import { XHTMLIM } from "./XHTMLIM";
 import { StzaMessage, StzaIqPing, StzaPresenceJoin, StzaPresencePart, StzaIqVcardRequest } from "./Stanzas";
 
