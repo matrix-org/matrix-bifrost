@@ -156,22 +156,48 @@ export class MatrixEventHandler {
                 }
             } else if (event.content.is_direct && bridgeBot.isRemoteUser(event.state_key)) {
                 log.debug("Got request to PM", event.state_key);
-                const {
-                    username,
-                    protocol,
-                } = this.purple.getUsernameFromMxid(event.state_key!, this.config.bridge.userPrefix);
-                log.debug("Mapped username to", username);
-                const remoteData = {
+                let remoteData = {
                     matrixUser: event.sender,
-                    protocol_id: protocol.id,
-                    recipient: username,
                 } as any;
+
+                // this is not always possible (could be a brand new user being reached),
+                // but is preferable to decoding the mxid because of potential information loss
+                // during mxid generation (see GH-268)
+                const remoteUsers = await this.store.getRemoteUsersFromMxId(event.state_key!);
+                if (remoteUsers.length > 1) {
+                    log.error(
+                        `Multiple remote users found for ${event.state_key!}:`,
+                        remoteUsers.map(u => `${u.protocolId}://${u.username}`).join(', ')
+                    );
+                }
+
+                if (remoteUsers.length === 1) {
+                    const bifrostUser = remoteUsers[0];
+                    log.debug(`${event.state_key!} located in user store as ${bifrostUser.username}`);
+                    remoteData = {
+                        protocol_id: bifrostUser.protocolId,
+                        recipient: bifrostUser.username,
+                        ...remoteData
+                    };
+                } else {
+                    const {
+                        username,
+                        protocol,
+                    } = this.purple.getUsernameFromMxid(event.state_key!, this.config.bridge.userPrefix);
+                    log.debug("Mapped username to", username);
+                    remoteData = {
+                        protocol_id: protocol.id,
+                        recipient: username,
+                        ...remoteData
+                    };
+                }
+
                 const ghostIntent = this.bridge.getIntent(event.state_key);
                 // If the join fails to join because it's not registered, it tries to get invited which will fail.
                 log.debug(`Joining ${event.state_key} to ${event.room_id}.`);
                 await ghostIntent.join(event.room_id);
                 const remoteId = Buffer.from(
-                    `${event.sender}:${protocol.id}:${username}`,
+                    `${event.sender}:${remoteData.protocol}:${remoteData.recipient}`,
                 ).toString("base64");
                 const {remote} = await this.store.storeRoom(event.room_id, MROOM_TYPE_IM, remoteId, remoteData);
                 ctx.remote = remote;
