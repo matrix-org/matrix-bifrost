@@ -1,4 +1,4 @@
-import { AppServiceBot, Logging, RemoteRoom } from "matrix-appservice-bridge";
+import { AppServiceBot, Bridge, Logging, RemoteRoom } from "matrix-appservice-bridge";
 import { IBifrostInstance } from "./bifrost/Instance";
 import { IAccountEvent, IChatJoinProperties } from "./bifrost/Events";
 import { IStore } from "./store/Store";
@@ -23,6 +23,7 @@ export class RoomSync {
     private accountRoomMemberships: Map<string, IRoomMembership[]>;
     private ongoingSyncs = 0;
     constructor(
+        private bridge: Bridge;
         private bifrost: IBifrostInstance,
         private store: IStore,
         private deduplicator: Deduplicator,
@@ -182,6 +183,8 @@ export class RoomSync {
             try {
                 if (membership.membership === "join") {
                     log.info(`${i}/${reconsToMake} JOIN ${remoteId} -> ${membership.room_name}`);
+                    await ProtoHacks.addJoinProps(
+                        acct.protocol.id, membership.params, matrixUser.getId(), this.bridge.getIntent());
                     await acct!.joinChat(membership.params, this.bifrost, JOINLEAVE_TIMEOUT, false);
                     acct!.setJoinPropertiesForRoom(membership.room_name, membership.params);
                 } else {
