@@ -41,7 +41,7 @@ export class ProtoHacks {
                                     resolveWithFullResponse: true,
                                 }).promise())!;
                                 if (data) {
-                                    props.avatar_hash = Util.sha1(Buffer.from(data.body).toString());
+                                    props.avatar_hash = Util.sha1(Buffer.from(data.body).toString("binary"));
                                 } else {
                                     log.warn(`Failed to compute Matrix User ${userId}'s avatar hash`);
                                 }
