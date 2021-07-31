@@ -3,6 +3,8 @@ import { BifrostProtocol } from "./bifrost/Protocol";
 import { Intent } from "matrix-appservice-bridge";
 import { Logging } from "matrix-appservice-bridge";
 import { IBifrostAccount } from "./bifrost/Account";
+import { Util } from "./Util";
+import * as request from "request-promise-native";
 const log = Logging.get("ProtoHacks");
 
 export const PRPL_MATRIX = "prpl-matrix";
@@ -24,7 +26,28 @@ export class ProtoHacks {
                 if (typeof(intent) === "string") {
                     props.handle = intent;
                 } else {
-                    props.handle = (await intent.getProfileInfo(userId)).displayname;
+                    let profile = await intent.getProfileInfo(userId);
+                    props.handle = profile.displayname;
+                    if (protocolId === XMPP_JS) {
+                        // fetch and compute avatar hash
+                        if (profile.avatar_url) {
+                            const thumbUrl = intent.getClient().mxcUrlToHttp(
+                                profile.avatar_url, 256, 256, "scale", false,
+                            );
+                            if (thumbUrl) {
+                                const data = (await request.get({
+                                    uri: thumbUrl,
+                                    encoding: null,
+                                    resolveWithFullResponse: true,
+                                }).promise())!;
+                                if (data) {
+                                    props.avatar_hash = Util.sha1(Buffer.from(data.body).toString());
+                                } else {
+                                    log.warn(`Failed to compute Matrix User ${userId}'s avatar hash`);
+                                }
+                            }
+                        }
+                    }
                 }
             } catch (ex) {
                 log.warn("Failed to get profile for", userId);

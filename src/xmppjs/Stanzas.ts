@@ -70,6 +70,7 @@ export class StzaPresence extends StzaBase {
         to: string,
         id?: string,
         public presenceType?: string,
+        public avatar_hash?: string,
     ) {
         super(from, to, id);
     }
@@ -168,6 +169,7 @@ export class StzaPresenceJoin extends StzaPresence {
         to: string,
         id?: string,
         public presenceType?: string,
+        public avatar_hash?: string,
     ) {
         super(from, to, id);
     }
@@ -176,6 +178,13 @@ export class StzaPresenceJoin extends StzaPresence {
         // No history.
         // TODO: I'm sure we want to be able to configure this.
         return `<history maxchars='0'/>`;
+    }
+
+    public get presenceContent() {
+        if (this.avatar_hash) {
+            return `<x xmlns='vcard-temp:x:update'><photo>${this.avatar_hash}</photo></x>`;
+        }
+        return "";
     }
 }
 

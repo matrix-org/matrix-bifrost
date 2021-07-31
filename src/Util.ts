@@ -72,4 +72,8 @@ export class Util {
         }
         return msgs;
     }
+
+    public static sha1(data: string): string | undefined {
+        return crypto.createHash("sha1").update(data).digest("hex");
+    }
 }
