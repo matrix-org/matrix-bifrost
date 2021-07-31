@@ -1,6 +1,7 @@
 import { IChatJoinProperties } from "./bifrost/Events";
 import { Intent, WeakEvent } from "matrix-appservice-bridge";
 import * as crypto from "crypto";
+import { Utf8AsciiBinaryEncoding } from "crypto";
 
 export class Util {
 
@@ -73,7 +74,7 @@ export class Util {
         return msgs;
     }
 
-    public static sha1(data: string): string | undefined {
-        return crypto.createHash("sha1").update(data, "binary").digest("hex");
+    public static sha1(data: string): string {
+        return crypto.createHash("sha1").update(data, "ascii").digest("hex");
     }
 }
