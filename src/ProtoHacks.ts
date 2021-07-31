@@ -26,6 +26,10 @@ export class ProtoHacks {
                 if (typeof(intent) === "string") {
                     props.handle = intent;
                 } else {
+                    if (!userId.match(/^@/)) {
+                        // User doesn't have a mxId yet
+                        return;
+                    }
                     let profile = await intent.getProfileInfo(userId);
                     props.handle = profile.displayname;
                     if (protocolId === XMPP_JS) {
