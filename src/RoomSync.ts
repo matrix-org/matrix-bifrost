@@ -23,7 +23,7 @@ export class RoomSync {
     private accountRoomMemberships: Map<string, IRoomMembership[]>;
     private ongoingSyncs = 0;
     constructor(
-        private bridge: Bridge;
+        private bridge: Bridge,
         private bifrost: IBifrostInstance,
         private store: IStore,
         private deduplicator: Deduplicator,
