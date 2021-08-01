@@ -324,7 +324,11 @@ export class ServiceHandler {
         let profile: {displayname?: string, avatar_url?: string};
         try {
             // TODO: Move this to a gateway-profilelookup or something.
-            profile = await intent.getProfileInfo(account.mxId, null);
+            if (account.mxId.match(/^@/)) {
+                profile = await intent.getProfileInfo(account.mxId, null);
+            } else {
+                throw Error(`Account ${account.mxId} is still in an undefined state`);
+            }
         } catch (ex) {
             log.warn("Profile fetch failed for ", account.mxId, ex);
             this.notFound(from, to, id, "vCard", "vcard-temp");
