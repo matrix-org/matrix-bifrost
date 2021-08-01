@@ -573,7 +573,7 @@ export class MatrixRoomHandler {
                         encoding: null,
                         resolveWithFullResponse: true,
                     }).promise())!;
-                    currentData = Buffer.from(res);
+                    currentData = Buffer.from(res.body);
                 } catch (ex) {
                     log.warn("Error retrieving current avatar, setting one new anyways ", ex)
                 }
