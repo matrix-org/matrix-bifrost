@@ -578,7 +578,7 @@ export class MatrixRoomHandler {
             if (!currentData || (Buffer.from(currentData.body).toString("binary") !== data.string)) {
                 const mxcurl = await intent.uploadContent(data.string, {
                     includeFilename: false,
-                    type: data.conv.avatar_mimetype,
+                    type: data.conv.avatar_type,
                 });
                 intent.setRoomAvatar(roomId, mxcurl).catch((err) => {
                     log.warn("Failed to set avatar of ", roomId, err);
