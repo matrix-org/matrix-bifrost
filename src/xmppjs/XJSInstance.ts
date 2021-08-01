@@ -595,7 +595,7 @@ export class XmppJsInstance extends EventEmitter implements IBifrostInstance {
                         });
                     }
                 } catch (ex) {
-                    log.warning(`Couldn't fetch MUC Avatar: ${ex}`);
+                    log.warn(`Couldn't fetch MUC Avatar: ${ex}`);
                 }
             } else {
                 this.checkMUCCache.set(to, false);
