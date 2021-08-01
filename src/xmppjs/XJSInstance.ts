@@ -432,6 +432,12 @@ export class XmppJsInstance extends EventEmitter implements IBifrostInstance {
 
     private async getMucAvatar(room: string): Promise<Element> {
         const id = uuid();
+        // check if MUC supports avatars
+        const result = await this.sendIq(new StzaIqDiscoInfo(this.myAddress.toString(), room, uuid(), "get"));
+        const supportVCards = result.getChild("query")?.getChildByAttr("var", "vcard-temp");
+        if (!supportVCards) {
+            throw Error("MUC doesn't support avatars");
+        }
         const res = new Promise((resolve: (e: Element) => void, reject) => {
             const timeout = setTimeout(() => reject(Error("Timeout")), 5000);
             this.once(`iq.${id}`, (stanza: Element) => {
@@ -574,29 +580,6 @@ export class XmppJsInstance extends EventEmitter implements IBifrostInstance {
             const isMuc = result.getChild("query")?.getChildByAttr("var", "http://jabber.org/protocol/muc");
             if (isMuc) {
                 this.checkMUCCache.set(to, true);
-                try {
-                    const mucAvatar = await this.getMucAvatar(to);
-                    const photo = mucAvatar.getChild("PHOTO");
-                    const binval = photo!.getChildText("BINVAL");
-                    if (binval) {
-                        this.emit("chat-avatar", {
-                            eventName: "chat-avatar",
-                            conv: {
-                                name: to,
-                                avatar_type: photo!.getChildText("TYPE"),
-                            },
-                            account: {
-                                protocol_id: XMPP_PROTOCOL.id,
-                                username: this.bridge.getBot().getUserId,
-                            },
-                            sender: this.myAddress.toString(),
-                            string: Buffer.from(binval, "base64").toString("binary"),
-                            isGateway: false,
-                        });
-                    }
-                } catch (ex) {
-                    log.warn(`Couldn't fetch MUC Avatar: ${ex}`);
-                }
             } else {
                 this.checkMUCCache.set(to, false);
             }
@@ -783,6 +766,30 @@ export class XmppJsInstance extends EventEmitter implements IBifrostInstance {
                 topic: subject,
                 isGateway: false,
             } as IChatTopicState);
+            // HACK, when we set the topic we also attempt setting the room avatar
+            try {
+                const mucAvatar = await this.getMucAvatar(convName);
+                const photo = mucAvatar.getChild("PHOTO");
+                const binval = photo!.getChildText("BINVAL");
+                if (binval) {
+                    this.emit("chat-avatar", {
+                        eventName: "chat-avatar",
+                        conv: {
+                            name: convName,
+                            avatar_type: photo!.getChildText("TYPE"),
+                        },
+                        account: {
+                            protocol_id: XMPP_PROTOCOL.id,
+                            username: this.bridge.getBot().getUserId,
+                        },
+                        sender: this.myAddress.toString(),
+                        string: Buffer.from(binval, "base64").toString("binary"),
+                        isGateway: false,
+                    });
+                } as IChatAvatarState);
+            } catch (ex) {
+                log.warn(`Couldn't fetch MUC Avatar: ${ex}`);
+            }
         }
 
         const body = stanza.getChild("body");
