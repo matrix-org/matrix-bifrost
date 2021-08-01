@@ -430,6 +430,27 @@ export class XmppJsInstance extends EventEmitter implements IBifrostInstance {
         });
     }
 
+    private async getMucAvatar(room: string): Promise<Element> {
+        const id = uuid();
+        const res = new Promise((resolve: (e: Element) => void, reject) => {
+            const timeout = setTimeout(() => reject(Error("Timeout")), 5000);
+            this.once(`iq.${id}`, (stanza: Element) => {
+                clearTimeout(timeout);
+                const vCard = (stanza.getChild("vCard") as unknown as Element);
+                if (vCard) {
+                    resolve(vCard);
+                }
+                reject(Error("Room has no avatar"));
+            });
+        });
+        log.info(`Fetching MUC Avatar of ${room}`);
+        await this.xmppSend(
+            new StzaIqVcardRequest(this.xmppAddress.toString(), room, id),
+        );
+        Metrics.remoteCall("xmpp.iq.vc2");
+        return res;
+    }
+
     public async getVCard(who: string, sender?: string): Promise<Element> {
         const id = uuid();
         const whoJid = jid(who);
@@ -553,6 +574,29 @@ export class XmppJsInstance extends EventEmitter implements IBifrostInstance {
             const isMuc = result.getChild("query")?.getChildByAttr("var", "http://jabber.org/protocol/muc");
             if (isMuc) {
                 this.checkMUCCache.set(to, true);
+                try {
+                    const mucAvatar = await this.getMucAvatar(to);
+                    const photo = mucAvatar.getChild("PHOTO");
+                    const binval = photo!.getChildText("BINVAL");
+                    if (binval) {
+                        this.emit("chat-avatar", {
+                            eventName: "chat-avatar",
+                            conv: {
+                                name: to,
+                                avatar_type: photo!.getChildText("TYPE"),
+                            },
+                            account: {
+                                protocol_id: XMPP_PROTOCOL.id,
+                                username: this.bridge.getBot().getUserId,
+                            },
+                            sender: this.myAddress.toString(),
+                            string: Buffer.from(binval, "base64").toString("binary"),
+                            isGateway: false,
+                        });
+                    }
+                } catch (ex) {
+                    log.warning(`Couldn't fetch MUC Avatar: ${ex}`);
+                }
             } else {
                 this.checkMUCCache.set(to, false);
             }

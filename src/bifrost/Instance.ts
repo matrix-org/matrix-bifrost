@@ -41,6 +41,7 @@ export interface IBifrostInstance extends EventEmitter {
     on(name: "chat-joined-new", cb: (ev: IChatJoined) => void);
     on(name: "chat-user-joined"|"chat-user-left"|"chat-user-kick"|"chat-kick", cb: (ev: IUserStateChanged) => void);
     on(name: "chat-topic", cb: (ev: IChatTopicState) => void);
+    on(name: "chat-avatar", cb: (ev: IChatAvatarState) => void);
     on(name: "chat-invite", cb: (ev: IChatInvite) => void);
     on(name: "gateway-queryroom", cb: (ev: IGatewayRoomQuery) => void);
     on(name: "gateway-joinroom", cb: (ev: IGatewayJoin) => void);

@@ -20,6 +20,7 @@ import { Deduplicator } from "./Deduplicator";
 import { Config } from "./Config";
 import { decode as entityDecode } from "html-entities";
 import { MessageFormatter } from "./MessageFormatter";
+import * as request from "request-promise-native";
 const log = Logging.get("MatrixRoomHandler");
 
 const ACCOUNT_LOCK_MS = 1000;
@@ -76,6 +77,7 @@ export class MatrixRoomHandler {
         purple.on("chat-user-kick", this.handleRemoteUserState.bind(this));
         /* This also handles chat names, which are just set as the conv.name */
         purple.on("chat-topic", this.handleTopic.bind(this));
+        purple.on("chat-avatar", this.handleRoomAvatar.bind(this));
         purple.on("im-typing", this.handleIMTyping.bind(this));
         purple.on("chat-typing", this.handleChatTyping.bind(this));
         purple.on("store-remote-user", (storeUser: IStoreRemoteUser) => {
@@ -541,6 +543,42 @@ export class MatrixRoomHandler {
             intent.setRoomName(roomId, data.conv.name).catch((err) => {
                 log.warn("Failed to set name of", roomId, err);
             });
+        }
+    }
+    private async handleRoomAvatar(data: IChatStringState) {
+        if (!this.bridge) {
+            throw Error("Couldn't handleRoomAvatar, bridge was not defined");
+        }
+        const intent = this.bridge.getIntent();
+        log.info(`Setting avatar for ${data.conv.name} (size ${data.string.length.toString()})`);
+        const roomId = await this.createOrGetGroupChatRoom(data, intent, true, true);
+        if (roomId === false) {
+            log.info("Room does not support setting avatar");
+        }
+        const state = await intent.roomState(roomId) as WeakEvent[];
+        const avatarEv = state.find((ev) => ev.type === "m.room.avatar");
+        const currentUrl = avatarEv ? avatarEv.content.url : "";
+        if (!data.conv.avatar_type || !data.conv.avatar_type.match(/^image.*/)) {
+            throw Error("Wrong mimetype or no mimetype");
+        }
+        // get the buffer of the current avatar
+        try {
+            const currentData = (await request.get({
+                uri: intent.getClient().mxcUrlToHttp(currentUrl),
+                encoding: null,
+                resolveWithFullResponse: true,
+            }).promise())!;
+            if (!currentData || (Buffer.from(currentData.body).toString("binary") !== data.string)) {
+                const mxcurl = await intent.uploadContent(data.string, {
+                    includeFilename: false,
+                    type: data.conv.avatar_mimetype,
+                });
+                intent.setRoomAvatar(roomId, mxcurl).catch((err) => {
+                    log.warn("Failed to set avatar of", roomId, err);
+                });
+            }
+        } catch (ex) {
+            throw Error("Failed to process avatar");
         }
     }
     private async handleIMTyping(data: IChatTyping) {
