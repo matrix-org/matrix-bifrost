@@ -63,6 +63,11 @@ export interface IChatTopicState extends IConversationEvent {
     topic: string;
 }
 
+export interface IChatBufferState extends IConversationEvent {
+    sender: string;
+    buffer: Buffer;
+}
+
 export interface IUserInfo extends IAccountEvent {
     [key: string]: string|IAccountMinimal|undefined;
     who: string;

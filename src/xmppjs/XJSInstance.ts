@@ -783,7 +783,7 @@ export class XmppJsInstance extends EventEmitter implements IBifrostInstance {
                             username: this.bridge.getBot().getUserId,
                         },
                         sender: this.myAddress.toString(),
-                        string: Buffer.from(binval, "base64").toString("binary"),
+                        buffer: Buffer.from(binval, "base64"),
                         isGateway: false,
                     });
                 } as IChatAvatarState);
