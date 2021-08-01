@@ -563,22 +563,29 @@ export class MatrixRoomHandler {
         }
         // get the buffer of the current avatar
         try {
-            const currentData = (await request.get({
-                uri: intent.getClient().mxcUrlToHttp(currentUrl),
-                encoding: null,
-                resolveWithFullResponse: true,
-            }).promise())!;
+            let currentData: any;
+            if (currentUrl !== "") {
+                try {
+                    currentData = (await request.get({
+                        uri: intent.getClient().mxcUrlToHttp(currentUrl),
+                        encoding: null,
+                        resolveWithFullResponse: true,
+                    }).promise())!;
+                } catch (ex) {
+                    log.warn("Error retrieving current avatar, setting one new anyways ", ex)
+                }
+            }
             if (!currentData || (Buffer.from(currentData.body).toString("binary") !== data.string)) {
                 const mxcurl = await intent.uploadContent(data.string, {
                     includeFilename: false,
                     type: data.conv.avatar_mimetype,
                 });
                 intent.setRoomAvatar(roomId, mxcurl).catch((err) => {
-                    log.warn("Failed to set avatar of", roomId, err);
+                    log.warn("Failed to set avatar of ", roomId, err);
                 });
             }
         } catch (ex) {
-            throw Error("Failed to process avatar");
+            log.warn("Failed to process avatar ", ex);
         }
     }
     private async handleIMTyping(data: IChatTyping) {
