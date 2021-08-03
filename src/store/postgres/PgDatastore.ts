@@ -202,7 +202,7 @@ export class PgDataStore implements IStore {
             "SELECT room_id FROM admin_rooms WHERE user_id = $1",
             [ matrixUserId ],
         );
-        return res.rows[0] || null;
+        return res.rows[0]?.room_id || null;
     }
 
     public async getIMRoom(matrixUserId: string, protocolId: string, remoteUserId: string): Promise<RoomBridgeStoreEntry|null> {
@@ -366,8 +366,8 @@ export class PgDataStore implements IStore {
                 room_id: matrixId,
                 user_id: (remoteData as IRemoteUserAdminData).matrixUser,
             };
-            statement = PgDataStore.BuildUpsertStatement("admin_rooms", "(user_id)", Object.keys(adminProps));
-            await this.pgPool.query(statement, Object.values(adminProps));
+            // We don't upsert here.
+            await this.pgPool.query("INSERT INTO admin_rooms (room_id, user_id) VALUES ($1, $2)", Object.values(adminProps));
             return res;
         }
 
