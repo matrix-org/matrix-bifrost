@@ -161,7 +161,7 @@ export class PgDataStore implements IStore {
         ));
     }
 
-    public async getRoomByRemoteData(remoteData: IRemoteGroupData): Promise<RoomBridgeStoreEntry|null> {
+    public async getGroupRoomByRemoteData(remoteData: IRemoteGroupData): Promise<RoomBridgeStoreEntry|null> {
         const parts: string[] = [];
         let i = 0;
         for (const key of Object.keys(remoteData)) {
@@ -195,6 +195,14 @@ export class PgDataStore implements IStore {
             remote: new RemoteRoom("", remoteGroupData as Record<string,unknown>),
             data: {}
         };
+    }
+
+    public async getAdminRoom(matrixUserId: string): Promise<string|null> {
+        const res = await this.pgPool.query(
+            "SELECT room_id FROM admin_rooms WHERE user_id = $1",
+            [ matrixUserId ],
+        );
+        return res.rows[0] || null;
     }
 
     public async getIMRoom(matrixUserId: string, protocolId: string, remoteUserId: string): Promise<RoomBridgeStoreEntry|null> {
