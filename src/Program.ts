@@ -149,7 +149,10 @@ class Program {
             if (!internalRoom) {
                 const result = await this.bridge.getIntent().createRoom({ options: {}});
                 internalRoom = (await this.store.storeRoom(
-                    result.room_id, MROOM_TYPE_UADMIN, "-internal-", {matrixUser: "-internal-"} as IRemoteUserAdminData)
+                    result.room_id, MROOM_TYPE_UADMIN, "-internal-", {
+                        type: MROOM_TYPE_UADMIN,
+                        matrixUser: "-internal-"
+                    } as IRemoteUserAdminData)
                 ).matrix.getId();
             }
             const time = await this.bridge.pingAppserviceRoute(internalRoom);
