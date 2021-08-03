@@ -62,7 +62,7 @@ export class MatrixEventHandler {
         const properties = Util.sanitizeProperties(res.properties);
         try {
             // Check if this chat already has a portal and refuse to bridge it.
-            const existing = await this.store.getRoomByRemoteData({
+            const existing = await this.store.getGroupRoomByRemoteData({
                 properties, // for joining
                 protocol_id: protocol.id,
             });
