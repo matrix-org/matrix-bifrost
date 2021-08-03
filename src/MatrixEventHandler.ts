@@ -503,7 +503,7 @@ export class MatrixEventHandler {
             // This is not a 1 to 1 room, so just keep us joined for now. We might want it later.
             return;
         }
-        this.store.storeRoom(event.room_id, MROOM_TYPE_UADMIN, `UADMIN-${event.sender}`, {
+        await this.store.storeRoom(event.room_id, MROOM_TYPE_UADMIN, `UADMIN-${event.sender}`, {
             type: MROOM_TYPE_UADMIN,
             matrixUser: new MatrixUser(event.sender).getId(),
         } as IRemoteUserAdminData);
