@@ -4,7 +4,7 @@ import { Intent } from "matrix-appservice-bridge";
 import { Logging } from "matrix-appservice-bridge";
 import { IBifrostAccount } from "./bifrost/Account";
 import { Util } from "./Util";
-import * as request from "request-promise-native";
+import request from "axios";
 const log = Logging.get("ProtoHacks");
 
 export const PRPL_MATRIX = "prpl-matrix";
@@ -39,13 +39,14 @@ export class ProtoHacks {
                                 profile.avatar_url, 256, 256, "scale", false,
                             );
                             if (thumbUrl) {
-                                const data = (await request.get({
-                                    uri: thumbUrl,
-                                    encoding: null,
-                                    resolveWithFullResponse: true,
-                                }).promise())!;
-                                if (data) {
-                                    props.avatar_hash = Util.sha1(Buffer.from(data.body).toString("binary"));
+                                const res = await request.get(
+                                    thumbUrl,
+                                    {
+                                        responseType: "arraybuffer",
+                                    },
+                                );
+                                if (res) {
+                                    props.avatar_hash = Util.sha1(Buffer.from(res.data).toString("binary"));
                                 } else {
                                     log.warn(`Failed to compute Matrix User ${userId}'s avatar hash`);
                                 }

@@ -21,7 +21,7 @@ import { Deduplicator } from "./Deduplicator";
 import { Config } from "./Config";
 import { decode as entityDecode } from "html-entities";
 import { MessageFormatter } from "./MessageFormatter";
-import * as request from "request-promise-native";
+import request from "axios";
 const log = Logging.get("MatrixRoomHandler");
 
 const ACCOUNT_LOCK_MS = 1000;
@@ -568,12 +568,13 @@ export class MatrixRoomHandler {
             let currentData: any;
             if (currentUrl !== "") {
                 try {
-                    let res = (await request.get({
-                        uri: intent.getClient().mxcUrlToHttp(currentUrl),
-                        encoding: null,
-                        resolveWithFullResponse: true,
-                    }).promise())!;
-                    currentData = Buffer.from(res.body);
+                    let res = await request.get(
+                        intent.getClient().mxcUrlToHttp(currentUrl),
+                        {
+                            responseType: "arraybuffer",
+                        },
+                    );
+                    currentData = Buffer.from(res.data);
                 } catch (ex) {
                     log.warn("Error retrieving current avatar, setting one new anyways ", ex)
                 }
