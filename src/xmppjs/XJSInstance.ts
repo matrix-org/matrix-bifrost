@@ -120,7 +120,11 @@ export class XmppJsInstance extends EventEmitter implements IBifrostInstance {
     }
 
     public xmppWriteToStream(xmlMsg: any) {
-        const xml = typeof (xmlMsg) === "string" ? xmlMsg : xmlMsg.xml;
+        let xml = typeof (xmlMsg) === "string" ? xmlMsg : xmlMsg.xml;
+        if (!xml) {
+            // it's an element
+            xml = xmlMsg.toString();
+        }
         if (this.canWrite) {
             return this.xmpp.write(xml);
         }
