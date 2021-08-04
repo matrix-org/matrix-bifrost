@@ -17,6 +17,7 @@ import { IAccountEvent,
     IStoreRemoteUser,
     IChatReadReceipt,
     IChatTopicState,
+    IChatAvatarState,
     IEventBody,
     IChatJoinProperties} from "../bifrost/Events";
 import { IBasicProtocolMessage, IMessageAttachment } from "../MessageFormatter";
@@ -787,8 +788,8 @@ export class XmppJsInstance extends EventEmitter implements IBifrostInstance {
                         sender: this.myAddress.toString(),
                         buffer: Buffer.from(binval, "base64"),
                         isGateway: false,
-                    });
-                } as IChatAvatarState);
+                    } as IChatAvatarState);
+                }
             } catch (ex) {
                 log.warn(`Couldn't fetch MUC Avatar: ${ex}`);
             }
