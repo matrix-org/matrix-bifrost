@@ -63,7 +63,7 @@ export interface IChatTopicState extends IConversationEvent {
     topic: string;
 }
 
-export interface IChatBufferState extends IConversationEvent {
+export interface IChatAvatarState extends IConversationEvent {
     sender: string;
     buffer: Buffer;
 }

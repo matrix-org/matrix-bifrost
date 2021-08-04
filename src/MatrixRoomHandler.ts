@@ -546,7 +546,7 @@ export class MatrixRoomHandler {
             });
         }
     }
-    private async handleRoomAvatar(data: IChatBufferState) {
+    private async handleRoomAvatar(data: IChatAvatarState) {
         if (!this.bridge) {
             throw Error("Couldn't handleRoomAvatar, bridge was not defined");
         }
