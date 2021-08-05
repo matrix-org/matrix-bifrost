@@ -375,6 +375,7 @@ export class XmppJsGateway implements IGateway {
                         PresenceRole.Participant,
                         false,
                         realJid,
+                        null,
                         avatarHash,
                     ),
                 )
@@ -397,6 +398,7 @@ export class XmppJsGateway implements IGateway {
             PresenceRole.Participant,
             false,
             stanza.attrs.from,
+            null,
             selfHash,
         );
         await this.reflectXMPPStanza(chatName, reflectedPresence);
@@ -410,6 +412,7 @@ export class XmppJsGateway implements IGateway {
             PresenceAffiliation.Member,
             PresenceRole.Participant,
             true,
+            null,
             null,
             selfHash,
         );
