@@ -392,7 +392,7 @@ export class PgDataStore implements IStore {
                 room_id: matrixId,
                 user_id: (remoteData as IRemoteUserAdminData).matrixUser,
             };
-            statement = PgDataStore.BuildUpsertStatement("admin_rooms", "(user_id)", Object.keys(adminProps));
+            statement = PgDataStore.BuildUpsertStatement("admin_rooms", "(room_id)", Object.keys(adminProps));
             await this.pgPool.query(statement, Object.values(adminProps));
             return res;
         }
