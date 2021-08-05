@@ -1,0 +1,12 @@
+Features implemented:
+- Fetching of MUC occupant avatars for matrix side of the gateway
+- Implementing handling of MUC avatars to set the Matrix room avatar
+- Implement logics and facilities to fetch pictures off Matrix profiles and create and store hashes that require to be appended to presences to advertise avatar availability XMPP side of the gateway
+
+Issues fixed:
+- Attempt fixing mxID unescaping function to better handle multibyte chars
+- Fix storage method getRoomsOfType() as it didn't handle correctly anything but group rooms
+- Add storage method to retrieve Admin rooms getAdminRoom()
+- Fix constraint for admin rooms back to room_id
+- Fix pingBridge() as using getRoomByRemoteData() causes it to throw an exception since it'll seek rooms into group_rooms which doesn't have a matrixUser columns, instead use getAdminRoom() with the bot account
+- Make sure xmppWriteToStream() always passes a string both when writing to the stream and buffering stanzas, as passing an element now causes promises to break.
