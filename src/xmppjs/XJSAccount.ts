@@ -250,6 +250,9 @@ export class XmppJsAccount implements IBifrostAccount {
         const message = new StzaPresenceJoin(
             from,
             to,
+            null,
+            null,
+            components.avatar_hash,
         );
         this.roomHandles.set(roomName, components.handle);
         if (setWaiting) {
