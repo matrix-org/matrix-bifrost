@@ -52,8 +52,8 @@ export class GatewayHandler {
         purple.on("gateway-publicrooms", this.handlePublicRooms.bind(this));
     }
 
-    private async populateAvatarHashes(membership: any, intent: Intent) {
-        log.info("Populating avatar hashes from mxc URLs...");
+    private async populateAvatarHashes(roomId: string, membership: any, intent: Intent) {
+        log.info(`Populating avatar hashes from mxc URLs for ${roomId} members`);
         let res = membership.slice();
         for (const [idx, member] of membership.entries()) {
             if (typeof(member.avatar_hash) === "string") {
@@ -86,7 +86,7 @@ export class GatewayHandler {
                     membership: e.content.membership,
                 }
             ))
-            membership = await this.populateAvatarHashes(membership, intent);
+            membership = await this.populateAvatarHashes(roomId, membership, intent);
             const room: IGatewayRoom = {
                 name: nameEv ? nameEv.content.name : "",
                 topic: topicEv ? topicEv.content.topic : "",
