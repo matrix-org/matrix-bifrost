@@ -231,7 +231,7 @@ export class XmppJsInstance extends EventEmitter implements IBifrostInstance {
             if (!this.autoRegister) {
                 throw Error("Autoregistration must be enabled for gateways to work!");
             }
-            this.xmppGateway = new XmppJsGateway(this, this.autoRegister, this.config.bridge);
+            this.xmppGateway = new XmppJsGateway(this, this.autoRegister, this.config.bridge, this.bridge);
         }
         this.defaultRes = opts.defaultResource ? opts.defaultResource : "matrix-bridge";
         log.info(`Starting new XMPP component instance to ${opts.service} using domain ${opts.domain}`);

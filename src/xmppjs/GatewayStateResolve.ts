@@ -3,6 +3,7 @@ import { Logging } from "matrix-appservice-bridge";
 import { MatrixMembershipEvent } from "../MatrixTypes";
 import { GatewayMUCMembership } from "./GatewayMUCMembership";
 import { IStza, PresenceAffiliation, PresenceRole, StzaBase, StzaPresenceItem } from "./Stanzas";
+import { IGatewayRoom } from "../bifrost/Gateway";
 import { XMPPStatusCode } from "./XMPPConstants";
 
 const log = Logging.get("GatewayStateResolve");
@@ -18,13 +19,14 @@ function sendToAllDevices(presence: StzaPresenceItem, devices: Set<string>) {
             false,
             undefined,
             presence.presenceType,
+            presence.avatarHash,
         )
     )
 
 }
 
 export class GatewayStateResolve {
-    static resolveMatrixStateToXMPP(chatName: string, members: GatewayMUCMembership, event: MatrixMembershipEvent): IStza[] {
+    static resolveMatrixStateToXMPP(chatName: string, members: GatewayMUCMembership, event: MatrixMembershipEvent, room: IGatewayRoom): IStza[] {
         const membership = event.content.membership;
         let stanzas: IStza[] = [];
         const allDevices = members.getXmppMembersDevices(chatName);
@@ -47,6 +49,8 @@ export class GatewayStateResolve {
             }
             // Matrix Join
             members.addMatrixMember(chatName, event.state_key, jid(from));
+            // Get room membership to fetch the avatar hash
+            const roomMembership = room.membership.find((e) => e.stateKey === event.state_key);
             // Reflect to all
             stanzas = sendToAllDevices(
                 new StzaPresenceItem(
@@ -54,7 +58,10 @@ export class GatewayStateResolve {
                     "",
                     undefined,
                     PresenceAffiliation.Member,
-                    PresenceRole.Participant
+                    PresenceRole.Participant,
+                    null,
+                    null,
+                    roomMembership.avatar_hash,
                 ), allDevices,
             );
         } else if (membership === "leave" && event.state_key === event.sender) {

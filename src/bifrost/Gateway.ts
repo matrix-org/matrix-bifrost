@@ -30,6 +30,7 @@ export interface IGatewayRoom {
         sender: string;
         stateKey: string;
         displayname?: string;
+        avatar_hash?: string;
         membership: string;
         isRemote: boolean;
     }[];

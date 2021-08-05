@@ -1,7 +1,7 @@
 import { XmppJsInstance, XMPP_PROTOCOL } from "./XJSInstance";
 import { Element, x } from "@xmpp/xml";
 import { jid, JID } from "@xmpp/jid";
-import { Logging } from "matrix-appservice-bridge";
+import { Bridge, Logging } from "matrix-appservice-bridge";
 import { IConfigBridge } from "../Config";
 import { IBasicProtocolMessage } from "..//MessageFormatter";
 import { IGatewayJoin, IUserStateChanged, IStoreRemoteUser, IUserInfo } from "../bifrost/Events";
@@ -38,7 +38,7 @@ export class XmppJsGateway implements IGateway {
     private presenceCache: PresenceCache;
     // Storing every XMPP user and their anonymous.
     private members: GatewayMUCMembership;
-    constructor(private xmpp: XmppJsInstance, private registration: AutoRegistration, private config: IConfigBridge) {
+    constructor(private xmpp: XmppJsInstance, private registration: AutoRegistration, private config: IConfigBridge, private bridge: Bridge) {
         this.roomHistory = new Map();
         this.stanzaCache = new Map();
         this.members = new GatewayMUCMembership();
@@ -236,11 +236,11 @@ export class XmppJsGateway implements IGateway {
     }
 
     public async sendMatrixMembership(
-        chatName: string, event: MatrixMembershipEvent,
+        chatName: string, event: MatrixMembershipEvent, room: IGatewayRoom
     ) {
         log.info(`Got new ${event.content.membership} for ${event.state_key} (from: ${event.sender}) in ${chatName}`);
         // Iterate around each joined member and add the new presence step.
-        const presenceEvents = GatewayStateResolve.resolveMatrixStateToXMPP(chatName, this.members, event);
+        const presenceEvents = GatewayStateResolve.resolveMatrixStateToXMPP(chatName, this.members, event, room);
         if (presenceEvents.length === 0) {
             log.info(`Nothing to do for ${event.event_id}`);
             return;

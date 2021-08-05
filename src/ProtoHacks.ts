@@ -18,6 +18,30 @@ export const XMPP_JS = "xmpp-js";
  * carefully so that future folks can understand what is going on.
  */
 export class ProtoHacks {
+    public static async getAvatarHash(userId: string, avatarUrl: string, intent: Intent) {
+        try {
+            const thumbUrl = intent.getClient().mxcUrlToHttp(
+                avatarUrl, 256, 256, "scale", false,
+            );
+            if (thumbUrl) {
+                const res = await request.get(
+                    thumbUrl,
+                    {
+                        responseType: "arraybuffer",
+                    },
+                );
+                if (res) {
+                    return Util.sha1(Buffer.from(res.data).toString("binary"));
+                } else {
+                    log.warn(`Failed to get ${userId}'s avatar hash`);
+                }
+            }
+        } catch (ex) {
+            log.warn(`Error while processing ${userId}'s avatar to compute the hash: ${ex}`);
+            return;
+        }
+    }
+
     public static async addJoinProps(protocolId: string, props: any, userId: string, intent: Intent|string) {
         // When joining XMPP rooms, we should set a handle so pull off one from the users
         // profile.
@@ -35,22 +59,7 @@ export class ProtoHacks {
                     if (protocolId === XMPP_JS) {
                         // fetch and compute avatar hash
                         if (profile.avatar_url) {
-                            const thumbUrl = intent.getClient().mxcUrlToHttp(
-                                profile.avatar_url, 256, 256, "scale", false,
-                            );
-                            if (thumbUrl) {
-                                const res = await request.get(
-                                    thumbUrl,
-                                    {
-                                        responseType: "arraybuffer",
-                                    },
-                                );
-                                if (res) {
-                                    props.avatar_hash = Util.sha1(Buffer.from(res.data).toString("binary"));
-                                } else {
-                                    log.warn(`Failed to compute Matrix User ${userId}'s avatar hash`);
-                                }
-                            }
+                            props.avatar_hash = await this.getAvatarHash(userId, profile.avatar_url, intent);
                         }
                     }
                 }

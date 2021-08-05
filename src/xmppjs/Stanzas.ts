@@ -70,7 +70,7 @@ export class StzaPresence extends StzaBase {
         to: string,
         id?: string,
         public presenceType?: string,
-        public avatar_hash?: string,
+        public avatarHash?: string,
     ) {
         super(from, to, id);
     }
@@ -110,6 +110,7 @@ export class StzaPresenceItem extends StzaPresence {
         self: boolean = false,
         public jid: string = "",
         itemType: string = "",
+        public avatarHash?: string,
     ) {
         super(from, to, id, itemType);
         this.statusCodes = new Set();
@@ -138,6 +139,13 @@ export class StzaPresenceItem extends StzaPresence {
         }
         xml += "</item>";
         return xml;
+    }
+
+    public get presenceContent() {
+        if (this.avatarHash) {
+            return `<x xmlns='vcard-temp:x:update'><photo>${this.avatarHash}</photo></x>`;
+        }
+        return "";
     }
 }
 
@@ -169,7 +177,7 @@ export class StzaPresenceJoin extends StzaPresence {
         to: string,
         id?: string,
         public presenceType?: string,
-        public avatar_hash?: string,
+        public avatarHash?: string,
     ) {
         super(from, to, id);
     }
@@ -181,8 +189,8 @@ export class StzaPresenceJoin extends StzaPresence {
     }
 
     public get presenceContent() {
-        if (this.avatar_hash) {
-            return `<x xmlns='vcard-temp:x:update'><photo>${this.avatar_hash}</photo></x>`;
+        if (this.avatarHash) {
+            return `<x xmlns='vcard-temp:x:update'><photo>${this.avatarHash}</photo></x>`;
         }
         return "";
     }

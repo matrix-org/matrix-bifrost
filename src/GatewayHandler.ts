@@ -9,6 +9,7 @@ import { ProfileSync } from "./ProfileSync";
 import { IGatewayRoom } from "./bifrost/Gateway";
 import { MatrixMembershipEvent } from "./MatrixTypes";
 import { BifrostRemoteUser } from "./store/BifrostRemoteUser";
+import { ProtoHacks } from "./ProtoHacks";
 
 const log = Logging.get("GatewayHandler");
 
@@ -68,6 +69,8 @@ export class GatewayHandler {
                     isRemote: bot.isRemoteUser(e.sender),
                     stateKey: e.state_key,
                     displayname: e.content.displayname,
+                    avatar_hash: typeof (e.content.avatar_url) === "string" ? await ProtoHacks.getAvatarHash(
+                        e.state_key, e.content.avatar_url, intent) : null,
                     sender: e.sender,
                     membership: e.content.membership,
                 }
@@ -129,7 +132,8 @@ export class GatewayHandler {
         if (!context.matrix) {
             return;
         }
-        const room = await this.getVirtualRoom(context.matrix.getId(), this.bridge.getIntent());
+        const intent = this.bridge.getIntent();
+        const room = await this.getVirtualRoom(context.matrix.getId(), intent);
         if (this.bridge.getBot().isRemoteUser(event.state_key)) {
             // This might be a kick or ban.
             log.info(`Forwarding remote membership for ${event.state_key} in ${chatName}`);
@@ -149,6 +153,8 @@ export class GatewayHandler {
                 membership: event.content.membership,
                 sender: event.sender,
                 displayname: event.content.displayname,
+                avatar_hash: typeof (event.content.avatar_url) === "string" ? await ProtoHacks.getAvatarHash(
+                    event.state_key, event.content.avatar_url, intent) : null,
                 stateKey: event.state_key,
                 isRemote: false,
             });
