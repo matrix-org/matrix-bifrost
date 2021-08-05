@@ -357,12 +357,14 @@ export class XmppJsGateway implements IGateway {
             }
             allMembershipPromises.push((async () => {
                 let realJid;
+                let avatarHash;
                 if ((member as IGatewayMemberXmpp).realJid) {
                     realJid = (member as IGatewayMemberXmpp).realJid.toString();
                 } else {
                     realJid = this.registration.generateParametersFor(
                         XMPP_PROTOCOL.id, (member as IGatewayMemberMatrix).matrixId,
                     ).username;
+                    avatarHash = (member as IGatewayMemberMatrix).avatarHash;
                 }
                 return this.xmpp.xmppSend(
                     new StzaPresenceItem(
@@ -373,6 +375,7 @@ export class XmppJsGateway implements IGateway {
                         PresenceRole.Participant,
                         false,
                         realJid,
+                        avatarHash,
                     ),
                 )
             })());
@@ -380,6 +383,9 @@ export class XmppJsGateway implements IGateway {
 
         // Wait for all presence to be sent first.
         await Promise.all(allMembershipPromises);
+
+        // get vcard hash
+        const selfHash = stanza.getChild("x", "vcard-temp:x:update")?.getChildText("photo");
 
         log.debug("Emitting membership of self");
         // 2. Send everyone else the users new presence.
@@ -391,6 +397,7 @@ export class XmppJsGateway implements IGateway {
             PresenceRole.Participant,
             false,
             stanza.attrs.from,
+            selfHash,
         );
         await this.reflectXMPPStanza(chatName, reflectedPresence);
         // FROM THIS POINT ON, WE CONSIDER THE USER JOINED.
@@ -403,6 +410,8 @@ export class XmppJsGateway implements IGateway {
             PresenceAffiliation.Member,
             PresenceRole.Participant,
             true,
+            null,
+            selfHash,
         );
 
         // Matrix is non-anon, and Matrix logs.
@@ -546,6 +555,7 @@ export class XmppJsGateway implements IGateway {
                 chatName,
                 member.stateKey,
                 jid(`${chatName}/${member.displayname || member.stateKey}`),
+                member.avatar_hash
             );
         });
         const left = room.membership.filter((member) => member.membership === "leave" && !member.isRemote);

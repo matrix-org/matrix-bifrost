@@ -47,10 +47,10 @@ export class GatewayStateResolve {
                 // Catch to avoid double bridging.
                 return [];
             }
-            // Matrix Join
-            members.addMatrixMember(chatName, event.state_key, jid(from));
             // Get room membership to fetch the avatar hash
             const roomMembership = room.membership.find((e) => e.stateKey === event.state_key);
+            // Matrix Join
+            members.addMatrixMember(chatName, event.state_key, jid(from), roomMembership.avatar_hash);
             // Reflect to all
             stanzas = sendToAllDevices(
                 new StzaPresenceItem(

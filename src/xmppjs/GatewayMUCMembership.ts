@@ -15,6 +15,7 @@ export interface IGatewayMemberXmpp extends IGatewayMember {
 export interface IGatewayMemberMatrix extends IGatewayMember {
     type: "matrix";
     matrixId: string;
+    avatarHash?: string;
 }
 
 const FLAT_SUPPORTED = [].flat !== undefined;
@@ -97,7 +98,7 @@ export class GatewayMUCMembership {
         return [...set];
     }
 
-    public addMatrixMember(chatName: string, matrixId: string, anonymousJid: JID): boolean {
+    public addMatrixMember(chatName: string, matrixId: string, anonymousJid: JID, avatarHash?: string): boolean {
         if (this.getMatrixMemberByMatrixId(chatName, matrixId)) {
             return false;
         }
@@ -107,6 +108,7 @@ export class GatewayMUCMembership {
             type: "matrix",
             anonymousJid,
             matrixId,
+            avatarHash,
         } as IGatewayMemberMatrix);
         this.members.set(chatName, set);
         return true;
