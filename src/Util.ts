@@ -1,7 +1,6 @@
 import { IChatJoinProperties } from "./bifrost/Events";
 import { Intent, WeakEvent } from "matrix-appservice-bridge";
 import * as crypto from "crypto";
-import { Utf8AsciiBinaryEncoding } from "crypto";
 
 export class Util {
 
