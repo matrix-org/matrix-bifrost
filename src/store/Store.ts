@@ -32,7 +32,9 @@ export interface IStore {
 
     getRemoteUsersFromMxId(userId: string): Promise<BifrostRemoteUser[]>;
 
-    getRoomByRemoteData(remoteData: IRemoteRoomData|IRemoteGroupData): Promise<RoomBridgeStoreEntry|null>;
+    getRoomByRemoteData(remoteData: IRemoteRoomData | IRemoteGroupData): Promise<RoomBridgeStoreEntry | null>;
+
+    getAdminRoom(matrixUserId: string): Promise<RoomBridgeStoreEntry | null>;
 
     getIMRoom(matrixUserId: string, protocolId: string, remoteUserId: string): Promise<RoomBridgeStoreEntry|null>;
 

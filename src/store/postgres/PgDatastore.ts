@@ -17,7 +17,7 @@ limitations under the License.
 import { Pool } from "pg";
 import { MatrixRoom, RemoteRoom, MatrixUser, Logging, RoomBridgeStoreEntry } from "matrix-appservice-bridge";
 import { IRemoteRoomData, IRemoteGroupData, MROOM_TYPES,
-    IRemoteImData, IRemoteUserAdminData, MROOM_TYPE_IM } from "../Types";
+    IRemoteImData, IRemoteUserAdminData, MROOM_TYPE_IM, MROOM_TYPE_UADMIN } from "../Types";
 import { BifrostProtocol } from "../../bifrost/Protocol";
 import { IAccountMinimal } from "../../bifrost/Events";
 import { BifrostRemoteUser } from "../BifrostRemoteUser";
@@ -197,6 +197,24 @@ export class PgDataStore implements IStore {
         };
     }
 
+    public async getAdminRoom(matrixUserId: string): Promise<RoomBridgeStoreEntry | null> {
+        const res = await this.pgPool.query(
+            "SELECT room_id FROM admin_rooms WHERE user_id = $1",
+            [ matrixUserId ],
+        );
+        if (res.rowCount === 0) {
+            return null;
+        }
+        const row = res.rows[0];
+        return {
+            matrix: new MatrixRoom(row.room_id, { extras: { type: MROOM_TYPE_UADMIN } }),
+            remote: new RemoteRoom("", {
+                matrixUser: matrixUserId,
+            }),
+            data: {}
+        };
+    }
+
     public async getIMRoom(matrixUserId: string, protocolId: string, remoteUserId: string): Promise<RoomBridgeStoreEntry|null> {
         const res = await this.pgPool.query(
             "SELECT room_id FROM im_rooms WHERE user_id = $1 AND remote_id = $2 AND protocol_id = $3",
@@ -231,14 +249,30 @@ export class PgDataStore implements IStore {
 
     public async getRoomsOfType(type: MROOM_TYPES): Promise<RoomBridgeStoreEntry[]> {
         const tableName = RoomTypeToTable[type];
+        if (!tableName) {
+            throw Error("Room was of unknown type!");
+        }
         const res = await this.pgPool.query(`SELECT * FROM ${tableName};`);
         return res.rows.map((row) => {
-            const remoteData: IRemoteGroupData = {
-                gateway: row.gateway,
-                properties: row.properties,
-                room_name: row.room_name,
-                protocol_id: row.protocol_id,
-            };
+            let remoteData: IRemoteRoomData;
+            if (type === "group") {
+                remoteData = {
+                    gateway: row.gateway,
+                    room_name: row.room_name,
+                    protocol_id: row.protocol_id,
+                    properties: row.properties,
+                } as IRemoteGroupData;
+            } else if (type === "im") {
+                remoteData = {
+                    matrixUser: new MatrixUser(row.user_id).userId,
+                    recipient: row.remote_id,
+                    protocol_id: row.protocol_id,
+                } as IRemoteImData;
+            } else if (type === "user-admin") {
+                remoteData = {
+                    matrixUser: new MatrixUser(row.user_id).userId,
+                } as IRemoteUserAdminData;
+            }
             return {
                 matrix: new MatrixRoom(row.room_id, { extras: { type } }),
                 // Id is not used.

@@ -145,10 +145,11 @@ class Program {
     private async pingBridge() {
         let internalRoom: RoomBridgeStoreEntry|null;
         try {
-            internalRoom = await this.store.getRoomByRemoteData({matrixUser: "-internal-"} as IRemoteUserAdminData);
+            const botUser = this.bridge.getBot().getUserId();
+            internalRoom = await this.store.getAdminRoom(botUser);
             if (!internalRoom) {
                 const result = await this.bridge.getIntent().createRoom({ options: {}});
-                internalRoom = await this.store.storeRoom(result.room_id, MROOM_TYPE_UADMIN, "-internal-", {matrixUser: "-internal-"} as IRemoteUserAdminData);
+                internalRoom = await this.store.storeRoom(result.room_id, MROOM_TYPE_UADMIN, "-internal-", {matrixUser: botUser} as IRemoteUserAdminData);
             }
             const time = await this.bridge.pingAppserviceRoute(internalRoom.matrix.roomId);
             log.info(`Successfully pinged the bridge. Round trip took ${time}ms`);
