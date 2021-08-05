@@ -34,6 +34,7 @@ export class ProtoHacks {
                     return Util.sha1(Buffer.from(res.data).toString("binary"));
                 } else {
                     log.warn(`Failed to get ${userId}'s avatar hash`);
+                    return;
                 }
             }
         } catch (ex) {

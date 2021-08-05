@@ -52,6 +52,18 @@ export class GatewayHandler {
         purple.on("gateway-publicrooms", this.handlePublicRooms.bind(this));
     }
 
+    private async populateAvatarHashes(membership: any, intent: Intent) {
+        log.info("Populating avatar hashes from mxc URLs...");
+        let res = membership.slice();
+        for (const [idx, member] of membership.entries()) {
+            if (typeof(member.avatar_hash) === "string") {
+                let entry = res[idx];
+                entry.avatar_hash = await ProtoHacks.getAvatarHash(member.stateKey, member.avatar_hash, intent);
+            }
+        }
+        return res;
+    }
+
     public async getVirtualRoom(roomId: string, intent: Intent): Promise<IGatewayRoom> {
         const existingRoom = this.roomIdCache.get(roomId);
         if (existingRoom) {
@@ -64,17 +76,17 @@ export class GatewayHandler {
             const nameEv = state.find((e) => e.type === "m.room.name");
             const topicEv = state.find((e) => e.type === "m.room.topic");
             const bot = this.bridge.getBot();
-            const membership = state.filter((e) => e.type === "m.room.member").map((e: WeakEvent) => (
+            let membership = state.filter((e) => e.type === "m.room.member").map((e: WeakEvent) => (
                 {
                     isRemote: bot.isRemoteUser(e.sender),
                     stateKey: e.state_key,
                     displayname: e.content.displayname,
-                    avatar_hash: typeof (e.content.avatar_url) === "string" ? await ProtoHacks.getAvatarHash(
-                        e.state_key, e.content.avatar_url, intent) : null,
+                    avatar_hash: e.content.avatar_url,
                     sender: e.sender,
                     membership: e.content.membership,
                 }
             ))
+            membership = await this.populateAvatarHashes(membership, intent);
             const room: IGatewayRoom = {
                 name: nameEv ? nameEv.content.name : "",
                 topic: topicEv ? topicEv.content.topic : "",
@@ -149,12 +161,13 @@ export class GatewayHandler {
             existingMembership.membership = event.content.membership;
             existingMembership.displayname = event.content.displayname;
         } else {
+            const hash = typeof (event.content.avatar_url) === "string" ? await ProtoHacks.getAvatarHash(
+                event.state_key, event.content.avatar_url, intent) : null;
             room.membership.push({
                 membership: event.content.membership,
                 sender: event.sender,
                 displayname: event.content.displayname,
-                avatar_hash: typeof (event.content.avatar_url) === "string" ? await ProtoHacks.getAvatarHash(
-                    event.state_key, event.content.avatar_url, intent) : null,
+                avatar_hash: hash,
                 stateKey: event.state_key,
                 isRemote: false,
             });
