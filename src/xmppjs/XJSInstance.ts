@@ -493,7 +493,7 @@ export class XmppJsInstance extends EventEmitter implements IBifrostInstance {
             }
             this.once(`iq.${id}`, (stanza: Element) => {
                 clearTimeout(timeout);
-                const vCard = stanza.getChild("vCard");
+                const vCard = (stanza.getChild("vCard") as unknown as Element);
                 if (vCard) {
                     resolve(vCard);
                 }
