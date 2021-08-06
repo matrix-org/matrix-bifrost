@@ -469,15 +469,15 @@ export class XmppJsInstance extends EventEmitter implements IBifrostInstance {
         const id = uuid();
         const whoJid = jid(who);
         who = `${whoJid.local}@${whoJid.domain}`;
-        let muc = this.checkMUCCache.get(who);
-        if (!muc && !this.checkMUCCache.has(who)) {
-            muc = await this.checkGroupExists({
+        let mucExists = this.checkMUCCache.get(who);
+        if (!mucExists && !this.checkMUCCache.has(who)) {
+            mucExists = await this.checkGroupExists({
                 ["room"]: whoJid.local, ["server"]: whoJid.domain
             } as IChatJoinProperties);
         }
         const res = new Promise((resolve: (e: Element) => void, reject) => {
             const timeout = setTimeout(() => reject(Error("Timeout")), 5000);
-            if (muc) {
+            if (mucExists) {
                 for (let [username, account] of this.accounts) {
                     log.info(`Checking if ${username} is in ${who}`);
                     if (account.isInRoom(who)) {
@@ -493,14 +493,13 @@ export class XmppJsInstance extends EventEmitter implements IBifrostInstance {
             }
             this.once(`iq.${id}`, (stanza: Element) => {
                 clearTimeout(timeout);
-                const vCard = (stanza.getChild("vCard") as unknown as Element); // Bad typigns.
+                const vCard = stanza.getChild("vCard");
                 if (vCard) {
                     resolve(vCard);
                 }
                 reject(Error("No vCard given"));
             });
         });
-        // Send the request
         log.info(`Fetching vCard for ${who}`);
         await this.xmppSend(
             new StzaIqVcardRequest(sender || this.xmppAddress.toString(), who, id),
