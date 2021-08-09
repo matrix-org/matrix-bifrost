@@ -143,14 +143,19 @@ class Program {
     }
 
     private async pingBridge() {
-        let internalRoom: RoomBridgeStoreEntry|null;
+        let internalRoom: string|null;
         try {
-            internalRoom = await this.store.getRoomByRemoteData({matrixUser: "-internal-"} as IRemoteUserAdminData);
+            internalRoom = await this.store.getAdminRoom("-internal-");
             if (!internalRoom) {
                 const result = await this.bridge.getIntent().createRoom({ options: {}});
-                internalRoom = await this.store.storeRoom(result.room_id, MROOM_TYPE_UADMIN, "-internal-", {matrixUser: "-internal-"} as IRemoteUserAdminData);
+                internalRoom = (await this.store.storeRoom(
+                    result.room_id, MROOM_TYPE_UADMIN, "-internal-", {
+                        type: MROOM_TYPE_UADMIN,
+                        matrixUser: "-internal-"
+                    } as IRemoteUserAdminData)
+                ).matrix.getId();
             }
-            const time = await this.bridge.pingAppserviceRoute(internalRoom.matrix.roomId);
+            const time = await this.bridge.pingAppserviceRoute(internalRoom);
             log.info(`Successfully pinged the bridge. Round trip took ${time}ms`);
         }
         catch (ex) {
