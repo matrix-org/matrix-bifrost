@@ -97,7 +97,7 @@ export class NeDBStore implements IStore {
         return users.filter((u) => u.isRemote === false && u.protocolId === protocolId);
     }
 
-    public async getRoomByRemoteData(remoteData: IRemoteRoomData|IRemoteGroupData) {
+    public async getGroupRoomByRemoteData(remoteData: IRemoteRoomData|IRemoteGroupData) {
         const remoteEntries = await this.roomStore.getEntriesByRemoteRoomData(remoteData as Record<string, unknown>);
         if (remoteEntries !== null && remoteEntries.length > 0) {
             if (remoteEntries.length > 1) {
@@ -130,6 +130,17 @@ export class NeDBStore implements IStore {
             return null;
         }
         return suitableEntries;
+    }
+
+    public async getAdminRoom(matrixUserId: string): Promise<string|null> {
+        const suitableEntries = await this.roomStore.getEntriesByRemoteRoomData({
+            matrixUser: matrixUserId,
+        } as IRemoteImData as Record<string, unknown>);
+        const entry = suitableEntries.find((e) => e.matrix?.get("type") === MROOM_TYPE_UADMIN);
+        if (!entry) {
+            return null;
+        }
+        return entry.matrix.getId();
     }
 
     public async getUsernameMxidForProtocol(protocol: BifrostProtocol): Promise<{[mxid: string]: string}> {

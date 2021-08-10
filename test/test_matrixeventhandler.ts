@@ -123,7 +123,7 @@ describe("MatrixEventHandler", () => {
                 state_key: "@definitelyremote:localhost",
             }));
             expect(messagesHandled).to.equal(1);
-            const storeEntry = await store.getRoomByRemoteData({
+            const storeEntry = await store.getGroupRoomByRemoteData({
                 recipient: "definitelyremote",
                 matrixUser: "@alice:localhost",
                 protocol_id: dummyProtocol.id,

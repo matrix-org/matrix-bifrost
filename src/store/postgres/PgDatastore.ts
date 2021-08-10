@@ -161,7 +161,7 @@ export class PgDataStore implements IStore {
         ));
     }
 
-    public async getRoomByRemoteData(remoteData: IRemoteGroupData): Promise<RoomBridgeStoreEntry|null> {
+    public async getGroupRoomByRemoteData(remoteData: IRemoteGroupData): Promise<RoomBridgeStoreEntry|null> {
         const parts: string[] = [];
         let i = 0;
         for (const key of Object.keys(remoteData)) {
@@ -197,22 +197,12 @@ export class PgDataStore implements IStore {
         };
     }
 
-    public async getAdminRoom(matrixUserId: string): Promise<RoomBridgeStoreEntry | null> {
+    public async getAdminRoom(matrixUserId: string): Promise<string|null> {
         const res = await this.pgPool.query(
             "SELECT room_id FROM admin_rooms WHERE user_id = $1",
             [ matrixUserId ],
         );
-        if (res.rowCount === 0) {
-            return null;
-        }
-        const row = res.rows[0];
-        return {
-            matrix: new MatrixRoom(row.room_id, { extras: { type: MROOM_TYPE_UADMIN } }),
-            remote: new RemoteRoom("", {
-                matrixUser: matrixUserId,
-            }),
-            data: {}
-        };
+        return res.rows[0]?.room_id || null;
     }
 
     public async getIMRoom(matrixUserId: string, protocolId: string, remoteUserId: string): Promise<RoomBridgeStoreEntry|null> {
@@ -392,8 +382,8 @@ export class PgDataStore implements IStore {
                 room_id: matrixId,
                 user_id: (remoteData as IRemoteUserAdminData).matrixUser,
             };
-            statement = PgDataStore.BuildUpsertStatement("admin_rooms", "(room_id)", Object.keys(adminProps));
-            await this.pgPool.query(statement, Object.values(adminProps));
+            // We don't upsert here.
+            await this.pgPool.query("INSERT INTO admin_rooms (room_id, user_id) VALUES ($1, $2)", Object.values(adminProps));
             return res;
         }
 
