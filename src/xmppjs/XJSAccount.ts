@@ -8,10 +8,9 @@ import { Element, x } from "@xmpp/xml";
 import { jid, JID } from "@xmpp/jid";
 import { IBasicProtocolMessage } from "../MessageFormatter";
 import { Metrics } from "../Metrics";
-import { Logging, Bridge } from "matrix-appservice-bridge";
+import { Logging } from "matrix-appservice-bridge";
 import { v4 as uuid } from "uuid";
 import { XHTMLIM } from "./XHTMLIM";
-import { ProtoHacks } from "../ProtoHacks";
 import { StzaMessage, StzaIqPing, StzaPresenceJoin, StzaPresencePart, StzaIqVcardRequest } from "./Stanzas";
 
 const IDPREFIX = "pbridge";
