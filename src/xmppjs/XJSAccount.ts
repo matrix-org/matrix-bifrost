@@ -8,9 +8,10 @@ import { Element, x } from "@xmpp/xml";
 import { jid, JID } from "@xmpp/jid";
 import { IBasicProtocolMessage } from "../MessageFormatter";
 import { Metrics } from "../Metrics";
-import { Logging } from "matrix-appservice-bridge";
+import { Logging, Bridge } from "matrix-appservice-bridge";
 import { v4 as uuid } from "uuid";
 import { XHTMLIM } from "./XHTMLIM";
+import { ProtoHacks } from "../ProtoHacks";
 import { StzaMessage, StzaIqPing, StzaPresenceJoin, StzaPresencePart, StzaIqVcardRequest } from "./Stanzas";
 
 const IDPREFIX = "pbridge";
@@ -38,6 +39,7 @@ export class XmppJsAccount implements IBifrostAccount {
 
     public readonly roomHandles: Map<string, string>;
     private readonly pmSessions: Set<string>;
+    private avatarHash?: string;
     private lastStanzaTs: Map<string, number>;
     private checkInterval: NodeJS.Timeout;
     constructor(
@@ -178,8 +180,9 @@ export class XmppJsAccount implements IBifrostAccount {
             try {
                 log.debug("Rejoining", fullRoomName);
                 await this.joinChat({
-                    handle,
-                    fullRoomName,
+                    handle: handle,
+                    fullRoomName: fullRoomName,
+                    avatar_hash: this.avatarHash,
                 });
             } catch (ex) {
                 log.warn(`Failed to rejoin ${fullRoomName}`, ex);
@@ -195,8 +198,9 @@ export class XmppJsAccount implements IBifrostAccount {
                 throw new Error("User has no assigned handle for this room, we cannot rejoin!");
             }
             await this.joinChat({
-                handle,
-                fullRoomName,
+                handle: handle,
+                fullRoomName: fullRoomName,
+                avatar_hash: this.avatarHash,
             });
         } catch (ex) {
             log.warn(`Failed to rejoin ${fullRoomName}`, ex);
@@ -255,6 +259,7 @@ export class XmppJsAccount implements IBifrostAccount {
             components.avatar_hash,
         );
         this.roomHandles.set(roomName, components.handle);
+        this.avatarHash = components.avatar_hash;
         if (setWaiting) {
             this.waitingToJoin.add(roomName);
         }
@@ -295,6 +300,7 @@ export class XmppJsAccount implements IBifrostAccount {
             room: from.local,
             server: from.domain,
             handle: `${from.resource}${CONFLICT_SUFFIX}`,
+            avatar_hash: this.avatarHash,
         });
     }
 
