@@ -227,6 +227,9 @@ export class ServiceHandler {
             if (room.canonical_alias == null) {
                 return;
             }
+            if (room.canonical_alias !== room.canonical_alias.toLowerCase()) {
+                return; // drop non lowercase aliases they'll break anyways
+            }
             const j = this.createJIDFromAlias(room.canonical_alias);
             if (!j) {
                 return;
