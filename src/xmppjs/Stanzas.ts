@@ -407,7 +407,7 @@ export class StzaIqDiscoInfo extends StzaIqDisco {
             feature += `<feature var='${feat}'/>`;
         });
         this.roominfo.forEach((field) => {
-            roominfo += `<field label='${field.label}' var='${field.var}' type='${field.type}' /><value>${field.value}</value></field>`;
+            roominfo += `<field label='${field.label}' var='${field.var}' type='${field.type}'><value>${field.value}</value></field>`;
         });
         roominfo = roominfo += `</x>`;
 
