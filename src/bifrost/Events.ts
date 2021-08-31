@@ -90,7 +90,7 @@ export interface IGatewayRequest {
 }
 
 export interface IGatewayRoomQuery extends IGatewayRequest {
-    result: (err: Error|null, res?: string) => void;
+    result: (err: Error|null, res?: any) => void;
 }
 
 export interface IGatewayPublicRoomsQuery extends IGatewayRequest {

@@ -24,11 +24,9 @@ const MAX_AVATARS = 1024;
 
 export class ServiceHandler {
     private avatarCache: Map<string, {data: Buffer, type: string}>;
-    private existingAliases: Map<string, string>; /* alias -> room_id */
     private discoInfo: StzaIqDiscoInfo;
     constructor(private xmpp: XmppJsInstance, private bridgeConfig: IConfigBridge) {
         this.avatarCache = new Map();
-        this.existingAliases = new Map();
         this.discoInfo = new StzaIqDiscoInfo("", "", "");
         this.discoInfo.identity.add({category: "conference", type: "text", name: "Bifrost Matrix Gateway"});
         this.discoInfo.identity.add({category: "gateway", type: "matrix", name: "Bifrost Matrix Gateway"});
@@ -238,7 +236,7 @@ export class ServiceHandler {
         await this.xmpp.xmppSend(response);
     }
 
-    private queryRoom(roomAlias: string): Promise<string|IGatewayRoom> {
+    private queryRoom(roomAlias: string): Promise<any|IGatewayRoom> {
         return new Promise((resolve, reject) => {
             this.xmpp.emit("gateway-queryroom", {
                 roomAlias,
@@ -260,12 +258,8 @@ export class ServiceHandler {
                 throw Error("Not a valid alias");
             }
             log.debug(`Running room discovery for ${toStr}`);
-            let roomId = this.existingAliases.get(alias);
-            if (!roomId) {
-                roomId = await this.queryRoom(alias) as string;
-                this.existingAliases.set(alias, roomId);
-            }
-            log.info(`Response for alias request ${toStr} (${alias}) -> ${roomId}`);
+            let roomData = await this.queryRoom(alias) as any;
+            log.info(`Response for alias request ${toStr} (${alias}) -> ${roomData.roomId}`);
             const discoInfo = new StzaIqDiscoInfo(toStr, from, id);
             discoInfo.feature.add(XMPPFeatures.DiscoInfo);
             discoInfo.feature.add(XMPPFeatures.Muc);
@@ -280,6 +274,18 @@ export class ServiceHandler {
                 category: "gateway",
                 name: alias,
                 type: "matrix",
+            });
+            discoInfo.roominfo.add({
+                label: "Description",
+                var: "muc#roominfo_description",
+                type: "text-single",
+                value: roomData.roomDesc,
+            });
+            discoInfo.roominfo.add({
+                label: "Number of occupants",
+                var: "muc#roominfo_occupants",
+                type: "text-single",
+                value: roomData.roomOccupants.toString(),
             });
             await this.xmpp.xmppSend(discoInfo);
         } catch (ex) {

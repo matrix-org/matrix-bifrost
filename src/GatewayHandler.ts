@@ -256,8 +256,24 @@ export class GatewayHandler {
         log.info(`Trying to discover ${ev.roomAlias}`);
         try {
             const res = await this.bridge.getIntent().getClient().resolveRoomAlias(ev.roomAlias);
+            let roomDesc: any;
+            let matrixUsers, remoteUsers: number;
+            try {
+                const info = await this.bridge.getBot().getRoomInfo(res.room_id);
+                matrixUsers = info.realJoinedUsers.length;
+                remoteUsers = info.remoteJoinedUsers.length;
+                const state = await this.bridge.getIntent().roomState(res.room_id) as WeakEvent[];
+                const roomEv = state.find((ev) => ev.type === "m.room.name");
+                roomDesc = roomEv ? roomEv.content.name : "";
+            } catch (ex) {
+                log.warn("Can't get occupants number:", ex);
+            }
             log.info(`Found ${res.room_id}`);
-            ev.result(null, res.room_id);
+            ev.result(null, {
+                roomId: res.room_id,
+                roomDesc: roomDesc,
+                roomOccupants: matrixUsers && remoteUsers ? matrixUsers + remoteUsers : 0
+            });
         } catch (ex) {
             log.warn("Room not found:", ex);
             ev.result(Error("Room not found"));

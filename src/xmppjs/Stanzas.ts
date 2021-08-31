@@ -381,8 +381,9 @@ export class StzaIqDiscoItems extends StzaIqDisco {
 }
 
 export class StzaIqDiscoInfo extends StzaIqDisco {
-    public identity: Set<{category: string, type: string, name: string}>;
+    public identity: Set<{ category: string, type: string, name: string }>;
     public feature: Set<XMPPFeatures>;
+    public roominfo: Set<{ label: string, var: string, type: string, value: string }>;
 
     constructor(
         from: string,
@@ -392,17 +393,27 @@ export class StzaIqDiscoInfo extends StzaIqDisco {
         super(from, to, id, iqType, "http://jabber.org/protocol/disco#info");
         this.identity = new Set();
         this.feature = new Set();
+        this.roominfo = new Set();
     }
 
     get queryContent(): string {
         let identity = "";
         let feature = "";
+        let roominfo = "<x type='result' xmlns='jabber:x:data'><field var='FORM_TYPE' type='hidden'><value>http://jabber.org/protocol/muc#roominfo</value></field>"
         this.identity.forEach((ident) => {
             identity += `<identity category='${ident.category}' type='${ident.type}' name='${ident.name}'/>`;
         });
         this.feature.forEach((feat) => {
             feature += `<feature var='${feat}'/>`;
         });
+        this.roominfo.forEach((field) => {
+            roominfo += `<field label='${field.label}' var='${field.var}' type='${field.type}' /><value>${field.value}</value></field>`;
+        });
+        roominfo = roominfo += `</x>`;
+
+        if (this.roominfo.size !== 0) {
+            return identity + feature + roominfo;
+        }
         return identity + feature;
     }
 
