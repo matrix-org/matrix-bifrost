@@ -270,7 +270,7 @@ export class GatewayHandler {
             ev.result(null, {
                 roomId: res.room_id,
                 roomDesc: roomDesc,
-                roomOccupants: roomOccupants ? roomOccupants - 1 : 0,
+                roomOccupants: roomOccupants ? roomOccupants : 0,
             });
         } catch (ex) {
             log.warn("Room not found:", ex);
