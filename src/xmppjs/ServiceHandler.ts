@@ -5,7 +5,7 @@ import { Logging } from "matrix-appservice-bridge";
 import request from "axios";
 import { IGatewayRoom } from "../bifrost/Gateway";
 import { IGatewayRoomQuery, IGatewayPublicRoomsQuery } from "../bifrost/Events";
-import { StzaIqDiscoInfo, StzaIqPing, StzaIqDiscoItems, StzaIqSearchFields, SztaIqError, StzaIqPingError } from "./Stanzas";
+import { StzaIqDiscoInfo, StzaIqPing, StzaIqDiscoItems, StzaIqSearchFields, SztaIqError, StzaIqPingError, encode } from "./Stanzas";
 import { IPublicRoomsResponse } from "../MatrixTypes";
 import { IConfigBridge } from "../Config";
 import { XMPPFeatures } from "./XMPPConstants";
@@ -279,7 +279,7 @@ export class ServiceHandler {
                 label: "Description",
                 var: "muc#roominfo_description",
                 type: "text-single",
-                value: roomData.roomDesc,
+                value: encode(roomData.roomDesc),
             });
             discoInfo.roominfo.add({
                 label: "Number of occupants",

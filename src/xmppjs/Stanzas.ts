@@ -4,7 +4,7 @@ import * as he from "html-entities";
 import { IBasicProtocolMessage } from "../MessageFormatter";
 import { XMPPFeatures, XMPPStatusCode } from "./XMPPConstants";
 
-function encode(text) {
+export function encode(text) {
     return he.encode(text, { level: "xml", mode: "nonAscii"});
 }
 
