@@ -540,22 +540,28 @@ export class XmppJsGateway implements IGateway {
         if (!allowForJoin && this.members.getMatrixMembers(chatName)) {
             return;
         }
-        const joined = room.membership.filter((member) => member.membership === "join" && !member.isRemote);
-        joined.forEach((member) => {
-            this.members.addMatrixMember(
-                chatName,
-                member.stateKey,
-                jid(`${chatName}/${member.displayname || member.stateKey}`),
-            );
-        });
-        const left = room.membership.filter((member) => member.membership === "leave" && !member.isRemote);
-        left.forEach((member) => {
-            this.members.removeMatrixMember(
-                chatName,
-                member.stateKey,
-            );
-        });
-        log.info(`Updating membership for ${chatName} ${room.roomId} j:${joined.length} l:${left.length}`);
+        let joined = 0;
+        let left = 0;
+        for (const member of room.membership) {
+            if (member.isRemote) {
+                continue;
+            }
+            if (member.membership === "join") {
+                joined++;
+                this.members.addMatrixMember(
+                    chatName,
+                    member.stateKey,
+                    jid(`${chatName}/${member.displayname || member.stateKey}`),
+                );
+            } else if (member.membership === "leave") {
+                left++;
+                this.members.removeMatrixMember(
+                    chatName,
+                    member.stateKey,
+                );
+            }
+        }
+        log.info(`Updating membership for ${chatName} ${room.roomId} j:${joined} l:${left}`);
     }
 
     private remoteLeft(stanza: Element) {
