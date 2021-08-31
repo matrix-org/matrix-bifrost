@@ -261,7 +261,7 @@ export class GatewayHandler {
             try {
                 const state = await this.bridge.getIntent().roomState(res.room_id) as WeakEvent[];
                 const roomEv = state.find((ev) => ev.type === "m.room.name");
-                roomOccupants = state.filter((ev) => ev.type === "m.room.member").length;
+                roomOccupants = state.filter((ev) => (ev.type === "m.room.member" && ev.content.membership === "join")).length;
                 roomDesc = roomEv ? roomEv.content.name : "";
             } catch (ex) {
                 log.warn("Can't get occupants number:", ex);
