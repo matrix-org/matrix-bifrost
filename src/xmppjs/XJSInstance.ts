@@ -759,7 +759,7 @@ export class XmppJsInstance extends EventEmitter implements IBifrostInstance {
             // Room names in XMPP are basically just local@domain,
             // and so is sort of implied by the from address. We will emit
             // a room name change at the same time as the subject. The
-            // RoomHandler code shoudln't attempt to change the name unless it is wrong.
+            // RoomHandler code shouldn't attempt to change the name unless it is empty.
             this.emit("chat-topic", {
                 eventName: "chat-topic",
                 conv: {

@@ -540,7 +540,7 @@ export class MatrixRoomHandler {
                 log.warn("Failed to set topic of", roomId, err);
             });
         }
-        if (currentName !== data.conv.name) {
+        if (currentName === "") {
             intent.setRoomName(roomId, data.conv.name).catch((err) => {
                 log.warn("Failed to set name of", roomId, err);
             });
