@@ -495,11 +495,12 @@ export class MatrixEventHandler {
         // TODO: Use is_direct
         const members = await this.bridge.getBot().getJoinedMembers(event.room_id);
         if (Object.keys(members).length > 2) {
-            log.info("Room is not a 1 to 1 room: Treating as a potential plumbable room.");
-            if (this.config.provisioning.enablePlumbing) {
+            if (!this.config.provisioning.enablePlumbing) {
                 // We don't need to be in the room.
+                log.info("Room is not a 1 to 1 room and plumbing is disabled, leaving.");
                 intent.leave(event.room_id);
             }
+            log.info("Room is not a 1 to 1 room: Treating as a potential plumbable room.");
             // This is not a 1 to 1 room, so just keep us joined for now. We might want it later.
             return;
         }
