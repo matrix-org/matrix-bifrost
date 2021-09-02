@@ -8,3 +8,4 @@ bifrost-registration.yaml
 data/
 .nyc_output/
 lib/
+.vs
