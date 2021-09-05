@@ -449,7 +449,7 @@ export class MatrixEventHandler {
                         protocol_id: acct.protocol.id,
                         room_name: res.conv.name,
                         plumbed: true,
-                        properties: Util.sanitizeProperties(paramSet), // for joining
+                        properties: ProtoHacks.removeSensitiveJoinProps(acct.protocol.id, Util.sanitizeProperties(paramSet)), // for joining
                     } as any;
                     const remoteId = Buffer.from(
                         `${acct.protocol.id}:${res.conv.name}`,

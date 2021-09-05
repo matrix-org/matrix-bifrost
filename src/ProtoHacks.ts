@@ -77,6 +77,7 @@ export class ProtoHacks {
         if (protocolId === PRPL_XMPP || protocolId === XMPP_JS) {
             // Handles are like room nicks, so obviously don't store it.
             delete props.handle;
+            delete props.avatar_hash;
         }
     }
 
