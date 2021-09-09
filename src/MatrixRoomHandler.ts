@@ -220,7 +220,7 @@ export class MatrixRoomHandler {
         };
         log.debug("Searching for existing remote room:", remoteData);
         // For some reason the following function wites to remoteData, so recreate it later
-        const remoteEntry = await this.store.getRoomByRemoteData(remoteData);
+        const remoteEntry = await this.store.getGroupRoomByRemoteData(remoteData);
         if (remoteEntry) {
             if (remoteEntry.remote?.get("plumbed") && failIfPlumbed) {
                 return false;

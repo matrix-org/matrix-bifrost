@@ -62,7 +62,7 @@ export class MatrixEventHandler {
         const properties = Util.sanitizeProperties(res.properties);
         try {
             // Check if this chat already has a portal and refuse to bridge it.
-            const existing = await this.store.getRoomByRemoteData({
+            const existing = await this.store.getGroupRoomByRemoteData({
                 properties, // for joining
                 protocol_id: protocol.id,
             });
@@ -504,7 +504,7 @@ export class MatrixEventHandler {
             // This is not a 1 to 1 room, so just keep us joined for now. We might want it later.
             return;
         }
-        this.store.storeRoom(event.room_id, MROOM_TYPE_UADMIN, `UADMIN-${event.sender}`, {
+        await this.store.storeRoom(event.room_id, MROOM_TYPE_UADMIN, `UADMIN-${event.sender}`, {
             type: MROOM_TYPE_UADMIN,
             matrixUser: new MatrixUser(event.sender).getId(),
         } as IRemoteUserAdminData);

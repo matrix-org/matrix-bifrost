@@ -275,7 +275,7 @@ export class MessageFormatter {
                 if (["body", "html", "font"].includes(name)) {
                     return; // We don't need these.
                 }
-                html += `<\\${name}>`;
+                html += `</${name}>`;
                 tagToMarkdown(name, false);
             },
             onerror: (error: Error) => {

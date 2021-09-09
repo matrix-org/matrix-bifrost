@@ -312,7 +312,7 @@ export class GatewayHandler {
             throw Error(`This room is already bridged to ${roomName}`);
         }
 
-        const existingRoom = await this.store.getRoomByRemoteData({
+        const existingRoom = await this.store.getGroupRoomByRemoteData({
             protocol_id: data.protocol_id,
             room_name: data.room_name,
         });
