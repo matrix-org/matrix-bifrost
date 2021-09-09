@@ -108,17 +108,6 @@ export class NeDBStore implements IStore {
         return null;
     }
 
-    public async getAdminRoom(matrixUserId: string): Promise<RoomBridgeStoreEntry | null> {
-        const remoteEntries = await this.roomStore.getEntriesByRemoteRoomData({
-            matrixUser: matrixUserId,
-        } as IRemoteImData as Record<string, unknown>);
-        const suitableEntries = remoteEntries.filter((e) => e.matrix ?.get("type") === MROOM_TYPE_UADMIN)[0];
-        if (!suitableEntries) {
-            return null;
-        }
-        return suitableEntries;
-    }
-
     public async getIMRoom(matrixUserId: string, protocolId: string, remoteUserId: string): Promise<RoomBridgeStoreEntry|null> {
         const remoteEntries = await this.roomStore.getEntriesByRemoteRoomData({
             matrixUser: matrixUserId,
