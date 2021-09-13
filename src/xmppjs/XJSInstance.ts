@@ -86,6 +86,41 @@ export class XmppJsInstance extends EventEmitter implements IBifrostInstance {
         this.activeMUCUsers = new Set();
         this.lastMessageInMUC = new Map();
         this.xmppGateway = null;
+        const opts = config.purple.backendOpts as IXJSBackendOpts;
+        if (opts.jingle) {
+            this.jingleHandler = new JingleHandler(this, opts.jingle, {
+                homeserverUrl: config.bridge.homeserverUrl,
+                // XXX: Gut wrench to get the access token of the bot user
+                token: this.bridge.getIntent().client.getAccessToken(),
+            });
+            this.jingleHandler.on('file', (res: JingleReceivedFile) => {
+                log.debug(`Got file from Jingle ${res.mxcUrl}`, res.file);
+                // We got a file from a user, so now we need to fake a message event.
+                this.emit("received-im-msg", {
+                    sender: res.from.bare().toString(),
+                    // TODO: Does this account exist at the point in time we recieved the file?
+                    account: {
+                        username: res.to.bare().toString(),
+                        protocol_id: XMPP_PROTOCOL.id,
+                    },
+                    conv: {
+                        // TODO: This needs a convience method
+                        name: res.from.bare().toString(),
+                    },
+                    message: {
+                        body: `Sent file: ${res.file.description}`,
+                        opts: {
+                            attachments: [{
+                                mimetype: res.file.mediaType,
+                                size: res.file.size,
+                                mxcUrl: res.mxcUrl,
+                                filename: res.file.name,
+                            }]
+                        }
+                    }
+                } as IReceivedImMsg)
+            });
+        }
     }
 
     get gateway() {
@@ -479,7 +514,26 @@ export class XmppJsInstance extends EventEmitter implements IBifrostInstance {
         }
         try {
             if (isOurs) {
-                if (stanza.is("iq") && ["get", "set"].includes(stanza.getAttr("type"))) {
+                if (stanza.is("iq") && stanza.getChildByAttr('xmlns', 'urn:xmpp:jingle:1')) {
+                    // This is a jingle request
+                    if (this.jingleHandler) {
+                        await this.jingleHandler.onJingleRequest(stanza);
+                        return;
+                    }
+                    else {
+                        log.debug(`Got a jingle request ${id}, but the bridge isn't configured to handle jingle`);
+                    }
+                } else if (stanza.is("iq") && stanza.getChildByAttr('xmlns', 'http://jabber.org/protocol/ibb')) {
+                    // This is an "open" reqyest
+                    // This is a jingle request
+                    if (this.jingleHandler) {
+                        await this.jingleHandler.onIBBStanza(stanza);
+                        return;
+                    }
+                    else {
+                        log.debug(`Got a 'open' (IBB) request ${id}, but the bridge isn't configured to handle jingle`);
+                    }
+                } else if (stanza.is("iq") && ["get", "set"].includes(stanza.getAttr("type"))) {
                     await this.serviceHandler.handleIq(stanza, this.bridge.getIntent());
                     return;
                 }
