@@ -42,4 +42,6 @@ export interface IBifrostAccount extends IProfileProvider {
     getConversation(name: string): any|undefined;
     getChatParamsForProtocol(): IChatJoinOptions[];
     setStatus(statusId: string, active: boolean);
+    // TODO: Is setStatus the same thing?
+    setPresence?(content: { currently_active?: boolean; last_active_ago?: number; presence: "online" | "offline" | "unavailable"; status_msg?: string; }, recipients?: string[]);
 }

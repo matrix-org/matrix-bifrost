@@ -11,7 +11,7 @@ import { Metrics } from "../Metrics";
 import { Logging } from "matrix-appservice-bridge";
 import { v4 as uuid } from "uuid";
 import { XHTMLIM } from "./XHTMLIM";
-import { StzaMessage, StzaIqPing, StzaPresenceJoin, StzaPresencePart, StzaIqVcardRequest } from "./Stanzas";
+import { StzaMessage, StzaIqPing, StzaPresenceJoin, StzaPresencePart, StzaIqVcardRequest, StzaPresenceAvailable } from "./Stanzas";
 
 const IDPREFIX = "pbridge";
 const CONFLICT_SUFFIX = "[m]";
@@ -338,7 +338,7 @@ export class XmppJsAccount implements IBifrostAccount {
         const status = this.xmpp.presenceCache.getStatus(who);
         const ui: IUserInfo = {
             Nickname: j.resource || j.local,
-            eventName: "meh",
+            eventName: "-unused-",
             who,
             account: {
                 protocol_id: this.protocol.id,
@@ -366,6 +366,20 @@ export class XmppJsAccount implements IBifrostAccount {
             type: photo!.getChildText("TYPE") || "image/jpeg",
         };
 
+    }
+
+    // TODO: Is this the same as setStatus?
+    public setPresence(content: { currently_active?: boolean; last_active_ago?: number; presence: "online" | "offline" | "unavailable"; status_msg?: string; },
+        recipients: string[],
+    ) {
+        log.debug(`Broadcasting presence update ${this.remoteId} ${content.presence} ${recipients.join(', ')}`);
+        this.xmpp.xmppSend(
+            recipients.map(r => new StzaPresenceAvailable(
+                this.remoteId, r, content.presence !== "online" ? "unavailable" : undefined, this.xmpp.serviceHandler.userDiscoHash, content.status_msg
+            ).xml).join('')
+        );
+        // Try sending a discovery info
+        this.xmpp.serviceHandler.sendUserDiscoInfo("will@beefy", this.remoteId, uuid());
     }
 
     public setStatus() {
