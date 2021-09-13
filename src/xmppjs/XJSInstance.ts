@@ -205,10 +205,6 @@ export class XmppJsInstance extends EventEmitter implements IBifrostInstance {
         return;
     }
 
-    public getBuddyFromChat(conv: any, buddy: string): any {
-        return undefined;
-    }
-
     public async close() {
         await this.xmpp?.stop();
     }
