@@ -3,6 +3,9 @@ import { v4 as uuid } from "uuid";
 import * as he from "html-entities";
 import { IBasicProtocolMessage } from "../MessageFormatter";
 import { XMPPFeatures, XMPPStatusCode } from "./XMPPConstants";
+import { createHash } from "crypto";
+
+export const NODE_NAME = "https://github.com/matrix-org/matrix-bifrost";
 
 function encode(text) {
     return he.encode(text, { level: "xml", mode: "nonAscii"});
@@ -323,6 +326,7 @@ export abstract class StzaIqDisco extends StzaBase {
         id: string,
         protected iqType = "result",
         protected queryType = "",
+        public node?: string,
     ) {
         super(from, to, id);
     }
@@ -334,7 +338,8 @@ export abstract class StzaIqDisco extends StzaBase {
     get queryContent(): string { return ""; }
 
     get xml(): string {
-        return `<iq from='${this.from}' to='${this.to}' id='${this.id}' type='${this.iqType}'>`
+        const node = this.node ? ` node='${this.node}'` : "";
+        return `<iq${node} from='${this.from}' to='${this.to}' id='${this.id}' type='${this.iqType}'>`
          + `<query xmlns='${this.queryType}'>${this.queryContent}</query></iq>`;
     }
 }
@@ -387,6 +392,22 @@ export class StzaIqDiscoInfo extends StzaIqDisco {
             feature += `<feature var='${feat}'/>`;
         });
         return identity + feature;
+    }
+
+    get hash() {
+        // https://xmpp.org/extensions/xep-0115.html#ver-gen
+        let s = '';
+        s += [...this.identity].sort((identA, identB) => {
+            const a = identA.category.localeCompare(identB.category);
+            if (a !== 0 ) {
+                return a;
+            }
+            return identA.type.localeCompare(identB.type);
+            // Extra slash for the non-existent xml:lang property
+        }).map(ident => `${ident.category}/${ident.type}//${ident.name}`).join('<') + '<';
+        s += [...this.feature].sort().join('<') + '<';
+        const shasum = createHash('sha1').update(s).digest('base64');
+        return shasum;
     }
 
 }
