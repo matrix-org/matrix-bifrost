@@ -70,7 +70,7 @@ export class StzaPresence extends StzaBase {
     protected includeXContent: boolean = true;
     constructor(
         from: string,
-        to: string,
+        to?: string,
         id?: string,
         public presenceType?: string,
     ) {
@@ -90,12 +90,32 @@ export class StzaPresence extends StzaBase {
     get xml(): string {
         const type = this.presenceType ? ` type='${this.presenceType}'` : "";
         const id = this.id ? ` id="${this.id}"` : "";
+        const to = this.to ? ` to="${this.to}"` : "";
         let content = "";
         if (this.includeXContent) {
             content = this.xContent ? `<x xmlns='http://jabber.org/protocol/${this.xProtocol}'>${this.xContent}</x>` :
                 "<x xmlns='http://jabber.org/protocol/muc'/>";
         }
-        return `<presence from="${this.from}" to="${this.to}"${id}${type}>${content}${this.presenceContent}</presence>`;
+        return `<presence from="${this.from}"${to}${id}${type}>${content}${this.presenceContent}</presence>`;
+    }
+}
+
+
+export class StzaPresenceAvailable extends StzaPresence {
+    constructor(from: string, to?: string, type?: string, private capsHash?: string, private status?: string) {
+        super(from, to, uuid(), type);
+        this.includeXContent = false;
+    }
+    get presenceContent() {
+        const hash = this.capsHash ? `<c xmlns='http://jabber.org/protocol/caps' hash='sha-1' node='${NODE_NAME}' ver='${encode(this.capsHash)}'/>` : "";
+        const status = this.status ? `<status>${he.encode(this.status)}</status>` : "";
+        return hash+status;
+    }
+}
+
+export class StzaPresenceSubscription extends StzaPresence {
+    constructor(from: string, to: string, type: "subscribed"|"unsubscribed") {
+        super(from, to, uuid(), type);
     }
 }
 
@@ -209,10 +229,11 @@ export class StzaPresenceKick extends StzaPresenceItem {
 }
 export class StzaMessage extends StzaBase {
     public html: string = "";
-    public body: string = "";
+    public body?: string = "";
     public markable: boolean = true;
     public attachments: string[] = [];
     public replacesId?: string;
+    public chatstate: "active"|"inactive"|"composing"|"paused"|undefined;
     constructor(
         from: string,
         to: string,
@@ -228,7 +249,8 @@ export class StzaMessage extends StzaBase {
                 this.html = html ? html.body : "";
             }
             if (idOrMsg.opts) {
-                this.attachments = (idOrMsg.opts.attachments || []).map((a) => a.uri);
+                // TODO: Support MXC urls in outbound messages?
+                this.attachments = (idOrMsg.opts.attachments || []).filter(a => 'uri' in a).map(a => 'uri' in a && a.uri);
             }
             this.id = idOrMsg.id;
             if (idOrMsg.original_message) {
@@ -257,8 +279,11 @@ export class StzaMessage extends StzaBase {
         const markable = this.markable ? "<markable xmlns='urn:xmpp:chat-markers:0'/>" : "";
         // XEP-0308
         const replaces = this.replacesId ? `<replace id='${this.replacesId}' xmlns='urn:xmpp:message-correct:0'/>` : "";
+        // XEP-0085
+        const chatstate = this.chatstate ? `<${this.chatstate} xmlns='http://jabber.org/protocol/chatstates'/>` : "";
+        const body = this.body ? `<body>${encode(this.body)}</body>` : "";
         return `<message from="${this.from}" to="${this.to}" id="${this.id}" ${type}>`
-             + `${this.html}<body>${encode(this.body)}</body>${attachments}${markable}${replaces}</message>`;
+             + `${this.html}${body}${attachments}${markable}${replaces}${chatstate}</message>`;
     }
 }
 
@@ -281,6 +306,104 @@ export class StzaMessageSubject extends StzaBase {
     get xml(): string {
         return `<message from="${this.from}" to="${this.to}" id="${this.id}" type='groupchat'>`
              + `<subject>${encode(this.subject)}</subject></message>`;
+    }
+}
+
+export class StzaIqResponse extends StzaBase {
+    protected extraContent: string = "";
+    constructor(
+        from: string,
+        to: string,
+        id: string,
+        public responseType: string,
+    ) {
+        super(from, to, id || uuid());
+    }
+
+    get type() {
+        return "iq";
+    }
+
+    get xml(): string {
+        return `<iq from='${this.from}' to='${this.to}' id='${this.id}' type='${this.responseType}'/>`;
+    }
+}
+
+export class StzaJingleAcceptIBB extends StzaBase {
+    protected extraContent: string = "";
+    public responder: string;
+    public initiator: string;
+    constructor(
+        from: string,
+        to: string,
+        public sid: string,
+        public contentName: string,
+        public descriptionXML: string,
+        public transportBSize: number,
+        public transportSid: string,
+        responder?: string,
+        initiator?: string,
+    ) {
+        super(from, to, uuid());
+        this.responder = responder || this.from;
+        this.initiator = initiator || this.to;
+    }
+
+    get type() {
+        return "iq";
+    }
+
+    get xml(): string {
+        return `<iq from='${this.from}' to='${this.to}' id='${this.id}' type='set'>` +
+        `<jingle xmlns='${XMPPFeatures.Jingle}' action='session-accept' initiator='${this.initiator}' responder='${this.responder}' sid='${this.sid}'>`
+        + `<content creator='initator' name='${this.contentName}'>`
+        + this.descriptionXML
+        + `<transport xmlns='${XMPPFeatures.JingleIBB}' block-size='${this.transportBSize}' sid='${this.transportSid}'/>`
+        + '</content></jingle></iq>'
+    }
+}
+
+export class StzaJingleIBBClose extends StzaBase {
+    constructor(
+        from: string,
+        to: string,
+        public sid: string,
+    ) {
+        super(from, to, uuid());
+    }
+
+    get type() {
+        return "iq";
+    }
+
+    get xml(): string {
+        return `<iq from='${this.from}' to='${this.to}' id='${this.id}' type='set'>` +
+        `<close xmlns='http://jabber.org/protocol/ibb' sid='${this.sid}'/></iq>`
+    }
+}
+
+export class StzaJingleTerminate extends StzaBase {
+    public responder?: string;
+    public initiator?: string;
+    constructor(
+        from: string,
+        to: string,
+        public sid: string,
+        responder?: string,
+        initiator?: string,
+    ) {
+        super(from, to, uuid());
+        this.responder = responder || this.from;
+        this.initiator = initiator || this.to;
+    }
+
+    get type() {
+        return "iq";
+    }
+
+    get xml(): string {
+        return `<iq from='${this.from}' to='${this.to}' id='${this.id}' type='set'>` +
+        `<jingle initiator='${this.initiator}' responder='${this.responder}' xmlns='urn:xmpp:jingle:1' action='session-terminate' sid='${this.sid}'><reason><success/></reason></jingle></iq>`
     }
 }
 
