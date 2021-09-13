@@ -83,14 +83,14 @@ portals:
   # List of regexes to match a alias that can be turned into a bridge.
   aliases:
     # This matches #_bifrost_ followed by anything
-    "/^_bifrost_(.+)$/":
+    "^_bifrost_(.+)$":
       # Use the xmpp-js protocol.
       protocol: "xmpp-js"
       properties:
         # Set room to the first regex match
         room: "regex:1"
         # Set the server to be conf.localhost
-        server: "regex:2"
+        server: "conf.localhost"
       
 
 # Automatically register users with accounts if they join/get invited
