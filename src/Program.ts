@@ -202,9 +202,18 @@ class Program {
                     });
                 },
                 onEphemeralEvent: (r) => {
-                    if (r.getData().type === "m.typing") {
+                    const data = r.getData();
+                    if (data.type === "m.typing") {
                         this.eventHandler.onTyping(r as Request<TypingEvent>).catch((err) => {
-                            log.error("onTyping err", err);
+                            log.error("onTyping encountered an error", err);
+                        }).then(() => {
+                            Metrics.requestOutcome(false, r.getDuration(), "success");
+                        }).catch(() => {
+                            Metrics.requestOutcome(false, r.getDuration(), "fail");
+                        });
+                    } else if (data.type === "m.presence") {
+                        this.eventHandler.onPresence(r as Request<PresenceEvent>).catch((err) => {
+                            log.error("onPresence encountered an error", err);
                         }).then(() => {
                             Metrics.requestOutcome(false, r.getDuration(), "success");
                         }).catch(() => {
@@ -237,6 +246,24 @@ class Program {
         }
         const purple = this.purple!;
         await this.bridge.initalise();
+        purple.on("account-signed-on", async (ev: IAccountEvent) => {
+            log.info(`${ev.account.protocol_id}://${ev.account.username} signed on`);
+            const acct = this.purple.getAccount(ev.account.username, ev.account.protocol_id);
+            acct.setStatus('available', true);
+            // Check presence
+            // TODO: Move this to it's own handler?
+            if (ev.mxid && acct?.setPresence) {
+                try {
+                    const allInterestedUsers = new Set((
+                        await this.store.getAllIMRoomsForAccount(ev.mxid, acct.protocol.id)
+                    ).map((r) => r.remote.get<string>('recipient')));
+                    const presence = await this.bridge.getIntent().getClient().getPresence(ev.mxid);
+                    await acct.setPresence(presence, [...allInterestedUsers]);
+                } catch (ex) {
+                    log.warn(`Failed to set startup presence for ${ev.mxid}`, ex);
+                }
+            }
+        });
 
 
         this.store = await initiateStore(this.config.datastore, this.bridge);
@@ -302,10 +329,6 @@ class Program {
             log.error("Encountered an error starting the backend:", ex);
             process.exit(1);
         }
-        this.purple!.on("account-signed-on", (ev: IAccountEvent) => {
-            log.info(`${ev.account.protocol_id}://${ev.account.username} signed on`);
-            this.purple.getAccount(ev.account.username, ev.account.protocol_id, ).setStatus('available', true);
-        });
         this.purple!.on("account-connection-error", (ev: IAccountEvent) => {
             log.warn(`${ev.account.protocol_id}://${ev.account.username} had a connection error`, ev);
         });

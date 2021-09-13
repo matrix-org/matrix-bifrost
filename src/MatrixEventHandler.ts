@@ -1,4 +1,4 @@
-import { Bridge, RemoteUser, MatrixUser, Request, WeakEvent, RoomBridgeStoreEntry, UserMembership, TypingEvent } from "matrix-appservice-bridge";
+import { Bridge, RemoteUser, MatrixUser, Request, WeakEvent, RoomBridgeStoreEntry, UserMembership, TypingEvent, PresenceEvent } from "matrix-appservice-bridge";
 import { MatrixMembershipEvent, MatrixMessageEvent } from "./MatrixTypes";
 import { MROOM_TYPE_UADMIN, MROOM_TYPE_IM, MROOM_TYPE_GROUP,
     IRemoteUserAdminData } from "./store/Types";
@@ -277,6 +277,25 @@ export class MatrixEventHandler {
         const recipient = ctx.remote.get<string>("recipient");
         log.debug(`Sending typing to ${recipient}`);
         acct.sendIMTyping(recipient, isUserTyping);
+    }
+
+    async onPresence(req: Request<PresenceEvent>) {
+        const data = req.getData();
+        const remoteUsers = await this.store.getAllAccountsForMatrixUser(data.sender);
+        for (const remoteUser of remoteUsers) {
+            try {
+                log.debug(`Sending presence on behalf of Matrix user via ${remoteUser.protocolId}:${remoteUser.username}`);
+                const account = this.purple.getAccount(remoteUser.username, remoteUser.protocolId);
+                const allInterestedUsers = new Set((
+                    await this.store.getAllIMRoomsForAccount(data.sender, account.protocol.id)
+                ).map((r) => r.remote.get<string>('recipient')));
+                if (account?.setPresence) {
+                    account.setPresence(data.content, [...allInterestedUsers]);
+                }
+            } catch (ex) {
+                log.warn(`Failed to handle presence update for ${data.sender} via account ${remoteUser.protocolId}:${remoteUser.username}`, ex);
+            }
+        }
     }
 
     /* NOTE: Command handling should really be it's own class, but I am cutting corners.*/
