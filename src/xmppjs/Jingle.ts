@@ -9,7 +9,7 @@ import * as http from "http";
 import { createHash, Hash } from "crypto";
 import { Logging } from "matrix-appservice-bridge";
 import { IncomingMessage } from "node:http";
-import { EventEmitter } from "node:stream";
+import { EventEmitter } from "events";
 import jid, { JID } from "@xmpp/jid";
 
 const log = Logging.get("JingleHandler");
