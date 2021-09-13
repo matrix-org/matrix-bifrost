@@ -79,6 +79,7 @@ export class ProtoHacks {
             delete props.handle;
             delete props.avatar_hash;
         }
+        return props;
     }
 
     public static getRoomNameFromProps(protocolId: string, props: IChatJoinProperties): string | undefined {
