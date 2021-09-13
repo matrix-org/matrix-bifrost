@@ -1,6 +1,7 @@
 import * as Chai from "chai";
 import { StzaPresenceItem, StzaPresenceError, StzaMessageSubject,
-    StzaMessage, StzaPresencePart, StzaPresenceKick, SztaIqError } from "../../src/xmppjs/Stanzas";
+    StzaMessage, StzaPresencePart, StzaPresenceKick, SztaIqError, StzaIqDiscoInfo } from "../../src/xmppjs/Stanzas";
+import { XMPPFeatures } from "../../src/xmppjs/XMPPConstants";
 import { assertXML } from "./util";
 const expect = Chai.expect;
 
@@ -113,5 +114,25 @@ describe("Stanzas", () => {
              `<text xmlns="urn:ietf:params:xml:ns:xmpp-stanzas">Something isn&apos;t right</text>` +
              "</error></iq>",
         );
+    });
+    describe("StzaIqDiscoInfo", () => {
+        it("should create a valid stanza", () => {
+            const xml = new StzaIqDiscoInfo("foo@bar", "baz@bar", "someid").xml;
+            assertXML(xml);
+            expect(xml).to.equal(
+                `<iq from=\'foo@bar\' to=\'baz@bar\' id=\'someid\' type=\'result\'><query xmlns=\'http://jabber.org/protocol/disco#info\'></query></iq>`,
+            );
+        });
+        it("should create a valid hash", () => {
+            const userDiscoInfo = new StzaIqDiscoInfo("foo@bar", "baz@bar", "someid");
+            userDiscoInfo.identity.add({category: "client", type: "bridge", name: "matrix-bifrost"})
+            userDiscoInfo.feature.add(XMPPFeatures.DiscoInfo);
+            userDiscoInfo.feature.add(XMPPFeatures.Jingle);
+            userDiscoInfo.feature.add(XMPPFeatures.JingleFileTransfer);
+            userDiscoInfo.feature.add(XMPPFeatures.JingleIBB);
+            userDiscoInfo.feature.add(XMPPFeatures.XHTMLIM);
+            userDiscoInfo.feature.add(XMPPFeatures.ChatStates);
+            expect(userDiscoInfo.hash).to.equal('2FWsaebeYu/8vQiOn2rZm3VJhz8=');
+        })
     });
 });
