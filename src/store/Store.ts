@@ -30,6 +30,8 @@ export interface IStore {
 
     getAccountsForMatrixUser(userId: string, protocolId: string): Promise<BifrostRemoteUser[]>;
 
+    getAllAccountsForMatrixUser(userId: string): Promise<BifrostRemoteUser[]>;
+
     getRemoteUsersFromMxId(userId: string): Promise<BifrostRemoteUser[]>;
 
     getGroupRoomByRemoteData(remoteData: IRemoteRoomData|IRemoteGroupData): Promise<RoomBridgeStoreEntry|null>;
@@ -59,4 +61,6 @@ export interface IStore {
     storeRoomEvent(roomId: string, matrixEventId: string, remoteEventId: string): Promise<void>;
 
     integrityCheck(canWrite: boolean): Promise<void>;
+
+    getAllIMRoomsForAccount(userId: string, protocolId: string): Promise<RoomBridgeStoreEntry[]>;
 }
