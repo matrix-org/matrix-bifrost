@@ -387,8 +387,10 @@ export class XmppJsAccount implements IBifrostAccount {
         return;
     }
 
-    public sendIMTyping() {
-        // No-op
+    public sendIMTyping(recipient: string, isTyping: boolean) {
+        const msg = new StzaMessage(this.remoteId, recipient, uuid(), "chat");
+        msg.chatstate = isTyping ? 'composing' : 'inactive';
+        this.xmpp.xmppSend(msg);
         return;
     }
 }
