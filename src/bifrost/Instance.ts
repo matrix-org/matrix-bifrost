@@ -22,7 +22,7 @@ import { IGateway } from "./Gateway";
 export interface IBifrostInstance extends EventEmitter {
     gateway: IGateway|null;
     createBifrostAccount(username, protocol: BifrostProtocol): IBifrostAccount;
-    getBuddyFromChat(conv: any, buddy: string): any;
+    getBuddyFromChat?(conv: any, buddy: string): any;
     start(): Promise<void>;
     close(): Promise<void>;
     getAccount(username: string, protocolId: string, mxid?: string): IBifrostAccount|null;
