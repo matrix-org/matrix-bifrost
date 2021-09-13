@@ -855,8 +855,49 @@ export class XmppJsInstance extends EventEmitter implements IBifrostInstance {
         const to = jid(stanza.getAttr("to"));
         // XMPP is case insensitive.
         const localAcct = this.accounts.get(`${to.local}@${to.domain}`);
+        if (stanza.attrs.type === 'error') {
+            log.error(`Presence returned error: ${stanza.children[0].toString()}`);
+            return;
+        }
         const from = jid(stanza.getAttr("from"));
         const convName = `${from.local}@${from.domain}`;
+        const username = localAcct ? localAcct.remoteId : to.toString();
+
+        if (stanza.attrs.type === 'subscribe') {
+            // These are subscriptions, and are handled differently.
+            this.emit("contact-list-subscribe", {
+                cb: (accept: boolean) => {
+                    const type = accept ? "subscribed" : "unsubscribed";
+                    log.info(`Responding to subscription request with '${type}'`);
+                    this.xmppSend(
+                        new StzaPresenceSubscription(to.toString(), from.toString(), type)
+                    )
+                },
+                eventName: "contact-list-subscribe",
+                account: {
+                    protocol_id: XMPP_PROTOCOL.id,
+                    username,
+                },
+                sender: stanza.attrs.from,
+            } as IContactListSubscribeRequest);
+            return;
+        } else if (stanza.attrs.type === 'unsubscribe') {
+            // We don't care about these yet.
+            return;
+        }
+
+        if (stanza.attrs.type === 'probe') {
+            // https://xmpp.org/extensions/xep-0318.html
+            // The user want's to know the presence of our of our users.
+            if (localAcct) {
+                // TODO: Actually check presence
+                this.xmppSend(
+                    new StzaPresenceAvailable(to.toString(), from.toString(), this.xmpp.serviceHandler.userDiscoHash, "Rocking on Matrix")
+                )
+            }
+            return;
+        }
+
         const delta = this.presenceCache.add(stanza);
 
         if (!delta) {
