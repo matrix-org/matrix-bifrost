@@ -1,4 +1,4 @@
-// tslint:disable: no-any
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import * as Chai from "chai";
 import { XmppJsGateway } from "../../src/xmppjs/XJSGateway";
 import { IConfigBridge, Config } from "../../src/Config";

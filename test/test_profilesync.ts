@@ -1,4 +1,4 @@
-// tslint:disable: no-any
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import * as Chai from "chai";
 import { mockStore } from "./mocks/store";
 import { ProfileSync } from "../src/ProfileSync";

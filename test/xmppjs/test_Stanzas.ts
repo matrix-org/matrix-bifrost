@@ -128,11 +128,12 @@ describe("Stanzas", () => {
             userDiscoInfo.identity.add({category: "client", type: "bridge", name: "matrix-bifrost"})
             userDiscoInfo.feature.add(XMPPFeatures.DiscoInfo);
             userDiscoInfo.feature.add(XMPPFeatures.Jingle);
-            userDiscoInfo.feature.add(XMPPFeatures.JingleFileTransfer);
+            userDiscoInfo.feature.add(XMPPFeatures.JingleFileTransferV4);
+            userDiscoInfo.feature.add(XMPPFeatures.JingleFileTransferV5);
             userDiscoInfo.feature.add(XMPPFeatures.JingleIBB);
             userDiscoInfo.feature.add(XMPPFeatures.XHTMLIM);
             userDiscoInfo.feature.add(XMPPFeatures.ChatStates);
-            expect(userDiscoInfo.hash).to.equal('2FWsaebeYu/8vQiOn2rZm3VJhz8=');
+            expect(userDiscoInfo.hash).to.equal('YvWxpAh3qsnZdItZNak8ruVh+Gs=');
         })
     });
 });

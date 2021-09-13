@@ -1,5 +1,4 @@
 import { IBifrostAccount, IProfileProvider } from "./bifrost/Account";
-import * as _fs from "fs";
 import * as path from "path";
 import { BifrostProtocol } from "./bifrost/Protocol";
 import { Logging, MatrixUser, Bridge } from "matrix-appservice-bridge";
@@ -9,9 +8,7 @@ import { BifrostRemoteUser } from "./store/BifrostRemoteUser";
 const log = Logging.get("ProfileSync");
 
 export class ProfileSync {
-    constructor(private bridge: Bridge, private config: Config, private store: IStore) {
-
-    }
+    constructor(private bridge: Bridge, private config: Config, private store: IStore) { }
 
     public async updateProfile(
         protocol: BifrostProtocol,

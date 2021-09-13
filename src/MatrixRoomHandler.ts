@@ -594,7 +594,7 @@ export class MatrixRoomHandler {
     }
 
     private async handleContactListSubscribeRequest(data: IContactListSubscribeRequest) {
-        log.info(`Got contact list sub request from ${data.sender}`);
+        log.info(`Got contact list sub request from ${data.sender} -> ${data.account}`);
         // TODO: Make this optional to the user.
         data.cb(true);
     }

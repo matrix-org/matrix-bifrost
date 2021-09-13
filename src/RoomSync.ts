@@ -1,4 +1,4 @@
-import { AppServiceBot, Logging, RemoteRoom } from "matrix-appservice-bridge";
+import { AppServiceBot, Intent, Logging, RemoteRoom } from "matrix-appservice-bridge";
 import { IBifrostInstance } from "./bifrost/Instance";
 import { IAccountEvent, IChatJoinProperties } from "./bifrost/Events";
 import { IStore } from "./store/Store";
@@ -27,7 +27,7 @@ export class RoomSync {
         private store: IStore,
         private deduplicator: Deduplicator,
         private gateway: GatewayHandler,
-        private intent: any,
+        private intent: Intent,
     ) {
         this.accountRoomMemberships = new Map();
         this.bifrost.on("account-signed-on", this.onAccountSignedin.bind(this));
@@ -37,7 +37,7 @@ export class RoomSync {
         return this.accountRoomMemberships.get(user);
     }
 
-    public async sync(bot: any) {
+    public async sync(bot: AppServiceBot) {
         log.info("Beginning sync");
         try {
             await this.syncAccountsToGroupRooms(bot);

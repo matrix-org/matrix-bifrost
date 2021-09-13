@@ -1,7 +1,9 @@
-import { Bridge, RemoteUser, MatrixUser, Request, WeakEvent, RoomBridgeStoreEntry, UserMembership, TypingEvent, PresenceEvent } from "matrix-appservice-bridge";
+import { Bridge, MatrixUser, Request, WeakEvent, RoomBridgeStoreEntry, TypingEvent, PresenceEvent } from "matrix-appservice-bridge";
 import { MatrixMembershipEvent, MatrixMessageEvent } from "./MatrixTypes";
 import { MROOM_TYPE_UADMIN, MROOM_TYPE_IM, MROOM_TYPE_GROUP,
-    IRemoteUserAdminData } from "./store/Types";
+    IRemoteUserAdminData,
+    IRemoteGroupData,
+    IRemoteImData} from "./store/Types";
 import { BifrostProtocol } from "./bifrost/Protocol";
 import { IBifrostInstance } from "./bifrost/Instance";
 import marked from "marked";
@@ -12,7 +14,7 @@ import { Deduplicator } from "./Deduplicator";
 import { AutoRegistration } from "./AutoRegistration";
 import { Config } from "./Config";
 import { IStore } from "./store/Store";
-import { IAccountEvent, IChatJoinProperties, IChatJoined, IConversationEvent } from "./bifrost/Events";
+import { IAccountEvent, IChatJoinProperties, IConversationEvent } from "./bifrost/Events";
 import { ProtoHacks } from "./ProtoHacks";
 import { RoomAliasSet } from "./RoomAliasSet";
 import { MessageFormatter } from "./MessageFormatter";
@@ -94,11 +96,11 @@ export class MatrixEventHandler {
         log.info(`onAliasQueried:`, alias, roomId);
         const {protocol, props} = this.pendingRoomAliases.get(alias)!;
         this.pendingRoomAliases.delete(alias);
-        const remoteData = {
+        const remoteData: IRemoteGroupData = {
             protocol_id: protocol.id,
             room_name: ProtoHacks.getRoomNameFromProps(protocol.id, props),
             properties: Util.sanitizeProperties(props), // for joining
-        } as any;
+        };
         const remoteId = Buffer.from(
             `${protocol.id}:${remoteData.room_name}`,
         ).toString("base64");
@@ -150,11 +152,11 @@ export class MatrixEventHandler {
                     protocol,
                 } = this.purple.getUsernameFromMxid(event.state_key!, this.config.bridge.userPrefix);
                 log.debug("Mapped username to", username);
-                const remoteData = {
+                const remoteData: IRemoteImData = {
                     matrixUser: event.sender,
                     protocol_id: protocol.id,
                     recipient: username,
-                } as any;
+                };
                 const ghostIntent = this.bridge.getIntent(event.state_key);
                 // If the join fails to join because it's not registered, it tries to get invited which will fail.
                 log.debug(`Joining ${event.state_key} to ${event.room_id}.`);
@@ -453,12 +455,12 @@ export class MatrixEventHandler {
                         log.warn("Failed to join chat for plumbing:", ex);
                         throw Error("Failed to join chat");
                     }
-                    const remoteData = {
+                    const remoteData: IRemoteGroupData = {
                         protocol_id: acct.protocol.id,
                         room_name: res.conv.name,
                         plumbed: true,
                         properties: Util.sanitizeProperties(paramSet), // for joining
-                    } as any;
+                    };
                     const remoteId = Buffer.from(
                         `${acct.protocol.id}:${res.conv.name}`,
                     ).toString("base64");
@@ -840,15 +842,14 @@ E.g. \`${command} ${acct.protocol.id}\` ${required.join(" ")} ${optional.join(" 
         if (!acct.connected) {
             log.debug("Account is not connected, deferring join until connected");
             return new Promise((resolve, reject) => {
-                let cb = null;
-                cb = (joinEvent: IAccountEvent) => {
+                const cb = (joinEvent: IAccountEvent) => {
                     if (joinEvent.account.username === acct.name &&
                         acct.protocol.id === joinEvent.account.protocol_id) {
                         log.debug("Account signed in, joining room");
-                        const p = acct.joinChat(properties, this.purple, 5000) as Promise<any>;
+                        const p = acct.joinChat(properties, this.purple, 5000);
                         acct.setJoinPropertiesForRoom(name, properties);
                         this.purple.removeListener("account-signed-on", cb);
-                        resolve(p);
+                        p.then(() => resolve);
                     }
                 };
                 this.purple.on("account-signed-on", cb);

@@ -1,5 +1,5 @@
 import { IConfigAutoReg, IConfigAccessControl } from "./Config";
-import { Bridge, MatrixUser } from "matrix-appservice-bridge";
+import { Bridge, MatrixUser, UserProfile } from "matrix-appservice-bridge";
 import request from "axios";
 import { Util } from "./Util";
 import { Logging } from "matrix-appservice-bridge";
@@ -143,7 +143,7 @@ export class AutoRegistration {
         return result;
     }
 
-    public static generateParameters(parameters: {[key: string]: string}, mxId: string, profile?: {displayname: string; avatar_url: string})
+    public static generateParameters(parameters: {[key: string]: string}, mxId: string, profile?: UserProfile)
         : {[key: string]: string} {
         const body = {};
         const mxUser = new MatrixUser(mxId);
@@ -153,7 +153,7 @@ export class AutoRegistration {
         return body;
     }
 
-    private static generateParameter(val: string, mxUser: MatrixUser, profile?: {displayname: string; avatar_url: string}) {
+    private static generateParameter(val: string, mxUser: MatrixUser, profile?: UserProfile) {
         val = val.replace("<T_MXID>", mxUser.getId());
         val = val.replace("<T_MXID_SANE>", this.getSaneMxId(mxUser.getId()));
         val = val.replace("<T_LOCALPART>", mxUser.localpart);
@@ -175,7 +175,7 @@ export class AutoRegistration {
         const opts = step.opts as IAutoRegHttpOpts;
         log.debug("HttpReg: Fetching user profile");
         const intent = this.bridge.getIntent();
-        let profile: any = {};
+        let profile: UserProfile = {};
         try {
             profile = await intent.getProfileInfo(mxId);
             if (profile.avatar_url) {
