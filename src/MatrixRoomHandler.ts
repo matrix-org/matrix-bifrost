@@ -11,6 +11,7 @@ import {
     IChatTyping,
     IStoreRemoteUser,
     IChatReadReceipt,
+    IContactListSubscribeRequest,
 } from "./bifrost/Events";
 import { ProfileSync } from "./ProfileSync";
 import { Util } from "./Util";
@@ -29,19 +30,17 @@ const EVENT_MAPPING_SIZE = 16384;
  * Handles creation and handling of rooms.
  */
 export class MatrixRoomHandler {
-    private bridge?: Bridge;
-    private accountRoomLock: Set<string>;
-    private remoteEventIdMapping: Map<string, string>; // remote_id -> event_id
-    private roomCreationLock: Map<string, Promise<RoomBridgeStoreEntry>>;
+    private readonly accountRoomLock = new Set<string>();
+    private readonly remoteEventIdMapping = new Map<string, string>(); // remote_id -> event_id
+    private readonly roomCreationLock = new Map<string, Promise<RoomBridgeStoreEntry>>();
     constructor(
-        private purple: IBifrostInstance,
-        private profileSync: ProfileSync,
-        private store: IStore,
-        private config: Config,
-        private deduplicator: Deduplicator,
+        private readonly purple: IBifrostInstance,
+        private readonly profileSync: ProfileSync,
+        private readonly store: IStore,
+        private readonly config: Config,
+        private readonly deduplicator: Deduplicator,
+        private readonly bridge: Bridge,
     ) {
-        this.accountRoomLock = new Set();
-        this.roomCreationLock = new Map();
         if (this.purple.needsDedupe() || this.purple.needsAccountLock()) {
             purple.on("chat-joined", this.onChatJoined.bind(this));
         }
@@ -87,18 +86,9 @@ export class MatrixRoomHandler {
                 storeUser.data,
             );
         });
+        purple.on("contact-list-subscribe", this.handleContactListSubscribeRequest.bind(this));
         this.remoteEventIdMapping = new Map();
         purple.on("read-receipt", this.handleReadReceipt.bind(this));
-    }
-
-    /**
-     * Set the bridge for us to use. This must be called after MatrixEventHandler
-     * has been created.
-     *
-     * @return [description]
-     */
-    public setBridge(bridge: Bridge) {
-        this.bridge = bridge;
     }
 
     public async onChatJoined(ev: IConversationEvent) {
@@ -377,7 +367,6 @@ export class MatrixRoomHandler {
         if (this.purple.needsDedupe() && !this.deduplicator.isTheChosenOneForRoom(data.conv.name, acctId)) {
             return;
         }
-        // this.purple.getBuddyFromChat(data.conv, data.sender);
         // If multiple of our users are in this room, it may dupe up here.
         const protocol = this.purple.getProtocol(data.account.protocol_id);
         if (!protocol) {
@@ -489,7 +478,13 @@ export class MatrixRoomHandler {
             this.config.bridge.userPrefix,
         ) : senderMatrixUser;
         const intent = this.bridge.getIntent(intentUser.userId);
-        const roomId = await this.createOrGetGroupChatRoom(data, intent, true);
+        let roomId: string;
+        try {
+            roomId = await this.createOrGetGroupChatRoom(data, intent, true);
+        } catch (ex) {
+            log.error('Failed to handleRemoteUserState', ex);
+            return;
+        }
         const account = this.purple.getAccount(data.account.username, data.account.protocol_id);
         // Do we need to set a profile before we can join to avoid uglyness?
         const profileNeeded = this.config.tuning.waitOnProfileBeforeSend &&
@@ -596,5 +591,11 @@ export class MatrixRoomHandler {
         }
         await intent.sendReadReceipt(roomId, eventId);
         log.debug(`Updated read reciept for ${userId} in ${roomId}`);
+    }
+
+    private async handleContactListSubscribeRequest(data: IContactListSubscribeRequest) {
+        log.info(`Got contact list sub request from ${data.sender}`);
+        // TODO: Make this optional to the user.
+        data.cb(true);
     }
 }
