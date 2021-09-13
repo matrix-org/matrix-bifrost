@@ -272,11 +272,11 @@ class Program {
             // TODO: Move this to it's own handler?
             if (ev.mxid && acct?.setPresence) {
                 try {
-                    const allInterestedUsers = new Set((
-                        await this.store.getAllIMRoomsForAccount(ev.mxid, acct.protocol.id)
-                    ).map((r) => r.remote.get<string>('recipient')));
                     const presence = await this.bridge.getIntent().getClient().getPresence(ev.mxid);
-                    await acct.setPresence(presence, [...allInterestedUsers]);
+                    const allInterestedUsers = (
+                        await this.store.getAllIMRoomsForAccount(ev.mxid, acct.protocol.id)
+                    ).map((r) => r.remote.get<string>('recipient'));
+                    await acct.setPresence(presence, allInterestedUsers);
                 } catch (ex) {
                     log.warn(`Failed to set startup presence for ${ev.mxid}`, ex);
                 }
