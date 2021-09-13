@@ -13,7 +13,7 @@ export interface IBasicProtocolMessage {
     id?: string;
     original_message?: string;
     opts?: {
-        attachments?: IMessageAttachment[];
+        attachments?: (IMessageAttachment|IMxcAttachment)[];
     };
 }
 
@@ -22,6 +22,14 @@ export interface IMessageAttachment {
     mimetype?: string;
     size?: number;
 }
+
+export interface IMxcAttachment {
+    mxcUrl: string;
+    mimetype: string;
+    size: number;
+    filename: string;
+}
+
 
 export class MessageFormatter {
 
@@ -64,6 +72,34 @@ export class MessageFormatter {
             newMsg.original_message = originalMessage;
         }
         return newMsg;
+    }
+
+    private static async handleUrlAttachment(attachment: IMessageAttachment, intent: Intent): Promise<IMatrixMsgContents|string> {
+        if (!attachment.uri.startsWith("http")) {
+            throw Error("Don't know how to handle attachment for message, not a http format uri");
+        }
+        const file = await request.get(attachment.uri, {
+            responseType: "arraybuffer",
+        });
+        // Use the headers if a type isn't given.
+        if (!attachment.mimetype) {
+            attachment.mimetype = file.headers["content-type"];
+        }
+        if (!attachment.size) {
+            attachment.size = parseInt(file.headers["content-length"] || "0", 10);
+        }
+        const maxSize =
+            (await intent.getClient().getMediaConfig().then((cfg) => cfg.m.upload.size).catch(() => -1));
+
+        if (attachment.size && maxSize > -1 && maxSize < attachment.size!) {
+            log.info("File is too large, linking instead");
+            return { body: attachment.uri, msgtype: 'm.text' };
+        }
+        log.info(`Uploading ${attachment.uri}...`);
+        return intent.uploadContent(file.data, {
+            includeFilename: false,
+            type: attachment.mimetype || "application/octect-stream",
+        });
     }
 
     public static async messageToMatrixEvent(msg: IBasicProtocolMessage, protocol: BifrostProtocol, intent?: Intent):
@@ -112,53 +148,35 @@ export class MessageFormatter {
         // XXX: This currently only handles one attachment
         if (hasAttachment) {
             try {
-                if (!intent) {
-                    throw new Error("No intent given");
-                }
                 const attachment = msg.opts!.attachments![0];
-                if (!attachment.uri.startsWith("http")) {
-                    log.warn("Don't know how to handle attachment for message, not a http format uri");
-                    return matrixMsg;
+                if ('uri' in attachment) {
+                    if (!intent) {
+                        throw new Error("No intent given");
+                    }
+                    const result = await MessageFormatter.handleUrlAttachment(attachment, intent);
+                    if (typeof result !== 'string') {
+                        return result;
+                    }
+                    matrixMsg.url = result;
+                    matrixMsg.body = msg.body;
+                    matrixMsg.filename = attachment.uri.split("/").reverse()[0];
+                } else {
+                    // MXC
+                    matrixMsg.url = attachment.mxcUrl;
+                    matrixMsg.body = attachment.filename;
                 }
-                const file = await request.get(attachment.uri, {
-                    responseType: "arraybuffer",
-                });
-                // Use the headers if a type isn't given.
-                if (!attachment.mimetype) {
-                    attachment.mimetype = file.headers["content-type"];
-                }
-                if (!attachment.size) {
-                    attachment.size = parseInt(file.headers["content-length"] || "0", 10);
-                }
-                const maxSize =
-                    (await intent.getClient().getMediaConfig().then((cfg) => cfg.m.upload.size).catch(() => -1));
-
-                if (attachment.size && maxSize > -1 && maxSize < attachment.size!) {
-                    log.info("File is too large, linking instead");
-                    matrixMsg.body = attachment.uri;
-                    return matrixMsg;
-                }
-
-                log.info(`Uploading ${attachment.uri}...`);
-                const mxcurl = await intent.uploadContent(file.data, {
-                    includeFilename: false,
-                    type: attachment.mimetype || "application/octect-stream",
-                });
-                matrixMsg.url = mxcurl;
-                matrixMsg.body = msg.body;
-                matrixMsg.filename = attachment.uri.split("/").reverse()[0];
                 matrixMsg.info = {
-                    mimetype: attachment.mimetype!,
-                    size: attachment.size || 0,
+                    mimetype: attachment.mimetype,
+                    size: attachment.size,
                 };
-                if (!attachment.mimetype) {
-                    matrixMsg.msgtype = "m.file";
-                } else if (attachment.mimetype.startsWith("image")) {
+                if (attachment.mimetype?.startsWith("image")) {
                     matrixMsg.msgtype = "m.image";
-                } else if (attachment.mimetype.startsWith("video")) {
+                } else if (attachment.mimetype?.startsWith("video")) {
                     matrixMsg.msgtype = "m.video";
-                } else if (attachment.mimetype.startsWith("audio")) {
+                } else if (attachment.mimetype?.startsWith("audio")) {
                     matrixMsg.msgtype = "m.audio";
+                } else {
+                    matrixMsg.msgtype = "m.file";
                 }
             } catch (ex) {
                 log.warn("Failed to handle attachment:", ex);
