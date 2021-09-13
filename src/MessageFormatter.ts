@@ -51,7 +51,7 @@ export class MessageFormatter {
             return {body: `/me ${content.body}`, formatted, id: event.event_id};
         }
         if (["m.file", "m.image", "m.video"].includes(event.content.msgtype) && event.content.url) {
-            const uriBits = event.content.url.substr("mxc://".length).split("/");
+            const [domain, mediaId] = event.content.url.substr("mxc://".length).split("/");
             const url = (config.mediaserverUrl ? config.mediaserverUrl : config.homeserverUrl).replace(/\/$/, "");
             return {
                 body: content.body,
@@ -59,7 +59,7 @@ export class MessageFormatter {
                 opts: {
                     attachments: [
                         {
-                            uri: `${url}/_matrix/media/v1/download/${uriBits[0]}/${uriBits[1]}`,
+                            uri: `${url}/_matrix/media/v1/download/${domain}/${mediaId}`,
                             mimetype: event.content.info?.mimetype,
                             size: event.content.info?.size,
                         },
