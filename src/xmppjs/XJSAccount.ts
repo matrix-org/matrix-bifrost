@@ -373,9 +373,11 @@ export class XmppJsAccount implements IBifrostAccount {
         recipients: string[],
     ) {
         log.debug(`Broadcasting presence update ${this.remoteId} ${content.presence} ${recipients.join(', ')}`);
+        // Only allow bare JIDs
+        const xmppRecipients = new Set(recipients.map((r) => jid(r)).filter(r => r.bare().toString() === r.toString()))
         this.xmpp.xmppSend(
-            recipients.map(r => new StzaPresenceAvailable(
-                this.remoteId, r, content.presence !== "online" ? "unavailable" : undefined, this.xmpp.serviceHandler.userDiscoHash, content.status_msg
+            [...xmppRecipients].map(r => new StzaPresenceAvailable(
+                this.remoteId, r.toString(), content.presence !== "online" ? "unavailable" : undefined, this.xmpp.serviceHandler.userDiscoHash, content.status_msg
             ).xml).join('')
         );
         // Try sending a discovery info

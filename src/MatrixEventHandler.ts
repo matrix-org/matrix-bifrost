@@ -275,11 +275,11 @@ export class MatrixEventHandler {
             try {
                 log.debug(`Sending presence on behalf of Matrix user via ${remoteUser.protocolId}:${remoteUser.username}`);
                 const account = this.purple.getAccount(remoteUser.username, remoteUser.protocolId);
-                const allInterestedUsers = new Set((
+                const allInterestedUsers = (
                     await this.store.getAllIMRoomsForAccount(data.sender, account.protocol.id)
-                ).map((r) => r.remote.get<string>('recipient')));
+                ).map((r) => r.remote.get<string>('recipient'));
                 if (account?.setPresence) {
-                    account.setPresence(data.content, [...allInterestedUsers]);
+                    account.setPresence(data.content, allInterestedUsers);
                 }
             } catch (ex) {
                 log.warn(`Failed to handle presence update for ${data.sender} via account ${remoteUser.protocolId}:${remoteUser.username}`, ex);
