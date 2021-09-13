@@ -267,8 +267,12 @@ export class StzaMessage extends StzaBase {
             // For reasons unclear to me, XMPP reccomend we make the body == attachment url to make them show up inline.
             this.body = this.attachments[0];
         }
-        // Remove mxID trailer in replies
-        this.body = this.body.replace(/^> <@.*> /, "> ");
+        // Remove mxID trailer in replies if it's too long
+        const trailRe = /^> <(@.*:.*)> /;
+        const trailMatch = this.body.match(trailRe);
+        if (trailMatch && trailMatch[1].length >= 25) {
+            this.body = this.body.replace(trailRe, "> ");
+        }
         // XEP-0333
         const markable = this.markable ? "<markable xmlns='urn:xmpp:chat-markers:0'/>" : "";
         // XEP-0308
