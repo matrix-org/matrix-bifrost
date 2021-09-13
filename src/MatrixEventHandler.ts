@@ -24,30 +24,19 @@ const log = Logging.get("MatrixEventHandler");
  * Handles events coming into the appservice.
  */
 export class MatrixEventHandler {
-    private bridge?: Bridge;
-    private autoReg: AutoRegistration | null = null;
-    private roomAliases: RoomAliasSet;
-    private pendingRoomAliases: Map<string, {protocol: BifrostProtocol, props: IChatJoinProperties}>;
+    private readonly roomAliases: RoomAliasSet;
+    private readonly pendingRoomAliases: Map<string, {protocol: BifrostProtocol, props: IChatJoinProperties}>;
     constructor(
-        private purple: IBifrostInstance,
-        private store: IStore,
-        private deduplicator: Deduplicator,
-        private config: Config,
-        private gatewayHandler: GatewayHandler,
+        private readonly purple: IBifrostInstance,
+        private readonly store: IStore,
+        private readonly deduplicator: Deduplicator,
+        private readonly config: Config,
+        private readonly gatewayHandler: GatewayHandler,
+        private readonly bridge: Bridge,
+        private readonly autoReg: AutoRegistration|null = null,
     ) {
         this.roomAliases = new RoomAliasSet(this.config.portals, this.purple);
         this.pendingRoomAliases = new Map();
-    }
-
-    /**
-     * Set the bridge for us to use. This must be called after MatrixEventHandler
-     * has been created.
-     *
-     * @return [description]
-     */
-    public setBridge(bridge: Bridge, autoReg?: AutoRegistration) {
-        this.bridge = bridge;
-        this.autoReg = autoReg || null;
     }
 
     public async onAliasQuery(alias: string, aliasLocalpart: string) {

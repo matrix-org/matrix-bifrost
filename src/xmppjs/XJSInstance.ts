@@ -61,31 +61,22 @@ export const XMPP_PROTOCOL = new XmppProtocol();
 const SEEN_MESSAGES_SIZE = 16384;
 
 export class XmppJsInstance extends EventEmitter implements IBifrostInstance {
-    public readonly presenceCache: PresenceCache;
-    private serviceHandler: ServiceHandler;
+    public readonly presenceCache = new PresenceCache();
+    public readonly serviceHandler = new ServiceHandler(this, this.config.bridge);
     private xmpp?: any;
     private myAddress!: JID;
-    private accounts: Map<string, XmppJsAccount>;
-    private seenMessages: Set<string>;
+    private accounts = new Map<string, XmppJsAccount>();
+    private seenMessages = new Set<string>();
     private defaultRes!: string;
-    private connectionWasDropped: boolean;
-    private bufferedMessages: {xmlMsg: Element|string, resolve: (res: Promise<void>) => void}[];
-    private autoRegister!: AutoRegistration;
-    private bridge!: Bridge;
-    private xmppGateway: XmppJsGateway|null;
-    private activeMUCUsers: Set<string>;
-    private lastMessageInMUC: Map<string, {originIsMatrix: boolean, id: string}>;
-    constructor(private config: Config) {
+    private connectionWasDropped = false;
+    private bufferedMessages: {xmlMsg: Element|string, resolve: (res: Promise<void>) => void}[] = [];
+    private autoRegister?: AutoRegistration;
+    private xmppGateway?: XmppJsGateway;
+    private activeMUCUsers = new Set<string>();
+    private lastMessageInMUC = new Map<string, {originIsMatrix: boolean, id: string}>();
+    private jingleHandler?: JingleHandler;
+    constructor(private config: Config, private readonly bridge: Bridge) {
         super();
-        this.accounts = new Map();
-        this.bufferedMessages = [];
-        this.seenMessages = new Set();
-        this.presenceCache = new PresenceCache();
-        this.serviceHandler = new ServiceHandler(this, config.bridge);
-        this.connectionWasDropped = false;
-        this.activeMUCUsers = new Set();
-        this.lastMessageInMUC = new Map();
-        this.xmppGateway = null;
         const opts = config.purple.backendOpts as IXJSBackendOpts;
         if (opts.jingle) {
             this.jingleHandler = new JingleHandler(this, opts.jingle, {
@@ -139,11 +130,16 @@ export class XmppJsInstance extends EventEmitter implements IBifrostInstance {
         return XMPP_PROTOCOL.id;
     }
 
-    public preStart(bridge: Bridge, autoRegister: AutoRegistration) {
-        this.autoRegister = autoRegister;
-        this.bridge = bridge;
+    public preStart(autoRegister: AutoRegistration) {
         if (!autoRegister) {
             throw Error('autoRegistration not defined, cannot start bridge');
+        }
+        this.autoRegister = autoRegister;
+        if (this.config.portals.enableGateway === true) {
+            if (!this.autoRegister) {
+                throw Error("Autoregistration must be enabled for gateways to work!");
+            }
+            this.xmppGateway = new XmppJsGateway(this, this.autoRegister, this.config.bridge);
         }
     }
 
@@ -249,12 +245,6 @@ export class XmppJsInstance extends EventEmitter implements IBifrostInstance {
         const opts = config.backendOpts as IXJSBackendOpts;
         if (!opts || !opts.service || !opts.domain || !opts.password) {
             throw Error("Missing opts for xmpp: service, domain, password");
-        }
-        if (this.config.portals.enableGateway === true) {
-            if (!this.autoRegister) {
-                throw Error("Autoregistration must be enabled for gateways to work!");
-            }
-            this.xmppGateway = new XmppJsGateway(this, this.autoRegister, this.config.bridge);
         }
         this.defaultRes = opts.defaultResource ? opts.defaultResource : "matrix-bridge";
         log.info(`Starting new XMPP component instance to ${opts.service} using domain ${opts.domain}`);
