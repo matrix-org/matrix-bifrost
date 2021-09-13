@@ -1,4 +1,4 @@
-// tslint:disable: no-any
+/* eslint-disable @typescript-eslint/no-explicit-any */
 export class MockIntent {
     public ensureRegisteredCalled: boolean = false;
     public leftRoom: string = "";

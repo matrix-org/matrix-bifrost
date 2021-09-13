@@ -33,7 +33,6 @@ const log = Logging.get("GatewayHandler");
  * for XMPP.js).
  */
 export class GatewayHandler {
-    private aliasCache: Map<string, IGatewayRoom> = new Map();
     private roomIdCache: Map<string, Promise<IGatewayRoom>> = new Map();
 
     constructor(
@@ -97,7 +96,7 @@ export class GatewayHandler {
         this.purple.gateway.sendMatrixMessage(chatName, sender, body, room);
     }
 
-    public async sendStateEvent(chatName: string, sender: string, ev: any , context: RoomBridgeStoreEntry) {
+    public async sendStateEvent(chatName: string, sender: string, ev: any, context: RoomBridgeStoreEntry) {
         if (!this.purple.gateway) {
             return;
         }

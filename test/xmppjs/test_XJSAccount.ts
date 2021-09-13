@@ -1,4 +1,4 @@
-// tslint:disable: no-any
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import * as Chai from "chai";
 import { XmppJsAccount } from "../../src/xmppjs/XJSAccount";
 import { IBasicProtocolMessage } from "../../src/MessageFormatter";

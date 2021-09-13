@@ -1,4 +1,4 @@
-// tslint:disable: no-any
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import * as Chai from "chai";
 import { PurpleProtocol } from "../src/purple/PurpleProtocol";
 import { RoomSync } from "../src/RoomSync";
@@ -77,7 +77,7 @@ describe("RoomSync", () => {
             room_name: "abc",
         } as IRemoteGroupData);
         await store.storeAccount("@foo:bar", dummyProtocol, "foobar");
-        await rs.sync(bot);
+        await rs.sync(bot as any);
         expect(rs.getMembershipForUser("prpl-dummy://foobar")).to.deep.equal([
             {
                 membership: "join",
@@ -96,7 +96,7 @@ describe("RoomSync", () => {
             gateway: true,
         } as IRemoteGroupData);
         await store.storeAccount("@foo:bar", dummyProtocol, "foobar");
-        await rs.sync(bot);
+        await rs.sync(bot as any);
         expect(rs.getMembershipForUser("prpl-dummy://foobar")).to.not.exist;
         expect(remoteJoins[0].id).to.equal("!abc:foobar    foobar");
     });

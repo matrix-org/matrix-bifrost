@@ -8,7 +8,7 @@ import { ProfileSync } from "./ProfileSync";
 import { RoomSync } from "./RoomSync";
 import { IStore, initiateStore } from "./store/Store";
 import { Deduplicator } from "./Deduplicator";
-import { Config } from "./Config";
+import { Config, ConfigValue } from "./Config";
 import { Util } from "./Util";
 import { XmppJsInstance } from "./xmppjs/XJSInstance";
 import { Metrics } from "./Metrics";
@@ -51,9 +51,9 @@ class Program {
             },
             registrationPath: "bifrost-registration.yaml",
             generateRegistration: this.generateRegistration,
-            run: async (port: number, config: any) => {
+            run: async (port: number, config) => {
                 try {
-                    await this.runBridge(port, config);
+                    await this.runBridge(port, config as ConfigValue);
                 } catch (ex) {
                     log.error("Failed to start:", ex);
                     process.exit(1);
@@ -163,7 +163,7 @@ class Program {
         }
     }
 
-    private async runBridge(port: number, config: any) {
+    private async runBridge(port: number, config: ConfigValue) {
         const checkOnly = process.env.BIFROST_CHECK_ONLY === "true";
         this.cfg.ApplyConfig(config);
         port = this.cfg.bridge.appservicePort || port;
