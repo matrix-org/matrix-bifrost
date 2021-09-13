@@ -37,6 +37,9 @@ purple:
     domain: "matrix.localhost"
     # password needed by the component.
     password: "jam"
+    jingle:
+      # Automatically download files from Jingle file transfers. Unsafe for untrusted networks.
+      autodownload: false
 
   # Default settings to set for new accounts, useful for node-purple. NOT used for xmpp.js
   # defaultAccountSettings:
