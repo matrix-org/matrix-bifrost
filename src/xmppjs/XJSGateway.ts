@@ -496,7 +496,7 @@ export class XmppJsGateway implements IGateway {
         const ui: IUserInfo = {
             Nickname: j.resource || j.local,
             Avatar: photo,
-            eventName: "meh",
+            eventName: "-unused-",
             who,
             account: {
                 protocol_id: "",
