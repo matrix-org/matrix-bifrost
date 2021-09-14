@@ -235,6 +235,16 @@ class Program {
         });
         await this.bridge.initalise();
 
+        this.store = await initiateStore(this.config.datastore, this.bridge);
+        const ignoreIntegrity = process.env.BIFROST_INTEGRITY_WRITE;
+        await this.store.integrityCheck(
+            ignoreIntegrity === undefined || ignoreIntegrity !== "false");
+        if (checkOnly) {
+            log.warn("BIFROST_CHECK_ONLY is set, exiting");
+            process.exit(0);
+        }
+
+
         if (this.cfg.purple.backend === "node-purple") {
             log.info("Selecting node-purple as a backend");
             // eslint-disable-next-line @typescript-eslint/no-var-requires
@@ -291,16 +301,6 @@ class Program {
                 Util.createRemoteId(ev.account.protocol_id, ev.account.username),
             );
         });
-
-
-        this.store = await initiateStore(this.config.datastore, this.bridge);
-        const ignoreIntegrity = process.env.BIFROST_INTEGRITY_WRITE;
-        await this.store.integrityCheck(
-            ignoreIntegrity === undefined || ignoreIntegrity !== "false");
-        if (checkOnly) {
-            log.warn("BIFROST_CHECK_ONLY is set, exiting");
-            process.exit(0);
-        }
 
         this.profileSync = new ProfileSync(this.bridge, this.cfg, this.store);
         this.roomHandler = new MatrixRoomHandler(
