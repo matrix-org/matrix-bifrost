@@ -30,7 +30,8 @@ export class AutoRegistration {
         private accessConfig: IConfigAccessControl,
         private bridge: Bridge,
         private store: IStore,
-        private protoInstance: IBifrostInstance) { }
+        private protoInstance: IBifrostInstance) {
+    }
 
     public isSupported(protocol: string) {
         return Object.keys(this.autoRegConfig.protocolSteps!).includes(protocol);
@@ -78,6 +79,7 @@ export class AutoRegistration {
         log.info("Attempting to reverse register", username);
         const step = this.autoRegConfig.protocolSteps![protocol.id];
         const usernameFormat = step.parameters.username;
+        const domainParameter = step.parameters.domain;
         const hasLocalpart = usernameFormat.includes("<T_LOCALPART>");
         if (!usernameFormat) {
             throw Error("No parameter 'username' on registration step, cannot get mxid");
@@ -106,7 +108,17 @@ export class AutoRegistration {
             log.debug("Result:", match);
             mxid = `@${match[1]}:${match[2]}`;
         } else if (hasLocalpart) {
-            throw Error("We don't support localpart only, yet.");
+            if (!domainParameter) {
+                throw Error('`domain` must be specified in autoregistration parameters when only using a localpart')
+            }
+            let regexStr = usernameFormat.replace(/[-\/\\^$*+?.()|[\]{}]/g, "\\$&");
+            regexStr = regexStr.replace("<T_LOCALPART>", "(.+)");
+            const match = new RegExp(regexStr).exec(username);
+            if (!match || match.length < 2) {
+                throw Error("String didn't match");
+            }
+            log.debug("Result:", match);
+            mxid = `@${match[1]}:${domainParameter}`;
         } else  {
             throw Error("No T_MXID or T_MXID_SANE on username parameter, cannot get mxid");
         }
