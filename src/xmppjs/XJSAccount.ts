@@ -380,8 +380,6 @@ export class XmppJsAccount implements IBifrostAccount {
                 this.remoteId, r.toString(), content.presence !== "online" ? "unavailable" : undefined, this.xmpp.serviceHandler.userDiscoHash, content.status_msg
             ).xml).join('')
         );
-        // Try sending a discovery info
-        this.xmpp.serviceHandler.sendUserDiscoInfo("will@beefy", this.remoteId, uuid());
     }
 
     public setStatus() {
