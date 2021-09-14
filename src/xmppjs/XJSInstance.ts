@@ -839,6 +839,11 @@ export class XmppJsInstance extends EventEmitter implements IBifrostInstance {
                 }
             }
             log.debug(`Emitting IM message (isMucPM:${isMucPm})`, message);
+            if (!isMucPm) {
+                // Swift and other clients do not request discovery info often enough, so we send one when
+                // we recieve a (new) message from them.
+                this.serviceHandler.sendUserDiscoInfo(from.toString(), localAcct.remoteId, uuid());
+            }
             this.emit("received-im-msg", {
                 eventName: "received-im-msg",
                 sender: isMucPm ? from.toString() : from.bare().toString(),
