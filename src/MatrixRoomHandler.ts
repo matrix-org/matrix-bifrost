@@ -280,8 +280,8 @@ export class MatrixRoomHandler {
         log.debug(`Handling incoming IM from ${data.sender}`);
         data.message.body = entityDecode(data.message.body);
         // First, find out who the message was intended for.
-        const matrixUser = await this.store.getMatrixUserForAccount(data.account);
-        if (matrixUser === null) {
+        let targetMatrixUser = await this.store.getMatrixUserForAccount(data.account);
+        if (targetMatrixUser === null) {
             return;
         }
         const protocol = this.purple.getProtocol(data.account.protocol_id);
@@ -289,7 +289,14 @@ export class MatrixRoomHandler {
             log.error(`Unknown protocol ${data.account.protocol_id}. Bailing`);
             return;
         }
-        log.debug(`Message intended for ${matrixUser.getId()}`);
+        log.debug(`Message intended for ${targetMatrixUser.getId()}`);
+        if (this.config.bridge.userMapping) {
+            const mappedTargetId = this.config.bridge.userMapping[targetMatrixUser.getId()];
+            if (mappedTargetId) {
+                log.debug(`Forwarding message to ${mappedTargetId}`);
+                targetMatrixUser = new MatrixUser(mappedTargetId);
+            }
+        }
         const senderMatrixUser = protocol.getMxIdForProtocol(
             data.sender,
             this.config.bridge.domain,
@@ -297,7 +304,7 @@ export class MatrixRoomHandler {
         );
 
         // Update the user if needed.
-        const account = this.purple.getAccount(data.account.username, data.account.protocol_id, matrixUser.getId());
+        const account = this.purple.getAccount(data.account.username, data.account.protocol_id, targetMatrixUser.getId());
         if (account) {
             await this.profileSync.updateProfile(protocol, data.sender, account);
         }
@@ -306,7 +313,7 @@ export class MatrixRoomHandler {
         log.debug("Identified ghost user as", senderMatrixUser.getId());
         let roomId: string;
         try {
-            roomId = await this.createOrGetIMRoom(data, matrixUser, intent);
+            roomId = await this.createOrGetIMRoom(data, targetMatrixUser, intent);
         } catch (e) {
             log.error(`Failed to get/create room for this IM: ${e}`);
             return;
@@ -317,7 +324,7 @@ export class MatrixRoomHandler {
         } catch (ex) {
             log.warn("Not joined to room, discarding " + roomId);
             await this.store.removeRoomByRoomId(roomId);
-            roomId = await this.createOrGetIMRoom(data, matrixUser, intent);
+            roomId = await this.createOrGetIMRoom(data, targetMatrixUser, intent);
         }
 
         log.info(`Sending IM to ${roomId} as ${senderMatrixUser.getId()}`);

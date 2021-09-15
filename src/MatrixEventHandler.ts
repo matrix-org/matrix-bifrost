@@ -864,6 +864,18 @@ E.g. \`${command} ${acct.protocol.id}\` ${required.join(" ")} ${optional.join(" 
 
     private async getAccountForMxid(sender: string, protocol: string,
     ): Promise<{acct: IBifrostAccount, newAcct: boolean}> {
+        const userMapping = this.config.bridge.userMapping;
+        if (userMapping) {
+            const reverseMapping = {};
+            for (const key of Object.keys(userMapping)) {
+                reverseMapping[userMapping[key]] = key;
+            }
+            const mappedSender = reverseMapping[sender];
+            if (mappedSender) {
+                log.debug(`Mapped ${sender} to ${mappedSender}`);
+                sender = mappedSender;
+            }
+        }
         const remoteUser = (await this.store.getAccountsForMatrixUser(sender, protocol))[0];
         if (!remoteUser) {
             log.info(`Account not found for ${sender}`);
