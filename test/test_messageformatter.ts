@@ -284,7 +284,7 @@ describe("MessageFormatter", () => {
             ).to.deep.equal({
                 msgtype: "m.text",
                 format: "org.matrix.custom.html",
-                formatted_body: "<p><span style='font-family: Helvetica; font-size: x-large;'>hello halfshot!<\\span><\\p>",
+                formatted_body: "<p><span style='font-family: Helvetica; font-size: x-large;'>hello halfshot!</span></p>",
                 body: "## hello halfshot!",
             });
         });
