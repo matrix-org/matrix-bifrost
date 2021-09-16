@@ -8,7 +8,7 @@ import { promises as fs } from "fs";
 import { Logging } from "matrix-appservice-bridge";
 import { BifrostProtocol } from "../bifrost/Protocol";
 import { IChatJoinProperties, IUserInfo, IConversationEvent } from "../bifrost/Events";
-import { IBasicProtocolMessage } from "../MessageFormatter";
+import { IBasicProtocolMessage, IMessageAttachment } from "../MessageFormatter";
 import { Util } from "../Util";
 import { IBifrostInstance } from "../bifrost/Instance";
 import { IBifrostAccount } from "../bifrost/Account";
@@ -68,7 +68,7 @@ export class PurpleAccount implements IBifrostAccount {
         let body = msg.body;
 
         if (msg.opts?.attachments) {
-            body += " " + msg.opts.attachments.map(a => a.uri).join(', ');
+            body += " " + msg.opts.attachments.filter(a => 'uri' in a).map(a => (a as IMessageAttachment).uri).join(', ');
         }
 
         messaging.sendIM(this.handle, recipient, body);
