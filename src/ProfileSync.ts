@@ -1,7 +1,7 @@
 import { IBifrostAccount, IProfileProvider } from "./bifrost/Account";
 import * as path from "path";
 import { BifrostProtocol } from "./bifrost/Protocol";
-import { Logging, MatrixUser, Bridge } from "matrix-appservice-bridge";
+import { Logging, MatrixUser, Bridge, UserProfile } from "matrix-appservice-bridge";
 import { Config } from "./Config";
 import { IStore} from "./store/Store";
 import { BifrostRemoteUser } from "./store/BifrostRemoteUser";
@@ -62,21 +62,25 @@ export class ProfileSync {
         }
 
         const intent = this.bridge.getIntent(matrixUser.getId());
+        let profile: UserProfile = {};
+        try {
+            profile = await intent.getProfileInfo(matrixUser.getId());
+        } catch (ex) {
+            // This might return a 404.
+        }
 
-        if (remoteProfileSet.nick && matrixUser.get("displayname") !== remoteProfileSet.nick) {
+        if (remoteProfileSet.nick && profile.displayname !== remoteProfileSet.nick) {
             log.debug(`Got a nick "${remoteProfileSet.nick}", setting`);
-            await intent.setDisplayName(remoteProfileSet.nick);
-            matrixUser.set("displayname", remoteProfileSet.nick);
-        } else if (!matrixUser.get("displayname") && remoteProfileSet.name) {
+            await intent.ensureProfile(remoteProfileSet.nick);
+        } else if (!profile.displayname && remoteProfileSet.name) {
             log.debug(`Got a name "${remoteProfileSet.name}", setting`);
             // Don't ever set the name (ugly) over the nick unless we have never set it.
             // Nicks come and go depending on the libpurple cache and whether the user
             // is online (in XMPPs case at least).
             await intent.setDisplayName(remoteProfileSet.name);
-            matrixUser.set("displayname", remoteProfileSet.name);
         }
 
-        if (remoteProfileSet.avatar_uri && matrixUser.get("avatar_url") !== remoteProfileSet.avatar_uri) {
+        if (remoteProfileSet.avatar_uri && profile.avatar_url !== remoteProfileSet.avatar_uri) {
             log.debug(`Got an avatar, setting`);
             try {
                 const {type, data} = await account.getAvatarBuffer(remoteProfileSet.avatar_uri, senderId);
@@ -85,7 +89,6 @@ export class ProfileSync {
                     type,
                 });
                 await intent.setAvatarUrl(mxcUrl);
-                matrixUser.set("avatar_url", remoteProfileSet.avatar_uri);
             } catch (e) {
                 log.error("Failed to update avatar_url for user:", e);
             }

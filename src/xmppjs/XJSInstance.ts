@@ -149,7 +149,7 @@ export class XmppJsInstance extends EventEmitter implements IBifrostInstance {
         return new XmppJsAccount(username, this.defaultRes, this, "");
     }
 
-    public xmppWriteToStream(xmlMsg: any) {
+    public xmppWriteToStream(xmlMsg: {toString: () => string}) {
         if (this.canWrite) {
             return this.xmpp.write(xmlMsg.toString());
         }
@@ -384,10 +384,6 @@ export class XmppJsInstance extends EventEmitter implements IBifrostInstance {
         if (nameOrId.toLowerCase() === "xmpp-js") { return XMPP_PROTOCOL; }
     }
 
-    public getNickForChat(conv: any): string {
-        throw new Error("Not supported.");
-    }
-
     public needsDedupe() {
         return false;
     }
@@ -597,7 +593,7 @@ export class XmppJsInstance extends EventEmitter implements IBifrostInstance {
             return;
         }
         const to = jid(stanza.attrs.to)!;
-        let localAcct: any = this.accounts.get(`${to!.local}@${to!.domain}`)!;
+        let localAcct = this.accounts.get(`${to!.local}@${to!.domain}`)!;
         let from = jid(stanza.attrs.from);
         let convName = `${from.local}@${from.domain}`;
 

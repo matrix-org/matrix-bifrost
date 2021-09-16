@@ -50,7 +50,7 @@ export class AutoRegistration {
         // We assume the caller has already validated this.
         const proto = this.protoInstance.getProtocol(protocol)!;
         const step = this.autoRegConfig.protocolSteps![protocol];
-        let res: {username: string, extraParams: any};
+        let res: {username: string, extraParams: Record<string, string>};
         if (step.type === "http") {
             res = await this.handleHttpRegistration(mxId, step);
         } else if (step.type === "implicit") {

@@ -121,10 +121,6 @@ export class PurpleInstance extends EventEmitter implements IBifrostInstance {
         );
     }
 
-    public getBuddyFromChat(conv: Conversation, buddyName: string) {
-        messaging.getBuddyFromConv(conv.handle, buddyName);
-    }
-
     public getNickForChat(conv: Conversation): string {
         return messaging.getNickForChat(conv.handle);
     }
@@ -191,7 +187,7 @@ export class PurpleInstance extends EventEmitter implements IBifrostInstance {
                 }
             }
             if (["received-chat-msg", "received-im-msg"].includes(evt.eventName)) {
-                const rawEvent = evt as any;
+                const rawEvent = evt as Record<string, unknown>;
                 evt = Object.assign(evt, {
                     message: {
                         body: rawEvent.message,

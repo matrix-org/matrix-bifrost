@@ -1,7 +1,7 @@
 import { Element, x } from "@xmpp/xml";
 import { XmppJsInstance } from "./XJSInstance";
 import { jid, JID } from "@xmpp/jid";
-import { Logging } from "matrix-appservice-bridge";
+import { Intent, Logging } from "matrix-appservice-bridge";
 import request from "axios";
 import { IGatewayRoom } from "../bifrost/Gateway";
 import { IGatewayRoomQuery, IGatewayPublicRoomsQuery } from "../bifrost/Events";
@@ -69,7 +69,7 @@ export class ServiceHandler {
         return `#${aliasRaw[1]}#${aliasRaw[2]}@${this.xmpp.xmppAddress.domain}`;
     }
 
-    public async handleIq(stanza: Element, intent: any): Promise<void> {
+    public async handleIq(stanza: Element, intent: Intent): Promise<void> {
         const id = stanza.getAttr("id");
         const from = stanza.getAttr("from");
         const to = stanza.getAttr("to");
@@ -94,6 +94,7 @@ export class ServiceHandler {
         }
 
         if (stanza.getChildByAttr("xmlns", "vcard-temp") && type === "get") {
+            // XEP: https://xmpp.org/extensions/xep-0054.html
             return this.handleVcard(from, to, id, intent);
         }
 
@@ -110,7 +111,7 @@ export class ServiceHandler {
 
             if (searchQuery && !local) {
                 // XXX: Typescript is a being a bit funny about Element, so doing an any here.
-                return this.handleDiscoItems(from, to, id, stanza.attrs.type, searchQuery as any);
+                return this.handleDiscoItems(from, to, id, stanza.attrs.type, searchQuery as Element);
             }
 
             if (stanza.getChildByAttr("xmlns", "http://jabber.org/protocol/disco#info") && local) {
@@ -316,7 +317,7 @@ export class ServiceHandler {
         }
     }
 
-    private async getThumbnailBuffer(avatarUrl: string, intent: any): Promise<{data: Buffer, type: string}|undefined> {
+    private async getThumbnailBuffer(avatarUrl: string, intent: Intent): Promise<{data: Buffer, type: string}|undefined> {
         let avatar = this.avatarCache.get(avatarUrl);
         if (avatar) {
             return avatar;
@@ -342,7 +343,7 @@ export class ServiceHandler {
         return avatar;
     }
 
-    private async handleVcard(from: string, to: string, id: string, intent: any) {
+    private async handleVcard(from: string, to: string, id: string, intent: Intent) {
         // Fetch mxid.
         const account = this.xmpp.getAccountForJid(jid(to));
         if (!account) {

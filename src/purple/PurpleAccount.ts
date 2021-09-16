@@ -26,7 +26,7 @@ export class PurpleAccount implements IBifrostAccount {
     private enabled: boolean;
     private waitingJoinRoomProperties: IChatJoinProperties | undefined;
     private joinPropertiesForRooms: Map<string, IChatJoinProperties>;
-    private userAccountInfoPromises: Map<string, () => any>;
+    private userAccountInfoPromises: Map<string, (IUserInfo) => void>;
     constructor(private username: string, public readonly protocol: BifrostProtocol) {
         this.enabled = false;
         this.userAccountInfoPromises = new Map();
@@ -142,7 +142,7 @@ export class PurpleAccount implements IBifrostAccount {
     public passUserInfoResponse(uinfo: IUserInfo) {
         const resolve = this.userAccountInfoPromises.get(uinfo.who);
         if (resolve) {
-            resolve()(uinfo);
+            resolve(uinfo);
         }
     }
 
@@ -154,9 +154,9 @@ export class PurpleAccount implements IBifrostAccount {
         notify.get_user_info(this.handle, who);
         return new Promise ((resolve, reject) => {
             const id = setTimeout(reject, 10000);
-            this.userAccountInfoPromises.set(who, () => {
+            this.userAccountInfoPromises.set(who, (info) => {
                 clearTimeout(id);
-                return resolve;
+                resolve(info);
             });
         });
     }
