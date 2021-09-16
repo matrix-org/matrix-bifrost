@@ -38,8 +38,8 @@ export class ProfileSync {
             avatar_uri: undefined,
         };
         let buddy;
-        if ((account as IBifrostAccount).getBuddy !== undefined) {
-            buddy = (account as IBifrostAccount).getBuddy(remoteUser.username);
+        if (account.getBuddy) {
+            buddy = account.getBuddy(remoteUser.username);
         }
         if (buddy === undefined) {
             try {

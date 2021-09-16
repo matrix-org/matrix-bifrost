@@ -32,6 +32,10 @@ function createProfileSync(userInfo?: Record<string, unknown>) {
                 setAvatarUrl: (avatarUrl) => {
                     values.avatarUrl = avatarUrl;
                 },
+                ensureProfile: (displayname, avatarUrl) => {
+                    values.displayname = displayname;
+                    values.avatarUrl = avatarUrl;
+                },
                 uploadContent: (data) => {
                     values.uploadedData = data;
                     return "mxc://example.com/foobar";
@@ -71,8 +75,6 @@ describe("ProfileSync", () => {
         expect(values.userId).to.equal("@_bifrost_dummy_alice=40foobar.com:localhost");
         const matrixUser = await store.getMatrixUser(values.userId);
         expect(matrixUser?.get("last_check")).to.be.above(time);
-        expect(matrixUser?.get("displayname")).to.be.equal(values.displayname);
-        expect(matrixUser?.get("avatar_url")).to.be.undefined;
     });
     it("can sync one profile without useful UserInfo", async () => {
         const time = Date.now();
@@ -84,8 +86,6 @@ describe("ProfileSync", () => {
         expect(values.userId).to.equal("@_bifrost_dummy_alice=40foobar.com:localhost");
         const matrixUser = await store.getMatrixUser(values.userId);
         expect(matrixUser?.get("last_check")).to.be.above(time);
-        expect(matrixUser?.get("displayname")).to.be.equal(values.displayname);
-        expect(matrixUser?.get("avatar_url")).to.be.undefined;
     });
     it("can sync one profile with a nickname", async () => {
         const time = Date.now();
@@ -97,8 +97,6 @@ describe("ProfileSync", () => {
         expect(values.userId).to.equal("@_bifrost_dummy_alice=40foobar.com:localhost");
         const matrixUser = await store.getMatrixUser(values.userId);
         expect(matrixUser?.get("last_check")).to.be.above(time);
-        expect(matrixUser?.get("displayname")).to.be.equal("SuperAlice");
-        expect(matrixUser?.get("avatar_url")).to.be.undefined;
     });
     it("can sync one profile with a avatar ", async () => {
         const time = Date.now();
@@ -110,9 +108,7 @@ describe("ProfileSync", () => {
         expect(values.userId).to.equal("@_bifrost_dummy_alice=40foobar.com:localhost");
         const matrixUser = await store.getMatrixUser(values.userId);
         expect(matrixUser?.get("last_check")).to.be.above(time);
-        expect(matrixUser?.get("displayname")).to.be.equal("alice@foobar.com");
         expect(values.avatarUrl).to.be.equal("mxc://example.com/foobar");
-        expect(matrixUser?.get("avatar_url")).to.be.equal("http://example.com/myamazingavatar.png");
     });
     it("will skip the second profile update", async () => {
         const time = Date.now();
