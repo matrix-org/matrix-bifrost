@@ -11,6 +11,7 @@ export interface IChatJoinOptions {
 
 export interface IProfileProvider {
     getUserInfo(who: string): Promise<IUserInfo>;
+    getBuddy?(user: string): any|undefined;
     getAvatarBuffer(uri: string, senderId: string): Promise<{type: string, data: Buffer}>;
 }
 
