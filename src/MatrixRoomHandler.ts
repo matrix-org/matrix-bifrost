@@ -217,9 +217,8 @@ export class MatrixRoomHandler {
 
         // This could be that this is the first user to join a gateway room
         // so we should try to create an entry for it ahead of time.
-        if ((data as any).gatewayAlias) {
-            const alias = ((data as any).gatewayAlias);
-
+        const alias = ((data as IUserStateChanged).gatewayAlias);
+        if (alias) {
             if (!this.bridge) {
                 log.error("Got gateway join request, but bridge was not defined");
                 return;
@@ -248,7 +247,7 @@ export class MatrixRoomHandler {
                 protocol_id: data.account.protocol_id,
                 room_name: roomName,
                 properties: props ? Util.sanitizeProperties(props) : {}, // for joining
-            } as any;
+            } as IRemoteGroupData;
             log.info(`Couldn't find room for ${roomName}. Creating a new one`);
             return intent.createRoom({
                 createAsClient: false,
@@ -257,10 +256,11 @@ export class MatrixRoomHandler {
                     visibility: "private",
                 },
             });
-        }).then((res: any) => {
+        }).then((res: {room_id: string}) => {
             log.debug("Created room with id ", res.room_id);
             return this.store.storeRoom(res.room_id, MROOM_TYPE_GROUP, remoteId, remoteData);
         });
+
         try {
             this.roomCreationLock.set(remoteId, createPromise);
             const result = await createPromise;

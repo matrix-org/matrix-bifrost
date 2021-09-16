@@ -21,10 +21,6 @@ const log = Logging.get("XmppJsAccount");
 
 export class XmppJsAccount implements IBifrostAccount {
 
-    get waitingJoinRoomProps(): undefined {
-        return undefined;
-    }
-
     get name(): string {
         return this.remoteId;
     }
@@ -124,20 +120,6 @@ export class XmppJsAccount implements IBifrostAccount {
         this.xmpp.xmppAddSentMessage(id);
         this.xmpp.xmppSend(xMsg);
         Metrics.remoteCall("xmpp.message.groupchat");
-    }
-
-    public getBuddy(user: string): any|undefined {
-        // TODO: Not implemented
-        return;
-    }
-
-    public getJoinPropertyForRoom(roomName: string, key: string): string|undefined {
-        // TODO: Not implemented
-        return;
-    }
-
-    public setJoinPropertiesForRoom(roomName: string, props: IChatJoinProperties) {
-        // TODO: Not implemented
     }
 
     public isInRoom(roomName: string): boolean {
@@ -307,10 +289,6 @@ export class XmppJsAccount implements IBifrostAccount {
         ));
         this.roomHandles.delete(room);
         Metrics.remoteCall("xmpp.presence.left");
-    }
-
-    public getConversation(name: string): any {
-        throw Error("getConversation not implemented");
     }
 
     public getChatParamsForProtocol(): IChatJoinOptions[] {

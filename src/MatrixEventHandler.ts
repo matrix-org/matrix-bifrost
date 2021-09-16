@@ -628,7 +628,7 @@ Say \`help\` for more commands.
             return;
         }
         try {
-            const {acct, newAcct} = await this.getAccountForMxid(event.sender, roomProtocol);
+            const {acct} = await this.getAccountForMxid(event.sender, roomProtocol);
             log.info(`Got ${acct.name} for ${event.sender}`);
             if (!acct.isInRoom(name)) {
                 log.debug(`${event.sender} talked in ${name}, joining them.`);
@@ -643,11 +643,11 @@ Say \`help\` for more commands.
             let nick = "";
             // XXX: Gnarly way of trying to determine who we are.
             try {
-                const conv = acct.getConversation(roomName);
+                const conv = acct.getConversation && acct.getConversation(roomName);
                 if (!conv) {
-                    throw Error();
+                    throw Error("Could not find conversation");
                 }
-                nick = conv ? this.purple.getNickForChat(conv) || acct.name : acct.name;
+                nick = conv && this.purple.getNickForChat ? this.purple.getNickForChat(conv) || acct.name : acct.name;
             } catch (ex) {
                 nick = acct.name;
             }
@@ -847,7 +847,7 @@ E.g. \`${command} ${acct.protocol.id}\` ${required.join(" ")} ${optional.join(" 
                         acct.protocol.id === joinEvent.account.protocol_id) {
                         log.debug("Account signed in, joining room");
                         const p = acct.joinChat(properties, this.purple, 5000);
-                        acct.setJoinPropertiesForRoom(name, properties);
+                        acct.setJoinPropertiesForRoom && acct.setJoinPropertiesForRoom(name, properties);
                         this.purple.removeListener("account-signed-on", cb);
                         p.then(() => resolve);
                     }
@@ -857,7 +857,7 @@ E.g. \`${command} ${acct.protocol.id}\` ${required.join(" ")} ${optional.join(" 
 
         } else {
             acct.joinChat(properties);
-            acct.setJoinPropertiesForRoom(name, properties);
+            acct.setJoinPropertiesForRoom && acct.setJoinPropertiesForRoom(name, properties);
             return Promise.resolve();
         }
     }
