@@ -273,6 +273,14 @@ export class StzaMessage extends StzaBase {
         if (trailMatch && trailMatch[1].length >= 25) {
             this.body = this.body.replace(trailRe, "> ");
         }
+        // Also fix the trailer into XHTML-IM if present
+        if (this.html !== "") {
+            const htrailRe = /(.*)(<a href="https:\/\/matrix.to\/#\/@.*">)(@.*:.*)<\/a>(.*)/;
+            const htrailMatch = this.html.match(htrailRe);
+            if (htrailMatch && htrailMatch[3].length >= 25) {
+                this.html = this.html.replace(htrailRe, "$1$2user</a>$4");
+            }
+        }
         // XEP-0333
         const markable = this.markable ? "<markable xmlns='urn:xmpp:chat-markers:0'/>" : "";
         // XEP-0308
