@@ -83,10 +83,10 @@ export class XHTMLIM {
             lowerCaseAttributeNames: true,
         });
         if (!html.startsWith("<html")) {
-            html = `<html xmlns='${XMLNS}'>${html}`;
+            html = `<html xmlns='${XMLNS}'><body>${html}`;
         }
         if (!html.toLowerCase().endsWith("</html>")) {
-            html += "</html>";
+            html += "</body></html>";
         }
         parser.write(html);
         parser.end();
