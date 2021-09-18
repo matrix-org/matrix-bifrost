@@ -275,7 +275,7 @@ export class StzaMessage extends StzaBase {
         }
         // Also fix the trailer into XHTML-IM if present
         if (this.html !== "") {
-            const htrailRe = /(.*)(<a href="https:\/\/matrix.to\/#\/@.*">)(@.*:.*)<\/a>(.*)/;
+            const htrailRe = /(.*)(<a href=['"]https:\/\/matrix.to\/#\/@.*['"]>)(@.*:.*)<\/a>(.*)/;
             const htrailMatch = this.html.match(htrailRe);
             if (htrailMatch && htrailMatch[3].length >= 25) {
                 this.html = this.html.replace(htrailRe, "$1$2user</a>$4");
