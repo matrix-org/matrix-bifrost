@@ -309,8 +309,6 @@ export class XmppJsGateway implements IGateway {
 
         // Ensure our membership is accurate.
         this.updateMatrixMemberListForRoom(chatName, room, true); // HACK: Always update members for joiners
-        const members = this.members.getMembers(chatName);
-
         // Check if the nick conflicts.
         const existingMember = this.members.getMemberByAnonJid(chatName, stanza.attrs.to);
         if (existingMember) {
@@ -348,10 +346,10 @@ export class XmppJsGateway implements IGateway {
 
         // https://xmpp.org/extensions/xep-0045.html#order
         // 1. membership of others.
-        log.debug(`Emitting membership of other users (${members.length})`);
+        log.debug('Emitting membership of other users');
         // Ensure we chunk this
         const allMembershipPromises: Promise<unknown>[] = [];
-        for (const member of members) {
+        for (const member of this.members.getMembers(chatName)) {
             if (member.anonymousJid.toString() === stanza.attrs.to) {
                 continue;
             }

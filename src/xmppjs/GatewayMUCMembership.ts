@@ -3,27 +3,51 @@ import { JID, jid } from "@xmpp/jid";
 interface IGatewayMember {
     type: "xmpp"|"matrix";
     anonymousJid: JID;
+    matrixId: string;
 }
 
 export interface IGatewayMemberXmpp extends IGatewayMember {
     type: "xmpp";
     realJid: JID;
     devices: Set<string>;
-    matrixId: string;
 }
 
 export interface IGatewayMemberMatrix extends IGatewayMember {
     type: "matrix";
-    matrixId: string;
 }
 
 const FLAT_SUPPORTED = [].flat !== undefined;
+
+class ChatMembers {
+    constructor(
+        private members = new Set<IGatewayMember>(),
+        private byMxid = new Map<string, IGatewayMember>(),
+    ) {}
+
+    add(member: IGatewayMember): void {
+        this.members.add(member);
+        this.byMxid.set(member.matrixId, member);
+    }
+
+    delete(member: IGatewayMember): boolean {
+        this.byMxid.delete(member.matrixId);
+        return this.members.delete(member);
+    }
+
+    getAll(): Iterable<IGatewayMember> {
+        return this.members.values();
+    }
+
+    getByMxid(mxid: string): IGatewayMember|undefined {
+        return this.byMxid.get(mxid);
+    }
+}
 
 /**
  * Handles storage of MUC membership for matrix and xmpp users.
  */
 export class GatewayMUCMembership {
-    private members: Map<string, Set<IGatewayMember>>; // chatName -> member
+    private members: Map<string, ChatMembers>; // chatName -> members
 
     constructor() {
         this.members = new Map();
@@ -49,11 +73,14 @@ export class GatewayMUCMembership {
     }
 
     public getMemberByAnonJid<G extends IGatewayMember>(chatName: string, anonJid: string): G|undefined {
-        return this.getMembers(chatName).find((user) => user.anonymousJid.toString() === anonJid) as G;
+        return Array.from(this.getMembers(chatName)).find((user) => user.anonymousJid.toString() === anonJid) as G;
     }
 
     public getMatrixMemberByMatrixId(chatName: string, matrixId: string): IGatewayMemberMatrix|undefined {
-        return this.getMatrixMembers(chatName).find((user) => user.matrixId === matrixId);
+        const member = this.members.get(chatName)?.getByMxid(matrixId);
+        if (member && member.type === 'matrix') {
+            return member as IGatewayMemberMatrix;
+        }
     }
 
     public getXmppMemberByDevice(chatName: string, realJid: string|JID): IGatewayMemberXmpp|undefined {
@@ -71,13 +98,17 @@ export class GatewayMUCMembership {
     }
 
     public getXmppMemberByMatrixId(chatName: string, matrixId: string): IGatewayMemberXmpp|undefined {
-        // Strip the resource.
-        return this.getXmppMembers(chatName).find((user) => user.matrixId === matrixId);
+        const chatMembers = this.members.get(chatName);
+        if (chatMembers) {
+            const member = chatMembers.getByMxid(matrixId);
+            if (member?.type === 'xmpp') {
+                return member as IGatewayMemberXmpp;
+            }
+        }
     }
 
-
     public getXmppMembers(chatName: string): IGatewayMemberXmpp[] {
-        return this.getMembers(chatName).filter((s) => s.type === "xmpp") as IGatewayMemberXmpp[];
+        return Array.from(this.getMembers(chatName)).filter((s) => s.type === "xmpp") as IGatewayMemberXmpp[];
     }
 
     public getXmppMembersDevices(chatName: string): Set<string> {
@@ -89,12 +120,16 @@ export class GatewayMUCMembership {
     }
 
     public getMatrixMembers(chatName: string): IGatewayMemberMatrix[] {
-        return this.getMembers(chatName).filter((s) => s.type === "matrix") as IGatewayMemberMatrix[];
+        return Array.from(this.getMembers(chatName)).filter((s) => s.type === "matrix") as IGatewayMemberMatrix[];
     }
 
-    public getMembers(chatName: string): IGatewayMember[] {
-        const set = this.members.get(chatName) || new Set();
-        return [...set];
+    public getMembers(chatName: string): Iterable<IGatewayMember> {
+        const chatMembers = this.members.get(chatName);
+        if (chatMembers) {
+            return chatMembers.getAll();
+        } else {
+            return [];
+        }
     }
 
     public addMatrixMember(chatName: string, matrixId: string, anonymousJid: JID): boolean {
@@ -102,13 +137,13 @@ export class GatewayMUCMembership {
             return false;
         }
 
-        const set = this.members.get(chatName) || new Set();
-        set.add({
+        const chatMembers = this.members.get(chatName) || new ChatMembers();
+        chatMembers.add({
             type: "matrix",
             anonymousJid,
             matrixId,
         } as IGatewayMemberMatrix);
-        this.members.set(chatName, set);
+        this.members.set(chatName, chatMembers);
         return true;
     }
 
@@ -128,25 +163,28 @@ export class GatewayMUCMembership {
             member.devices.add(realJid.toString());
             return false;
         }
-        const set = this.members.get(chatName) || new Set();
-        set.add({
+        const chatMembers = this.members.get(chatName) || new ChatMembers();
+        chatMembers.add({
             type: "xmpp",
             anonymousJid,
             realJid: strippedDevice,
             devices: new Set([realJid.toString()]),
             matrixId,
         } as IGatewayMemberXmpp);
-        this.members.set(chatName, set);
+        this.members.set(chatName, chatMembers);
         return true;
     }
 
     public removeMatrixMember(chatName: string, matrixId: string): boolean {
-        const member = this.getMatrixMemberByMatrixId(chatName, matrixId);
-        if (!member) {
-            return false;
+        const chatMembers = this.members.get(chatName);
+        if (chatMembers) {
+            const member = chatMembers.getByMxid(matrixId);
+            if (member) {
+                chatMembers.delete(member);
+                return true;
+            }
         }
-        const set = this.members.get(chatName) || new Set();
-        return set.delete(member);
+        return false;
     }
 
     /**
@@ -168,7 +206,7 @@ export class GatewayMUCMembership {
                 return false;
             }
         }
-        const set = this.members.get(chatName);
-        return set ? set.delete(member) : true;
+        const chatMembers = this.members.get(chatName);
+        return chatMembers ? chatMembers.delete(member) : true;
     }
 }
