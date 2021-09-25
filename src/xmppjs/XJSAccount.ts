@@ -62,6 +62,7 @@ export class XmppJsAccount implements IBifrostAccount {
                         this.joinChat({
                             fullRoomName: roomName,
                             handle: this.roomHandles.get(roomName)!,
+                            avatar_hash: this.avatarHash,
                         });
                     });
                 }
