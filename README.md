@@ -120,3 +120,18 @@ if certain purple plugins cause more crashes, or if anything in particular lead 
 ## Testing
 
 Running the tests is as simple as doing `yarn test`
+
+### Documentation
+
+Documentation can be found on [GitHub Pages](https://matrix-org.github.io/matrix-appservice-irc).
+
+You can build the documentaion yourself by:
+```
+# Ensure that Rust is installed on your system.
+# cargo install mdbook
+mdbook build
+sensible-browser book/index.html
+```
+
+## Contributing
+Please see the [CONTRIBUTING](./CONTRIBUTING.md) file for information on contributing.
