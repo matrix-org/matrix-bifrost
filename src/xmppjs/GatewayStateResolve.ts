@@ -61,6 +61,7 @@ export class GatewayStateResolve {
                     PresenceRole.Participant,
                     null,
                     null,
+                    null,
                     roomMembership.avatar_hash,
                 ), allDevices,
             );
