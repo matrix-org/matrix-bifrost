@@ -2,6 +2,7 @@ import { Parser } from "htmlparser2";
 import * as he from "html-entities";
 
 const XMLNS = "http://jabber.org/protocol/xhtml-im";
+const W3C = "http://www.w3.org/1999/xhtml";
 
 const VALID_ELEMENT_ATTRIBUTES = {
     // Defined Structure Module Elements and Attributes
@@ -83,7 +84,7 @@ export class XHTMLIM {
             lowerCaseAttributeNames: true,
         });
         if (!html.startsWith("<html")) {
-            html = `<html xmlns='${XMLNS}'><body>${html}`;
+            html = `<html xmlns='${XMLNS}'><body xmlns='${W3C}'>${html}`;
         }
         if (!html.toLowerCase().endsWith("</html>")) {
             html += "</body></html>";
