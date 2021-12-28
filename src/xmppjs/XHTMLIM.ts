@@ -65,6 +65,8 @@ export class XHTMLIM {
                 });
                 if (tagname === "html") {
                     attribs.xmlns = XMLNS;
+                } else if (tagname === "body") {
+                    attribs.xmlns = W3C;
                 }
                 xhtml += `<${tagname}${Object.keys(attribs).map((k) => ` ${k}='${attribs[k]}'`).join("")}>`;
             },
