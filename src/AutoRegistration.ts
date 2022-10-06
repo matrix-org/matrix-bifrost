@@ -118,7 +118,6 @@ export class AutoRegistration {
             if (!match || match.length < 2) {
                 throw Error("String didn't match");
             }
-            log.debug("Result:", match);
             mxid = `@${match[1]}:${domainParameter}`;
         } else  {
             throw Error("No T_MXID or T_MXID_SANE on username parameter, cannot get mxid");

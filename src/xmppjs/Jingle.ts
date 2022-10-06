@@ -253,8 +253,9 @@ export class JingleHandler extends EventEmitter {
             case XMPPFeatures.JingleFileTransferV5:
                 session = new JingleFileTransferSession(sid, info, this.uploadOpts, (err, mxcUrl, file) => {
                     if (err) {
-                        // TODO: Cancel / emit a error to the other user.
                         log.warn(`There was an error handling a Jingle file transfer for ${sid}:`, err);
+                        // Tell the user.
+                        this.xmpp.sendIq(new StzaJingleTerminate(to, from, sid, undefined, undefined, "failed-application"));
                         return;
                     }
                     log.info(`Uploaded file as ${mxcUrl}`);
@@ -327,13 +328,13 @@ export class JingleHandler extends EventEmitter {
             );
         }
         if (openElement) {
-            log.info(`Got open for session`);
+            log.debug(`Got open for session`);
             session.onOpen();
         } else if (dataElement) {
-            log.info(`Got data for session`);
+            log.debug(`Got data for session`);
             session.onData(dataElement.getText());
         } else if (closeElement) {
-            log.info(`Got close for session`);
+            log.debug(`Got close for session`);
             session.onClose();
         } else {
             throw Error('Request does not wrap a open stanza');

@@ -391,6 +391,7 @@ export class StzaJingleTerminate extends StzaBase {
         public sid: string,
         responder?: string,
         initiator?: string,
+        public reason?: "success"|"failed-application",
     ) {
         super(from, to, uuid());
         this.responder = responder || this.from;
@@ -403,7 +404,7 @@ export class StzaJingleTerminate extends StzaBase {
 
     get xml(): string {
         return `<iq from='${this.from}' to='${this.to}' id='${this.id}' type='set'>` +
-        `<jingle initiator='${this.initiator}' responder='${this.responder}' xmlns='urn:xmpp:jingle:1' action='session-terminate' sid='${this.sid}'><reason><success/></reason></jingle></iq>`
+        `<jingle initiator='${this.initiator}' responder='${this.responder}' xmlns='urn:xmpp:jingle:1' action='session-terminate' sid='${this.sid}'><reason><${this.reason}/></reason></jingle></iq>`
     }
 }
 
