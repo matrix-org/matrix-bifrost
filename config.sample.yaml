@@ -50,7 +50,7 @@ purple:
   # # Should the backend output extra logging.
   #   debugEnabled: false
   # # Where are the plugin libraries stored.
-  #   pluginsDir: "/usr/lib/purple-2"
+  #   pluginDir: "/usr/lib/purple-2"
   # # Where should purple account data be stored.
   #   dataDir: "./purple-data"
   # # Should only one plugin be enabled (to simplify userIds / commands).
