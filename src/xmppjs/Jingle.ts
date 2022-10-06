@@ -176,6 +176,7 @@ export class JingleFileTransferSession extends JingleSession {
 
     public onClose() {
         this.assertState(JingleFileTransferSessionState.Writable);
+        this.state = JingleFileTransferSessionState.Closed;
         this.stream.end();
     }
 

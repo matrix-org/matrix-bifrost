@@ -270,9 +270,7 @@ class Program {
             );
         }
 
-        if (purple instanceof XmppJsInstance) {
-            purple.preStart(autoReg);
-        }
+        purple.preStart?.(autoReg);
 
         purple.on("account-signed-on", async (ev: IAccountEvent) => {
             log.info(`${ev.account.protocol_id}://${ev.account.username} signed on`);

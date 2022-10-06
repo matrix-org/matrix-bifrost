@@ -23,6 +23,8 @@ export interface IAutoRegStep {
     headers: {[key: string]: string}; // key -> value
 }
 
+const ESCAPE_TEMPLATE_REGEX = /[-\/\\^$*+?.()|[\]{}]/g;
+
 export class AutoRegistration {
     private nameCache = new QuickLRU<string, {[key: string]: string}>({ maxSize: this.autoRegConfig.registrationNameCacheSize });
     constructor(
@@ -99,19 +101,18 @@ export class AutoRegistration {
             // Replace any ^a strings with A.
             mxid = mxid.replace(/(\^([a-z]))/g, (m, p1, p2) => p2.toUpperCase());
         } else if (hasLocalpart && usernameFormat.includes("<T_DOMAIN>")) {
-            let regexStr = usernameFormat.replace(/[-\/\\^$*+?.()|[\]{}]/g, "\\$&");
+            let regexStr = usernameFormat.replace(ESCAPE_TEMPLATE_REGEX, "\\$&");
             regexStr = regexStr.replace("<T_LOCALPART>", "(.+)").replace("<T_DOMAIN>", "(.+)");
             const match = new RegExp(regexStr).exec(username);
             if (!match || match.length < 3) {
                 throw Error("String didn't match");
             }
-            log.debug("Result:", match);
             mxid = `@${match[1]}:${match[2]}`;
         } else if (hasLocalpart) {
             if (!domainParameter) {
                 throw Error('`domain` must be specified in autoregistration parameters when only using a localpart')
             }
-            let regexStr = usernameFormat.replace(/[-\/\\^$*+?.()|[\]{}]/g, "\\$&");
+            let regexStr = usernameFormat.replace(ESCAPE_TEMPLATE_REGEX, "\\$&");
             regexStr = regexStr.replace("<T_LOCALPART>", "(.+)");
             const match = new RegExp(regexStr).exec(username);
             if (!match || match.length < 2) {
