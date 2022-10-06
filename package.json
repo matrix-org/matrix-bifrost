@@ -74,7 +74,7 @@
   },
   "optionalDependencies": {
     "node-purple": "git+https://github.com/matrix-org/node-purple#9078216b541953de6de3955b965d306a97ea6074"
-  },
+ },
   "nyc": {
     "check-coverage": true,
     "per-file": false,

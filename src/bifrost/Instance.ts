@@ -19,11 +19,13 @@ import { IEventBody,
 import { EventEmitter } from "events";
 import { IGateway } from "./Gateway";
 
+
+export type IAccountExtraConfig = Record<string, string|number|boolean>;
 export interface IBifrostInstance extends EventEmitter {
     gateway: IGateway|null;
-    createBifrostAccount(username, protocol: BifrostProtocol): IBifrostAccount;
     start(): Promise<void>;
     close(): Promise<void>;
+    createNew?(protocol: BifrostProtocol, username: string, password?: string, extraConfig?: IAccountExtraConfig);
     getAccount(username: string, protocolId: string, mxid?: string): IBifrostAccount|null;
     getProtocol(id: string): BifrostProtocol|undefined;
     getProtocols(): BifrostProtocol[];

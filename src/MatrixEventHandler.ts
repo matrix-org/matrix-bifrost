@@ -537,19 +537,18 @@ Say \`help\` for more commands.
         // TODO: Check to see if the user has an account matching this already.
         const protocol = this.purple.findProtocol(nameOrId);
         if (protocol === undefined) {
-            throw new Error("Protocol was not found");
+            throw Error("Protocol was not found");
         }
-        if (!protocol.canCreateNew) {
-            throw Error("Protocol does not let you create new accounts");
+        if (!this.purple.createNew || !protocol.canCreateNew) {
+            throw Error("Creating new accounts with this protocol is unsupported");
         }
         if (!args[0]) {
-            throw new Error("You need to specify a username");
+            throw Error("You need to specify a username");
         }
         if (!args[1]) {
-            throw new Error("You need to specify a password");
+            throw Error("You need to specify a password");
         }
-        const account = this.purple.createBifrostAccount(args[0], protocol);
-        account.createNew(args[1], this.config.purple.defaultAccountSettings?.[protocol.id] || {});
+        const account = this.purple.createNew(protocol, args[0], args[1], this.config.purple.defaultAccountSettings?.[protocol.id] || {});
         await this.store.storeAccount(event.sender, protocol, account.name);
         await this.bridge?.getIntent().sendMessage(event.room_id, {
             msgtype: "m.notice",

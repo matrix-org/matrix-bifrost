@@ -2,7 +2,7 @@ import { IAutoRegStep } from "./AutoRegistration";
 import { IRoomAlias } from "./RoomAliasSet";
 import { IXJSBackendOpts } from "./xmppjs/XJSBackendOpts";
 import { PgDataStoreOpts } from "./store/postgres/PgDatastore";
-import { IAccountExtraConfig } from "./bifrost/Account";
+import { IAccountExtraConfig } from "./bifrost/Instance";
 import { IPurpleBackendOpts } from "./purple/PurpleInstance";
 
 export type ConfigValue = {[key: string]: ConfigValue}|string|boolean|number|null;

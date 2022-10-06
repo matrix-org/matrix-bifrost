@@ -145,10 +145,6 @@ export class XmppJsInstance extends EventEmitter implements IBifrostInstance {
         }
     }
 
-    public createBifrostAccount(username) {
-        return new XmppJsAccount(username, this.defaultRes, this, "");
-    }
-
     public xmppWriteToStream(xmlMsg: {toString: () => string}) {
         if (this.canWrite) {
             return this.xmpp.write(xmlMsg.toString());
@@ -342,7 +338,7 @@ export class XmppJsInstance extends EventEmitter implements IBifrostInstance {
         return;
     }
 
-    public getAccount(username: string, protocolId: string, mxid: string): IBifrostAccount|null {
+    public getAccount(username: string, protocolId: string, mxid: string): XmppJsAccount|null {
         const j = jid(username);
         if (j.domain === this.myAddress.domain &&
             j.local.startsWith("#") &&
@@ -839,6 +835,8 @@ export class XmppJsInstance extends EventEmitter implements IBifrostInstance {
                 // Swift and other clients do not request discovery info often enough, so we send one when
                 // we recieve a (new) message from them.
                 this.serviceHandler.sendUserDiscoInfo(from.toString(), localAcct.remoteId, uuid());
+                // XXX: Send a online presence on each message to avoid it thinking we're offline.
+                localAcct.setPresence({ currently_active: true, last_active_ago: 0, presence: "online"}, [from.bare().toString()]);
             }
             this.emit("received-im-msg", {
                 eventName: "received-im-msg",

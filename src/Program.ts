@@ -94,17 +94,17 @@ class Program {
 
     private async waitForHomeserver() {
         log.info("Checking if homeserver is up");
-        // Wait for the homeserver to start before progressing with the bridge.
         const url = `${this.config.bridge.homeserverUrl}/_matrix/client/versions`;
         while (true) {
             try {
                 await request.get(url);
-                return true;
+                break;
             } catch (ex) {
-                log.warn("Failed to contact", url, "waiting..");
+                log.warn(`Failed to contact ${url}, waiting..`);
             }
             await new Promise((resolve) => setTimeout(resolve, 2000));
         }
+        log.info("Homeserver reachable");
     }
 
     private async registerBot() {
@@ -155,6 +155,7 @@ class Program {
                     } as IRemoteUserAdminData)
                 ).matrix.getId();
             }
+            log.info(`Pinging ${internalRoom}`);
             const time = await this.bridge.pingAppserviceRoute(internalRoom);
             log.info(`Successfully pinged the bridge. Round trip took ${time}ms`);
         }
@@ -167,6 +168,10 @@ class Program {
         const checkOnly = process.env.BIFROST_CHECK_ONLY === "true";
         this.cfg.ApplyConfig(config);
         port = this.cfg.bridge.appservicePort || port;
+
+        // Wait for the homeserver to start before progressing with the bridge.
+        await this.waitForHomeserver();
+
         if (checkOnly && this.config.logging.console === "off") {
             // Force console if we are doing an integrity check only.
             Logging.configure({
@@ -321,10 +326,10 @@ class Program {
             Metrics.init(this.bridge);
         }
 
-        await this.waitForHomeserver();
         log.info("Started appservice listener on port", port);
-        await this.pingBridge();
+        // We must register first to ensure the bot has a profile, otherwise it cannot join rooms.
         await this.registerBot();
+        await this.pingBridge();
         log.info("Bridge has started.");
         try {
             await purple.start();

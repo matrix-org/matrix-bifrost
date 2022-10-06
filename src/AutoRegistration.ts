@@ -61,9 +61,8 @@ export class AutoRegistration {
             throw new Error(`This method of registration is unsupported (${step.type})`);
         }
         // XXX: Slight hard-code here.
-        this.protoInstance.createBifrostAccount(res.username, proto).createNew(res.extraParams.password);
         log.debug(`Creating ${protocol} account for ${res.username}`);
-        const acct = this.protoInstance.getAccount(res.username, protocol, mxId)!;
+        const acct = this.protoInstance.createNew(proto, res.username, res.extraParams.password);
         log.debug(`Enabling account`);
         acct.setEnabled(true);
         log.debug(`Storing account in bridge store`);

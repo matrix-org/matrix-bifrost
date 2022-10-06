@@ -1,5 +1,5 @@
 // @ts-ignore - These are optional.
-import { helper, plugins, messaging, Conversation } from "node-purple";
+import { helper, plugins, messaging, Conversation, accounts } from "node-purple";
 import { EventEmitter } from "events";
 import { PurpleAccount } from "./PurpleAccount";
 import { IBifrostInstance } from "../bifrost/Instance";
@@ -35,16 +35,6 @@ export class PurpleInstance extends EventEmitter implements IBifrostInstance {
         this.backendOpts = this.config.backendOpts as IPurpleBackendOpts;
         this.protocols = [];
         this.accounts = new Map();
-    }
-
-    public createBifrostAccount(username, protocol: BifrostProtocol) {
-        // We might want to format this one.
-        const protocolOptions = (this.backendOpts?.protocolOptions || {})[protocol.id];
-        if (protocolOptions?.usernameFormat) {
-            // Replaces %-foo with username-foo
-            username = protocolOptions.usernameFormat.replace(/\%/g, username);
-        }
-        return new PurpleAccount(username, protocol);
     }
 
     public async checkGroupExists() {
@@ -105,6 +95,18 @@ export class PurpleInstance extends EventEmitter implements IBifrostInstance {
             this.accounts.set(key, acct);
         }
         return acct;
+    }
+
+    public createNew(protocol: BifrostProtocol, username: string, password?: string, extraConfig?: Record<string, string|boolean|number>) {
+        // We might want to format this one.
+        const protocolOptions = (this.backendOpts?.protocolOptions || {})[protocol.id];
+        if (protocolOptions?.usernameFormat) {
+            // Replaces %-foo with username-foo
+            username = protocolOptions.usernameFormat.replace(/\%/g, username);
+        }
+        const acctData = accounts.new(username, protocol.id, password);
+        accounts.configure(acctData.handle, extraConfig);
+        return new PurpleAccount(username, protocol);
     }
 
     public getProtocol(id: string): BifrostProtocol|undefined {
