@@ -3,4 +3,4 @@ projects.
 
 ## Matrix-bifrost Guidelines
 
- - When creating an issue, please clearly state whether you are using libpurpose or xmpp.js. If possible, please also state the server and client implementation name and versions.
+ - When creating an issue, please clearly state whether you are using libpurple or xmpp.js. If possible, please also state the server and client implementation name and versions.
