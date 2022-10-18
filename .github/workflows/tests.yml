@@ -1,4 +1,4 @@
-name: CI
+name: Tests
 
 on:
   push:
@@ -6,14 +6,34 @@ on:
   pull_request:
     branches: [ develop ]
 
+  workflow_dispatch:
+
 jobs:
-  changelog:
+  lint:
+   runs-on: ubuntu-latest
+   steps:
+    - uses: actions/checkout@v2
+    - name: Use Node.js
+      uses: actions/setup-node@v1
+      with:
+        node-version: 16
+    - run: yarn --frozen-lockfile
+    - run: yarn lint
+
+  test:
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        node_version: [16, 18]
     steps:
       - uses: actions/checkout@v2
+      - name: Use Node.js ${{ matrix.node_version }}
+        uses: actions/setup-node@v1
         with:
-          fetch-depth: 0
-      - uses: actions/setup-python@v2
+          node-version: ${{ matrix.node_version }}
+      - uses: actions-rs/toolchain@v1
         with:
-          python-version: 3.6
-      - run: scripts/changelog-check.sh
+            toolchain: stable
+            profile: minimal
+      - run: yarn --frozen-lockfile
+      - run: yarn test
