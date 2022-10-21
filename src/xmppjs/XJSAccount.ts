@@ -8,7 +8,7 @@ import { Element, x } from "@xmpp/xml";
 import { jid, JID } from "@xmpp/jid";
 import { IBasicProtocolMessage } from "../MessageFormatter";
 import { Metrics } from "../Metrics";
-import { Logging } from "matrix-appservice-bridge";
+import { Logger } from "matrix-appservice-bridge";
 import { v4 as uuid } from "uuid";
 import { XHTMLIM } from "./XHTMLIM";
 import { StzaMessage, StzaIqPing, StzaPresenceJoin, StzaPresencePart, StzaIqVcardRequest } from "./Stanzas";
@@ -17,7 +17,7 @@ const IDPREFIX = "pbridge";
 const CONFLICT_SUFFIX = "[m]";
 const LASTSTANZA_CHECK_MS = 2 * 60000;
 const LASTSTANZA_MAXDURATION = 10 * 60000;
-const log = Logging.get("XmppJsAccount");
+const log = new Logger("XmppJsAccount");
 
 export class XmppJsAccount implements IBifrostAccount {
 

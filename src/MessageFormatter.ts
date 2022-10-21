@@ -1,11 +1,11 @@
 import { BifrostProtocol } from "./bifrost/Protocol";
 import { PRPL_S4B, PRPL_XMPP } from "./ProtoHacks";
 import { Parser } from "htmlparser2";
-import { Intent, Logging } from "matrix-appservice-bridge";
+import { Intent, Logger } from "matrix-appservice-bridge";
 import { IConfigBridge } from "./Config";
 import request from "axios";
 import { IMatrixMsgContents, MatrixMessageEvent } from "./MatrixTypes";
-const log = Logging.get("MessageFormatter");
+
 
 export interface IBasicProtocolMessage {
     body: string;
@@ -22,6 +22,8 @@ export interface IMessageAttachment {
     mimetype?: string;
     size?: number;
 }
+
+const log = new Logger("MessageFormatter");
 
 export class MessageFormatter {
 
@@ -64,6 +66,20 @@ export class MessageFormatter {
             newMsg.original_message = originalMessage;
         }
         return newMsg;
+    }
+
+    public static async getMaxUploadBytes(intent: Intent) {
+        try {
+            const config = await intent.matrixClient.doRequest('GET', '/_matrix/media/r0/config');
+            const size = config['m.upload.size'];
+            if (typeof size !== "number") {
+                throw Error(`m.upload.size was '${size}'`)
+            }
+            return config['m.upload.size'];
+        } catch (ex) {
+            log.warn('Failed to max upload size', ex);
+            return -1;
+        }
     }
 
     public static async messageToMatrixEvent(msg: IBasicProtocolMessage, protocol: BifrostProtocol, intent?: Intent):
@@ -130,9 +146,7 @@ export class MessageFormatter {
                 if (!attachment.size) {
                     attachment.size = parseInt(file.headers["content-length"] || "0", 10);
                 }
-                const maxSize =
-                    (await intent.getClient().getMediaConfig().then((cfg) => cfg.m.upload.size).catch(() => -1));
-
+                const maxSize = await this.getMaxUploadBytes(intent);
                 if (attachment.size && maxSize > -1 && maxSize < attachment.size!) {
                     log.info("File is too large, linking instead");
                     matrixMsg.body = attachment.uri;
@@ -141,7 +155,6 @@ export class MessageFormatter {
 
                 log.info(`Uploading ${attachment.uri}...`);
                 const mxcurl = await intent.uploadContent(file.data, {
-                    includeFilename: false,
                     type: attachment.mimetype || "application/octect-stream",
                 });
                 matrixMsg.url = mxcurl;

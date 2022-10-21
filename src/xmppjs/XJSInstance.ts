@@ -1,6 +1,6 @@
 /* eslint-disable max-classes-per-file */
 import { EventEmitter } from "events";
-import { Logging, MatrixUser, Bridge } from "matrix-appservice-bridge";
+import { Logger, MatrixUser, Bridge } from "matrix-appservice-bridge";
 import { Element } from "@xmpp/xml";
 import { jid, JID } from "@xmpp/jid";
 import { IBifrostInstance } from "../bifrost/Instance";
@@ -30,8 +30,8 @@ import { IStza, StzaBase, StzaIqDisco, StzaIqDiscoInfo, StzaIqPing, StzaIqPingEr
 import { Util } from "../Util";
 import { v4 as uuid } from "uuid";
 
-const xLog = Logging.get("XMPP-conn");
-const log = Logging.get("XmppJsInstance");
+const xLog = new Logger("XMPP-conn");
+const log = new Logger("XmppJsInstance");
 
 class XmppProtocol extends BifrostProtocol {
     constructor() {

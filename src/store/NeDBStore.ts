@@ -1,6 +1,6 @@
 /* eslint-disable no-underscore-dangle */
 import { Bridge, MatrixRoom, RemoteRoom, RemoteUser,
-    MatrixUser, UserBridgeStore, RoomBridgeStore, Logging, AppServiceBot, RoomBridgeStoreEntry } from "matrix-appservice-bridge";
+    MatrixUser, UserBridgeStore, RoomBridgeStore, Logger, AppServiceBot, RoomBridgeStoreEntry } from "matrix-appservice-bridge";
 import { Util } from "../Util";
 import { MROOM_TYPES, IRemoteRoomData, IRemoteGroupData,
     MUSER_TYPE_ACCOUNT, MUSER_TYPES, MROOM_TYPE_UADMIN, MROOM_TYPE_GROUP,
@@ -10,7 +10,7 @@ import { IAccountMinimal } from "../bifrost/Events";
 import { IStore } from "./Store";
 import { BifrostRemoteUser } from "./BifrostRemoteUser";
 
-const log = Logging.get("NeDBStore");
+const log = new Logger("NeDBStore");
 
 export class NeDBStore implements IStore {
     private roomStore: RoomBridgeStore;

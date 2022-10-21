@@ -5,7 +5,7 @@
 // @ts-ignore - These are optional.
 import { buddy, accounts, messaging, Buddy, Account, Conversation, notify, TypingState } from "node-purple";
 import { promises as fs } from "fs";
-import { Logging } from "matrix-appservice-bridge";
+import { Logger } from "matrix-appservice-bridge";
 import { BifrostProtocol } from "../bifrost/Protocol";
 import { IChatJoinProperties, IUserInfo, IConversationEvent } from "../bifrost/Events";
 import { IBasicProtocolMessage } from "../MessageFormatter";
@@ -13,7 +13,7 @@ import { Util } from "../Util";
 import { IBifrostInstance } from "../bifrost/Instance";
 import { IBifrostAccount } from "../bifrost/Account";
 
-const log = Logging.get("PurpleAccount");
+const log = new Logger("PurpleAccount");
 
 export interface IChatJoinOptions {
     identifier: string;
