@@ -50,9 +50,9 @@ function createMEH() {
 
             },
             join: () => { /* empty */ },
-            getClient: () => ({
+            matrixClient: {
                 getUserId: () => userId,
-                _createMessagesRequest: () => Promise.resolve({
+                doRequest: () => Promise.resolve({
                     chunk: [{
                         type: "m.room.message",
                         event_id: "$1:localhost",
@@ -67,7 +67,7 @@ function createMEH() {
                         event_id: "$3:localhost",
                     }],
                 }),
-            }),
+            },
         }),
     };
     const meh = new MatrixEventHandler(

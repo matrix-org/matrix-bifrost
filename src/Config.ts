@@ -1,12 +1,12 @@
 import { IAutoRegStep } from "./AutoRegistration";
 import { IRoomAlias } from "./RoomAliasSet";
 import { IXJSBackendOpts } from "./xmppjs/XJSBackendOpts";
-import { Logging } from "matrix-appservice-bridge";
+import { Logger } from "matrix-appservice-bridge";
 import { PgDataStoreOpts } from "./store/postgres/PgDatastore";
 import { IAccountExtraConfig } from "./bifrost/Account";
 import { IPurpleBackendOpts } from "./purple/PurpleInstance";
 
-const log = Logging.get("Config");
+const log = new Logger("Config");
 
 export class Config {
 

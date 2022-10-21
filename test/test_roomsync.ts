@@ -5,7 +5,7 @@ import { RoomSync } from "../src/RoomSync";
 import { Deduplicator } from "../src/Deduplicator";
 import { MROOM_TYPE_GROUP, IRemoteGroupData } from "../src/store/Types";
 import { mockStore } from "./mocks/store";
-import { RoomBridgeStoreEntry } from "matrix-appservice-bridge";
+import { AppServiceBot, Intent, RoomBridgeStoreEntry } from "matrix-appservice-bridge";
 const expect = Chai.expect;
 
 const dummyProtocol = new PurpleProtocol({
@@ -23,10 +23,10 @@ function createBotAndIntent() {
         }),
         isRemoteUser: (userId: string) => userId.startsWith("@remote"),
         getUserId: () => "@bot:localhost",
-    };
+    } as unknown as AppServiceBot;
     const intent = {
 
-    };
+    } as unknown as Intent;
     return {bot, intent};
 }
 

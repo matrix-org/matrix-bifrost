@@ -110,7 +110,6 @@
         "no-console": "error",
         "no-debugger": "error",
         "no-empty": "warn",
-        "no-empty-function": "warn",
         "no-eval": "error",
         "no-fallthrough": "off",
         "no-invalid-this": "error",

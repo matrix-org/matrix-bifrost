@@ -2,8 +2,8 @@ import { IConfigPortals } from "./Config";
 import { BifrostProtocol } from "./bifrost/Protocol";
 import { IChatJoinProperties } from "./bifrost/Events";
 import { IBifrostInstance } from "./bifrost/Instance";
-import { Logging } from "matrix-appservice-bridge";
-const log = Logging.get("RoomAliasSet");
+import { Logger } from "matrix-appservice-bridge";
+const log = new Logger("RoomAliasSet");
 
 export interface IRoomAlias {
     protocol: string;

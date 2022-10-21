@@ -1,7 +1,7 @@
 import { XmppJsInstance, XMPP_PROTOCOL } from "./XJSInstance";
 import { Element, x } from "@xmpp/xml";
 import { jid, JID } from "@xmpp/jid";
-import { Logging } from "matrix-appservice-bridge";
+import { Logger } from "matrix-appservice-bridge";
 import { IConfigBridge } from "../Config";
 import { IBasicProtocolMessage } from "..//MessageFormatter";
 import { IGatewayJoin, IUserStateChanged, IStoreRemoteUser, IUserInfo } from "../bifrost/Events";
@@ -18,7 +18,7 @@ import { AutoRegistration } from "../AutoRegistration";
 import { GatewayStateResolve } from "./GatewayStateResolve";
 import { MatrixMembershipEvent } from "../MatrixTypes";
 
-const log = Logging.get("XmppJsGateway");
+const log = new Logger("XmppJsGateway");
 
 export interface RemoteGhostExtraData {
     rooms: {

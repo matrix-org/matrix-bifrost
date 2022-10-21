@@ -51,16 +51,12 @@ export class Util {
 
     public static async getMessagesBeforeJoin(
         intent: Intent, roomId: string): Promise<WeakEvent[]> {
-        const client = intent.getClient();
-        // Because the JS SDK expects this to be set :/
+        const client = intent.matrixClient;
+        const { chunk } = await client.doRequest("GET", `/_matrix/client/v3/rooms/${encodeURIComponent(roomId)}/messages`, {dir: 'b'});
         // eslint-disable-next-line no-underscore-dangle
-        client._clientOpts = {
-            lazyLoadMembers: false,
-        };
-        // eslint-disable-next-line no-underscore-dangle
-        const res = await client._createMessagesRequest(roomId, undefined, undefined, "b");
         const msgs: WeakEvent[] = [];
-        for (const msg of res.chunk.reverse()) {
+        for (const msg of chunk.reverse()) {
+            // This is our membership
             if (msg.type === "m.room.member" && msg.sender === client.getUserId()) {
                 break;
             }

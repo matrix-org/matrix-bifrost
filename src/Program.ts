@@ -1,4 +1,4 @@
-import { Cli, Bridge, AppServiceRegistration, Logging, WeakEvent, TypingEvent, Request, RoomBridgeStoreEntry } from "matrix-appservice-bridge";
+import { Cli, Bridge, AppServiceRegistration, Logger, TypingEvent, Request } from "matrix-appservice-bridge";
 import { EventEmitter } from "events";
 import { MatrixEventHandler } from "./MatrixEventHandler";
 import { MatrixRoomHandler } from "./MatrixRoomHandler";
@@ -16,8 +16,8 @@ import { AutoRegistration } from "./AutoRegistration";
 import { GatewayHandler } from "./GatewayHandler";
 import request from "axios";
 
-const log = Logging.get("Program");
-const bridgeLog = Logging.get("bridge");
+const log = new Logger("Program");
+const bridgeLog = new Logger("bridge");
 
 import { install as installSMS } from "source-map-support";
 import { IRemoteUserAdminData, MROOM_TYPE_UADMIN } from "./store/Types";
@@ -72,7 +72,7 @@ class Program {
     }
 
     public start() {
-        Logging.configure({console: "debug"});
+        Logger.configure({console: "debug"});
 
         try {
             this.cli.run();
@@ -169,11 +169,11 @@ class Program {
         port = this.cfg.bridge.appservicePort || port;
         if (checkOnly && this.config.logging.console === "off") {
             // Force console if we are doing an integrity check only.
-            Logging.configure({
+            Logger.configure({
                 console: "info",
             });
         } else {
-            Logging.configure(this.cfg.logging);
+            Logger.configure(this.cfg.logging);
         }
         let storeParams = {};
         if (this.config.datastore.engine === "nedb") {
