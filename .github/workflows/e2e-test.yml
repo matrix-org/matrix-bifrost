@@ -122,6 +122,6 @@ jobs:
           BIFROST_TEST_ENABLEPG: "yes"
         run: |
           cd matrix-bifrost
-          npm ci
+          yarn --frozen
           HOMERUNNER_SPAWN_HS_TIMEOUT_SECS=100 ../complement/homerunner &
           bash -ic 'yarn test:e2e'
