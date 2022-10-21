@@ -60,8 +60,8 @@ export class GatewayHandler {
             log.debug(`Getting state for ${roomId}`);
             const state = await intent.roomState(roomId) as WeakEvent[];
             log.debug(`Got state for ${roomId}`);
-            let nameEv = state.find((e) => e.type === "m.room.name");
-            let topicEv = state.find((e) => e.type === "m.room.topic");
+            const nameEv = state.find((e) => e.type === "m.room.name");
+            const topicEv = state.find((e) => e.type === "m.room.topic");
             const bot = this.bridge.getBot();
             const membership = state.filter((e) => e.type === "m.room.member").map((e: WeakEvent) => (
                 {
