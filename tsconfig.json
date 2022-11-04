@@ -1,14 +1,12 @@
 {
+  "extends": "@tsconfig/node16/tsconfig.json",
   "compilerOptions": {
     "incremental": true,
-    "target": "ES2019",
-    "module": "commonjs",
     "allowJs": false,
     "declaration": false,
     "sourceMap": true,
     "outDir": "./lib",
     "composite": false,
-    "esModuleInterop": true,
     // TODO: Enable these
     "strict": false,
     "strictNullChecks": false,

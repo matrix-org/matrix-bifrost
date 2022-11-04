@@ -1,3 +1,4 @@
+/* eslint-disable no-console */
 import { MatrixClient } from "matrix-bot-sdk";
 import { createHash, createHmac } from "crypto";
 import { Homerunner } from "homerunner-client";
