@@ -70,6 +70,8 @@ jobs:
           sudo apt update
           sudo apt install prosody
           sudo cp matrix-bifrost/.github/support/prosody.cfg.lua /etc/prosody/prosody.cfg.lua
+          cat matrix-bifrost/.github/support/prosody.cfg.lua
+          cat /etc/prosody/prosody.cfg.lua
           sudo /etc/init.d/prosody start
           prosodyctl register bob localhost xmpp_password
 
