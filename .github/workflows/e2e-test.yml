@@ -71,6 +71,7 @@ jobs:
           sudo apt install prosody
           sudo cp matrix-bifrost/.github/support/prosody.cfg.lua /etc/prosody/prosody.cfg.lua
           sudo /etc/init.d/prosody start
+          prosodyctl register bob localhost xmpp_password
 
       # Pull the complement-synapse image from cache
       - name: Checkout synapse
@@ -120,6 +121,10 @@ jobs:
           BIFROST_TEST_PGDB: "bifrost_integtest"
           BIFROST_TEST_PGURL: "postgresql://postgres_user:postgres_password@localhost"
           BIFROST_TEST_ENABLEPG: "yes"
+          BIFROST_TEST_XMPP_SERVICE: "xmpp://localhost:5347"
+          BIFROST_TEST_XMPP_DOMAIN: "matrixbridge.localhost"
+          BIFROST_TEST_XMPP_PASSWORD: "my_service_password"
+          BIFROST_TEST_XMPP_USER: "bob:xmpp_test"
         run: |
           cd matrix-bifrost
           yarn --frozen

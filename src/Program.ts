@@ -29,7 +29,7 @@ EventEmitter.defaultMaxListeners = 50;
 /**
  * This is the entry point for the bridge. It contains
  */
-class Program {
+export class Program {
     private cli: Cli<Record<string, unknown>>;
     private bridge?: Bridge;
     private eventHandler: MatrixEventHandler|undefined;
@@ -62,9 +62,10 @@ class Program {
         });
         this.cfg = new Config();
         this.deduplicator = new Deduplicator();
-        process.on("SIGTERM", () =>
-            this.killBridge()
-        )
+        process.on("SIGTERM", () => {
+            log.info("SIGTERM recieved, killing bridge");
+            this.killBridge();
+        });
     }
 
     public get config(): Config {
@@ -136,10 +137,10 @@ class Program {
         }
     }
 
-    private async killBridge() {
-        log.info("SIGTERM recieved, killing bridge");
+    public async killBridge() {
         await this.bridge.close();
         await this.purple.close();
+        await this.store.close();
     }
 
     private async pingBridge() {
@@ -163,9 +164,13 @@ class Program {
         }
     }
 
-    private async runBridge(port: number, config: any) {
+    public async runBridge(port: number, config: any, registration?: AppServiceRegistration) {
         const checkOnly = process.env.BIFROST_CHECK_ONLY === "true";
-        this.cfg.ApplyConfig(config);
+        if (config instanceof Config) {
+            this.cfg = config;
+        } else {
+            this.cfg.ApplyConfig(config);
+        }
         port = this.cfg.bridge.appservicePort || port;
         if (checkOnly && this.config.logging.console === "off") {
             // Force console if we are doing an integrity check only.
@@ -221,7 +226,7 @@ class Program {
             domain: this.cfg.bridge.domain,
             homeserverUrl: this.cfg.bridge.homeserverUrl,
             disableContext: true,
-            registration: this.cli.getRegistrationFilePath(),
+            registration: registration ?? this.cli.getRegistrationFilePath(),
             ...storeParams,
         });
         if (this.cfg.purple.backend === "node-purple") {

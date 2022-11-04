@@ -83,7 +83,7 @@ modules_disabled = {
     "posix"; -- POSIX functionality, sends server to background, enables syslog, etc.
 }
 
-allow_registration = false
+allow_registration = true
 c2s_require_encryption = true
 s2s_require_encryption = true
 s2s_secure_auth = true
@@ -119,5 +119,5 @@ VirtualHost "localhost"
 ------ Components ------
 
 -- This is for the purple bridge
-Component "component.domain"
-         component_secret = my_service_password
+Component "matrixbridge.localhost"
+         component_secret = "my_service_password"
