@@ -71,7 +71,7 @@ jobs:
           sudo apt install prosody
           sudo cp matrix-bifrost/.github/support/prosody.cfg.lua /etc/prosody/prosody.cfg.lua
           sudo /etc/init.d/prosody start
-          prosodyctl register bob localhost xmpp_password
+          sudo prosodyctl register bob localhost xmpp_password
 
       # Pull the complement-synapse image from cache
       - name: Checkout synapse
