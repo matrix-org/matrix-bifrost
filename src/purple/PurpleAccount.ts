@@ -46,7 +46,7 @@ export class PurpleAccount implements IBifrostAccount {
 
     get name(): string { return this.acctData!.username; }
 
-    get handle(): External { return this.acctData!.handle; }
+    get handle(): unknown { return this.acctData!.handle; }
 
     get isEnabled(): boolean { return this.enabled; }
 

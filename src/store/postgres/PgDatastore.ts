@@ -71,12 +71,17 @@ export class PgDataStore implements IStore {
             log.error("Postgres Error: %s", err);
         });
         process.on("beforeExit", (e) => {
-            if (this.hasEnded) {
-                return;
-            }
             // Ensure we clean up on exit
-            this.pgPool.end();
+            this.close();
         });
+    }
+
+    public close() {
+        if (this.hasEnded) {
+            return;
+        }
+        // Ensure we clean up on exit
+        this.pgPool.end();
     }
 
     public async getMatrixUser(id: string) {
