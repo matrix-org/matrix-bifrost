@@ -11,7 +11,9 @@
     "esModuleInterop": true,
     // TODO: Enable these
     "strict": false,
-    "strictNullChecks": false
+    "strictNullChecks": false,
+    // types/xmpp__xml has duplicate global identifiers
+    "skipLibCheck": true
   },
   "include": [
     "src/**/*"
