@@ -99,11 +99,9 @@ export class BifrostTestEnvironment {
 
     public async setUp(matrixLocalparts?: string[]): Promise<void> {
         // Setup PostgreSQL.
-        this.postgresDb = await this.createDatabase();
         const [postgresDb, homeserver] = await Promise.all([
             this.createDatabase(),
             createHS(["ircbridge_bot", ...matrixLocalparts || []]),
-            // super.setUp(clients),
         ]);
         this.homeserver = homeserver;
         this.postgresDb = postgresDb;
