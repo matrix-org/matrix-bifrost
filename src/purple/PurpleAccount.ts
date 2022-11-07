@@ -68,7 +68,7 @@ export class PurpleAccount implements IBifrostAccount {
         let body = msg.body;
 
         if (msg.opts?.attachments) {
-            body += " " + msg.opts.attachments.map(a => a.uri).join(', ');
+            body += " " + msg.opts.attachments.map(a => 'uri' in a ? a.uri : null).filter(a => !!a).join(', ');
         }
 
         messaging.sendIM(this.handle, recipient, body);
