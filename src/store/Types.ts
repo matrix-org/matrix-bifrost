@@ -19,6 +19,7 @@ export interface IRemoteGroupData extends IRemoteRoomData {
     room_name?: string;
     properties?: IChatJoinProperties;
     gateway?: boolean;
+    plumbed?: boolean;
 }
 
 export interface IRemoteImData extends IRemoteRoomData {

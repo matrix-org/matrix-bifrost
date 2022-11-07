@@ -1,5 +1,5 @@
 import { IConfigAutoReg, IConfigAccessControl } from "./Config";
-import { Bridge, MatrixUser, Logger } from "matrix-appservice-bridge";
+import { Bridge, MatrixUser, Logger, UserProfile } from "matrix-appservice-bridge";
 import request from "axios";
 import { Util } from "./Util";
 import { IStore } from "./store/Store";
@@ -23,6 +23,8 @@ export interface IAutoRegStep {
     headers: {[key: string]: string}; // key -> value
 }
 
+const ESCAPE_TEMPLATE_REGEX = /[-\/\\^$*+?.()|[\]{}]/g;
+
 export class AutoRegistration {
     private nameCache = new QuickLRU<string, {[key: string]: string}>({ maxSize: this.autoRegConfig.registrationNameCacheSize });
     constructor(
@@ -30,7 +32,8 @@ export class AutoRegistration {
         private accessConfig: IConfigAccessControl,
         private bridge: Bridge,
         private store: IStore,
-        private protoInstance: IBifrostInstance) { }
+        private protoInstance: IBifrostInstance) {
+    }
 
     public isSupported(protocol: string) {
         return Object.keys(this.autoRegConfig.protocolSteps!).includes(protocol);
@@ -49,7 +52,7 @@ export class AutoRegistration {
         // We assume the caller has already validated this.
         const proto = this.protoInstance.getProtocol(protocol)!;
         const step = this.autoRegConfig.protocolSteps![protocol];
-        let res: {username: string, extraParams: any};
+        let res: {username: string, extraParams: Record<string, string>};
         if (step.type === "http") {
             res = await this.handleHttpRegistration(mxId, step);
         } else if (step.type === "implicit") {
@@ -78,6 +81,7 @@ export class AutoRegistration {
         log.info("Attempting to reverse register", username);
         const step = this.autoRegConfig.protocolSteps![protocol.id];
         const usernameFormat = step.parameters.username;
+        const domainParameter = step.parameters.domain;
         const hasLocalpart = usernameFormat.includes("<T_LOCALPART>");
         if (!usernameFormat) {
             throw Error("No parameter 'username' on registration step, cannot get mxid");
@@ -97,16 +101,24 @@ export class AutoRegistration {
             // Replace any ^a strings with A.
             mxid = mxid.replace(/(\^([a-z]))/g, (m, p1, p2) => p2.toUpperCase());
         } else if (hasLocalpart && usernameFormat.includes("<T_DOMAIN>")) {
-            let regexStr = usernameFormat.replace(/[-\/\\^$*+?.()|[\]{}]/g, "\\$&");
+            let regexStr = usernameFormat.replace(ESCAPE_TEMPLATE_REGEX, "\\$&");
             regexStr = regexStr.replace("<T_LOCALPART>", "(.+)").replace("<T_DOMAIN>", "(.+)");
             const match = new RegExp(regexStr).exec(username);
             if (!match || match.length < 3) {
                 throw Error("String didn't match");
             }
-            log.debug("Result:", match);
             mxid = `@${match[1]}:${match[2]}`;
         } else if (hasLocalpart) {
-            throw Error("We don't support localpart only, yet.");
+            if (!domainParameter) {
+                throw Error('`domain` must be specified in autoregistration parameters when only using a localpart')
+            }
+            let regexStr = usernameFormat.replace(ESCAPE_TEMPLATE_REGEX, "\\$&");
+            regexStr = regexStr.replace("<T_LOCALPART>", "(.+)");
+            const match = new RegExp(regexStr).exec(username);
+            if (!match || match.length < 2) {
+                throw Error("String didn't match");
+            }
+            mxid = `@${match[1]}:${domainParameter}`;
         } else  {
             throw Error("No T_MXID or T_MXID_SANE on username parameter, cannot get mxid");
         }
@@ -143,7 +155,7 @@ export class AutoRegistration {
         return result;
     }
 
-    public static generateParameters(parameters: {[key: string]: string}, mxId: string, profile?: {displayname: string; avatar_url: string})
+    public static generateParameters(parameters: {[key: string]: string}, mxId: string, profile?: UserProfile)
         : {[key: string]: string} {
         const body = {};
         const mxUser = new MatrixUser(mxId);
@@ -153,7 +165,7 @@ export class AutoRegistration {
         return body;
     }
 
-    private static generateParameter(val: string, mxUser: MatrixUser, profile?: {displayname: string; avatar_url: string}) {
+    private static generateParameter(val: string, mxUser: MatrixUser, profile?: UserProfile) {
         val = val.replace("<T_MXID>", mxUser.getId());
         val = val.replace("<T_MXID_SANE>", this.getSaneMxId(mxUser.getId()));
         val = val.replace("<T_LOCALPART>", mxUser.localpart);
@@ -175,7 +187,7 @@ export class AutoRegistration {
         const opts = step.opts as IAutoRegHttpOpts;
         log.debug("HttpReg: Fetching user profile");
         const intent = this.bridge.getIntent();
-        let profile: any = {};
+        let profile: UserProfile = {};
         try {
             profile = await intent.getProfileInfo(mxId);
             if (profile.avatar_url) {

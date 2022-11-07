@@ -97,6 +97,11 @@ export class NeDBStore implements IStore {
         return users.filter((u) => u.isRemote === false && u.protocolId === protocolId);
     }
 
+    public async getAllAccountsForMatrixUser(userId: string): Promise<BifrostRemoteUser[]> {
+        const users = await this.getRemoteUsersFromMxId(userId);
+        return users.filter((u) => u.isRemote === false);
+    }
+
     public async getGroupRoomByRemoteData(remoteData: IRemoteRoomData|IRemoteGroupData) {
         const remoteEntries = await this.roomStore.getEntriesByRemoteRoomData(remoteData as Record<string, unknown>);
         if (remoteEntries !== null && remoteEntries.length > 0) {
@@ -119,6 +124,14 @@ export class NeDBStore implements IStore {
             return null;
         }
         return suitableEntries;
+    }
+
+    public async getAllIMRoomsForAccount(matrixUserId: string, protocolId: string): Promise<RoomBridgeStoreEntry[]> {
+        const remoteEntries = await this.roomStore.getEntriesByRemoteRoomData({
+            matrixUser: matrixUserId,
+            protocol_id: protocolId,
+        } as IRemoteImData as Record<string, unknown>);
+        return remoteEntries.filter((e) => e.matrix?.get("type") === MROOM_TYPE_IM);
     }
 
     public async getAdminRoom(matrixUserId: string): Promise<string|null> {

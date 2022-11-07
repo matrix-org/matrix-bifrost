@@ -10,9 +10,7 @@ import { BifrostRemoteUser } from "./store/BifrostRemoteUser";
 const log = new Logger("ProfileSync");
 
 export class ProfileSync {
-    constructor(private bridge: Bridge, private config: Config, private store: IStore) {
-
-    }
+    constructor(private bridge: Bridge, private config: Config, private store: IStore) { }
 
     public async updateProfile(
         protocol: BifrostProtocol,

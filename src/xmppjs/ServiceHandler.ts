@@ -1,11 +1,11 @@
 import { Element, x } from "@xmpp/xml";
 import { XmppJsInstance } from "./XJSInstance";
 import { jid, JID } from "@xmpp/jid";
-import { getBridgeVersion, Logger } from "matrix-appservice-bridge";
+import { getBridgeVersion, Intent, Logger } from "matrix-appservice-bridge";
 import request from "axios";
 import { IGatewayRoom } from "../bifrost/Gateway";
 import { IGatewayRoomQuery, IGatewayPublicRoomsQuery } from "../bifrost/Events";
-import { StzaIqDiscoInfo, StzaIqPing, StzaIqDiscoItems, StzaIqSearchFields, SztaIqError, StzaIqPingError } from "./Stanzas";
+import { StzaIqDiscoInfo, StzaIqPing, StzaIqDiscoItems, StzaIqSearchFields, SztaIqError, StzaIqPingError, NODE_NAME } from "./Stanzas";
 import { IPublicRoomsResponse } from "../MatrixTypes";
 import { IConfigBridge } from "../Config";
 import { XMPPFeatures } from "./XMPPConstants";
@@ -17,18 +17,32 @@ const MAX_AVATARS = 1024;
 export class ServiceHandler {
     private avatarCache: Map<string, {data: Buffer, type: string}>;
     private existingAliases: Map<string, string>; /* alias -> room_id */
-    private discoInfo: StzaIqDiscoInfo;
+    private readonly serverDiscoInfo: StzaIqDiscoInfo;
+    private readonly userDiscoInfo: StzaIqDiscoInfo;
+    public readonly userDiscoHash: string;
     constructor(private xmpp: XmppJsInstance, private bridgeConfig: IConfigBridge) {
         this.avatarCache = new Map();
         this.existingAliases = new Map();
-        this.discoInfo = new StzaIqDiscoInfo("", "", "");
-        this.discoInfo.identity.add({category: "conference", type: "text", name: "Bifrost Matrix Gateway"});
-        this.discoInfo.identity.add({category: "gateway", type: "matrix", name: "Bifrost Matrix Gateway"});
-        this.discoInfo.feature.add(XMPPFeatures.DiscoInfo);
-        this.discoInfo.feature.add(XMPPFeatures.DiscoItems);
-        this.discoInfo.feature.add(XMPPFeatures.Muc);
-        this.discoInfo.feature.add(XMPPFeatures.IqVersion);
-        this.discoInfo.feature.add(XMPPFeatures.IqSearch);
+        this.serverDiscoInfo = new StzaIqDiscoInfo("", "", "");
+        this.serverDiscoInfo.identity.add({category: "conference", type: "text", name: "Bifrost Matrix Gateway"});
+        this.serverDiscoInfo.identity.add({category: "gateway", type: "matrix", name: "Bifrost Matrix Gateway"});
+        this.serverDiscoInfo.feature.add(XMPPFeatures.DiscoInfo);
+        this.serverDiscoInfo.feature.add(XMPPFeatures.DiscoItems);
+        this.serverDiscoInfo.feature.add(XMPPFeatures.Muc);
+        this.serverDiscoInfo.feature.add(XMPPFeatures.IqVersion);
+        this.serverDiscoInfo.feature.add(XMPPFeatures.IqSearch);
+        this.serverDiscoInfo.feature.add(XMPPFeatures.ChatStates);
+        this.userDiscoInfo = new StzaIqDiscoInfo("", "", "");
+        this.userDiscoInfo.identity.add({category: "client", type: "bridge", name: "matrix-bifrost"})
+        this.userDiscoInfo.feature.add(XMPPFeatures.DiscoInfo);
+        this.userDiscoInfo.feature.add(XMPPFeatures.Jingle);
+        this.userDiscoInfo.feature.add(XMPPFeatures.JingleFileTransferV4);
+        this.userDiscoInfo.feature.add(XMPPFeatures.JingleFileTransferV5);
+        this.userDiscoInfo.feature.add(XMPPFeatures.JingleIBB);
+        this.userDiscoInfo.feature.add(XMPPFeatures.XHTMLIM);
+        this.userDiscoInfo.feature.add(XMPPFeatures.ChatStates);
+        this.userDiscoHash = this.userDiscoInfo.hash;
+        this.userDiscoInfo.node = `${NODE_NAME}#${this.userDiscoHash}`;
     }
 
     public parseAliasFromJID(to: JID): string|null {
@@ -47,7 +61,7 @@ export class ServiceHandler {
         return `#${aliasRaw[1]}#${aliasRaw[2]}@${this.xmpp.xmppAddress.domain}`;
     }
 
-    public async handleIq(stanza: Element, intent: any): Promise<void> {
+    public async handleIq(stanza: Element, intent: Intent): Promise<void> {
         const id = stanza.getAttr("id");
         const from = stanza.getAttr("from");
         const to = stanza.getAttr("to");
@@ -61,11 +75,18 @@ export class ServiceHandler {
 
         // Only respond to this if it has no local part.
         const local = jid(to).local;
-        if (stanza.getChildByAttr("xmlns", "http://jabber.org/protocol/disco#info") && !local) {
-            return this.handleDiscoInfo(from, to, id);
+        const isDisco = stanza.getChildByAttr("xmlns", "http://jabber.org/protocol/disco#info");
+        if (isDisco) {
+            log.debug(`Disco info request from ${from} -> ${to} (${id})`);
+            if (local) {
+                return this.sendUserDiscoInfo(from, to, id);
+            } else {
+                return this.handleServerDiscoInfo(from, to, id);
+            }
         }
 
         if (stanza.getChildByAttr("xmlns", "vcard-temp") && type === "get") {
+            // XEP: https://xmpp.org/extensions/xep-0054.html
             return this.handleVcard(from, to, id, intent);
         }
 
@@ -82,7 +103,7 @@ export class ServiceHandler {
 
             if (searchQuery && !local) {
                 // XXX: Typescript is a being a bit funny about Element, so doing an any here.
-                return this.handleDiscoItems(from, to, id, stanza.attrs.type, searchQuery as any);
+                return this.handleDiscoItems(from, to, id, stanza.attrs.type, searchQuery as Element);
             }
 
             if (stanza.getChildByAttr("xmlns", "http://jabber.org/protocol/disco#info") && local) {
@@ -145,12 +166,20 @@ export class ServiceHandler {
             ));
     }
 
-    private async handleDiscoInfo(to: string, from: string, id: string) {
-        this.discoInfo.to = to;
-        this.discoInfo.from = from;
-        this.discoInfo.id = id;
-        await this.xmpp.xmppSend(this.discoInfo);
+    private async handleServerDiscoInfo(to: string, from: string, id: string) {
+        this.serverDiscoInfo.to = to;
+        this.serverDiscoInfo.from = from;
+        this.serverDiscoInfo.id = id;
+        await this.xmpp.xmppSend(this.serverDiscoInfo);
     }
+
+    public async sendUserDiscoInfo(to: string, from: string, id: string) {
+        this.userDiscoInfo.to = to;
+        this.userDiscoInfo.from = from;
+        this.userDiscoInfo.id = id;
+        await this.xmpp.xmppSend(this.userDiscoInfo);
+    }
+
 
     private async handleDiscoItems(to: string, from: string, id: string, type: string,
         searchElement?: Element): Promise<void> {
@@ -167,13 +196,14 @@ export class ServiceHandler {
                         from,
                         to,
                         id,
-                        "Please enter a searh term to find Matrix rooms:",
+                        "Please enter a search term to find Matrix rooms:",
                         {
                             Term: "",
-                            Homeserver: this.bridgeConfig.domain,
+                            Homeserver: "",
                         },
                     ),
                 );
+                return;
             } else if (type === "set") {
                 // Searching via a term.
                 const term = searchElement.getChild("Term");
@@ -279,13 +309,13 @@ export class ServiceHandler {
         }
     }
 
-    private async getThumbnailBuffer(avatarUrl: string, intent: any): Promise<{data: Buffer, type: string}|undefined> {
+    private async getThumbnailBuffer(avatarUrl: string, intent: Intent): Promise<{data: Buffer, type: string}|undefined> {
         let avatar = this.avatarCache.get(avatarUrl);
         if (avatar) {
             return avatar;
         }
-        const thumbUrl = intent.getClient().mxcUrlToHttp(
-            avatarUrl, 256, 256, "scale", false,
+        const thumbUrl = intent.matrixClient.mxcToHttpThumbnail(
+            avatarUrl, 256, 256, "scale"
         );
         if (!thumbUrl) {
             return undefined;
@@ -305,7 +335,7 @@ export class ServiceHandler {
         return avatar;
     }
 
-    private async handleVcard(from: string, to: string, id: string, intent: any) {
+    private async handleVcard(from: string, to: string, id: string, intent: Intent) {
         // Fetch mxid.
         const account = this.xmpp.getAccountForJid(jid(to));
         if (!account) {

@@ -5,7 +5,7 @@
     },
     "parser": "@typescript-eslint/parser",
     "parserOptions": {
-        "ecmaVersion": 9,
+        "ecmaVersion": 9
     },
     "plugins": [
         "eslint-plugin-import",
@@ -48,7 +48,6 @@
         "@typescript-eslint/consistent-type-assertions": "error",
         "@typescript-eslint/indent": "error",
         "@typescript-eslint/naming-convention": "off",
-        "@typescript-eslint/no-empty-function": ["warn", {"allow": ["constructors"]}],
         "@typescript-eslint/no-empty-interface": "error",
         "@typescript-eslint/no-explicit-any": "warn",
         "@typescript-eslint/no-misused-new": "error",

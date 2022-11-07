@@ -11,6 +11,7 @@ export interface IChatJoinOptions {
 
 export interface IProfileProvider {
     getUserInfo(who: string): Promise<IUserInfo>;
+    getBuddy?(user: string): any|undefined;
     getAvatarBuffer(uri: string, senderId: string): Promise<{type: string, data: Buffer}>;
 }
 
@@ -27,9 +28,9 @@ export interface IBifrostAccount extends IProfileProvider {
     sendIM(recipient: string, body: IBasicProtocolMessage);
     sendIMTyping(recipient: string, isTyping: boolean);
     sendChat(chatName: string, body: IBasicProtocolMessage);
-    getBuddy(user: string): any|undefined;
-    getJoinPropertyForRoom(roomName: string, key: string): string|undefined;
-    setJoinPropertiesForRoom(roomName: string, props: IChatJoinProperties);
+    getBuddy?(user: string): any|undefined;
+    getJoinPropertyForRoom?(roomName: string, key: string): string|undefined;
+    setJoinPropertiesForRoom?(roomName: string, props: IChatJoinProperties);
     isInRoom(roomName: string): boolean;
     joinChat(
         components: IChatJoinProperties,
@@ -39,7 +40,9 @@ export interface IBifrostAccount extends IProfileProvider {
     : Promise<IConversationEvent|void>;
 
     rejectChat(components: IChatJoinProperties);
-    getConversation(name: string): any|undefined;
+    getConversation?(name: string): any|undefined;
     getChatParamsForProtocol(): IChatJoinOptions[];
     setStatus(statusId: string, active: boolean);
+    // TODO: Is setStatus the same thing?
+    setPresence?(content: { currently_active?: boolean; last_active_ago?: number; presence: "online" | "offline" | "unavailable"; status_msg?: string; }, recipients?: string[]);
 }

@@ -16,20 +16,21 @@ import { IEventBody,
     IGatewayPublicRoomsQuery,
     IChatJoinProperties,
 } from "./Events";
-import { EventEmitter } from "events";
+import { EventEmitter } from "node:events";
 import { IGateway } from "./Gateway";
+import { AutoRegistration } from "../AutoRegistration";
 
 export interface IBifrostInstance extends EventEmitter {
     gateway: IGateway|null;
     createBifrostAccount(username, protocol: BifrostProtocol): IBifrostAccount;
-    getBuddyFromChat(conv: any, buddy: string): any;
+    preStart?(autoReg: AutoRegistration): void;
     start(): Promise<void>;
     close(): Promise<void>;
     getAccount(username: string, protocolId: string, mxid?: string): IBifrostAccount|null;
     getProtocol(id: string): BifrostProtocol|undefined;
     getProtocols(): BifrostProtocol[];
     findProtocol(nameOrId: string): BifrostProtocol|undefined;
-    getNickForChat(conv: any): string;
+    getNickForChat?(conv: any): string;
     getUsernameFromMxid(mxid: string, prefix: string): {username: string, protocol: BifrostProtocol};
     checkGroupExists(properties: IChatJoinProperties, protocol: BifrostProtocol): Promise<boolean>;
     on(name: string, cb: (ev: IEventBody) => void);

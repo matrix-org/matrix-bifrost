@@ -1,4 +1,4 @@
-import { Cli, Bridge, AppServiceRegistration, Logger, TypingEvent, Request } from "matrix-appservice-bridge";
+import { Cli, Bridge, AppServiceRegistration, Logger, TypingEvent, Request, PresenceEvent } from "matrix-appservice-bridge";
 import { EventEmitter } from "events";
 import { MatrixEventHandler } from "./MatrixEventHandler";
 import { MatrixRoomHandler } from "./MatrixRoomHandler";
@@ -8,7 +8,7 @@ import { ProfileSync } from "./ProfileSync";
 import { RoomSync } from "./RoomSync";
 import { IStore, initiateStore } from "./store/Store";
 import { Deduplicator } from "./Deduplicator";
-import { Config } from "./Config";
+import { Config, ConfigValue } from "./Config";
 import { Util } from "./Util";
 import { XmppJsInstance } from "./xmppjs/XJSInstance";
 import { Metrics } from "./Metrics";
@@ -51,9 +51,9 @@ class Program {
             },
             registrationPath: "bifrost-registration.yaml",
             generateRegistration: this.generateRegistration,
-            run: async (port: number, config: any) => {
+            run: async (port: number, config) => {
                 try {
-                    await this.runBridge(port, config);
+                    await this.runBridge(port, config as ConfigValue);
                 } catch (ex) {
                     log.error("Failed to start:", ex);
                     process.exit(1);
@@ -163,7 +163,7 @@ class Program {
         }
     }
 
-    private async runBridge(port: number, config: any) {
+    private async runBridge(port: number, config: ConfigValue) {
         const checkOnly = process.env.BIFROST_CHECK_ONLY === "true";
         this.cfg.ApplyConfig(config);
         port = this.cfg.bridge.appservicePort || port;
@@ -202,9 +202,18 @@ class Program {
                     });
                 },
                 onEphemeralEvent: (r) => {
-                    if (r.getData().type === "m.typing") {
+                    const data = r.getData();
+                    if (data.type === "m.typing") {
                         this.eventHandler.onTyping(r as Request<TypingEvent>).catch((err) => {
-                            log.error("onTyping err", err);
+                            log.error("onTyping encountered an error", err);
+                        }).then(() => {
+                            Metrics.requestOutcome(false, r.getDuration(), "success");
+                        }).catch(() => {
+                            Metrics.requestOutcome(false, r.getDuration(), "fail");
+                        });
+                    } else if (data.type === "m.presence") {
+                        this.eventHandler.onPresence(r as Request<PresenceEvent>).catch((err) => {
+                            log.error("onPresence encountered an error", err);
                         }).then(() => {
                             Metrics.requestOutcome(false, r.getDuration(), "success");
                         }).catch(() => {
@@ -224,20 +233,7 @@ class Program {
             registration: this.cli.getRegistrationFilePath(),
             ...storeParams,
         });
-        if (this.cfg.purple.backend === "node-purple") {
-            log.info("Selecting node-purple as a backend");
-            // eslint-disable-next-line @typescript-eslint/no-var-requires
-            this.purple = new (require("./purple/PurpleInstance").PurpleInstance)(this.cfg.purple);
-        } else if (this.cfg.purple.backend === "xmpp-js") {
-            log.info("Selecting xmpp-js as a backend");
-            // eslint-disable-next-line @typescript-eslint/no-var-requires
-            this.purple = new (require("./xmppjs/XJSInstance").XmppJsInstance)(this.cfg);
-        } else {
-            throw new Error(`Backend ${this.cfg.purple.backend} not supported`);
-        }
-        const purple = this.purple!;
         await this.bridge.initalise();
-
 
         this.store = await initiateStore(this.config.datastore, this.bridge);
         const ignoreIntegrity = process.env.BIFROST_INTEGRITY_WRITE;
@@ -247,28 +243,22 @@ class Program {
             log.warn("BIFROST_CHECK_ONLY is set, exiting");
             process.exit(0);
         }
-        await this.waitForHomeserver();
-        await this.bridge.listen(port);
-        log.info("Started appservice listener on port", port);
-        await this.pingBridge();
-        await this.registerBot();
 
-        if (this.cfg.metrics.enabled) {
-            log.info("Enabling metrics");
-            Metrics.init(this.bridge);
+
+        if (this.cfg.purple.backend === "node-purple") {
+            log.info("Selecting node-purple as a backend");
+            // eslint-disable-next-line @typescript-eslint/no-var-requires
+            this.purple = new (require("./purple/PurpleInstance").PurpleInstance)(this.cfg.purple);
+        } else if (this.cfg.purple.backend === "xmpp-js") {
+            log.info("Selecting xmpp-js as a backend");
+            // eslint-disable-next-line @typescript-eslint/no-var-requires
+            this.purple = new (require("./xmppjs/XJSInstance").XmppJsInstance)(this.cfg, this.bridge);
+        } else {
+            throw new Error(`Backend ${this.cfg.purple.backend} not supported`);
         }
 
-        this.profileSync = new ProfileSync(this.bridge, this.cfg, this.store);
-        this.roomHandler = new MatrixRoomHandler(
-            this.purple!, this.profileSync, this.store, this.cfg, this.deduplicator,
-        );
-        this.gatewayHandler = new GatewayHandler(purple, this.bridge, this.cfg, this.store, this.profileSync);
-        this.roomSync = new RoomSync(
-            purple, this.store, this.deduplicator, this.gatewayHandler, this.bridge.getIntent(),
-        );
-        this.eventHandler = new MatrixEventHandler(
-            purple, this.store, this.deduplicator, this.config, this.gatewayHandler,
-        );
+        const purple = this.purple!;
+
         let autoReg: AutoRegistration|undefined;
         if (this.config.autoRegistration.enabled && this.config.autoRegistration.protocolSteps !== undefined) {
             autoReg = new AutoRegistration(
@@ -280,16 +270,66 @@ class Program {
             );
         }
 
-        this.eventHandler.setBridge(this.bridge, autoReg || undefined);
-        this.roomHandler.setBridge(this.bridge);
+        purple.preStart?.(autoReg);
+
+        purple.on("account-signed-on", async (ev: IAccountEvent) => {
+            log.info(`${ev.account.protocol_id}://${ev.account.username} signed on`);
+            const acct = this.purple.getAccount(ev.account.username, ev.account.protocol_id);
+            acct.setStatus('available', true);
+            // Check presence
+            // TODO: Move this to it's own handler?
+            if (ev.mxid && acct?.setPresence) {
+                try {
+                    const presence = await this.bridge.getIntent().matrixClient.getPresenceStatusFor(ev.mxid);
+                    const allInterestedUsers = (
+                        await this.store.getAllIMRoomsForAccount(ev.mxid, acct.protocol.id)
+                    ).map((r) => r.remote.get<string>('recipient'));
+                    await acct.setPresence({
+                        currently_active: presence.currentlyActive,
+                        status_msg: presence.statusMessage,
+                        presence: presence.state,
+                        last_active_ago: presence.lastActiveAgo,
+                    }, allInterestedUsers);
+                } catch (ex) {
+                    log.warn(`Failed to set startup presence for ${ev.mxid}`, ex);
+                }
+            }
+        });
+        purple.on("account-connection-error", (ev: IAccountEvent) => {
+            log.warn(`${ev.account.protocol_id}://${ev.account.username} had a connection error`, ev);
+        });
+        purple.on("account-signed-off", (ev: IAccountEvent) => {
+            log.info(`${ev.account.protocol_id}://${ev.account.username} signed off.`);
+            this.deduplicator.removeChosenOneFromAllRooms(
+                Util.createRemoteId(ev.account.protocol_id, ev.account.username),
+            );
+        });
+
+        this.profileSync = new ProfileSync(this.bridge, this.cfg, this.store);
+        this.roomHandler = new MatrixRoomHandler(
+            purple, this.profileSync, this.store, this.cfg, this.deduplicator, this.bridge,
+        );
+        this.gatewayHandler = new GatewayHandler(purple, this.bridge, this.cfg, this.store, this.profileSync);
+        this.roomSync = new RoomSync(
+            purple, this.store, this.deduplicator, this.gatewayHandler, this.bridge.getIntent(),
+        );
+        this.eventHandler = new MatrixEventHandler(
+            purple, this.store, this.deduplicator, this.config, this.gatewayHandler, this.bridge, autoReg,
+        );
+
+        await this.bridge.listen(port);
+
+        if (this.cfg.metrics.enabled) {
+            log.info("Enabling metrics");
+            Metrics.init(this.bridge);
+        }
+
+        await this.waitForHomeserver();
+        log.info("Started appservice listener on port", port);
+        await this.pingBridge();
+        await this.registerBot();
         log.info("Bridge has started.");
         try {
-            if (purple instanceof XmppJsInstance) {
-                if (!autoReg) {
-                    throw Error('AutoRegistration not enabled in config, bridge cannot start');
-                }
-                purple.preStart(this.bridge, autoReg);
-            }
             await purple.start();
             await this.roomSync.sync(this.bridge.getBot());
             if (purple instanceof XmppJsInstance) {
@@ -302,19 +342,6 @@ class Program {
             log.error("Encountered an error starting the backend:", ex);
             process.exit(1);
         }
-        this.purple!.on("account-signed-on", (ev: IAccountEvent) => {
-            log.info(`${ev.account.protocol_id}://${ev.account.username} signed on`);
-            this.purple.getAccount(ev.account.username, ev.account.protocol_id, ).setStatus('available', true);
-        });
-        this.purple!.on("account-connection-error", (ev: IAccountEvent) => {
-            log.warn(`${ev.account.protocol_id}://${ev.account.username} had a connection error`, ev);
-        });
-        this.purple!.on("account-signed-off", (ev: IAccountEvent) => {
-            log.info(`${ev.account.protocol_id}://${ev.account.username} signed off.`);
-            this.deduplicator.removeChosenOneFromAllRooms(
-                Util.createRemoteId(ev.account.protocol_id, ev.account.username),
-            );
-        });
         log.info("Initiation of bridge complete");
     }
 }

@@ -18,7 +18,8 @@ import { IAccountEvent,
     IChatReadReceipt,
     IChatTopicState,
     IEventBody,
-    IChatJoinProperties} from "../bifrost/Events";
+    IChatJoinProperties,
+    IContactListSubscribeRequest} from "../bifrost/Events";
 import { IBasicProtocolMessage, IMessageAttachment } from "../MessageFormatter";
 import { PresenceCache } from "./PresenceCache";
 import { Metrics } from "../Metrics";
@@ -26,9 +27,10 @@ import { ServiceHandler } from "./ServiceHandler";
 import { XJSConnection } from "./XJSConnection";
 import { AutoRegistration } from "../AutoRegistration";
 import { XmppJsGateway } from "./XJSGateway";
-import { IStza, StzaBase, StzaIqDisco, StzaIqDiscoInfo, StzaIqPing, StzaIqPingError, StzaIqVcardRequest } from "./Stanzas";
+import { IStza, StzaBase, StzaIqDiscoInfo, StzaIqVcardRequest, StzaPresence, StzaPresenceAvailable, StzaPresenceSubscription } from "./Stanzas";
 import { Util } from "../Util";
 import { v4 as uuid } from "uuid";
+import { JingleHandler, JingleReceivedFile } from "./Jingle";
 
 const xLog = new Logger("XMPP-conn");
 const log = new Logger("XmppJsInstance");
@@ -61,31 +63,57 @@ export const XMPP_PROTOCOL = new XmppProtocol();
 const SEEN_MESSAGES_SIZE = 16384;
 
 export class XmppJsInstance extends EventEmitter implements IBifrostInstance {
-    public readonly presenceCache: PresenceCache;
-    private serviceHandler: ServiceHandler;
+    public readonly presenceCache = new PresenceCache();
+    public readonly serviceHandler = new ServiceHandler(this, this.config.bridge);
     private xmpp?: any;
     private myAddress!: JID;
-    private accounts: Map<string, XmppJsAccount>;
-    private seenMessages: Set<string>;
+    private accounts = new Map<string, XmppJsAccount>();
+    private seenMessages = new Set<string>();
     private defaultRes!: string;
-    private connectionWasDropped: boolean;
-    private bufferedMessages: {xmlMsg: Element|string, resolve: (res: Promise<void>) => void}[];
-    private autoRegister!: AutoRegistration;
-    private bridge!: Bridge;
-    private xmppGateway: XmppJsGateway|null;
-    private activeMUCUsers: Set<string>;
-    private lastMessageInMUC: Map<string, {originIsMatrix: boolean, id: string}>;
-    constructor(private config: Config) {
+    private connectionWasDropped = false;
+    private bufferedMessages: {xmlMsg: Element|string, resolve: (res: Promise<void>) => void}[] = [];
+    private autoRegister?: AutoRegistration;
+    private xmppGateway?: XmppJsGateway;
+    private activeMUCUsers = new Set<string>();
+    private lastMessageInMUC = new Map<string, {originIsMatrix: boolean, id: string}>();
+    private jingleHandler?: JingleHandler;
+    constructor(private config: Config, private readonly bridge: Bridge) {
         super();
-        this.accounts = new Map();
-        this.bufferedMessages = [];
-        this.seenMessages = new Set();
-        this.presenceCache = new PresenceCache();
-        this.serviceHandler = new ServiceHandler(this, config.bridge);
-        this.connectionWasDropped = false;
-        this.activeMUCUsers = new Set();
-        this.lastMessageInMUC = new Map();
-        this.xmppGateway = null;
+        const opts = config.purple.backendOpts as IXJSBackendOpts;
+        if (opts.jingle) {
+            this.jingleHandler = new JingleHandler(this, opts.jingle, {
+                homeserverUrl: config.bridge.homeserverUrl,
+                // XXX: Gut wrench to get the access token of the bot user
+                token: this.bridge.getIntent().matrixClient.accessToken,
+            });
+            this.jingleHandler.on('file', (res: JingleReceivedFile) => {
+                log.debug(`Got file from Jingle ${res.mxcUrl}`, res.file);
+                // We got a file from a user, so now we need to fake a message event.
+                this.emit("received-im-msg", {
+                    sender: res.from.bare().toString(),
+                    // TODO: Does this account exist at the point in time we recieved the file?
+                    account: {
+                        username: res.to.bare().toString(),
+                        protocol_id: XMPP_PROTOCOL.id,
+                    },
+                    conv: {
+                        // TODO: This needs a convience method
+                        name: res.from.bare().toString(),
+                    },
+                    message: {
+                        body: `Sent file: ${res.file.description}`,
+                        opts: {
+                            attachments: [{
+                                mimetype: res.file.mediaType,
+                                size: res.file.size,
+                                mxcUrl: res.mxcUrl,
+                                filename: res.file.name,
+                            }]
+                        }
+                    }
+                } as IReceivedImMsg)
+            });
+        }
     }
 
     get gateway() {
@@ -104,11 +132,16 @@ export class XmppJsInstance extends EventEmitter implements IBifrostInstance {
         return XMPP_PROTOCOL.id;
     }
 
-    public preStart(bridge: Bridge, autoRegister: AutoRegistration) {
-        this.autoRegister = autoRegister;
-        this.bridge = bridge;
+    public preStart(autoRegister: AutoRegistration) {
         if (!autoRegister) {
             throw Error('autoRegistration not defined, cannot start bridge');
+        }
+        this.autoRegister = autoRegister;
+        if (this.config.portals.enableGateway === true) {
+            if (!this.autoRegister) {
+                throw Error("Autoregistration must be enabled for gateways to work!");
+            }
+            this.xmppGateway = new XmppJsGateway(this, this.autoRegister, this.config.bridge);
         }
     }
 
@@ -116,12 +149,12 @@ export class XmppJsInstance extends EventEmitter implements IBifrostInstance {
         return new XmppJsAccount(username, this.defaultRes, this, "");
     }
 
-    public xmppWriteToStream(xmlMsg: any) {
+    public xmppWriteToStream(xmlMsg: {toString: () => string}) {
         if (this.canWrite) {
-            return this.xmpp.write(xmlMsg);
+            return this.xmpp.write(xmlMsg.toString());
         }
         const p = new Promise((resolve) => {
-            this.bufferedMessages.push({xmlMsg, resolve});
+            this.bufferedMessages.push({xmlMsg: xmlMsg.toString(), resolve});
         });
         return p;
     }
@@ -205,10 +238,6 @@ export class XmppJsInstance extends EventEmitter implements IBifrostInstance {
         return;
     }
 
-    public getBuddyFromChat(conv: any, buddy: string): any {
-        return undefined;
-    }
-
     public async close() {
         await this.xmpp?.stop();
     }
@@ -218,12 +247,6 @@ export class XmppJsInstance extends EventEmitter implements IBifrostInstance {
         const opts = config.backendOpts as IXJSBackendOpts;
         if (!opts || !opts.service || !opts.domain || !opts.password) {
             throw Error("Missing opts for xmpp: service, domain, password");
-        }
-        if (this.config.portals.enableGateway === true) {
-            if (!this.autoRegister) {
-                throw Error("Autoregistration must be enabled for gateways to work!");
-            }
-            this.xmppGateway = new XmppJsGateway(this, this.autoRegister, this.config.bridge);
         }
         this.defaultRes = opts.defaultResource ? opts.defaultResource : "matrix-bridge";
         log.info(`Starting new XMPP component instance to ${opts.service} using domain ${opts.domain}`);
@@ -236,7 +259,7 @@ export class XmppJsInstance extends EventEmitter implements IBifrostInstance {
             xLog.error(err);
         });
         xmpp.on("offline", () => {
-            xLog.info("gone offline.");
+            xLog.warn("gone offline");
         });
         xmpp.on("stanza", (stanza) => {
             try {
@@ -280,7 +303,7 @@ export class XmppJsInstance extends EventEmitter implements IBifrostInstance {
         });
 
         xmpp.on("reconnected", () => {
-            xLog.info("status: reconnecting");
+            xLog.info("status: reconnected");
         });
 
         if (opts.logRawStream) {
@@ -340,6 +363,7 @@ export class XmppJsInstance extends EventEmitter implements IBifrostInstance {
         // Components don't "connect", so just emit this once we've created it.
         this.emit("account-signed-on", {
             eventName: "account-signed-on",
+            mxid,
             account: {
                 protocol_id: XMPP_PROTOCOL.id,
                 username,
@@ -358,10 +382,6 @@ export class XmppJsInstance extends EventEmitter implements IBifrostInstance {
 
     public findProtocol(nameOrId: string): BifrostProtocol|undefined {
         if (nameOrId.toLowerCase() === "xmpp-js") { return XMPP_PROTOCOL; }
-    }
-
-    public getNickForChat(conv: any): string {
-        throw new Error("Not supported.");
     }
 
     public needsDedupe() {
@@ -483,7 +503,26 @@ export class XmppJsInstance extends EventEmitter implements IBifrostInstance {
         }
         try {
             if (isOurs) {
-                if (stanza.is("iq") && ["get", "set"].includes(stanza.getAttr("type"))) {
+                if (stanza.is("iq") && stanza.getChildByAttr('xmlns', 'urn:xmpp:jingle:1')) {
+                    // This is a jingle request
+                    if (this.jingleHandler) {
+                        await this.jingleHandler.onJingleRequest(stanza);
+                        return;
+                    }
+                    else {
+                        log.debug(`Got a jingle request ${id}, but the bridge isn't configured to handle jingle`);
+                    }
+                } else if (stanza.is("iq") && stanza.getChildByAttr('xmlns', 'http://jabber.org/protocol/ibb')) {
+                    // This is an "open" reqyest
+                    // This is a jingle request
+                    if (this.jingleHandler) {
+                        await this.jingleHandler.onIBBStanza(stanza);
+                        return;
+                    }
+                    else {
+                        log.debug(`Got a 'open' (IBB) request ${id}, but the bridge isn't configured to handle jingle`);
+                    }
+                } else if (stanza.is("iq") && ["get", "set"].includes(stanza.getAttr("type"))) {
                     await this.serviceHandler.handleIq(stanza, this.bridge.getIntent());
                     return;
                 }
@@ -554,7 +593,7 @@ export class XmppJsInstance extends EventEmitter implements IBifrostInstance {
             return;
         }
         const to = jid(stanza.attrs.to)!;
-        let localAcct: any = this.accounts.get(`${to!.local}@${to!.domain}`)!;
+        let localAcct = this.accounts.get(`${to!.local}@${to!.domain}`)!;
         let from = jid(stanza.attrs.from);
         let convName = `${from.local}@${from.domain}`;
 
@@ -588,7 +627,10 @@ export class XmppJsInstance extends EventEmitter implements IBifrostInstance {
                     }
                     if (localAcct === undefined) {
                         log.warn(`No account defined for ${userId}, registering new account.`);
-                        localAcct = await this.autoRegister!.registerUser(XMPP_PROTOCOL.id, userId) as XmppJsAccount;
+                        if (!this.autoRegister) {
+                            throw Error('AutoRegistration is not enabled!');
+                        }
+                        localAcct = await this.autoRegister.registerUser(XMPP_PROTOCOL.id, userId) as XmppJsAccount;
                     }
                     const anonJid = this.gateway!.getAnonIDForJID(`${to.local}@${to.domain}`, from);
                     if (anonJid) {
@@ -793,9 +835,14 @@ export class XmppJsInstance extends EventEmitter implements IBifrostInstance {
                 }
             }
             log.debug(`Emitting IM message (isMucPM:${isMucPm})`, message);
+            if (!isMucPm) {
+                // Swift and other clients do not request discovery info often enough, so we send one when
+                // we recieve a (new) message from them.
+                this.serviceHandler.sendUserDiscoInfo(from.toString(), localAcct.remoteId, uuid());
+            }
             this.emit("received-im-msg", {
                 eventName: "received-im-msg",
-                sender: isMucPm ? from.toString() : `${from.local}@${from.domain}`,
+                sender: isMucPm ? from.toString() : from.bare().toString(),
                 message,
                 account: {
                     protocol_id: XMPP_PROTOCOL.id,
@@ -809,8 +856,49 @@ export class XmppJsInstance extends EventEmitter implements IBifrostInstance {
         const to = jid(stanza.getAttr("to"));
         // XMPP is case insensitive.
         const localAcct = this.accounts.get(`${to.local}@${to.domain}`);
+        if (stanza.attrs.type === 'error') {
+            log.error(`Presence returned error: ${stanza.children[0].toString()}`);
+            return;
+        }
         const from = jid(stanza.getAttr("from"));
         const convName = `${from.local}@${from.domain}`;
+        const username = localAcct ? localAcct.remoteId : to.toString();
+
+        if (stanza.attrs.type === 'subscribe') {
+            // These are subscriptions, and are handled differently.
+            this.emit("contact-list-subscribe", {
+                cb: (accept: boolean) => {
+                    const type = accept ? "subscribed" : "unsubscribed";
+                    log.info(`Responding to subscription request with '${type}'`);
+                    this.xmppSend(
+                        new StzaPresenceSubscription(to.toString(), from.toString(), type)
+                    )
+                },
+                eventName: "contact-list-subscribe",
+                account: {
+                    protocol_id: XMPP_PROTOCOL.id,
+                    username,
+                },
+                sender: stanza.attrs.from,
+            } as IContactListSubscribeRequest);
+            return;
+        } else if (stanza.attrs.type === 'unsubscribe') {
+            // We don't care about these yet.
+            return;
+        }
+
+        if (stanza.attrs.type === 'probe') {
+            // https://xmpp.org/extensions/xep-0318.html
+            // The user want's to know the presence of our of our users.
+            if (localAcct) {
+                // TODO: Actually check presence
+                this.xmppSend(
+                    new StzaPresenceAvailable(to.toString(), from.toString(), this.xmpp.serviceHandler.userDiscoHash, "Rocking on Matrix")
+                )
+            }
+            return;
+        }
+
         const delta = this.presenceCache.add(stanza);
 
         if (!delta) {
@@ -827,8 +915,6 @@ export class XmppJsInstance extends EventEmitter implements IBifrostInstance {
             }
             log.error(`Failed to handle presence ${from} ${to} :`, delta.errorMsg);
         }
-
-        const username = localAcct ? localAcct.remoteId : to.toString();
 
         // emit a chat-joined-new if an account was joining this room.
         if (delta.isSelf
