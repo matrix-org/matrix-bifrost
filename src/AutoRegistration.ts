@@ -1,14 +1,14 @@
 import { IConfigAutoReg, IConfigAccessControl } from "./Config";
-import { Bridge, MatrixUser, UserProfile } from "matrix-appservice-bridge";
+import { Bridge, MatrixUser, Logger, UserProfile } from "matrix-appservice-bridge";
 import request from "axios";
 import { Util } from "./Util";
-import { Logging } from "matrix-appservice-bridge";
 import { IStore } from "./store/Store";
 import { IBifrostInstance } from "./bifrost/Instance";
 import { IBifrostAccount } from "./bifrost/Account";
 import { BifrostProtocol } from "./bifrost/Protocol";
 import QuickLRU from "quick-lru";
-const log = Logging.get("AutoRegistration");
+
+const log = new Logger("AutoRegistration");
 export interface IAutoRegHttpOpts {
     method: "get"|"post"|"put";
     usernameResult: string|null;
@@ -191,7 +191,7 @@ export class AutoRegistration {
         try {
             profile = await intent.getProfileInfo(mxId);
             if (profile.avatar_url) {
-                profile.avatar_url = intent.getClient().mxcUrlToHttp(profile.avatar_url, 128, 128, "crop");
+                profile.avatar_url = intent.matrixClient.mxcToHttpThumbnail(profile.avatar_url, 128, 128, "crop");
             }
         } catch (ex) {
             // Appservice bots don't usually have profiles.

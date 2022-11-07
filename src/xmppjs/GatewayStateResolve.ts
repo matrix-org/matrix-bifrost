@@ -1,11 +1,11 @@
 import jid from "@xmpp/jid";
-import { Logging } from "matrix-appservice-bridge";
+import { Logger } from "matrix-appservice-bridge";
 import { MatrixMembershipEvent } from "../MatrixTypes";
 import { GatewayMUCMembership } from "./GatewayMUCMembership";
 import { IStza, PresenceAffiliation, PresenceRole, StzaBase, StzaPresenceItem } from "./Stanzas";
 import { XMPPStatusCode } from "./XMPPConstants";
 
-const log = Logging.get("GatewayStateResolve");
+const log = new Logger("GatewayStateResolve");
 
 function sendToAllDevices(presence: StzaPresenceItem, devices: Set<string>) {
     return [...devices].map((deviceJid) =>

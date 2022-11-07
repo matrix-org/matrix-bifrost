@@ -5,7 +5,7 @@
     },
     "parser": "@typescript-eslint/parser",
     "parserOptions": {
-        "ecmaVersion": 9,
+        "ecmaVersion": 9
     },
     "plugins": [
         "eslint-plugin-import",
@@ -109,7 +109,6 @@
         "no-console": "error",
         "no-debugger": "error",
         "no-empty": "warn",
-        "no-empty-function": ["warn", {"allow": ["constructors"]}],
         "no-eval": "error",
         "no-fallthrough": "off",
         "no-invalid-this": "error",

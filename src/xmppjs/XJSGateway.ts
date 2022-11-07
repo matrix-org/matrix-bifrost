@@ -1,7 +1,7 @@
 import { XmppJsInstance, XMPP_PROTOCOL } from "./XJSInstance";
 import { Element, x } from "@xmpp/xml";
 import { jid, JID } from "@xmpp/jid";
-import { Logging } from "matrix-appservice-bridge";
+import { Logger } from "matrix-appservice-bridge";
 import { IConfigBridge } from "../Config";
 import { IBasicProtocolMessage } from "..//MessageFormatter";
 import { IGatewayJoin, IUserStateChanged, IStoreRemoteUser, IUserInfo } from "../bifrost/Events";
@@ -18,7 +18,7 @@ import { AutoRegistration } from "../AutoRegistration";
 import { GatewayStateResolve } from "./GatewayStateResolve";
 import { MatrixMembershipEvent } from "../MatrixTypes";
 
-const log = Logging.get("XmppJsGateway");
+const log = new Logger("XmppJsGateway");
 
 export interface RemoteGhostExtraData {
     rooms: {
@@ -309,8 +309,6 @@ export class XmppJsGateway implements IGateway {
 
         // Ensure our membership is accurate.
         this.updateMatrixMemberListForRoom(chatName, room, true); // HACK: Always update members for joiners
-        const members = this.members.getMembers(chatName);
-
         // Check if the nick conflicts.
         const existingMember = this.members.getMemberByAnonJid(chatName, stanza.attrs.to);
         if (existingMember) {
@@ -348,10 +346,10 @@ export class XmppJsGateway implements IGateway {
 
         // https://xmpp.org/extensions/xep-0045.html#order
         // 1. membership of others.
-        log.debug(`Emitting membership of other users (${members.length})`);
+        log.debug('Emitting membership of other users');
         // Ensure we chunk this
         const allMembershipPromises: Promise<unknown>[] = [];
-        for (const member of members) {
+        for (const member of this.members.getMembers(chatName)) {
             if (member.anonymousJid.toString() === stanza.attrs.to) {
                 continue;
             }
@@ -540,22 +538,28 @@ export class XmppJsGateway implements IGateway {
         if (!allowForJoin && this.members.getMatrixMembers(chatName)) {
             return;
         }
-        const joined = room.membership.filter((member) => member.membership === "join" && !member.isRemote);
-        joined.forEach((member) => {
-            this.members.addMatrixMember(
-                chatName,
-                member.stateKey,
-                jid(`${chatName}/${member.displayname || member.stateKey}`),
-            );
-        });
-        const left = room.membership.filter((member) => member.membership === "leave" && !member.isRemote);
-        left.forEach((member) => {
-            this.members.removeMatrixMember(
-                chatName,
-                member.stateKey,
-            );
-        });
-        log.info(`Updating membership for ${chatName} ${room.roomId} j:${joined.length} l:${left.length}`);
+        let joined = 0;
+        let left = 0;
+        for (const member of room.membership) {
+            if (member.isRemote) {
+                continue;
+            }
+            if (member.membership === "join") {
+                joined++;
+                this.members.addMatrixMember(
+                    chatName,
+                    member.stateKey,
+                    jid(`${chatName}/${member.displayname || member.stateKey}`),
+                );
+            } else if (member.membership === "leave") {
+                left++;
+                this.members.removeMatrixMember(
+                    chatName,
+                    member.stateKey,
+                );
+            }
+        }
+        log.info(`Updating membership for ${chatName} ${room.roomId} j:${joined} l:${left}`);
     }
 
     private remoteLeft(stanza: Element) {

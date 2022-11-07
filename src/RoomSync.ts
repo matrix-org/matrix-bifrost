@@ -1,4 +1,4 @@
-import { AppServiceBot, Intent, Logging, RemoteRoom } from "matrix-appservice-bridge";
+import { AppServiceBot, Intent, Logger, RemoteRoom } from "matrix-appservice-bridge";
 import { IBifrostInstance } from "./bifrost/Instance";
 import { IAccountEvent, IChatJoinProperties } from "./bifrost/Events";
 import { IStore } from "./store/Store";
@@ -7,7 +7,6 @@ import { Util } from "./Util";
 import { Deduplicator } from "./Deduplicator";
 import { ProtoHacks } from "./ProtoHacks";
 import { GatewayHandler } from "./GatewayHandler";
-const log = Logging.get("RoomSync");
 
 interface IRoomMembership {
     room_name: string;
@@ -18,6 +17,7 @@ interface IRoomMembership {
 const SYNC_RETRY_MS = 100;
 const MAX_SYNCS = 8;
 const JOINLEAVE_TIMEOUT = 60000;
+const log = new Logger("RoomSync");
 
 export class RoomSync {
     private accountRoomMemberships: Map<string, IRoomMembership[]>;
@@ -99,7 +99,7 @@ export class RoomSync {
                 this.gateway.initialMembershipSync(room);
                 return;
             }
-            let members: {[userId: string]: {display_name: string}};
+            let members: {[userId: string]: {display_name?: string}};
             try {
                 members = await this.getJoinedMembers(bot, roomId);
             } catch (ex) {

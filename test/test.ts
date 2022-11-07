@@ -1,7 +1,7 @@
-import {Logging} from "matrix-appservice-bridge";
+import { Logger } from "matrix-appservice-bridge";
 
 if (process.argv.includes("--logging")) {
-    Logging.configure({console: "debug"});
+    Logger.configure({console: "debug"});
 } else {
-    Logging.configure({console: "error"});
+    Logger.configure({console: "error"});
 }

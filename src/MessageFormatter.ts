@@ -1,11 +1,11 @@
 import { BifrostProtocol } from "./bifrost/Protocol";
 import { PRPL_S4B, PRPL_XMPP } from "./ProtoHacks";
 import { Parser } from "htmlparser2";
-import { Intent, Logging } from "matrix-appservice-bridge";
+import { Intent, Logger } from "matrix-appservice-bridge";
 import { IConfigBridge } from "./Config";
 import request from "axios";
 import { IMatrixMsgContents, MatrixMessageEvent } from "./MatrixTypes";
-const log = Logging.get("MessageFormatter");
+
 
 export interface IBasicProtocolMessage {
     body: string;
@@ -30,6 +30,7 @@ export interface IMxcAttachment {
     filename: string;
 }
 
+const log = new Logger("MessageFormatter");
 
 export class MessageFormatter {
 
@@ -74,32 +75,18 @@ export class MessageFormatter {
         return newMsg;
     }
 
-    private static async handleUrlAttachment(attachment: IMessageAttachment, intent: Intent): Promise<IMatrixMsgContents|string> {
-        if (!attachment.uri.startsWith("http")) {
-            throw Error("Don't know how to handle attachment for message, not a http format uri");
+    public static async getMaxUploadBytes(intent: Intent) {
+        try {
+            const config = await intent.matrixClient.doRequest('GET', '/_matrix/media/r0/config');
+            const size = config['m.upload.size'];
+            if (typeof size !== "number") {
+                throw Error(`m.upload.size was '${size}'`)
+            }
+            return config['m.upload.size'];
+        } catch (ex) {
+            log.warn('Failed to max upload size', ex);
+            return -1;
         }
-        const file = await request.get(attachment.uri, {
-            responseType: "arraybuffer",
-        });
-        // Use the headers if a type isn't given.
-        if (!attachment.mimetype) {
-            attachment.mimetype = file.headers["content-type"];
-        }
-        if (!attachment.size) {
-            attachment.size = parseInt(file.headers["content-length"] || "0", 10);
-        }
-        const maxSize =
-            (await intent.getClient().getMediaConfig().then((cfg) => cfg.m.upload.size).catch(() => -1));
-
-        if (attachment.size && maxSize > -1 && maxSize < attachment.size!) {
-            log.info("File is too large, linking instead");
-            return { body: attachment.uri, msgtype: 'm.text' };
-        }
-        log.info(`Uploading ${attachment.uri}...`);
-        return intent.uploadContent(file.data, {
-            includeFilename: false,
-            type: attachment.mimetype || "application/octect-stream",
-        });
     }
 
     public static async messageToMatrixEvent(msg: IBasicProtocolMessage, protocol: BifrostProtocol, intent?: Intent):
@@ -112,7 +99,7 @@ export class MessageFormatter {
         if (msg.id) {
             matrixMsg.remote_id = msg.id;
         }
-        const hasAttachment = msg.opts && msg.opts.attachments && msg.opts.attachments.length;
+        const attachment = msg.opts && msg.opts.attachments && msg.opts.attachments[0];
         if ([PRPL_XMPP, PRPL_S4B].includes(protocol.id)) {
             if (matrixMsg.body.startsWith("<")) {
                 // It *might* be HTML so go for it.
@@ -146,22 +133,38 @@ export class MessageFormatter {
         }
 
         // XXX: This currently only handles one attachment
-        if (hasAttachment) {
+        if (attachment) {
             try {
-                const attachment = msg.opts!.attachments![0];
+                let mxcurl;
                 if ('uri' in attachment) {
-                    if (!intent) {
-                        throw new Error("No intent given");
+                    if (!attachment.uri.startsWith("http")) {
+                        throw Error("Don't know how to handle attachment for message, not a http format uri");
                     }
-                    const result = await MessageFormatter.handleUrlAttachment(attachment, intent);
-                    if (typeof result !== 'string') {
-                        return result;
+                    const file = await request.get(attachment.uri, {
+                        responseType: "arraybuffer",
+                    });
+                    // Use the headers if a type isn't given.
+                    if (!attachment.mimetype) {
+                        attachment.mimetype = file.headers["content-type"];
                     }
-                    matrixMsg.url = result;
+                    if (!attachment.size) {
+                        attachment.size = parseInt(file.headers["content-length"] || "0", 10);
+                    }
+                    const maxSize = await this.getMaxUploadBytes(intent);
+                    if (attachment.size && maxSize > -1 && maxSize < attachment.size!) {
+                        log.info("File is too large, linking instead");
+                        matrixMsg.body = attachment.uri;
+                        return matrixMsg;
+                    }
+
+                    log.info(`Uploading ${attachment.uri}...`);
+                    matrixMsg.url = await intent.uploadContent(file.data, {
+                        type: attachment.mimetype || "application/octect-stream",
+                    });
                     matrixMsg.body = msg.body;
                     matrixMsg.filename = attachment.uri.split("/").reverse()[0];
+                    matrixMsg.body = msg.body;
                 } else {
-                    // MXC
                     matrixMsg.url = attachment.mxcUrl;
                     matrixMsg.body = attachment.filename;
                 }
@@ -293,7 +296,7 @@ export class MessageFormatter {
                 if (["body", "html", "font"].includes(name)) {
                     return; // We don't need these.
                 }
-                html += `<\\${name}>`;
+                html += `</${name}>`;
                 tagToMarkdown(name, false);
             },
             onerror: (error: Error) => {

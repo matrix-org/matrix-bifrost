@@ -1,9 +1,9 @@
 import { IChatInvite, IChatJoined, IChatJoinProperties } from "./bifrost/Events";
 import { BifrostProtocol } from "./bifrost/Protocol";
-import { Intent } from "matrix-appservice-bridge";
-import { Logging } from "matrix-appservice-bridge";
+import { Intent, Logger } from "matrix-appservice-bridge";
 import { IBifrostAccount } from "./bifrost/Account";
-const log = Logging.get("ProtoHacks");
+
+const log = new Logger("ProtoHacks");
 
 export const PRPL_MATRIX = "prpl-matrix";
 export const PRPL_XMPP = "prpl-jabber";
@@ -16,7 +16,7 @@ export const XMPP_JS = "xmpp-js";
  * carefully so that future folks can understand what is going on.
  */
 export class ProtoHacks {
-    public static async addJoinProps(protocolId: string, props: Record<string, unknown>, userId: string, intent: Intent|string) {
+    public static async addJoinProps(protocolId: string, props: { handle?: string }, userId: string, intent: Intent|string) {
         // When joining XMPP rooms, we should set a handle so pull off one from the users
         // profile.
         if (protocolId === PRPL_XMPP || protocolId === XMPP_JS) {
@@ -33,7 +33,7 @@ export class ProtoHacks {
         }
     }
 
-    public static removeSensitiveJoinProps(protocolId: string, props: Record<string, unknown>) {
+    public static removeSensitiveJoinProps(protocolId: string, props: { handle?: string }) {
         // XXX: We *don't* currently drop passwords to groups which leaves them
         // exposed in the room-store. Please be careful.
         if (protocolId === PRPL_XMPP || protocolId === XMPP_JS) {

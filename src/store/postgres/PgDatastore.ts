@@ -15,7 +15,7 @@ limitations under the License.
 */
 
 import { Pool } from "pg";
-import { MatrixRoom, RemoteRoom, MatrixUser, Logging, RoomBridgeStoreEntry } from "matrix-appservice-bridge";
+import { MatrixRoom, RemoteRoom, MatrixUser, Logger, RoomBridgeStoreEntry } from "matrix-appservice-bridge";
 import { IRemoteRoomData, IRemoteGroupData, MROOM_TYPES,
     IRemoteImData, IRemoteUserAdminData, MROOM_TYPE_IM } from "../Types";
 import { BifrostProtocol } from "../../bifrost/Protocol";
@@ -25,7 +25,7 @@ import { IConfigDatastore } from "../../Config";
 import { IStore } from "../Store";
 import { Util } from "../../Util";
 
-const log = Logging.get("PgDatstore");
+const log = new Logger("PgDatstore");
 
 export interface PgDataStoreOpts {
     min: number;

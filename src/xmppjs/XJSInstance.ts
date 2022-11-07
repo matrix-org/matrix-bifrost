@@ -1,7 +1,7 @@
 /* eslint-disable max-classes-per-file */
 import { EventEmitter } from "events";
-import { Logging, MatrixUser, Bridge } from "matrix-appservice-bridge";
-import { Element, x } from "@xmpp/xml";
+import { Logger, MatrixUser, Bridge } from "matrix-appservice-bridge";
+import { Element } from "@xmpp/xml";
 import { jid, JID } from "@xmpp/jid";
 import { IBifrostInstance } from "../bifrost/Instance";
 import { Config } from "../Config";
@@ -32,8 +32,8 @@ import { Util } from "../Util";
 import { v4 as uuid } from "uuid";
 import { JingleHandler, JingleReceivedFile } from "./Jingle";
 
-const xLog = Logging.get("XMPP-conn");
-const log = Logging.get("XmppJsInstance");
+const xLog = new Logger("XMPP-conn");
+const log = new Logger("XmppJsInstance");
 
 class XmppProtocol extends BifrostProtocol {
     constructor() {
@@ -84,7 +84,7 @@ export class XmppJsInstance extends EventEmitter implements IBifrostInstance {
             this.jingleHandler = new JingleHandler(this, opts.jingle, {
                 homeserverUrl: config.bridge.homeserverUrl,
                 // XXX: Gut wrench to get the access token of the bot user
-                token: this.bridge.getIntent().client.getAccessToken(),
+                token: this.bridge.getIntent().matrixClient.accessToken,
             });
             this.jingleHandler.on('file', (res: JingleReceivedFile) => {
                 log.debug(`Got file from Jingle ${res.mxcUrl}`, res.file);

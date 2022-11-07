@@ -1,7 +1,7 @@
 import { Element, x } from "@xmpp/xml";
 import { XmppJsInstance } from "./XJSInstance";
 import { jid, JID } from "@xmpp/jid";
-import { Intent, Logging } from "matrix-appservice-bridge";
+import { getBridgeVersion, Intent, Logger } from "matrix-appservice-bridge";
 import request from "axios";
 import { IGatewayRoom } from "../bifrost/Gateway";
 import { IGatewayRoomQuery, IGatewayPublicRoomsQuery } from "../bifrost/Events";
@@ -10,15 +10,7 @@ import { IPublicRoomsResponse } from "../MatrixTypes";
 import { IConfigBridge } from "../Config";
 import { XMPPFeatures } from "./XMPPConstants";
 
-const log = Logging.get("ServiceHandler");
-
-let version = "Unknown";
-try {
-    // eslint-disable-next-line @typescript-eslint/no-var-requires
-    version = require("../../../package.json").version;
-} catch (ex) {
-    // This might not exist.
-}
+const log = new Logger("ServiceHandler");
 
 const MAX_AVATARS = 1024;
 
@@ -168,7 +160,7 @@ export class ServiceHandler {
             },
             [
                 x("name", undefined, "matrix-bifrost"),
-                x("version", undefined, version),
+                x("version", undefined, getBridgeVersion()),
             ],
             ),
             ));
@@ -322,8 +314,8 @@ export class ServiceHandler {
         if (avatar) {
             return avatar;
         }
-        const thumbUrl = intent.getClient().mxcUrlToHttp(
-            avatarUrl, 256, 256, "scale", false,
+        const thumbUrl = intent.matrixClient.mxcToHttpThumbnail(
+            avatarUrl, 256, 256, "scale"
         );
         if (!thumbUrl) {
             return undefined;

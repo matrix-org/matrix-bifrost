@@ -1,6 +1,6 @@
-import { Bridge, MatrixUser, Intent, Logging, WeakEvent, RoomBridgeStoreEntry} from "matrix-appservice-bridge";
+import { Bridge, MatrixUser, Intent, WeakEvent, RoomBridgeStoreEntry, Logger } from "matrix-appservice-bridge";
 import { IBifrostInstance } from "./bifrost/Instance";
-import { MROOM_TYPE_GROUP, MROOM_TYPE_IM, IRemoteGroupData, MUSER_TYPE_GHOST } from "./store/Types";
+import { MROOM_TYPE_GROUP, MROOM_TYPE_IM, IRemoteGroupData, IRemoteRoomData } from "./store/Types";
 import {
     IReceivedImMsg,
     IChatInvite,
@@ -21,7 +21,8 @@ import { Deduplicator } from "./Deduplicator";
 import { Config } from "./Config";
 import { decode as entityDecode } from "html-entities";
 import { MessageFormatter } from "./MessageFormatter";
-const log = Logging.get("MatrixRoomHandler");
+
+const log = new Logger("MatrixRoomHandler");
 
 const ACCOUNT_LOCK_MS = 1000;
 const EVENT_MAPPING_SIZE = 16384;
@@ -61,7 +62,7 @@ export class MatrixRoomHandler {
                 // Not all backends need to invite users to their rooms.
                 return false;
             }
-            const memberlist = Object.keys((await this.bridge.getBot().getJoinedMembers(roomId)));
+            const memberlist = await this.bridge.getIntent().matrixClient.getJoinedRoomMembers(roomId);
             if (!memberlist.includes(matrixUser.getId())) {
                 log.debug(`Invited ${matrixUser.getId()} to a chat they tried to join`);
                 await intent.invite(roomId, matrixUser.getId());
@@ -178,7 +179,7 @@ export class MatrixRoomHandler {
         intent: Intent,
         getOnly: boolean = false,
         failIfPlumbed: boolean = false,
-    ) {
+    ): Promise<string> {
         let roomName;
         let props;
         if ("join_properties" in data) {
@@ -210,23 +211,23 @@ export class MatrixRoomHandler {
         const remoteEntry = await this.store.getGroupRoomByRemoteData(remoteData);
         if (remoteEntry) {
             if (remoteEntry.remote?.get("plumbed") && failIfPlumbed) {
-                return false;
+                throw new Error('Room was plumbed and failIfPlumbed is enabled');
             }
             return remoteEntry.matrix?.getId();
         }
 
         // This could be that this is the first user to join a gateway room
         // so we should try to create an entry for it ahead of time.
-        const alias = ((data as IUserStateChanged).gatewayAlias);
-        if (alias) {
+        if ('gatewayAlias' in data) {
+            const alias = data.gatewayAlias;
+
             if (!this.bridge) {
-                log.error("Got gateway join request, but bridge was not defined");
-                return;
+                throw new Error('Got gateway join request, but bridge was not defined');
             }
 
             log.info("Request was a gateway request, so attempting to find room and create an entry");
             try {
-                const roomId = (await this.bridge.getIntent().getClient().getRoomIdForAlias(alias)).room_id;
+                const roomId = await this.bridge.getIntent().matrixClient.resolveRoom(alias);
                 remoteData.gateway = true;
                 log.info(`Found ${roomId} for ${alias}`);
                 await this.store.storeRoom(roomId, MROOM_TYPE_GROUP, remoteId, remoteData);
@@ -240,26 +241,24 @@ export class MatrixRoomHandler {
         if (getOnly) {
             throw new Error("Room doesn't exist, refusing to make room");
         }
-
-        const createPromise = new Promise(() => {
+        const createPromise = (async () => {
             // Room doesn't exist yet, create it.
             remoteData = {
                 protocol_id: data.account.protocol_id,
                 room_name: roomName,
                 properties: props ? Util.sanitizeProperties(props) : {}, // for joining
-            } as IRemoteGroupData;
+            } as IRemoteRoomData;
             log.info(`Couldn't find room for ${roomName}. Creating a new one`);
-            return intent.createRoom({
+            const { room_id } = await intent.createRoom({
                 createAsClient: false,
                 options: {
                     name: roomName,
                     visibility: "private",
                 },
             });
-        }).then((res: {room_id: string}) => {
-            log.debug("Created room with id ", res.room_id);
-            return this.store.storeRoom(res.room_id, MROOM_TYPE_GROUP, remoteId, remoteData);
-        });
+            log.debug("Created room with id ", room_id);
+            return this.store.storeRoom(room_id, MROOM_TYPE_GROUP, remoteId, remoteData);
+        })();
 
         try {
             this.roomCreationLock.set(remoteId, createPromise);
@@ -518,9 +517,12 @@ export class MatrixRoomHandler {
         }
         const intent = this.bridge.getIntent();
         log.info(`Setting topic for ${data.conv.name}: ${data.topic}`);
-        const roomId = await this.createOrGetGroupChatRoom(data, intent, true, true);
-        if (roomId === false) {
-            log.info("Room does not support setting topic");
+        let roomId;
+        try {
+            roomId = await this.createOrGetGroupChatRoom(data, intent, true, true);
+        } catch (ex) {
+            log.info(`Room ${roomId} does not support setting topic`, ex);
+            return;
         }
         const state = await intent.roomState(roomId) as WeakEvent[];
         const topicEv = state.find((ev) => ev.type === "m.room.topic");
