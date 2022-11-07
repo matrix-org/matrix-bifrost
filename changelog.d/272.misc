@@ -1,1 +1,0 @@
-Add new store function `getAdminRoom` and rename `getRoomByRemoteData` -> `getGroupRoomByRemoteData`
