@@ -56,8 +56,7 @@ class Program {
                 try {
                     await this.runBridge(port, config as ConfigValue);
                 } catch (ex) {
-                    console.log(ex);
-                    //log.error("Failed to start:", ex);
+                    log.error("Failed to start:", ex);
                     process.exit(1);
                 }
             }
