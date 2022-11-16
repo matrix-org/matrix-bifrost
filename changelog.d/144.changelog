@@ -1,5 +1,0 @@
-- Remove IEventRequestData in favour of WeakEvent and MatrixMembershipEvent
-- Use enums over strings for stanzas
-- Fix an issue where PostgreSQL would not work because of an old version of the library.
-- Ensure kicks propagate to XMPP
-- Add tests for the gateway membership management class.

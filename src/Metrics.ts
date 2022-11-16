@@ -14,10 +14,8 @@ interface IBridgeGauges {
 
 export class Metrics {
     public static init(bridge: Bridge) {
-        this.metrics = new PrometheusMetrics();
-        this.metrics.registerMatrixSdkMetrics();
+        this.metrics = bridge.getPrometheusMetrics();
         this.metrics.registerBridgeGauges(() => this.bridgeGauges);
-        this.metrics.addAppServicePath(bridge);
         this.remoteCallCounter = this.metrics.addCounter({
             name: "remote_api_calls",
             help: "Count of the number of remote API calls made",

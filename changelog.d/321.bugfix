@@ -1,0 +1,1 @@
+Fix crash on startup due to logging / metrics failures.

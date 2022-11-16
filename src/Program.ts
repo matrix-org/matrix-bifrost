@@ -16,6 +16,7 @@ import { AutoRegistration } from "./AutoRegistration";
 import { GatewayHandler } from "./GatewayHandler";
 import request from "axios";
 
+Logger.configure({console: "debug"});
 const log = new Logger("Program");
 const bridgeLog = new Logger("bridge");
 
@@ -72,7 +73,6 @@ class Program {
     }
 
     public start() {
-        Logger.configure({console: "debug"});
 
         try {
             this.cli.run();

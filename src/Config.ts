@@ -44,7 +44,6 @@ export class Config {
 
     public readonly logging: IConfigLogging = {
         console: "info",
-        files: undefined,
     };
 
     public readonly profile: IConfigProfile = {
