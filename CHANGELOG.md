@@ -1,3 +1,12 @@
+ 0.4.0 (2022-11-16)
+===================
+
+Bugfixes
+--------
+
+- Fix crash on startup due to logging / metrics failures. ([\#321](https://github.com/matrix-org/matrix-bifrost/issues/321))
+
+
 0.4.0 (2022-11-07)
 ===================
 
