@@ -1,4 +1,13 @@
- 0.4.0 (2022-11-16)
+0.4.2 (2022-12-01)
+==================
+
+Bugfixes
+--------
+
+- Fix being unable to join XMPP MUCs via Matrix room aliases. ([\#323](https://github.com/matrix-org/matrix-bifrost/issues/323))
+
+
+0.4.1 (2022-11-16)
 ===================
 
 Bugfixes
