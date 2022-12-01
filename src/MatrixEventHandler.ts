@@ -842,7 +842,7 @@ E.g. \`${command} ${acct.protocol.id}\` ${required.join(" ")} ${optional.join(" 
     private async joinOrDefer(acct: IBifrostAccount, name: string, properties: IChatJoinProperties): Promise<void> {
         if (acct.connected) {
             await acct.joinChat(properties);
-            acct.setJoinPropertiesForRoom(name, properties);
+            acct.setJoinPropertiesForRoom?.(name, properties);
             return;
         }
         log.debug("Account is not connected, deferring join until connected");
