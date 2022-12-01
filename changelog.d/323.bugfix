@@ -1,1 +1,1 @@
-Fix being unable to join XMPP rooms via Matrix aliases.
+Fix being unable to join XMPP MUCs via Matrix room aliases.
