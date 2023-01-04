@@ -15,7 +15,7 @@ limitations under the License.
 */
 
 import { Pool } from "pg";
-import { MatrixRoom, RemoteRoom, MatrixUser, Logger, RoomBridgeStoreEntry } from "matrix-appservice-bridge";
+import { MatrixRoom, RemoteRoom, MatrixUser, Logger, RoomBridgeStoreEntry, UserActivitySet, UserActivity } from "matrix-appservice-bridge";
 import { IRemoteRoomData, IRemoteGroupData, MROOM_TYPES,
     IRemoteImData, IRemoteUserAdminData, MROOM_TYPE_IM } from "../Types";
 import { BifrostProtocol } from "../../bifrost/Protocol";
@@ -45,7 +45,7 @@ const TableToRoomType = {
 };
 
 export class PgDataStore implements IStore {
-    public static LATEST_SCHEMA = 2;
+    public static LATEST_SCHEMA = 3;
 
     private static BuildUpsertStatement(table: string, constraint: string, keyNames: string[]): string {
         const keys = keyNames.join(", ");
@@ -456,6 +456,22 @@ export class PgDataStore implements IStore {
 
     public async storeRoomEvent(roomId: string, matrixEventId: string, remoteEventId: string) {
         await this.pgPool.query("INSERT INTO events VALUES ($1, $2, $3)", [roomId, matrixEventId, remoteEventId]);
+    }
+
+    public async getUserActivity(): Promise<UserActivitySet> {
+        const { rows } = await this.pgPool.query('SELECT * FROM user_activity');
+        const users = new Map<string, UserActivity>();
+        for (const row of rows) {
+            users.set(row.user_id, row.data);
+        }
+        return users;
+    }
+
+    public async storeUserActivity(userId: string, activity: UserActivity): Promise<void> {
+        await this.pgPool.query("INSERT INTO user_activity VALUES($1, $2) ON CONFLICT (user_id) DO UPDATE SET data = $2", [
+            userId,
+            JSON.stringify(activity),
+        ]);
     }
 
     public async integrityCheck(canWrite: boolean): Promise<void> {

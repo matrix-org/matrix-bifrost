@@ -1,6 +1,6 @@
 /* eslint-disable no-underscore-dangle */
 import { Bridge, MatrixRoom, RemoteRoom, RemoteUser,
-    MatrixUser, UserBridgeStore, RoomBridgeStore, Logger, AppServiceBot, RoomBridgeStoreEntry } from "matrix-appservice-bridge";
+    MatrixUser, UserBridgeStore, RoomBridgeStore, Logger, AppServiceBot, RoomBridgeStoreEntry, UserActivitySet } from "matrix-appservice-bridge";
 import { Util } from "../Util";
 import { MROOM_TYPES, IRemoteRoomData, IRemoteGroupData,
     MUSER_TYPE_ACCOUNT, MUSER_TYPES, MROOM_TYPE_UADMIN, MROOM_TYPE_GROUP,
@@ -389,5 +389,20 @@ export class NeDBStore implements IStore {
             userId,
         );
         return {remote, matrix: mxUser};
+    }
+
+    /**
+     * This method is not implemented for NEDB
+     */
+    public async getUserActivity(): Promise<UserActivitySet> {
+        // Stubbed - Not implemented for NeDB
+        return new Map();
+    }
+
+    /**
+     * This method is not implemented for NEDB
+     */
+    public async storeUserActivity(): Promise<void> {
+        // Stubbed - Not implemented for NeDB
     }
 }

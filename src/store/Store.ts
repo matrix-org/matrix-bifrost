@@ -1,4 +1,4 @@
-import { MatrixUser, Bridge, RoomBridgeStoreEntry } from "matrix-appservice-bridge";
+import { MatrixUser, Bridge, RoomBridgeStoreEntry, UserActivitySet, UserActivity } from "matrix-appservice-bridge";
 import { IRemoteRoomData, IRemoteGroupData, MROOM_TYPES } from "./Types";
 import { BifrostProtocol } from "../bifrost/Protocol";
 import { IAccountMinimal } from "../bifrost/Events";
@@ -63,4 +63,8 @@ export interface IStore {
     integrityCheck(canWrite: boolean): Promise<void>;
 
     getAllIMRoomsForAccount(userId: string, protocolId: string): Promise<RoomBridgeStoreEntry[]>;
+
+    getUserActivity(): Promise<UserActivitySet>;
+
+    storeUserActivity(userId: string, activity: UserActivity): Promise<void>;
 }
