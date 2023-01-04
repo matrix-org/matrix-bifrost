@@ -1,4 +1,4 @@
-import { Cli, Bridge, AppServiceRegistration, Logger, TypingEvent, Request, PresenceEvent } from "matrix-appservice-bridge";
+import { Cli, Bridge, AppServiceRegistration, Logger, TypingEvent, Request, PresenceEvent, UserActivityTracker, UserActivityState } from "matrix-appservice-bridge";
 import { EventEmitter } from "events";
 import { MatrixEventHandler } from "./MatrixEventHandler";
 import { MatrixRoomHandler } from "./MatrixRoomHandler";
@@ -163,6 +163,12 @@ class Program {
         }
     }
 
+    private async onUserActivityChanged(state: UserActivityState) {
+        for (const userId of state.changed) {
+            await this.store.storeUserActivity(userId, state.dataSet.get(userId));
+        }
+    }
+
     private async runBridge(port: number, config: ConfigValue) {
         const checkOnly = process.env.BIFROST_CHECK_ONLY === "true";
         this.cfg.ApplyConfig(config);
@@ -233,7 +239,7 @@ class Program {
             registration: this.cli.getRegistrationFilePath(),
             ...storeParams,
         });
-        await this.bridge.initalise();
+        await this.bridge.initialise();
 
         this.store = await initiateStore(this.config.datastore, this.bridge);
         const ignoreIntegrity = process.env.BIFROST_INTEGRITY_WRITE;
@@ -305,6 +311,16 @@ class Program {
             );
         });
 
+        const MAUactivityTracker = new UserActivityTracker({
+            ...this.config.userActivity,
+            debounceTimeMs: 500,
+        }, await this.store.getUserActivity(), (change) => {
+            // Update metric
+            Metrics.updateActiveUsers(change.activeUsers);
+            this.onUserActivityChanged(change).catch((ex) => {
+                log.warn(`Failed to run onUserActivityChanged`, ex);
+            });
+        });
         this.profileSync = new ProfileSync(this.bridge, this.cfg, this.store);
         this.roomHandler = new MatrixRoomHandler(
             purple, this.profileSync, this.store, this.cfg, this.deduplicator, this.bridge,
@@ -314,7 +330,7 @@ class Program {
             purple, this.store, this.deduplicator, this.gatewayHandler, this.bridge.getIntent(),
         );
         this.eventHandler = new MatrixEventHandler(
-            purple, this.store, this.deduplicator, this.config, this.gatewayHandler, this.bridge, autoReg,
+            purple, this.store, this.deduplicator, this.config, this.gatewayHandler, this.bridge, MAUactivityTracker, autoReg,
         );
 
         await this.bridge.listen(port);
