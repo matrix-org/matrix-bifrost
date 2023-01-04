@@ -70,6 +70,11 @@ export class Config {
         waitOnJoinBeforePM: [],
     };
 
+    public readonly userActivity: IConfigUserActivity = {
+        minUserActiveDays: 3,
+        inactiveAfterDays: 31,
+    };
+
     public readonly access: IConfigAccessControl = { };
 
     public getRoomRule(roomIdOrAlias?: string) {
@@ -183,4 +188,9 @@ export interface IConfigRoomRule {
      * Should the room be allowed, or denied.
      */
     action: "allow"|"deny";
+}
+
+export interface IConfigUserActivity {
+    inactiveAfterDays: number,
+    minUserActiveDays: number,
 }
