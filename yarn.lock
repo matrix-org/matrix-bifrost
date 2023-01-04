@@ -3246,10 +3246,10 @@ marked@^2.1.3:
   resolved "https://registry.yarnpkg.com/marked/-/marked-2.1.3.tgz#bd017cef6431724fd4b27e0657f5ceb14bff3753"
   integrity sha512-/Q+7MGzaETqifOMWYEA7HVMaZb4XbcRfaOzcSsHZEith83KGlvaSG33u0SKu89Mj5h+T8V2hM+8O45Qc5XTgwA==
 
-matrix-appservice-bridge@^6.0.0:
-  version "6.0.0"
-  resolved "https://registry.yarnpkg.com/matrix-appservice-bridge/-/matrix-appservice-bridge-6.0.0.tgz#ef091aceac8e24f7fd4c4e57676b2e028692d8de"
-  integrity sha512-fUQhTw9xGZk2uwrTejpdmYjmm2Myp1VTKWfdLtHs3M5YHOwPTh9rA9UmWQcS5DOKFiqD4r1kiNl6jgu0/I5vTg==
+matrix-appservice-bridge@^8.0.0:
+  version "8.0.0"
+  resolved "https://registry.yarnpkg.com/matrix-appservice-bridge/-/matrix-appservice-bridge-8.0.0.tgz#6849ac05c281399b2c2b35daba784f8291d3b35d"
+  integrity sha512-XFo3avVfKb34d7kalXcsi0vThlnqmrwvewcfhjintmpbFlwu54/lvdbykFSyu2kT8BY1zUtDz7iQ3Q3RAyaN1g==
   dependencies:
     "@alloc/quick-lru" "^5.2.0"
     "@types/pkginfo" "^0.4.0"
@@ -3267,7 +3267,8 @@ matrix-appservice-bridge@^6.0.0:
     nopt "^5.0.0"
     p-queue "^6.6.2"
     pkginfo "^0.4.1"
-    prom-client "^14.0.0"
+    postgres "^3.3.1"
+    prom-client "^14.1.0"
     uuid "^8.3.2"
     winston "^3.3.3"
     winston-daily-rotate-file "^4.5.1"
@@ -4133,6 +4134,11 @@ postgres-interval@^1.1.0:
   dependencies:
     xtend "^4.0.0"
 
+postgres@^3.3.1:
+  version "3.3.3"
+  resolved "https://registry.yarnpkg.com/postgres/-/postgres-3.3.3.tgz#f7a394c2edbcfd8ade96921676dccd0d45a1a757"
+  integrity sha512-FGLZOpZSXePRIQu6LJpJUDikzuhplWI80uyyfmKBiljpfO+Z4nuClwpq3/dsRnitxVDsgFN5duJ7eUTaC0meQQ==
+
 prelude-ls@^1.2.1:
   version "1.2.1"
   resolved "https://registry.yarnpkg.com/prelude-ls/-/prelude-ls-1.2.1.tgz#debc6489d7a6e6b0e7611888cec880337d316396"
@@ -4162,10 +4168,10 @@ prom-client@^13.1.0:
   dependencies:
     tdigest "^0.1.1"
 
-prom-client@^14.0.0:
-  version "14.1.0"
-  resolved "https://registry.yarnpkg.com/prom-client/-/prom-client-14.1.0.tgz#049609859483d900844924df740722c76ed1fdbb"
-  integrity sha512-iFWCchQmi4170omLpFXbzz62SQTmPhtBL35v0qGEVRHKcqIeiexaoYeP0vfZTujxEq3tA87iqOdRbC9svS1B9A==
+prom-client@^14.1.0:
+  version "14.1.1"
+  resolved "https://registry.yarnpkg.com/prom-client/-/prom-client-14.1.1.tgz#e9bebef0e2269bfde22a322f4ca803cb52b4a0c0"
+  integrity sha512-hFU32q7UZQ59bVJQGUtm3I2PrJ3gWvoCkilX9sF165ks1qflhugVCeK+S1JjJYHvyt3o5kj68+q3bchormjnzw==
   dependencies:
     tdigest "^0.1.1"
 
@@ -5116,10 +5122,10 @@ typedarray-to-buffer@^3.1.5:
   dependencies:
     is-typedarray "^1.0.0"
 
-typescript@^4.3.5:
-  version "4.3.5"
-  resolved "https://registry.yarnpkg.com/typescript/-/typescript-4.3.5.tgz#4d1c37cc16e893973c45a06886b7113234f119f4"
-  integrity sha512-DqQgihaQ9cUrskJo9kIyW/+g0Vxsk8cDtZ52a3NGh0YNTfpUSArXSohyUGnvbPazEPLu398C0UxmKSOrPumUzA==
+typescript@^4.9.4:
+  version "4.9.4"
+  resolved "https://registry.yarnpkg.com/typescript/-/typescript-4.9.4.tgz#a2a3d2756c079abda241d75f149df9d561091e78"
+  integrity sha512-Uz+dTXYzxXXbsFpM86Wh3dKCxrQqUcVMxwU54orwlJjOpO3ao8L7j5lH+dWfTwgCwIuM9GQ2kvVotzYJMXTBZg==
 
 unbox-primitive@^1.0.2:
   version "1.0.2"
