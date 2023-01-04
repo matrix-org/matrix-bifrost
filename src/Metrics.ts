@@ -1,5 +1,5 @@
 import { AgeCounters, Bridge, PrometheusMetrics } from "matrix-appservice-bridge";
-import { Counter, Histogram } from "prom-client";
+import { Counter, Gauge, Histogram } from "prom-client";
 
 interface IBridgeGauges {
     matrixRoomConfigs: number;
@@ -31,6 +31,11 @@ export class Metrics {
             help: "Histogram of processing durations of received remote messages",
             labels: ["outcome"],
         });
+        this.activeUsers = this.metrics.addGauge({
+            help: "Count of active Matrix users",
+            labels: [],
+            name: "active_users",
+        });
     }
 
     public static requestOutcome(isRemote: boolean, duration: number, outcome: string) {
@@ -53,8 +58,13 @@ export class Metrics {
         this.remoteCallCounter.inc({method});
     }
 
-    private static metrics;
+    public static updateActiveUsers(count: number) {
+        this.activeUsers.set({ }, count);
+    }
+
+    private static metrics: PrometheusMetrics;
     private static remoteCallCounter: Counter<string>;
+    private static activeUsers: Gauge<string>;
     private static remoteRequest: Histogram<string>;
     private static matrixRequest: Histogram<string>;
     private static bridgeGauges: IBridgeGauges = {
