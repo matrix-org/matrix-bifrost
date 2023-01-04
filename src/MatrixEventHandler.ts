@@ -1,4 +1,4 @@
-import { Bridge, MatrixUser, Request, WeakEvent, RoomBridgeStoreEntry, TypingEvent, PresenceEvent } from "matrix-appservice-bridge";
+import { Bridge, MatrixUser, Request, WeakEvent, RoomBridgeStoreEntry, TypingEvent, PresenceEvent, UserActivityTracker } from "matrix-appservice-bridge";
 import { MatrixMembershipEvent, MatrixMessageEvent } from "./MatrixTypes";
 import { MROOM_TYPE_UADMIN, MROOM_TYPE_IM, MROOM_TYPE_GROUP,
     IRemoteUserAdminData,
@@ -36,6 +36,7 @@ export class MatrixEventHandler {
         private readonly config: Config,
         private readonly gatewayHandler: GatewayHandler,
         private readonly bridge: Bridge,
+        private readonly activityTracker: UserActivityTracker,
         private readonly autoReg: AutoRegistration|null = null,
     ) {
         this.roomAliases = new RoomAliasSet(this.config.portals, this.purple);
@@ -232,8 +233,10 @@ export class MatrixEventHandler {
             // We are only handling bridged room messages now.
             return;
         } else if (roomType === MROOM_TYPE_IM) {
+            this.activityTracker.updateUserActivity(event.sender);
             await this.handleImMessage(ctx, event);
         } else if (roomType === MROOM_TYPE_GROUP) {
+            this.activityTracker.updateUserActivity(event.sender);
             await this.handleGroupMessage(ctx, event);
         }
     }
