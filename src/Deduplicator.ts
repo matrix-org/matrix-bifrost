@@ -1,6 +1,5 @@
 import { Logger } from "matrix-appservice-bridge";
 import leven from "leven";
-
 const log = new Logger("Deduplicator");
 
 const LEVEN_THRESHOLD = 0.1;

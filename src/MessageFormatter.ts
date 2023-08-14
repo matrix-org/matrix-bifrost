@@ -6,7 +6,6 @@ import { IConfigBridge } from "./Config";
 import request from "axios";
 import { IMatrixMsgContents, MatrixMessageEvent } from "./MatrixTypes";
 
-
 export interface IBasicProtocolMessage {
     body: string;
     formatted?: {type: string, body: string}[];
@@ -135,7 +134,6 @@ export class MessageFormatter {
         // XXX: This currently only handles one attachment
         if (attachment) {
             try {
-                let mxcurl;
                 if ('uri' in attachment) {
                     if (!attachment.uri.startsWith("http")) {
                         throw Error("Don't know how to handle attachment for message, not a http format uri");
@@ -168,6 +166,7 @@ export class MessageFormatter {
                     matrixMsg.url = attachment.mxcUrl;
                     matrixMsg.body = attachment.filename;
                 }
+
                 matrixMsg.info = {
                     mimetype: attachment.mimetype,
                     size: attachment.size,

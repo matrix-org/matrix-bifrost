@@ -6,7 +6,6 @@ import { Logger, MatrixUser, Bridge } from "matrix-appservice-bridge";
 import { Config } from "./Config";
 import { IStore} from "./store/Store";
 import { BifrostRemoteUser } from "./store/BifrostRemoteUser";
-
 const log = new Logger("ProfileSync");
 
 export class ProfileSync {

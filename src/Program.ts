@@ -73,7 +73,6 @@ class Program {
     }
 
     public start() {
-
         try {
             this.cli.run();
         } catch (ex) {

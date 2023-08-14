@@ -15,6 +15,16 @@ import { IBifrostAccount } from "../bifrost/Account";
 
 const log = new Logger("PurpleAccount");
 
+if (fs === undefined) {
+    log.error(
+`Warning: Your version of node doesn't support fs.promises.
+(See: https://nodejs.org/api/fs.html#fs_fs_promises_api)
+
+We don't yet support non-fs-promise versions of node.`,
+);
+    process.exit(1);
+}
+
 export interface IChatJoinOptions {
     identifier: string;
     label: string;

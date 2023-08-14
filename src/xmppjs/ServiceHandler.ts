@@ -12,6 +12,14 @@ import { XMPPFeatures } from "./XMPPConstants";
 
 const log = new Logger("ServiceHandler");
 
+let version = "Unknown";
+try {
+    // tslint:disable-next-line: no-var-requires
+    version = require("../../../package.json").version;
+} catch (ex) {
+    // This might not exist.
+}
+
 const MAX_AVATARS = 1024;
 
 export class ServiceHandler {

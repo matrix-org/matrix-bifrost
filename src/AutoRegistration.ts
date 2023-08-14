@@ -7,7 +7,6 @@ import { IBifrostInstance } from "./bifrost/Instance";
 import { IBifrostAccount } from "./bifrost/Account";
 import { BifrostProtocol } from "./bifrost/Protocol";
 import QuickLRU from "quick-lru";
-
 const log = new Logger("AutoRegistration");
 export interface IAutoRegHttpOpts {
     method: "get"|"post"|"put";

@@ -21,7 +21,6 @@ import { Deduplicator } from "./Deduplicator";
 import { Config } from "./Config";
 import { decode as entityDecode } from "html-entities";
 import { MessageFormatter } from "./MessageFormatter";
-
 const log = new Logger("MatrixRoomHandler");
 
 const ACCOUNT_LOCK_MS = 1000;
