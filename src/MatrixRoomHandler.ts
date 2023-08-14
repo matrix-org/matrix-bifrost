@@ -1,4 +1,4 @@
-import { Bridge, MatrixUser, Intent, WeakEvent, RoomBridgeStoreEntry, Logger } from "matrix-appservice-bridge";
+import { Bridge, MatrixUser, Intent, Logger, WeakEvent, RoomBridgeStoreEntry} from "matrix-appservice-bridge";
 import { IBifrostInstance } from "./bifrost/Instance";
 import { MROOM_TYPE_GROUP, MROOM_TYPE_IM, IRemoteGroupData, IRemoteRoomData } from "./store/Types";
 import {

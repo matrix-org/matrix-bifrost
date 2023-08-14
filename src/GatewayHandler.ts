@@ -57,7 +57,7 @@ export class GatewayHandler {
         }
         const promise = (async () => {
             log.debug(`Getting state for ${roomId}`);
-            const state = await intent.roomState(roomId) as WeakEvent[];
+            const state = await intent.matrixClient.getRoomState(roomId) as WeakEvent[];
             log.debug(`Got state for ${roomId}`);
             const nameEv = state.find((e) => e.type === "m.room.name");
             const topicEv = state.find((e) => e.type === "m.room.topic");
@@ -250,7 +250,7 @@ export class GatewayHandler {
             // XXX: We should check to see if the room exists in our cache.
             // We have to join the room, as doing a lookup would not prompt a bridge like freenode
             // to intervene.
-            let res = await this.bridge.getIntent().matrixClient.doRequest('GET', '/_matrix/client/v3/publicRooms', {
+            let res = await this.bridge.getIntent().matrixClient.doRequest('POST', '/_matrix/client/v3/publicRooms', {
                 server: ev.homeserver || undefined,
                 filter: {
                     generic_search_term: ev.searchString,

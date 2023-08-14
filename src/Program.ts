@@ -233,8 +233,7 @@ class Program {
             registration: this.cli.getRegistrationFilePath(),
             ...storeParams,
         });
-        await this.bridge.initalise();
-
+        await this.bridge.initialise();
         this.store = await initiateStore(this.config.datastore, this.bridge);
         const ignoreIntegrity = process.env.BIFROST_INTEGRITY_WRITE;
         await this.store.integrityCheck(

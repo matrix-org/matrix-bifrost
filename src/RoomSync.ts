@@ -120,7 +120,7 @@ export class RoomSync {
     }
 
     private async syncMatrixUser(userId: string, roomId: string, remoteRoom: RemoteRoom,
-        displayName: string) {
+                                 displayName?: string) {
         log.debug(`Syncing matrix ${userId} -> ${roomId}`);
 
         // First get an account for this matrix user.
