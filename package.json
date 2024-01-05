@@ -3,7 +3,7 @@
   "version": "0.4.2",
   "description": "Multi protocol bridging for Matrix.",
   "engines": {
-    "node": ">=16"
+    "node": ">=20"
   },
   "main": "lib/Program.js",
   "scripts": {
