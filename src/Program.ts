@@ -14,7 +14,6 @@ import { XmppJsInstance } from "./xmppjs/XJSInstance";
 import { Metrics } from "./Metrics";
 import { AutoRegistration } from "./AutoRegistration";
 import { GatewayHandler } from "./GatewayHandler";
-import request from "axios";
 
 Logger.configure({console: "debug"});
 const log = new Logger("Program");
@@ -98,10 +97,15 @@ class Program {
         const url = `${this.config.bridge.homeserverUrl}/_matrix/client/versions`;
         while (true) {
             try {
-                await request.get(url);
+                const req = await fetch(url);
+                if (!req.ok) {
+                    throw Error(`Could not contact homeserver, status ${req.status} ${await req.text()}`);
+                }
                 return true;
             } catch (ex) {
-                log.warn("Failed to contact", url, "waiting..");
+                // Can sometimes be an Aggregate error if multiple hosts are tried (ipv4, ipv6)
+                const trueErr = ex.cause?.errors.map(e => e.message).join(', ') ?? ex.message;
+                log.warn(`Failed to contact ${url} (${trueErr}), waiting..`);
             }
             await new Promise((resolve) => setTimeout(resolve, 2000));
         }
