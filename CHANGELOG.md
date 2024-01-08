@@ -1,3 +1,18 @@
+1.0.0 (2024-01-08)
+==================
+
+Deprecations and Removals
+-------------------------
+
+- Drop support for Node 16, and support Node 20 and 21. ([\#343](https://github.com/matrix-org/matrix-bifrost/issues/343))
+
+
+Internal Changes
+----------------
+
+- Upgrade json5 (development dependency) to 1.0.2 to fix prototype pollution vulnerability. ([\#328](https://github.com/matrix-org/matrix-bifrost/issues/328))
+
+
 0.4.2 (2022-12-01)
 ==================
 
