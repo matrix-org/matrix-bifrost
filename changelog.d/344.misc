@@ -1,0 +1,1 @@
+Log precise error when failing to connect to homeserver on startup.
