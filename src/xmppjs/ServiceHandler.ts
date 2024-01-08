@@ -2,7 +2,6 @@ import { Element, x } from "@xmpp/xml";
 import { XmppJsInstance } from "./XJSInstance";
 import { jid, JID } from "@xmpp/jid";
 import { getBridgeVersion, Intent, Logger } from "matrix-appservice-bridge";
-import request from "axios";
 import { IGatewayRoom } from "../bifrost/Gateway";
 import { IGatewayRoomQuery, IGatewayPublicRoomsQuery } from "../bifrost/Events";
 import { StzaIqDiscoInfo, StzaIqPing, StzaIqDiscoItems, StzaIqSearchFields, SztaIqError, StzaIqPingError, NODE_NAME } from "./Stanzas";
@@ -321,12 +320,10 @@ export class ServiceHandler {
             return undefined;
         }
 
-        const file = await request.get(thumbUrl, {
-            responseType: "arraybuffer",
-        });
+        const file = await fetch(thumbUrl);
         avatar = {
-            data: Buffer.from(file.data),
-            type: file.headers["content-type"],
+            data: Buffer.from(await file.arrayBuffer()),
+            type: file.headers.get("content-type"),
         };
         this.avatarCache.set(avatarUrl, avatar);
         if (this.avatarCache.size > MAX_AVATARS) {

@@ -1,7 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import * as Chai from "chai";
 import { AutoRegistration } from "../src/AutoRegistration";
-import { Config } from "../src/Config";
 const expect = Chai.expect;
 
 describe("AutoRegistration", () => {

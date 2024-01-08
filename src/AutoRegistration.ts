@@ -1,6 +1,5 @@
 import { IConfigAutoReg, IConfigAccessControl } from "./Config";
 import { Bridge, MatrixUser, Logger, UserProfile } from "matrix-appservice-bridge";
-import request from "axios";
 import { Util } from "./Util";
 import { IStore } from "./store/Store";
 import { IBifrostInstance } from "./bifrost/Instance";
@@ -203,21 +202,21 @@ export class AutoRegistration {
         log.debug("HttpReg: Set parameters:", body);
         try {
             let username;
-            const headers = {
+            const headers: Record<string, string> = {
                 "Content-Type": "application/json",
                 ...step.headers,
             };
             log.debug("HttpReg: Attempting request to ", step.path, headers);
-            const res = await request.request({
+            const req = await fetch(step.path, {
                 method: opts.method,
-                url: step.path,
                 headers,
-                data: body,
+                body: JSON.stringify(body),
             });
+            const result = await req.json();
             if (!opts.usernameResult) { // fetch it from the body.
-                username = res.data;
+                username = result.data;
             } else {
-                username = res.data[opts.usernameResult];
+                username = result.data[opts.usernameResult];
             }
             log.info(`Registered ${mxId} as ${username}`);
             return {username, extraParams: body};
