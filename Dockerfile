@@ -1,5 +1,5 @@
-# Build node-purple. We need buster for python3.6, which is needed for node-purple
-FROM node:16-buster as builder
+# Build node-purple. We need debian for python3.6, which is needed for node-purple
+FROM node:20-bookworm as builder
 COPY ./package.json ./package.json
 COPY ./yarn.lock ./yarn.lock
 COPY ./src ./src
@@ -11,7 +11,7 @@ RUN apt-get update && apt-get install -y libpurple0 libpurple-dev libglib2.0-dev
 RUN yarn install --frozen-lockfile --check-files
 
 # App
-FROM node:16-buster-slim
+FROM node:20-bookworm-slim
 
 RUN mkdir app
 WORKDIR /app
