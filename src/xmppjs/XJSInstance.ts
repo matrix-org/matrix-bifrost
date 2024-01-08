@@ -27,9 +27,9 @@ import { ServiceHandler } from "./ServiceHandler";
 import { XJSConnection } from "./XJSConnection";
 import { AutoRegistration } from "../AutoRegistration";
 import { XmppJsGateway } from "./XJSGateway";
-import { IStza, StzaBase, StzaIqDiscoInfo, StzaIqVcardRequest, StzaPresence, StzaPresenceAvailable, StzaPresenceSubscription } from "./Stanzas";
+import { IStza, StzaBase, StzaIqDiscoInfo, StzaIqVcardRequest, StzaPresenceAvailable, StzaPresenceSubscription } from "./Stanzas";
 import { Util } from "../Util";
-import { v4 as uuid } from "uuid";
+import { randomUUID as uuid } from "crypto";
 import { JingleHandler, JingleReceivedFile } from "./Jingle";
 
 const xLog = new Logger("XMPP-conn");

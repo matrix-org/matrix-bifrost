@@ -1,5 +1,5 @@
 /* eslint-disable max-classes-per-file */
-import { v4 as uuid } from "uuid";
+import { randomUUID as uuid } from "crypto";
 import * as he from "html-entities";
 import { IBasicProtocolMessage } from "../MessageFormatter";
 import { XMPPFeatures, XMPPStatusCode } from "./XMPPConstants";
