@@ -27,9 +27,9 @@ import { ServiceHandler } from "./ServiceHandler";
 import { XJSConnection } from "./XJSConnection";
 import { AutoRegistration } from "../AutoRegistration";
 import { XmppJsGateway } from "./XJSGateway";
-import { IStza, StzaBase, StzaIqDiscoInfo, StzaIqVcardRequest, StzaPresence, StzaPresenceAvailable, StzaPresenceSubscription } from "./Stanzas";
+import { IStza, StzaBase, StzaIqDiscoInfo, StzaIqVcardRequest, StzaPresenceAvailable, StzaPresenceSubscription } from "./Stanzas";
 import { Util } from "../Util";
-import { v4 as uuid } from "uuid";
+import { randomUUID as uuid } from "crypto";
 import { JingleHandler, JingleReceivedFile } from "./Jingle";
 
 const xLog = new Logger("XMPP-conn");
@@ -64,7 +64,7 @@ const SEEN_MESSAGES_SIZE = 16384;
 
 export class XmppJsInstance extends EventEmitter implements IBifrostInstance {
     public readonly presenceCache = new PresenceCache();
-    public readonly serviceHandler = new ServiceHandler(this, this.config.bridge);
+    public readonly serviceHandler: ServiceHandler;
     private xmpp?: any;
     private myAddress!: JID;
     private accounts = new Map<string, XmppJsAccount>();
@@ -79,6 +79,7 @@ export class XmppJsInstance extends EventEmitter implements IBifrostInstance {
     private jingleHandler?: JingleHandler;
     constructor(private config: Config, private readonly bridge: Bridge) {
         super();
+        this.serviceHandler = new ServiceHandler(this, this.config.bridge);
         const opts = config.purple.backendOpts as IXJSBackendOpts;
         if (opts.jingle) {
             this.jingleHandler = new JingleHandler(this, opts.jingle, {

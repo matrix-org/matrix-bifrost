@@ -14,15 +14,12 @@ import { XmppJsInstance } from "./xmppjs/XJSInstance";
 import { Metrics } from "./Metrics";
 import { AutoRegistration } from "./AutoRegistration";
 import { GatewayHandler } from "./GatewayHandler";
+import { IRemoteUserAdminData, MROOM_TYPE_UADMIN } from "./store/Types";
 
 Logger.configure({console: "debug"});
 const log = new Logger("Program");
 const bridgeLog = new Logger("bridge");
 
-import { install as installSMS } from "source-map-support";
-import { IRemoteUserAdminData, MROOM_TYPE_UADMIN } from "./store/Types";
-
-installSMS();
 
 EventEmitter.defaultMaxListeners = 50;
 
@@ -265,7 +262,7 @@ class Program {
 
         let autoReg: AutoRegistration|undefined;
         if (this.config.autoRegistration.enabled && this.config.autoRegistration.protocolSteps !== undefined) {
-            autoReg = new AutoRegistration(
+            autoReg = await AutoRegistration.create(
                 this.config.autoRegistration,
                 this.config.access,
                 this.bridge,

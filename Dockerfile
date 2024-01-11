@@ -39,6 +39,7 @@ VOLUME [ "/data" ]
 ENV LD_PRELOAD="/usr/lib/libpurple.so.0"
 
 ENTRYPOINT [ "node", \
+	"--enable-source-maps", \
 	"/app/lib/Program.js", \
 	"--port", "5000", \
 	"--config", "/data/config.yaml", \

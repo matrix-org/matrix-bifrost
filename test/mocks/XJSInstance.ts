@@ -1,6 +1,6 @@
 import { IStza, StzaIqPing, StzaPresenceItem, StzaPresenceJoin } from "../../src/xmppjs/Stanzas";
 import { EventEmitter } from "events";
-import { x } from "@xmpp/xml";
+import { Element, x } from "@xmpp/xml";
 import { IChatJoined } from "../../src/bifrost/Events";
 import { jid } from "@xmpp/jid";
 import { XMPP_PROTOCOL } from "../../src/xmppjs/XJSInstance";

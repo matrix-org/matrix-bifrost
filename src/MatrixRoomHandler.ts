@@ -355,7 +355,7 @@ export class MatrixRoomHandler {
             return;
         }
         const remoteId = Util.createRemoteId(data.account.protocol_id, data.sender);
-        if (this.purple.needsDedupe() && this.deduplicator.checkAndRemove(
+        if (this.purple.needsDedupe() && await this.deduplicator.checkAndRemove(
             data.conv.name,
             remoteId,
             data.message.body,

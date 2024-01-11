@@ -9,9 +9,9 @@ import { jid, JID } from "@xmpp/jid";
 import { IBasicProtocolMessage } from "../MessageFormatter";
 import { Metrics } from "../Metrics";
 import { Logger } from "matrix-appservice-bridge";
-import { v4 as uuid } from "uuid";
 import { XHTMLIM } from "./XHTMLIM";
 import { StzaMessage, StzaIqPing, StzaPresenceJoin, StzaPresencePart, StzaIqVcardRequest, StzaPresenceAvailable } from "./Stanzas";
+import { randomUUID as uuid } from "crypto";
 
 const IDPREFIX = "pbridge";
 const CONFLICT_SUFFIX = "[m]";

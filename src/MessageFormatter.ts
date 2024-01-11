@@ -3,7 +3,6 @@ import { PRPL_S4B, PRPL_XMPP } from "./ProtoHacks";
 import { Parser } from "htmlparser2";
 import { Intent, Logger } from "matrix-appservice-bridge";
 import { IConfigBridge } from "./Config";
-import request from "axios";
 import { IMatrixMsgContents, MatrixMessageEvent } from "./MatrixTypes";
 
 
@@ -135,20 +134,17 @@ export class MessageFormatter {
         // XXX: This currently only handles one attachment
         if (attachment) {
             try {
-                let mxcurl;
                 if ('uri' in attachment) {
                     if (!attachment.uri.startsWith("http")) {
                         throw Error("Don't know how to handle attachment for message, not a http format uri");
                     }
-                    const file = await request.get(attachment.uri, {
-                        responseType: "arraybuffer",
-                    });
+                    const file = await fetch(attachment.uri);
                     // Use the headers if a type isn't given.
                     if (!attachment.mimetype) {
-                        attachment.mimetype = file.headers["content-type"];
+                        attachment.mimetype = file.headers.get("content-type");
                     }
                     if (!attachment.size) {
-                        attachment.size = parseInt(file.headers["content-length"] || "0", 10);
+                        attachment.size = parseInt(file.headers.get("content-length") ?? "0", 10);
                     }
                     const maxSize = await this.getMaxUploadBytes(intent);
                     if (attachment.size && maxSize > -1 && maxSize < attachment.size!) {
@@ -156,9 +152,9 @@ export class MessageFormatter {
                         matrixMsg.body = attachment.uri;
                         return matrixMsg;
                     }
-
+                    const buffer = Buffer.from(await file.arrayBuffer());
                     log.info(`Uploading ${attachment.uri}...`);
-                    matrixMsg.url = await intent.uploadContent(file.data, {
+                    matrixMsg.url = await intent.uploadContent(buffer, {
                         type: attachment.mimetype || "application/octect-stream",
                     });
                     matrixMsg.body = msg.body;
