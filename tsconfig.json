@@ -9,8 +9,7 @@
     "composite": false,
     // TODO: Enable these
     "strict": false,
-    "strictNullChecks": false,
-    "skipLibCheck": false
+    "strictNullChecks": false
   },
   "include": [
     "src/**/*"
