@@ -12,7 +12,7 @@
     "lint": "eslint -c .eslintrc 'test/**/*.ts' 'src/**/*.ts'",
     "start": "node --enable-source-maps lib/Program.js -c config.yaml",
     "genreg": "node lib/Program.js -r -c config.yaml",
-    "test": "mocha -r ts-node/register test/test.ts test/*.ts test/**/*.ts",
+    "test": "mocha -r node_modules/ts-node/register test/test.ts test/*.ts test/**/*.ts",
     "changelog": "scripts/towncrier.sh",
     "coverage": "nyc mocha -r ts-node/register test/test.ts test/*.ts test/**/*.ts"
   },

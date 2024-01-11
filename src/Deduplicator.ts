@@ -1,5 +1,5 @@
 import { Logger } from "matrix-appservice-bridge";
-const leven = import("leven");
+import leven from "leven";
 
 const log = new Logger("Deduplicator");
 
