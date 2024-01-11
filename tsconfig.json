@@ -1,5 +1,5 @@
 {
-  "extends": ["@tsconfig/node20"],
+  "extends": "@tsconfig/node20",
   "compilerOptions": {
     "incremental": true,
     "allowJs": false,
@@ -7,10 +7,10 @@
     "sourceMap": true,
     "outDir": "./lib",
     "composite": false,
-    "esModuleInterop": true,
     // TODO: Enable these
     "strict": false,
-    "strictNullChecks": false
+    "strictNullChecks": false,
+    "skipLibCheck": false
   },
   "include": [
     "src/**/*"

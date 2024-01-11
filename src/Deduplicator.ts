@@ -95,14 +95,13 @@ export class Deduplicator {
     }
 
     public async checkAndRemove(roomName: string, sender: string, body: string) {
-        const levenFn = (await leven).default;
         const start = `${sender}/${roomName}/`;
         const index = this.expectedMessages.findIndex((hash) => {
             if (!hash.startsWith(start)) {
                 return false;
             }
             hash = hash.slice(start.length);
-            const l = levenFn(hash, body) / hash.length;
+            const l = leven(hash, body) / hash.length;
             return l <= LEVEN_THRESHOLD;
         });
         if (index !== -1) {
