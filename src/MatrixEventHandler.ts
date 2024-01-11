@@ -6,7 +6,7 @@ import { MROOM_TYPE_UADMIN, MROOM_TYPE_IM, MROOM_TYPE_GROUP,
     IRemoteImData} from "./store/Types";
 import { BifrostProtocol } from "./bifrost/Protocol";
 import { IBifrostInstance } from "./bifrost/Instance";
-import marked from "marked";
+import { Marked } from "marked";
 import { IBifrostAccount } from "./bifrost/Account";
 import { Util } from "./Util";
 import { Logger } from "matrix-appservice-bridge";
@@ -22,6 +22,7 @@ import { GatewayHandler } from "./GatewayHandler";
 import { BifrostRemoteUser } from "./store/BifrostRemoteUser";
 
 const log = new Logger("MatrixEventHandler");
+const marked = new Marked();
 
 /**
  * Handles events coming into the appservice.
@@ -309,7 +310,7 @@ export class MatrixEventHandler {
                 msgtype: "m.notice",
                 body,
                 format: "org.matrix.custom.html",
-                formatted_body: marked(body),
+                formatted_body: marked.parse(body),
             });
         } else if (args[0] === "accounts" && args.length === 1) {
             const users = await this.store.getRemoteUsersFromMxId(event.sender) || [];
@@ -331,7 +332,7 @@ export class MatrixEventHandler {
                 msgtype: "m.notice",
                 body,
                 format: "org.matrix.custom.html",
-                formatted_body: marked(body),
+                formatted_body: marked.parse(body),
             });
         } else if (args[0] === "accounts" && args[1] === "add") {
             try {
@@ -403,7 +404,7 @@ export class MatrixEventHandler {
                 msgtype: "m.notice",
                 body,
                 format: "org.matrix.custom.html",
-                formatted_body: marked(body),
+                formatted_body: marked.parse(body),
             });
         } else {
             await intent.sendMessage(event.room_id, {
@@ -801,7 +802,7 @@ E.g. \`${command} ${acct.protocol.id}\` ${required.join(" ")} ${optional.join(" 
                 msgtype: "m.notice",
                 body,
                 format: "org.matrix.custom.html",
-                formatted_body: marked(body),
+                formatted_body: marked.parse(body),
             });
             return null;
         }
