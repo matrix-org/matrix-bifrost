@@ -25,13 +25,14 @@ export interface IAutoRegStep {
 const ESCAPE_TEMPLATE_REGEX = /[-\/\\^$*+?.()|[\]{}]/g;
 
 export class AutoRegistration {
-    private nameCache = new QuickLRU<string, {[key: string]: string}>({ maxSize: this.autoRegConfig.registrationNameCacheSize });
+    private nameCache: QuickLRU<string, {[key: string]: string}>;
     constructor(
         private autoRegConfig: IConfigAutoReg,
         private accessConfig: IConfigAccessControl,
         private bridge: Bridge,
         private store: IStore,
         private protoInstance: IBifrostInstance) {
+           this.nameCache = new QuickLRU({ maxSize: this.autoRegConfig.registrationNameCacheSize });
     }
 
     public isSupported(protocol: string) {
@@ -212,7 +213,7 @@ export class AutoRegistration {
                 headers,
                 body: JSON.stringify(body),
             });
-            const result = await req.json();
+            const result = await req.json() as {data: Record<string, unknown>};
             if (!opts.usernameResult) { // fetch it from the body.
                 username = result.data;
             } else {

@@ -1,8 +1,7 @@
 {
+  "extends": ["@tsconfig/node20"],
   "compilerOptions": {
     "incremental": true,
-    "target": "ES2019",
-    "module": "commonjs",
     "allowJs": false,
     "declaration": false,
     "sourceMap": true,

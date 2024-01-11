@@ -15,6 +15,8 @@ import { IBifrostAccount } from "../bifrost/Account";
 
 const log = new Logger("PurpleAccount");
 
+export type PurpleAccountHandle = unknown;
+
 export interface IChatJoinOptions {
     identifier: string;
     label: string;
@@ -46,7 +48,7 @@ export class PurpleAccount implements IBifrostAccount {
 
     get name(): string { return this.acctData!.username; }
 
-    get handle(): External { return this.acctData!.handle; }
+    get handle(): PurpleAccountHandle { return this.acctData!.handle; }
 
     get isEnabled(): boolean { return this.enabled; }
 
