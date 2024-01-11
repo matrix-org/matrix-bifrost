@@ -1,4 +1,3 @@
-import { expect } from "chai";
 import { ConfigValidator } from "matrix-appservice-bridge";
 
 const SCHEMA_FILE = `${__dirname}/../config/config.schema.yaml`;

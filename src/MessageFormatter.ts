@@ -134,7 +134,6 @@ export class MessageFormatter {
         // XXX: This currently only handles one attachment
         if (attachment) {
             try {
-                let mxcurl;
                 if ('uri' in attachment) {
                     if (!attachment.uri.startsWith("http")) {
                         throw Error("Don't know how to handle attachment for message, not a http format uri");
@@ -142,10 +141,10 @@ export class MessageFormatter {
                     const file = await fetch(attachment.uri);
                     // Use the headers if a type isn't given.
                     if (!attachment.mimetype) {
-                        attachment.mimetype = file.headers["content-type"];
+                        attachment.mimetype = file.headers.get("content-type");
                     }
                     if (!attachment.size) {
-                        attachment.size = parseInt(file.headers["content-length"] || "0", 10);
+                        attachment.size = parseInt(file.headers.get("content-length") ?? "0", 10);
                     }
                     const maxSize = await this.getMaxUploadBytes(intent);
                     if (attachment.size && maxSize > -1 && maxSize < attachment.size!) {
