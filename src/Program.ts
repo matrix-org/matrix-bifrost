@@ -262,7 +262,7 @@ class Program {
 
         let autoReg: AutoRegistration|undefined;
         if (this.config.autoRegistration.enabled && this.config.autoRegistration.protocolSteps !== undefined) {
-            autoReg = new AutoRegistration(
+            autoReg = await AutoRegistration.create(
                 this.config.autoRegistration,
                 this.config.access,
                 this.bridge,
