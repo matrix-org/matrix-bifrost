@@ -1,3 +1,12 @@
+1.0.2 (2024-01-12)
+==================
+
+Bugfixes
+--------
+
+- Fix docker image containing extra dependencies. ([\#353](https://github.com/matrix-org/matrix-bifrost/issues/353))
+
+
 1.0.1 (2024-01-12)
 ==================
 
