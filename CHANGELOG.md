@@ -1,3 +1,14 @@
+1.0.1 (2024-01-12)
+==================
+
+Internal Changes
+----------------
+
+- Log precise error when failing to connect to homeserver on startup. ([\#344](https://github.com/matrix-org/matrix-bifrost/issues/344))
+- Replace several packages with core node APIs. ([\#345](https://github.com/matrix-org/matrix-bifrost/issues/345))
+- Reduce docker image size by removing unused packages. ([\#346](https://github.com/matrix-org/matrix-bifrost/issues/346))
+
+
 1.0.0 (2024-01-08)
 ==================
 

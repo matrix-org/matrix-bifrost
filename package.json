@@ -1,6 +1,6 @@
 {
   "name": "matrix-bifrost",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Multi protocol bridging for Matrix.",
   "engines": {
     "node": ">=20"
