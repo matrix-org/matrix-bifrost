@@ -6,7 +6,7 @@ COPY ./src ./src
 COPY ./tsconfig.json ./tsconfig.json
 
 # node-purple dependencies
-RUN apt-get update && apt-get install -y libpurple0 libpurple-dev libglib2.0-dev python3 git build-essential
+RUN apt-get update && apt-get install --no-install-recommends -y libpurple0 libpurple-dev libglib2.0-dev python3 git build-essential
 # This will build the optional dependency node-purple AND compile the typescript.
 RUN yarn install --frozen-lockfile --check-files
 
@@ -17,7 +17,7 @@ RUN mkdir app
 WORKDIR /app
 
 # Install node-purple runtime dependencies.
-RUN apt-get update && apt-get install -y libpurple0 pidgin-sipe
+RUN apt-get update && apt-get install --no-install-recommends -y libpurple0 pidgin-sipe
 COPY ./package.json /app/package.json
 COPY ./yarn.lock /app/yarn.lock
 
