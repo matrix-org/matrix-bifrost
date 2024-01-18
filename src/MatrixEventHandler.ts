@@ -626,7 +626,11 @@ Say \`help\` for more commands.
         const name: string = context.remote.get("room_name");
         if (isGateway) {
             const msg = MessageFormatter.matrixEventToBody(event as MatrixMessageEvent, this.config.bridge);
-            this.gatewayHandler.sendMatrixMessage(name, event.sender, msg, context);
+            try {
+                await this.gatewayHandler.sendMatrixMessage(name, event.sender, msg, context);
+            } catch (ex) {
+                log.warn(`Failed to handle message for gateway:`, ex);
+            }
             return;
         }
         try {
@@ -689,9 +693,13 @@ Say \`help\` for more commands.
         const name: string = context.remote.get("room_name");
         const roomProtocol: string = context.remote.get("protocol_id");
         if (isGateway) {
-            await this.gatewayHandler.sendMatrixMembership(
-                name, context, event,
-            );
+            try {
+                await this.gatewayHandler.sendMatrixMembership(
+                    name, context, event,
+                );
+            } catch (ex) {
+                log.warn(`Failed to handle membership for gateway:`, ex);
+            }
             return;
         }
 
@@ -728,9 +736,13 @@ Say \`help\` for more commands.
         const name = context.remote.get<string>("room_name");
         log.info(`Handling group state event for ${name}`);
         if (isGateway) {
-            await this.gatewayHandler.sendStateEvent(
-                name, event.sender, event, context,
-            );
+            try {
+                await this.gatewayHandler.sendStateEvent(
+                    name, event.sender, event, context,
+                );
+            } catch (ex) {
+                log.warn(`Failed to handle state event for gateway:`, ex);
+            }
             return;
         }
         // XXX: Support state changes for non-gateways
