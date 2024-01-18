@@ -67,7 +67,8 @@ describe("XJSAccount", () => {
                 await acct.joinChat({
                     room: "den",
                     server: "remote.server",
-                }, instance as any, 50, true);
+                // Explicit any - we want to deliberately send wrong params
+                } as any, instance as any, 50, true);
             } catch (ex) {
                 expect(ex.message).to.equal("Missing handle");
                 return;
