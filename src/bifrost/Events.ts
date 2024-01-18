@@ -4,7 +4,6 @@
 
 import { IBifrostAccount } from "./Account";
 import { IBasicProtocolMessage } from "../MessageFormatter";
-import { IGatewayRoom } from "./Gateway";
 import { IPublicRoomsResponse } from "../MatrixTypes";
 
 export interface IChatJoinProperties {[key: string]: string; }

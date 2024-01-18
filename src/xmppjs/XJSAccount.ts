@@ -54,10 +54,17 @@ export class XmppJsAccount implements IBifrostAccount {
                             this.lastStanzaTs.set(roomName, Date.now());
                             return;
                         }
+                        const handle: string|undefined = this.roomHandles.get(roomName);
+                        if (!handle) {
+                            // Shouldn't happen, but we must be careful.
+                            return;
+                        }
                         this.joinChat({
                             fullRoomName: roomName,
-                            handle: this.roomHandles.get(roomName)!,
-                        });
+                            handle: handle,
+                        }).catch(ex => {
+                            log.warn(`Attempted to join ${roomName} due to a failed self ping, but failed`, ex);
+                        })
                     });
                 }
             });
@@ -186,18 +193,22 @@ export class XmppJsAccount implements IBifrostAccount {
     }
 
     public async joinChat(
-        components: IChatJoinProperties,
+        components: { handle: string }&({room: string, server: string}|{fullRoomName: string}),
         instance?: IBifrostInstance,
         timeout: number = 5000,
         setWaiting: boolean = true)
         : Promise<IConversationEvent|void> {
-        if (!components.fullRoomName && (!components.room || !components.server)) {
-            throw Error("Missing fullRoomName OR room|server");
-        }
+        let roomName: string;
         if (!components.handle) {
             throw Error("Missing handle");
         }
-        const roomName = components.fullRoomName || `${components.room}@${components.server}`;
+        if ('fullRoomName' in components) {
+            roomName = components.fullRoomName;
+        } else if ('room' in components && 'server' in components) {
+            roomName = `${components.room}@${components.server}`;
+        } else {
+            throw Error("Missing fullRoomName OR room|server");
+        }
         const to = `${roomName}/${components.handle}`;
         log.debug(`joinChat:`, this.remoteId, components);
         if (this.isInRoom(roomName)) {
@@ -288,6 +299,7 @@ export class XmppJsAccount implements IBifrostAccount {
             `${components.room}@${components.server}/${components.handle}`,
         ));
         this.roomHandles.delete(room);
+        this.lastStanzaTs.delete(room);
         Metrics.remoteCall("xmpp.presence.left");
     }
 
