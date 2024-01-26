@@ -19,6 +19,8 @@ const LASTSTANZA_CHECK_MS = 2 * 60000;
 const LASTSTANZA_MAXDURATION = 10 * 60000;
 const log = new Logger("XmppJsAccount");
 
+type XmppChatJoinComponents = { handle: string }&({room: string, server: string}|{fullRoomName: string})
+
 export class XmppJsAccount implements IBifrostAccount {
 
     get name(): string {
@@ -54,14 +56,14 @@ export class XmppJsAccount implements IBifrostAccount {
                             this.lastStanzaTs.set(roomName, Date.now());
                             return;
                         }
-                        const handle: string|undefined = this.roomHandles.get(roomName);
+                        const handle = this.roomHandles.get(roomName);
                         if (!handle) {
                             // Shouldn't happen, but we must be careful.
                             return;
                         }
                         this.joinChat({
                             fullRoomName: roomName,
-                            handle: handle,
+                            handle,
                         }).catch(ex => {
                             log.warn(`Attempted to join ${roomName} due to a failed self ping, but failed`, ex);
                         })
@@ -193,7 +195,7 @@ export class XmppJsAccount implements IBifrostAccount {
     }
 
     public async joinChat(
-        components: { handle: string }&({room: string, server: string}|{fullRoomName: string}),
+        components: XmppChatJoinComponents,
         instance?: IBifrostInstance,
         timeout: number = 5000,
         setWaiting: boolean = true)
