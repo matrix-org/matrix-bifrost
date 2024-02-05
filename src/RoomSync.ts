@@ -96,7 +96,11 @@ export class RoomSync {
             const isGateway = room.remote.get<boolean>("gateway");
             if (isGateway) {
                 // The gateway handler syncs via roomState.
-                this.gateway.initialMembershipSync(room);
+                try {
+                    await this.gateway.initialMembershipSync(room);
+                } catch (ex) {
+                    log.warn(`Failed to sync gateway membership for room ${roomId}`);
+                }
                 return;
             }
             let members: {[userId: string]: {display_name?: string}};
