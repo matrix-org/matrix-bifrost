@@ -189,8 +189,14 @@ export class GatewayHandler {
                 throw Error("This room has been denied");
             }
             await intent.ensureRegistered();
+            let profileUpdateSuccess = false;
             if (this.config.tuning.waitOnProfileBeforeSend) {
-                await this.profileSync.updateProfile(protocol, data.sender, this.purple.gateway);
+                try {
+                    await this.profileSync.updateProfile(protocol, data.sender, this.purple.gateway);
+                    profileUpdateSuccess = true;
+                } catch (e) {
+                    log.error(`Failed to update profile: ${e}`);
+                }
             }
             log.info(`Attempting to join ${data.roomAlias}`)
             roomId = await intent.join(data.roomAlias);
@@ -198,9 +204,14 @@ export class GatewayHandler {
                 throw Error("This room has been denied");
             }
             if (!this.config.tuning.waitOnProfileBeforeSend) {
-                await this.profileSync.updateProfile(protocol, data.sender, this.purple.gateway);
+                try {
+                    await this.profileSync.updateProfile(protocol, data.sender, this.purple.gateway);
+                    profileUpdateSuccess = true;
+                } catch (e) {
+                    log.error(`Failed to update profile: ${e}`);
+                }
             }
-            if (data.nick) {
+            if (data.nick && profileUpdateSuccess) {
                 // Set the user's displayname in the room to their nickname.
                 // Do this after a short delay, so that we don't have a race on
                 // the server setting the global displayname.
