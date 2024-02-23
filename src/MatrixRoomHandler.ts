@@ -298,7 +298,11 @@ export class MatrixRoomHandler {
         // Update the user if needed.
         const account = this.purple.getAccount(data.account.username, data.account.protocol_id, matrixUser.getId());
         if (account) {
-            await this.profileSync.updateProfile(protocol, data.sender, account);
+            try {
+                await this.profileSync.updateProfile(protocol, data.sender, account);
+            } catch (e) {
+                log.error(`Failed to update profile: ${e}`);
+            }
         }
 
         const intent = this.bridge.getIntent(senderMatrixUser.getId());
@@ -379,13 +383,17 @@ export class MatrixRoomHandler {
         );
         const account = this.purple.getAccount(data.account.username, data.account.protocol_id);
         if (account) {
-            await this.profileSync.updateProfile(
-                protocol,
-                data.sender,
-                account,
-                false,
-                ProtoHacks.getSenderIdToLookup(protocol, data.sender, data.conv.name),
-            );
+            try {
+                await this.profileSync.updateProfile(
+                    protocol,
+                    data.sender,
+                    account,
+                    false,
+                    ProtoHacks.getSenderIdToLookup(protocol, data.sender, data.conv.name),
+                );
+            } catch (e) {
+                log.error(`Failed to update profile: ${e}`);
+            }
         }
 
         const intent = this.bridge.getIntent(senderMatrixUser.getId());
