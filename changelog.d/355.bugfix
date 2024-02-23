@@ -1,1 +1,0 @@
-Fix several cases where Bifrost may crash if a gateway room was inaccessible.

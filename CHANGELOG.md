@@ -1,3 +1,13 @@
+1.0.3 (2024-02-23)
+==================
+
+Bugfixes
+--------
+
+- Fix several cases where Bifrost may crash if a gateway room was inaccessible. ([\#355](https://github.com/matrix-org/matrix-bifrost/issues/355))
+- Catch errors when profile updates fail. Notably, prevent fatal errors when an inbound displayname change fails. ([\#359](https://github.com/matrix-org/matrix-bifrost/issues/359))
+
+
 1.0.2 (2024-01-12)
 ==================
 

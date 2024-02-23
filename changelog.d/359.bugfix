@@ -1,1 +1,0 @@
-Catch errors when profile updates fail. Notably, prevent fatal errors when an inbound displayname change fails.
