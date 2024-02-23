@@ -63,7 +63,7 @@ export class ProfileSync {
             remoteProfileSet.avatar_uri = buddy.icon_path;
         }
 
-        let errors: Error[] = [];
+        const errors: Error[] = [];
 
         const intent = this.bridge.getIntent(matrixUser.getId());
         {
