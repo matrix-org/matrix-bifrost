@@ -28,7 +28,7 @@ The following are supported:
 ## Docker
 
 Both backends are supported in Docker. You can go straight ahead and use the provided Dockerfile
-to build the bridge. You can build the docker image with `docker build -t bifrost:latest` and then
+to build the bridge. You can build the docker image with `docker build . -t bifrost:latest` and then
 run the image with: `docker run -v /your/path/to/data:/data bifrost:latest -p 5000:9555`.
 
 An image is available on [Dockerhub](https://hub.docker.com/r/matrixdotorg/matrix-bifrost).
