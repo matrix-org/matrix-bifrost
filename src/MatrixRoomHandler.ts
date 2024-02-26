@@ -42,6 +42,14 @@ export class MatrixRoomHandler {
         private readonly deduplicator: Deduplicator,
         private readonly bridge: Bridge,
     ) {
+        const handleAsyncEvent = function<Args = unknown, T = unknown>(fn: (...args: Args[]) => Promise<T>): (...args: Args[]) => void {
+            return (...args: Args[]) => {
+                fn(...args).catch(ex => {
+                    log.warn(`Failed to handle event`, ex);
+                })
+            };
+        };
+
         if (this.purple.needsDedupe() || this.purple.needsAccountLock()) {
             purple.on("chat-joined", this.onChatJoined.bind(this));
         }
@@ -68,16 +76,16 @@ export class MatrixRoomHandler {
                 await intent.invite(roomId, matrixUser.getId());
             }
         });
-        purple.on("received-im-msg", this.handleIncomingIM.bind(this));
-        purple.on("received-chat-msg", this.handleIncomingChatMsg.bind(this));
-        purple.on("chat-invite", this.handleChatInvite.bind(this));
-        purple.on("chat-user-joined", this.handleRemoteUserState.bind(this));
-        purple.on("chat-user-left", this.handleRemoteUserState.bind(this));
-        purple.on("chat-user-kick", this.handleRemoteUserState.bind(this));
+        purple.on("received-im-msg", handleAsyncEvent(this.handleIncomingIM.bind(this)));
+        purple.on("received-chat-msg", handleAsyncEvent(this.handleIncomingChatMsg.bind(this)));
+        purple.on("chat-invite", handleAsyncEvent(this.handleChatInvite.bind(this)));
+        purple.on("chat-user-joined", handleAsyncEvent(this.handleRemoteUserState.bind(this)));
+        purple.on("chat-user-left", handleAsyncEvent(this.handleRemoteUserState.bind(this)));
+        purple.on("chat-user-kick", handleAsyncEvent(this.handleRemoteUserState.bind(this)));
         /* This also handles chat names, which are just set as the conv.name */
-        purple.on("chat-topic", this.handleTopic.bind(this));
-        purple.on("im-typing", this.handleIMTyping.bind(this));
-        purple.on("chat-typing", this.handleChatTyping.bind(this));
+        purple.on("chat-topic", handleAsyncEvent(this.handleTopic.bind(this)));
+        purple.on("im-typing", handleAsyncEvent(this.handleIMTyping.bind(this)));
+        purple.on("chat-typing", handleAsyncEvent(this.handleChatTyping.bind(this)));
         purple.on("store-remote-user", (storeUser: IStoreRemoteUser) => {
             log.info(`Storing remote ghost for ${storeUser.mxId} -> ${storeUser.remoteId}`);
             this.store.storeGhost(
@@ -85,11 +93,12 @@ export class MatrixRoomHandler {
                 this.purple.getProtocol(storeUser.protocol_id)!,
                 storeUser.remoteId,
                 storeUser.data,
-            );
+            ).catch((ex) => {
+                log.warn(`Failed to store ghost`, ex);
+            });
         });
-        purple.on("contact-list-subscribe", this.handleContactListSubscribeRequest.bind(this));
-        this.remoteEventIdMapping = new Map();
-        purple.on("read-receipt", this.handleReadReceipt.bind(this));
+        purple.on("contact-list-subscribe", handleAsyncEvent(this.handleContactListSubscribeRequest.bind(this)));
+        purple.on("read-receipt", handleAsyncEvent(this.handleReadReceipt.bind(this)));
     }
 
     public async onChatJoined(ev: IConversationEvent) {
