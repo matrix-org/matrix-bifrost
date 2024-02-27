@@ -348,3 +348,7 @@ class Program {
 }
 
 new Program().start();
+
+process.on('unhandledRejection', (reason, promise) => {
+    log.warn(`Unhandled rejection`, reason, promise);
+});
