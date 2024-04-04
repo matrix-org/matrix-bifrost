@@ -1,0 +1,1 @@
+Fix a few cases where Bifrost may crash if an event fails to be handled.
