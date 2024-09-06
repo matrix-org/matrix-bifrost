@@ -1,7 +1,30 @@
+# 2.0.0 (2024-09-06)
+========================
+
+**Note**: With version 2.0.0, the bridge takes over the serving of Matrix media, which until now was the responsibility of the homeserver.
+
+To allow that, a Media Proxy needs to be configured and accessible from the internet. Please refer to the `mediaProxy` section in the config for details on how to configure it.
+This replaces the `mediaserverUrl` config option.
+
+Features
+--------
+
+- Use MediaProxy to serve authenticated Matrix media. ([\#365](https://github.com/matrix-org/matrix-bifrost/issues/365))
+
+Bugfixes
+--------
+
+- Fix a few cases where Bifrost may crash if an event fails to be handled. ([\#360](https://github.com/matrix-org/matrix-bifrost/issues/360))
+
+Internal Changes
+----------------
+
+- Update matrix-appservice-bridge to fix the issues discovered in -rc1
+
 # 2.0.0-rc1 (2024-09-02)
 ========================
 
-**Note**: With version 3.0.0, the bridge takes over the serving of Matrix media, which until now was the responsibility of the homeserver.
+**Note**: With version 2.0.0, the bridge takes over the serving of Matrix media, which until now was the responsibility of the homeserver.
 
 To allow that, a Media Proxy needs to be configured and accessible from the internet. Please refer to the `mediaProxy` section in the config for details on how to configure it.
 This replaces the `mediaserverUrl` config option.

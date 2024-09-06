@@ -1,6 +1,6 @@
 {
   "name": "matrix-bifrost",
-  "version": "2.0.0-rc1",
+  "version": "2.0.0",
   "description": "Multi protocol bridging for Matrix.",
   "engines": {
     "node": ">=20"
@@ -39,7 +39,7 @@
     "leven": "^3.0.0",
     "marked": "^11.1.1",
     "nedb": "^1.8.0",
-    "matrix-appservice-bridge": "^10.2.0",
+    "matrix-appservice-bridge": "^10.2.1",
     "pg": "8.11.3",
     "prom-client": "^15.1.0",
     "quick-lru": "^5.0.0"
