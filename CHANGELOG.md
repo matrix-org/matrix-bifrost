@@ -1,3 +1,11 @@
+# 2.0.1 (2024-09-06)
+
+Internal Changes
+----------------
+
+- Move MediaProxy configuration to the toplevel
+
+
 # 2.0.0 (2024-09-06)
 ========================
 
