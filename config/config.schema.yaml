@@ -1,11 +1,11 @@
 "$schema": "http://json-schema.org/draft-07/schema#"
 "$id": "http://matrix.org/bifrost/schema"
 type: object
-required: ["bridge", "datastore", "purple", "portals"]
+required: ["bridge", "mediaProxy", "datastore", "purple", "portals"]
 properties:
     bridge:
         type: object
-        required: ["domain", "homeserverUrl", "userPrefix", "mediaProxy"]
+        required: ["domain", "homeserverUrl", "userPrefix"]
         properties:
           domain:
             type: string
@@ -15,18 +15,18 @@ properties:
             type: string
           appservicePort:
             type: number
-          mediaProxy:
-            type: "object"
-            properties:
-              signingKeyPath:
-                type: "string"
-              ttlSeconds:
-                type: "integer"
-              bindPort:
-                type: "integer"
-              publicUrl:
-                type: "string"
-            required: ["signingKeyPath", "ttlSeconds", "bindPort", "publicUrl"]
+    mediaProxy:
+        type: "object"
+        properties:
+          signingKeyPath:
+            type: "string"
+          ttlSeconds:
+            type: "integer"
+          bindPort:
+            type: "integer"
+          publicUrl:
+            type: "string"
+        required: ["signingKeyPath", "ttlSeconds", "bindPort", "publicUrl"]
     datastore:
         required: ["engine"]
         type: "object"

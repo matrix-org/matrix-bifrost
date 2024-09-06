@@ -92,7 +92,7 @@ class Program {
     }
 
     private async initialiseMediaProxy(): Promise<MediaProxy> {
-        const config = this.config.bridge.mediaProxy;
+        const config = this.config.mediaProxy;
         const jwk = JSON.parse(fs.readFileSync(config.signingKeyPath, "utf8").toString());
         const signingKey = await webcrypto.subtle.importKey('jwk', jwk, {
             name: 'HMAC',
