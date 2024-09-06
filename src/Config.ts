@@ -14,13 +14,9 @@ export class Config {
         homeserverUrl: "",
         userPrefix: "_bifrost_",
         appservicePort: 9555,
-        mediaProxy: {
-            signingKeyPath: "",
-            ttlSeconds: 0,
-            bindPort: 0,
-            publicUrl: ""
-        },
     };
+
+    public readonly mediaProxy: IMediaProxy;
 
     public readonly roomRules: IConfigRoomRule[] = [];
 
@@ -109,12 +105,13 @@ export interface IConfigBridge {
     homeserverUrl: string;
     userPrefix: string;
     appservicePort?: number;
-    mediaProxy: {
-        signingKeyPath: string;
-        ttlSeconds: number;
-        bindPort: number;
-        publicUrl: string;
-    },
+}
+
+export interface IMediaProxy {
+    signingKeyPath: string;
+    ttlSeconds: number;
+    bindPort: number;
+    publicUrl: string;
 }
 
 export interface IConfigPurple {
