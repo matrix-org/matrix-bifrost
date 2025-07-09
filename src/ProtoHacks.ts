@@ -76,4 +76,11 @@ export class ProtoHacks {
         }
         return senderId;
     }
+
+    public static removeJabberResourceInMXID(protocolId: string, id: string): string {
+        if (protocolId === PRPL_XMPP) {
+            return id.split('/')[0]
+        }
+        return id;
+    }
 }

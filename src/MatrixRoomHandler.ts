@@ -285,6 +285,7 @@ export class MatrixRoomHandler {
         if (!this.bridge) {
             throw Error("Couldn't handleIncomingIM, bridge was not defined");
         }
+        data.sender = ProtoHacks.removeJabberResourceInMXID(data.account.protocol_id, data.sender)
         log.debug(`Handling incoming IM from ${data.sender}`);
         data.message.body = entityDecode(data.message.body);
         // First, find out who the message was intended for.
@@ -357,6 +358,7 @@ export class MatrixRoomHandler {
         if (!this.bridge) {
             throw Error("Couldn't handleIncomingChatMsg, bridge was not defined");
         }
+        data.sender = ProtoHacks.removeJabberResourceInMXID(data.account.protocol_id, data.sender)
         log.debug(`Handling incoming chat from ${data.sender} (${data.conv.name})`);
         data.message.body = entityDecode(data.message.body);
         const acctId = Util.createRemoteId(data.account.protocol_id, data.account.username);
@@ -429,6 +431,7 @@ export class MatrixRoomHandler {
     }
 
     private async handleChatInvite(data: IChatInvite) {
+        data.sender = ProtoHacks.removeJabberResourceInMXID(data.account.protocol_id, data.sender)
         if (!this.bridge) {
             throw Error("Couldn't handleChatInvite, bridge was not defined");
         }
@@ -465,6 +468,7 @@ export class MatrixRoomHandler {
     }
 
     private async handleRemoteUserState(data: IUserStateChanged) {
+        data.sender = ProtoHacks.removeJabberResourceInMXID(data.account.protocol_id, data.sender)
         if (!this.bridge) {
             throw Error("Couldn't handleRemoteUserState, bridge was not defined");
         }
@@ -529,6 +533,7 @@ export class MatrixRoomHandler {
     }
 
     private async handleTopic(data: IChatTopicState) {
+        data.sender = ProtoHacks.removeJabberResourceInMXID(data.account.protocol_id, data.sender)
         if (!this.bridge) {
             throw Error("Couldn't handleTopic, bridge was not defined");
         }
@@ -558,6 +563,7 @@ export class MatrixRoomHandler {
         }
     }
     private async handleIMTyping(data: IChatTyping) {
+        data.sender = ProtoHacks.removeJabberResourceInMXID(data.account.protocol_id, data.sender)
         if (!this.bridge) {
             throw Error("Couldn't handleIMTyping, bridge was not defined");
         }
@@ -579,6 +585,7 @@ export class MatrixRoomHandler {
     }
 
     private async handleChatTyping(data: IChatTyping) {
+        data.sender = ProtoHacks.removeJabberResourceInMXID(data.account.protocol_id, data.sender)
         if (!this.bridge) {
             throw Error("Couldn't handleTyping, bridge was not defined");
         }
@@ -593,6 +600,7 @@ export class MatrixRoomHandler {
     }
 
     private async handleReadReceipt(data: IChatReadReceipt) {
+        data.sender = ProtoHacks.removeJabberResourceInMXID(data.account.protocol_id, data.sender)
         if (!this.bridge) {
             throw Error("Couldn't handleTyping, bridge was not defined");
         }
