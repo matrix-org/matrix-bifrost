@@ -314,7 +314,7 @@ export class MatrixEventHandler {
                 formatted_body: marked.parse(body),
             });
         } else if (args[0] === "accounts" && args.length === 1) {
-            const users = await this.store.getRemoteUsersFromMxId(event.sender) || [];
+            const users = await this.store.getAllAccountsForMatrixUser(event.sender) || [];
             let body = "Linked accounts:\n";
             body += users.map((remoteUser: BifrostRemoteUser) => {
                 let account: IBifrostAccount|null = null;
