@@ -1,5 +1,5 @@
-# Build node-purple. We need debian for python3.6, which is needed for node-purple
-FROM node:22-bookworm as builder
+# Build node-purple, which needs Debian for Python
+FROM node:22-bookworm AS builder
 COPY ./package.json ./package.json
 COPY ./yarn.lock ./yarn.lock
 COPY ./src ./src
