@@ -4,10 +4,6 @@
 
 General purpose puppeting bridges using libpurple and other backends.
 
-This bridge is in very active development currently and intended mainly for experimentation and evaluation purposes.
-
-This has been tested to work on `Node.JS v10` and `Synapse 0.34.0`.
-
 ## Helping out
 
 If you wish to file an issue or create a PR, **please read [CONTRIBUTING.md](./CONTRIBUTING.md) first.
@@ -29,7 +25,7 @@ The following are supported:
 
 Both backends are supported in Docker. You can go straight ahead and use the provided Dockerfile
 to build the bridge. You can build the docker image with `docker build -t bifrost:latest` and then
-run the image with: `docker run -v /your/path/to/data:/data bifrost:latest -p 5000:9555`.
+run the image with `docker run -v /your/path/to/data:/data bifrost:latest -p 5000:9555`.
 
 An image is available on [Dockerhub](https://hub.docker.com/r/matrixdotorg/matrix-bifrost).
 
@@ -37,7 +33,7 @@ An image is available on [Dockerhub](https://hub.docker.com/r/matrixdotorg/matri
 
 - Make sure you store your `config.yaml`, `registration.yaml` inside /data.
 - You should configure your `config.yaml`'s `userStoreFile` and `roomStoreFile` to point to files inside `/data`
-- The intenal port for the bridge is `5000`, you should map this to an external port in docker.
+- The internal port for the bridge is `5000`, you should map this to an external port in docker.
 - Be careful not to leave any config options pointing to `127.0.0.1` / `localhost` as they will not resolve inside docker.
  - The exception to this rule is `bridge.domain`, which MUST be your homeserver's URL.
 
@@ -45,27 +41,27 @@ An image is available on [Dockerhub](https://hub.docker.com/r/matrixdotorg/matri
 
 ### Dependencies
 
-Simply run `yarn install` as normal. Dependencies for `node-purple` can in it's [README](https://github.com/matrix-org/node-purple#node-purple)
+Simply run `yarn install` as normal. Dependencies for `node-purple` can in its [README](https://github.com/matrix-org/node-purple#node-purple)
 
 ### Installing & Configuring
 
-**NOTE: You must carefully read the config.sample.yaml and use the bits appropriate for you. Do NOT copy and paste it verbatim as it won't work.**
+**NOTE: You must carefully read the `config.sample.yaml` and use the bits appropriate for you. Do NOT copy and paste it verbatim as it won't work.**
 
 ```shell
 yarn install # Install dependencies
 yarn build # Build files
 cp config.sample.yaml config.yaml
-# ... Set the domain name, homeserver url, and then review the rest of the config
+# ... Set the domain name, homeserver URL, and then review the rest of the config
 sed -i  "s/domain: \"localhost\"/domain: \"$YOUR_MATRIX_DOMAIN\"/g" config.yaml
 ```
 
 You must also generate a registration file:
 
 ```shell
-yarn genreg -- -u http://localhost:9555 # Set listener url here.
+yarn genreg -- -u http://localhost:9555 # Set listener URL here.
 ```
 
-This file should be accessible by your **homeserver**, which will use this file to get the correct url and tokens to push events to.
+This file should be accessible by your **homeserver**, which will use this file to get the correct URL and tokens to push events to.
 
 For Synapse, this can be done by:
 
