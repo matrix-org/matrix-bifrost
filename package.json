@@ -3,7 +3,7 @@
   "version": "2.0.1",
   "description": "Multi protocol bridging for Matrix.",
   "engines": {
-    "node": ">=20"
+    "node": ">=22"
   },
   "main": "lib/Program.js",
   "scripts": {
@@ -46,7 +46,7 @@
   },
   "devDependencies": {
     "@istanbuljs/nyc-config-typescript": "^1.0.2",
-    "@tsconfig/node20": "20.1.2",
+    "@tsconfig/node22": "^22.0.2",
     "@types/chai": "^4.3.11",
     "@types/mocha": "^9.0.0",
     "@types/node": "^20",
@@ -64,7 +64,7 @@
     "mock-require": "^3.0.3",
     "nyc": "^15.1.0",
     "ts-node": "^10.9.2",
-    "typescript": "^5.3.3"
+    "typescript": "^5.9.3"
   },
   "optionalDependencies": {
     "node-purple": "git+https://github.com/matrix-org/node-purple#1adfe21219863824a1fcb4c1de35b5b44cccca37"

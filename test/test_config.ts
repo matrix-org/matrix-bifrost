@@ -1,7 +1,8 @@
 import { ConfigValidator } from "matrix-appservice-bridge";
 
-const SCHEMA_FILE = `${__dirname}/../config/config.schema.yaml`;
-const SAMPLE_FILE = `${__dirname}/../config.sample.yaml`;
+const SCHEMA_FILE = `config/config.schema.yaml`;
+const SAMPLE_FILE = `config.sample.yaml`;
+
 describe("configuration files", () =>{
 
     it("should load the schema file successfully", () => {
