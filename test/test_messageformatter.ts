@@ -39,7 +39,6 @@ describe("MessageFormatter", () => {
                 domain: "bar",
                 homeserverUrl: "http://bar",
                 userPrefix: "_xmpp",
-                mediaProxy: {} as any,
             }, mediaProxy);
             expect(msg).to.deep.eq({
                 body: "This is some plaintext!",
@@ -64,7 +63,6 @@ describe("MessageFormatter", () => {
                 domain: "bar",
                 homeserverUrl: "http://bar",
                 userPrefix: "_xmpp",
-                mediaProxy: {} as any,
             }, mediaProxy);
             expect(msg).to.deep.eq({
                 body: "This is some plaintext!",
@@ -91,7 +89,6 @@ describe("MessageFormatter", () => {
                 domain: "bar",
                 homeserverUrl: "http://bar",
                 userPrefix: "_xmpp",
-                mediaProxy: {} as any,
             }, mediaProxy);
             expect(msg).to.deep.eq({
                 body: "image.jpg",
@@ -127,7 +124,6 @@ describe("MessageFormatter", () => {
                 domain: "bar",
                 homeserverUrl: "http://bar",
                 userPrefix: "_xmpp",
-                mediaProxy: {} as any,
             }, mediaProxy);
             expect(msg).to.deep.eq({
                 body: "image.jpg",
@@ -158,7 +154,6 @@ describe("MessageFormatter", () => {
                 domain: "bar",
                 homeserverUrl: "http://bar",
                 userPrefix: "_xmpp",
-                mediaProxy: {} as any,
             }, mediaProxy);
             expect(msg).to.deep.eq({
                 body: "/me pets the dog",
