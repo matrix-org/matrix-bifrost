@@ -313,7 +313,7 @@ export class ServiceHandler {
         if (avatar) {
             return avatar;
         }
-        const thumbUrl = intent.matrixClient.mxcToHttpThumbnail(
+        const thumbUrl = await intent.matrixClient.mxcToHttpThumbnail(
             avatarUrl, 256, 256, "scale"
         );
         if (!thumbUrl) {
