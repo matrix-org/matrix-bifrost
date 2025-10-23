@@ -200,7 +200,7 @@ export class AutoRegistration {
         try {
             profile = await intent.getProfileInfo(mxId);
             if (profile.avatar_url) {
-                profile.avatar_url = intent.matrixClient.mxcToHttpThumbnail(profile.avatar_url, 128, 128, "crop");
+                profile.avatar_url = await intent.matrixClient.mxcToHttpThumbnail(profile.avatar_url, 128, 128, "crop");
             }
         } catch (ex) {
             // Appservice bots don't usually have profiles.

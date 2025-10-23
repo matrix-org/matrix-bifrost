@@ -1,5 +1,5 @@
-# Build node-purple. We need debian for python3.6, which is needed for node-purple
-FROM node:20-bookworm as builder
+# Build node-purple, which needs Debian for Python
+FROM node:22-bookworm AS builder
 COPY ./package.json ./package.json
 COPY ./yarn.lock ./yarn.lock
 COPY ./src ./src
@@ -11,7 +11,7 @@ RUN apt-get update && apt-get install --no-install-recommends -y libpurple0 libp
 RUN yarn install --frozen-lockfile --check-files
 
 # App
-FROM node:20-bookworm-slim
+FROM node:22-bookworm-slim
 
 RUN mkdir app
 WORKDIR /app

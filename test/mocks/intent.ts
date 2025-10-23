@@ -3,8 +3,10 @@ export class MockIntent {
     public ensureRegisteredCalled: boolean = false;
     public leftRoom: string = "";
     public clientJoinRoomCalledWith: {roomString: string, opts: any}|null = null;
-    constructor(public userId: string) {
+    public userId: string;
 
+    constructor(userId: string) {
+        this.userId = userId;
     }
 
     public async ensureRegistered() {

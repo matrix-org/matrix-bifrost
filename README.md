@@ -4,9 +4,7 @@
 
 General purpose puppeting bridges using libpurple and other backends.
 
-This bridge is in very active development currently and intended mainly for experimentation and evaluation purposes.
-
-This has been tested to work on `Node.JS v10` and `Synapse 0.34.0`.
+This bridge is not in active development currently and intended mainly for experimentation and evaluation purposes.
 
 ## Helping out
 
