@@ -1,3 +1,14 @@
+# 2.1.0 (2025-10-23)
+
+## Bugfixes
+
+- Update `matrix-appservice-bridge` to fix `IO.ELEMENT.MSC4190.M_APPSERVICE_LOGIN_UNSUPPORTED` error with MSC4190 enabled homeservers. ([\#371](https://github.com/matrix-org/matrix-bifrost/issues/371))
+
+## Internal Changes
+
+- Update required Node version to 22. ([\#371](https://github.com/matrix-org/matrix-bifrost/issues/371))
+
+
 # 2.0.1 (2024-09-06)
 
 Internal Changes
