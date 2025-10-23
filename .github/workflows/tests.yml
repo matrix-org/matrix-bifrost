@@ -15,23 +15,29 @@ on:
 jobs:
   lint:
    runs-on: ubuntu-latest
+   strategy:
+     matrix:
+       node_version: [ 22, 24 ]
    steps:
     - uses: actions/checkout@v3
-    - name: Use Node.js
+    - name: Use Node.js ${{ matrix.node_version }}
       uses: actions/setup-node@v3
       with:
-        node-version-file: .node-version
+        node-version: ${{ matrix.node_version }}
     - run: yarn --frozen-lockfile
     - run: yarn lint
 
   test:
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        node_version: [ 22, 24 ]
     steps:
       - uses: actions/checkout@v3
-      - name: Use Node.js
+      - name: Use Node.js ${{ matrix.node_version }}
         uses: actions/setup-node@v3
         with:
-          node-version-file: .node-version
+          node-version: ${{ matrix.node_version }}
       - uses: actions-rs/toolchain@v1
         with:
             toolchain: stable
