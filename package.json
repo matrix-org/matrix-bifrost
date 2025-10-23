@@ -67,7 +67,7 @@
     "typescript": "^5.9.3"
   },
   "optionalDependencies": {
-    "node-purple": "git+https://github.com/matrix-org/node-purple#1adfe21219863824a1fcb4c1de35b5b44cccca37"
+    "node-purple": "git+https://github.com/matrix-org/node-purple#6c711f276772f78edf9d0dc5e1ad442e2291ec81"
   },
   "nyc": {
     "check-coverage": true,
