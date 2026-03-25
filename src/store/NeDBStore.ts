@@ -19,6 +19,13 @@ export class NeDBStore implements IStore {
     private userLock: Map<string, Promise<void>>;
 
     constructor(bridge: Bridge) {
+        log.warn("NeDB-based stores are now deprecated.");
+        // required fix for nedb being incredibly outdated
+        if (parseInt(process.versions.node.split(".")[0]) >= 24) {
+            const util = require("node:util"); // eslint-disable-line @typescript-eslint/no-var-requires
+            util.isDate = util.types.isDate;
+            util.isRegExp = util.types.isRegExp;
+        }
         const roomStore = bridge.getRoomStore();
         const userStore = bridge.getUserStore();
         if (!roomStore || !userStore) {
