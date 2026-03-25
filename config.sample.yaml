@@ -28,7 +28,7 @@ roomRules: []
 #   action: "deny"
 
 datastore:
-  # The datastore engine to use, either "nedb" or "postgres"
+  # The datastore engine to use, either "nedb" (deprecated) or "postgres"
   engine: "postgres"
 
   # For NeDB:
