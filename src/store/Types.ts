@@ -8,8 +8,8 @@ export const MROOM_TYPE_GROUP = "group";
 export const MUSER_TYPE_ACCOUNT = "account";
 export const MUSER_TYPE_GHOST = "ghost";
 
-export type MROOM_TYPES = "user-admin"|"im"|"group";
-export type MUSER_TYPES = "account"|"ghost";
+export type MROOM_TYPES = typeof MROOM_TYPE_UADMIN | typeof MROOM_TYPE_IM | typeof MROOM_TYPE_GROUP;
+export type MUSER_TYPES = typeof MUSER_TYPE_ACCOUNT | typeof MUSER_TYPE_GHOST;
 
 export interface IRemoteRoomData {
     protocol_id?: string;
@@ -30,6 +30,12 @@ export interface IRemoteImData extends IRemoteRoomData {
 export interface IRemoteUserAdminData extends IRemoteRoomData {
     matrixUser?: string;
 }
+
+export interface RoomTypeToRemoteRoomData {
+    [MROOM_TYPE_IM]: IRemoteImData;
+    [MROOM_TYPE_GROUP]: IRemoteGroupData;
+    [MROOM_TYPE_UADMIN]: IRemoteUserAdminData;
+};
 
 export interface IMatrixUserData {
     accounts: {[key: string]: IRemoteUserAccount};
