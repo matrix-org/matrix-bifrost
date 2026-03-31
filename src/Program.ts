@@ -14,7 +14,7 @@ import { XmppJsInstance } from "./xmppjs/XJSInstance";
 import { Metrics } from "./Metrics";
 import { AutoRegistration } from "./AutoRegistration";
 import { GatewayHandler } from "./GatewayHandler";
-import { IRemoteUserAdminData, MROOM_TYPE_IM, MROOM_TYPE_UADMIN } from "./store/Types";
+import { IRemoteUserAdminData, MROOM_TYPE_UADMIN } from "./store/Types";
 
 import * as fs from "fs";
 import { webcrypto } from "node:crypto";
@@ -180,64 +180,6 @@ class Program {
         catch (ex) {
             log.error("Homeserver cannot reach the bridge. You probably need to adjust your configuration.", ex);
         }
-    }
-
-    private async dropStaleIMRooms(): Promise<void> {
-        const rooms = await this.store.getRoomsOfType(MROOM_TYPE_IM);
-        log.info(`Got ${rooms.length} IM rooms`);
-        // Errors here aren't fatal, so use Promise.allSettled instead of Promise.all
-        await Promise.allSettled(rooms.map(async (room) => {
-            if (!room.matrix) {
-                log.warn(`Not checking IM room because it has no matrix component`);
-                return;
-            }
-            const roomId = room.matrix.getId();
-            if (!room.remote) {
-                log.warn(`Not checking IM room ${roomId} because it has no remote links`);
-                return;
-            }
-            const recipient = room.remote.get<string>("recipient");
-            if (!recipient) {
-                log.warn(`Dropping IM room ${roomId} because it has no recipient`);
-                await this.store.removeRoomByRoomId(roomId);
-                return;
-            }
-            const protocol = this.purple.getProtocol(room.remote.get<string>("protocol_id"));
-            if (!protocol) {
-                log.warn(`Dropping IM room ${roomId} because it has no valid protocol`);
-                await this.store.removeRoomByRoomId(roomId);
-                return;
-            }
-            const remoteIntent = this.bridge.getIntent(
-                protocol.getMxIdForProtocol(
-                    recipient,
-                    this.config.bridge.domain,
-                    this.config.bridge.userPrefix,
-                ).getId()
-            );
-            const matrixUser = room.remote.get<string>("matrixUser");
-            if (!matrixUser) {
-                log.warn(`Dropping and leaving IM room ${roomId} because it has no matrix user`);
-                await this.store.removeRoomByRoomId(roomId);
-                await remoteIntent.leave(roomId);
-                return;
-            }
-            let content: Record<string, unknown>;
-            try {
-                content = await remoteIntent.matrixClient.getRoomStateEventContent(roomId, "m.room.member", matrixUser);
-            } catch (ex) {
-                log.warn(`Dropping and leaving IM room ${roomId} because we could not look up room state: ${ex}`);
-                await this.store.removeRoomByRoomId(roomId);
-                await remoteIntent.leave(roomId);
-                return;
-            }
-            if (content.membership === "leave") {
-                log.info(`Dropping and leaving IM room ${roomId} because its matrix user left`);
-                await this.store.removeRoomByRoomId(roomId);
-                await remoteIntent.leave(roomId);
-                return;
-            }
-        }));
     }
 
     private async runBridge(port: number, config: ConfigValue) {
@@ -407,7 +349,7 @@ class Program {
         log.info("Started appservice listener on port", port);
         await this.pingBridge();
         await this.registerBot();
-        await this.dropStaleIMRooms();
+        await this.roomHandler.startStaleIMRoomScan();
         log.info("Bridge has started.");
         try {
             await purple.start();
