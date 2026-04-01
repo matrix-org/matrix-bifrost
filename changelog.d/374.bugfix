@@ -1,1 +1,0 @@
-Deprecate the "nedb" datastore engine, and fix known crash when using it in Node 24.

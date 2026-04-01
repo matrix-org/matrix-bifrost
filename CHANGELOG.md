@@ -1,3 +1,15 @@
+# 2.1.1 (2026-04-01)
+
+## Bugfixes
+
+- Deprecate the "nedb" datastore engine, and fix known crash when using it in Node 24. ([\#374](https://github.com/matrix-org/matrix-bifrost/issues/374))
+- Fix incoming messages in DM rooms created after having left an older DM room with the same XMPP user. ([\#376](https://github.com/matrix-org/matrix-bifrost/issues/376))
+
+## Internal Changes
+
+- CI: Fix changelog job. ([\#375](https://github.com/matrix-org/matrix-bifrost/issues/375))
+
+
 # 2.1.0 (2025-10-23)
 
 ## Bugfixes

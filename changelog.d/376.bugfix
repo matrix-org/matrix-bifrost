@@ -1,1 +1,0 @@
-Fix incoming messages in DM rooms created after having left an older DM room with the same XMPP user.
