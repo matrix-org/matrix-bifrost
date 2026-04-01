@@ -16,10 +16,10 @@ limitations under the License.
 
 import { Pool } from "pg";
 import { MatrixRoom, RemoteRoom, MatrixUser, Logger, RoomBridgeStoreEntry } from "matrix-appservice-bridge";
-import { IRemoteRoomData, IRemoteGroupData, MROOM_TYPES,
-    IRemoteImData, IRemoteUserAdminData, MROOM_TYPE_IM } from "../Types";
+import { IRemoteGroupData, MROOM_TYPES, RoomTypeToRemoteRoomData,
+    IRemoteImData, IRemoteUserAdminData, MROOM_TYPE_IM, MROOM_TYPE_GROUP, MROOM_TYPE_UADMIN } from "../Types";
 import { BifrostProtocol } from "../../bifrost/Protocol";
-import { IAccountMinimal } from "../../bifrost/Events";
+import { IAccountMinimal, IChatJoinProperties } from "../../bifrost/Events";
 import { BifrostRemoteUser } from "../BifrostRemoteUser";
 import { IConfigDatastore } from "../../Config";
 import { IStore } from "../Store";
@@ -32,17 +32,97 @@ export interface PgDataStoreOpts {
     max: number;
 }
 
-const RoomTypeToTable = {
-    "im": "im_rooms",
-    "group": "group_rooms",
-    "user-admin": "admin_rooms",
+const ROOM_TABLE_IM = "im_rooms";
+const ROOM_TABLE_GROUP = "group_rooms";
+const ROOM_TABLE_UADMIN = "admin_rooms";
+type ROOM_TABLES = typeof ROOM_TABLE_IM | typeof ROOM_TABLE_GROUP | typeof ROOM_TABLE_UADMIN;
+
+const RoomTypeToTable: Record<MROOM_TYPES, ROOM_TABLES> = {
+    [MROOM_TYPE_IM]: ROOM_TABLE_IM,
+    [MROOM_TYPE_GROUP]: ROOM_TABLE_GROUP,
+    [MROOM_TYPE_UADMIN]: ROOM_TABLE_UADMIN,
 };
 
-const TableToRoomType = {
-    im_rooms: "im",
-    group_rooms: "group",
-    admin_rooms: "user-admin",
+const TableToRoomType: Record<ROOM_TABLES, MROOM_TYPES> = {
+    [ROOM_TABLE_IM]: MROOM_TYPE_IM,
+    [ROOM_TABLE_GROUP]: MROOM_TYPE_GROUP,
+    [ROOM_TABLE_UADMIN]: MROOM_TYPE_UADMIN,
 };
+
+type Json = string | number | boolean | null | Json[] | { [name: string]: Json };
+
+interface RoomRow {
+    room_id: string;
+}
+
+interface ImRoomRow extends RoomRow {
+    user_id: string;
+    remote_id: string;
+    protocol_id: string;
+}
+
+interface GroupRoomRow extends RoomRow {
+    protocol_id?: string;
+    room_name?: string;
+    gateway?: boolean;
+    properties?: Json;
+}
+
+interface AdminRoomRow extends RoomRow {
+    user_id?: string;
+}
+
+interface RoomTypeToRow {
+    [MROOM_TYPE_IM]: ImRoomRow,
+    [MROOM_TYPE_GROUP]: GroupRoomRow,
+    [MROOM_TYPE_UADMIN]: AdminRoomRow,
+}
+
+function rowToRemoteImData(row: ImRoomRow): IRemoteImData {
+    return {
+        matrixUser: new MatrixUser(row.user_id).userId,
+        recipient: row.remote_id,
+        protocol_id: row.protocol_id,
+    };
+}
+
+function rowToRemoteGroupData(row: GroupRoomRow): IRemoteGroupData {
+    return {
+        gateway: row.gateway,
+        room_name: row.room_name,
+        protocol_id: row.protocol_id,
+        properties: row.properties as IChatJoinProperties,
+    };
+}
+
+function rowToRemoteUserAdminData(row: AdminRoomRow): IRemoteUserAdminData {
+    return row.user_id ? {
+        matrixUser: new MatrixUser(row.user_id).userId,
+    } : {};
+}
+
+const RoomTypeToDataFunc: {[T in MROOM_TYPES]: (row: RoomTypeToRow[T]) => RoomTypeToRemoteRoomData[T]} = {
+    [MROOM_TYPE_IM]: rowToRemoteImData,
+    [MROOM_TYPE_GROUP]: rowToRemoteGroupData,
+    [MROOM_TYPE_UADMIN]: rowToRemoteUserAdminData,
+}
+
+function rowToRoomBridgeStoreEntry<T extends MROOM_TYPES>(type: T, row: RoomTypeToRow[T]): RoomBridgeStoreEntry {
+    return dataToRoomBridgeStoreEntry(row.room_id, type, RoomTypeToDataFunc[type](row));
+}
+
+function rowToGroupRoomBridgeStoreEntry(row: GroupRoomRow): RoomBridgeStoreEntry {
+    return dataToRoomBridgeStoreEntry(row.room_id, MROOM_TYPE_GROUP, rowToRemoteGroupData(row));
+}
+
+function dataToRoomBridgeStoreEntry<T extends MROOM_TYPES>(roomId: string, type: T, data: RoomTypeToRemoteRoomData[T], remoteId = ""): RoomBridgeStoreEntry {
+    return {
+        matrix: new MatrixRoom(roomId, { extras: { type } }),
+        // Id is not always used.
+        remote: new RemoteRoom(remoteId, data as Record<string, unknown>),
+        data: {},
+    };
+}
 
 export class PgDataStore implements IStore {
     public static LATEST_SCHEMA = 2;
@@ -190,69 +270,49 @@ export class PgDataStore implements IStore {
         if (i === 0) {
             throw Error("No remoteData to compare with");
         }
-        const statement = `SELECT * FROM group_rooms WHERE ${parts.join(" AND ")};`;
-        const res = await this.pgPool.query(
+        const statement = `SELECT * FROM ${ROOM_TABLE_GROUP} WHERE ${parts.join(" AND ")}`;
+        const res = await this.pgPool.query<GroupRoomRow>(
             statement,
             Object.values(remoteData),
         );
         if (res.rowCount === 0) {
             return null;
         }
-        const row = res.rows[0];
-        const remoteGroupData: IRemoteGroupData = {
-            gateway: row.gateway,
-            properties: row.properties,
-            room_name: row.room_name,
-        };
-        return {
-            matrix: new MatrixRoom(row.room_id, { extras: { type: "group" } }),
-            // Id is not used.
-            remote: new RemoteRoom("", remoteGroupData as Record<string,unknown>),
-            data: {}
-        };
+        return rowToGroupRoomBridgeStoreEntry(res.rows[0]);
     }
 
     public async getAdminRoom(matrixUserId: string): Promise<string|null> {
-        const res = await this.pgPool.query(
-            "SELECT room_id FROM admin_rooms WHERE user_id = $1",
+        const res = await this.pgPool.query<RoomRow>(
+            `SELECT room_id FROM ${ROOM_TABLE_UADMIN} WHERE user_id = $1`,
             [ matrixUserId ],
         );
         return res.rows[0]?.room_id || null;
     }
 
     public async getIMRoom(matrixUserId: string, protocolId: string, remoteUserId: string): Promise<RoomBridgeStoreEntry|null> {
-        const res = await this.pgPool.query(
-            "SELECT room_id FROM im_rooms WHERE user_id = $1 AND remote_id = $2 AND protocol_id = $3",
+        const res = await this.pgPool.query<RoomRow>(
+            `SELECT room_id FROM ${ROOM_TABLE_IM} WHERE user_id = $1 AND remote_id = $2 AND protocol_id = $3`,
             [ matrixUserId, remoteUserId, protocolId ],
         );
         if (res.rowCount === 0) {
             return null;
         }
-        const row = res.rows[0];
-        return {
-            matrix: new MatrixRoom(row.room_id, { extras: { type: MROOM_TYPE_IM } }),
-            remote: new RemoteRoom("", {
-                matrixUser: matrixUserId,
-                protocol_id: protocolId,
-                recipient: remoteUserId,
-            }),
-            data: {}
-        };
+        return dataToRoomBridgeStoreEntry(res.rows[0].room_id, MROOM_TYPE_IM, {
+            matrixUser: matrixUserId,
+            protocol_id: protocolId,
+            recipient: remoteUserId,
+        });
     }
 
     public async getAllIMRoomsForAccount(matrixUserId: string, protocolId: string): Promise<RoomBridgeStoreEntry[]> {
-        const res = await this.pgPool.query(
-            "SELECT room_id, remote_id FROM im_rooms WHERE user_id = $1 AND protocol_id = $2",
+        const res = await this.pgPool.query<Pick<ImRoomRow, "room_id" | "remote_id">>(
+            `SELECT room_id, remote_id FROM ${ROOM_TABLE_IM} WHERE user_id = $1 AND protocol_id = $2`,
             [ matrixUserId, protocolId ],
         );
-        return res.rows.map(row => ({
-            matrix: new MatrixRoom(row.room_id, { extras: { type: MROOM_TYPE_IM } }),
-            remote: new RemoteRoom("", {
-                matrixUser: matrixUserId,
-                protocol_id: protocolId,
-                recipient: row.remote_id,
-            }),
-            data: {}
+        return res.rows.map(row => dataToRoomBridgeStoreEntry(row.room_id, MROOM_TYPE_IM, {
+            matrixUser: matrixUserId,
+            protocol_id: protocolId,
+            recipient: row.remote_id,
         }));
     }
 
@@ -270,21 +330,8 @@ export class PgDataStore implements IStore {
 
     public async getRoomsOfType(type: MROOM_TYPES): Promise<RoomBridgeStoreEntry[]> {
         const tableName = RoomTypeToTable[type];
-        const res = await this.pgPool.query(`SELECT * FROM ${tableName};`);
-        return res.rows.map((row) => {
-            const remoteData: IRemoteGroupData = {
-                gateway: row.gateway,
-                properties: row.properties,
-                room_name: row.room_name,
-                protocol_id: row.protocol_id,
-            };
-            return {
-                matrix: new MatrixRoom(row.room_id, { extras: { type } }),
-                // Id is not used.
-                remote: new RemoteRoom("", remoteData as Record<string, unknown>),
-                data: {}
-            };
-        });
+        const res = await this.pgPool.query<RoomTypeToRow[typeof type]>(`SELECT * FROM ${tableName}`);
+        return res.rows.map((row) => rowToRoomBridgeStoreEntry(type, row));
     }
 
     public async storeAccount(userId: string, protocol: BifrostProtocol, username: string, extraData?: any) {
@@ -335,7 +382,7 @@ export class PgDataStore implements IStore {
 
     public async getRoomEntryByMatrixId(roomId: string): Promise<RoomBridgeStoreEntry | null> {
         log.debug("Getting room", roomId);
-        const typeRes = await this.pgPool.query(
+        const typeRes = await this.pgPool.query<{table_name: ROOM_TABLES}>(
             "SELECT tableoid::regclass as table_name FROM rooms WHERE room_id = $1 LIMIT 1",
             [ roomId ],
         );
@@ -345,89 +392,60 @@ export class PgDataStore implements IStore {
         }
         const tableName = typeRes.rows[0].table_name;
         const type = TableToRoomType[tableName];
-        const res = await this.pgPool.query(
+        if (!type) {
+            throw new Error("Room was of unknown type!");
+        }
+        const res = await this.pgPool.query<RoomTypeToRow[typeof type]>(
             `SELECT * FROM ${tableName} WHERE room_id = $1 LIMIT 1`,
             [ roomId ],
         );
         if (!res.rowCount) {
             throw Error("Missing data for room that we did manage to select!");
         }
-        const row = res.rows[0];
-        let remoteData: IRemoteRoomData;
-        if (type === "group") {
-            remoteData = {
-                gateway: row.gateway,
-                room_name: row.room_name,
-                protocol_id: row.protocol_id,
-                properties: row.properties,
-            } as IRemoteGroupData;
-        } else if (type === "im") {
-            remoteData = {
-                matrixUser: new MatrixUser(row.user_id).userId,
-                recipient: row.remote_id,
-                protocol_id: row.protocol_id,
-            } as IRemoteImData;
-        } else if (type === "user-admin") {
-            remoteData = {
-                matrixUser: new MatrixUser(row.user_id).userId,
-            } as IRemoteUserAdminData;
-        } else {
-            throw Error("Room was of unknown type!");
-        }
-        log.debug("Found room ", JSON.stringify(remoteData));
-        return {
-            remote: new RemoteRoom("", remoteData as Record<string, unknown>),
-            matrix: new MatrixRoom(roomId, { extras: { type }}),
-            data: {}
-        };
+        const entry = rowToRoomBridgeStoreEntry(type, res.rows[0]);
+        log.debug("Found room ", JSON.stringify(entry.remote));
+        return entry;
     }
 
-    public async storeRoom(matrixId: string, type: MROOM_TYPES, remoteId: string, remoteData: IRemoteRoomData)
+    public async storeRoom<T extends MROOM_TYPES>(matrixId: string, type: T, remoteId: string, remoteData: RoomTypeToRemoteRoomData[T])
         : Promise<RoomBridgeStoreEntry> {
         log.debug("Storing room", matrixId);
         let statement: string;
-        const res = {
-            remote: new RemoteRoom(remoteId, remoteData as Record<string, unknown>),
-            matrix: new MatrixRoom(matrixId, { extras: { type } }),
-            data: {}
-        };
+        const res = dataToRoomBridgeStoreEntry(matrixId, type, remoteData, remoteId);
 
-        if (type === "user-admin") {
-            const adminProps = {
+        if (type === MROOM_TYPE_UADMIN) {
+            const adminProps: AdminRoomRow = {
                 room_id: matrixId,
                 user_id: (remoteData as IRemoteUserAdminData).matrixUser,
             };
             // We don't upsert here.
-            await this.pgPool.query("INSERT INTO admin_rooms (room_id, user_id) VALUES ($1, $2)", Object.values(adminProps));
+            await this.pgPool.query(`INSERT INTO ${ROOM_TABLE_UADMIN} (room_id, user_id) VALUES ($1, $2)`, Object.values(adminProps));
             return res;
         }
 
-        if (type === "im") {
-            const imData = (remoteData as IRemoteImData);
-            const imProps = {
+        if (type === MROOM_TYPE_IM) {
+            const imData = remoteData as IRemoteImData;
+            const imProps: ImRoomRow = {
                 room_id: matrixId,
                 user_id: imData.matrixUser,
                 remote_id: imData.recipient,
                 protocol_id: imData.protocol_id,
             };
-            statement = PgDataStore.BuildUpsertStatement("im_rooms", "(room_id)", Object.keys(imProps));
+            statement = PgDataStore.BuildUpsertStatement(ROOM_TABLE_IM, "(room_id)", Object.keys(imProps));
             await this.pgPool.query(statement, Object.values(imProps));
             return res;
         }
 
-        const props = {
-            room_id: matrixId,
-            protocol_id: remoteData.protocol_id || "",
-            room_name: "",
-            gateway: false,
-            properties: "{}",
-        };
         const groupData = remoteData as IRemoteGroupData;
-        props.gateway = groupData.gateway || false;
-        props.room_name = groupData.room_name || "";
-        props.properties = JSON.stringify(groupData.properties);
+        const props: GroupRoomRow = {
+            room_id: matrixId,
+            protocol_id: remoteData.protocol_id ?? "",
+            room_name: groupData.room_name ?? "",
+            gateway: groupData.gateway ?? false,
+            properties: JSON.stringify(groupData.properties),
+        };
         statement = PgDataStore.BuildUpsertStatement(
-            "group_rooms", "(room_id)", Object.keys(props),
+            ROOM_TABLE_GROUP, "(room_id)", Object.keys(props),
         );
         await this.pgPool.query(statement, Object.values(props));
         log.debug("Stored room", matrixId);
@@ -494,7 +512,7 @@ export class PgDataStore implements IStore {
 
     private async updateSchemaVersion(version: number) {
         log.debug(`updateSchemaVersion: ${version}`);
-        await this.pgPool.query("UPDATE schema SET version = $1;", [version]);
+        await this.pgPool.query("UPDATE schema SET version = $1", [version]);
     }
 
     private async getSchemaVersion(): Promise<number> {

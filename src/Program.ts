@@ -349,6 +349,7 @@ class Program {
         log.info("Started appservice listener on port", port);
         await this.pingBridge();
         await this.registerBot();
+        await this.roomHandler.startStaleIMRoomScan();
         log.info("Bridge has started.");
         try {
             await purple.start();

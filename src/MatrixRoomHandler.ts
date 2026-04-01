@@ -34,6 +34,7 @@ export class MatrixRoomHandler {
     private readonly accountRoomLock = new Set<string>();
     private readonly remoteEventIdMapping = new Map<string, string>(); // remote_id -> event_id
     private readonly roomCreationLock = new Map<string, Promise<RoomBridgeStoreEntry>>();
+    private readonly staleIMRoomLock = new Map<string, Promise<boolean>>();
     constructor(
         private readonly purple: IBifrostInstance,
         private readonly profileSync: ProfileSync,
@@ -101,6 +102,105 @@ export class MatrixRoomHandler {
         purple.on("read-receipt", handleAsyncEvent(this.handleReadReceipt.bind(this)));
     }
 
+    /**
+     * Begin scanning for stale IM rooms, which will be removed asynchronously.
+     *
+     * @returns a Promise that resolves after having retrieved all IM rooms from the store
+     * and kicking off an asynchronous staleness scan for each of them.
+     */
+    public async startStaleIMRoomScan(): Promise<void> {
+        const rooms = await this.store.getRoomsOfType(MROOM_TYPE_IM);
+        log.info(`Got ${rooms.length} IM rooms`);
+        for (const room of rooms) {
+            if (!room.matrix) {
+                log.warn(
+                    `Not checking IM room for remote recipient ${room.remote?.get<string>("recipient") || "<unknown>"} because it has no matrix component`,
+                );
+                continue;
+            }
+            const waiter = this.dropStaleIMRoom(room);
+            const roomId = room.matrix.getId();
+            this.staleIMRoomLock.set(roomId, waiter);
+            waiter.finally(() => this.staleIMRoomLock.delete(roomId));
+        }
+    }
+
+    /**
+     * Removes the Matrix room for a bridged IM chat from the store
+     * if it is determined to be stale by {@link isIMRoomStale}.
+     *
+     * @param room The bridged IM chat to check.
+     * @returns whether the chat's Matrix room was deemed as stale & was removed.
+     */
+    private async dropStaleIMRoom(room: RoomBridgeStoreEntry): Promise<boolean> {
+        const [roomId, remoteIntent] = await this.isIMRoomStale(room);
+        if (roomId) {
+            await this.store.removeRoomByRoomId(roomId);
+            if (remoteIntent) {
+                // May be done concurrently
+                void remoteIntent.leave(roomId);
+            }
+            return true;
+        } else {
+            return false;
+        }
+    }
+
+    /**
+     * Checks whether a Matrix room for a bridged IM chat is no longer usable.
+     *
+     * @param room The bridged IM chat to check.
+     * @returns A two-element tuple:
+     * 1. The ID of the chat's Matrix room if it is stale, or an empty string otherwise.
+     * 2. The {@link Intent} of the room's remote user, if one was found.
+     */
+    private async isIMRoomStale(room: RoomBridgeStoreEntry): Promise<[string, Intent | null]> {
+        const roomId = room.matrix.getId();
+        const recipient = room.remote.get<string>("recipient");
+        if (!recipient) {
+            log.warn(`IM room ${roomId} is stale because it has no recipient`);
+            return [roomId, null];
+        }
+        const protocol = this.purple.getProtocol(room.remote.get<string>("protocol_id"));
+        if (!protocol) {
+            log.warn(`IM room ${roomId} is stale because it has no valid protocol`);
+            return [roomId, null];
+        }
+        const remoteIntent = this.bridge.getIntent(
+            protocol.getMxIdForProtocol(
+                recipient,
+                this.config.bridge.domain,
+                this.config.bridge.userPrefix,
+            ).getId()
+        );
+        const matrixUser = room.remote.get<string>("matrixUser");
+        if (!matrixUser) {
+            log.warn(`IM room ${roomId} is stale because it has no matrix user`);
+            return [roomId, remoteIntent];
+        }
+        let content: Record<string, unknown>;
+        try {
+            content = await remoteIntent.matrixClient.getRoomStateEventContent(roomId, "m.room.member", matrixUser);
+        } catch (ex) {
+            switch (ex.statusCode) {
+                case 403:
+                    log.warn(`IM room ${roomId} is stale because remote intent isn't a room member and never was`);
+                    return [roomId, remoteIntent];
+                case 404:
+                    log.warn(`IM room ${roomId} is stale because its matrix user has no membership`);
+                    return [roomId, remoteIntent];
+                default:
+                    log.error(`IM room ${roomId} staleness unknown, failed to look up room state:`, ex);
+                    return ["", null];
+            }
+        }
+        if (content.membership === "leave") {
+            log.info(`IM room ${roomId} is stale because its matrix user left`);
+            return [roomId, remoteIntent];
+        }
+        return ["", null];
+    }
+
     public async onChatJoined(ev: IConversationEvent) {
         if (this.purple.needsDedupe()) {
             this.deduplicator.incrementRoomUsers(ev.conv.name);
@@ -127,11 +227,19 @@ export class MatrixRoomHandler {
             await (this.roomCreationLock.get(remoteId) || Promise.resolve());
             log.info("room was created, no longer waiting");
         }
-        const remoteEntries = await this.store.getIMRoom(matrixUser.getId(), data.account.protocol_id, data.sender);
-        if (remoteEntries != null && remoteEntries.matrix) {
-            return remoteEntries.matrix.getId();
+        const remoteEntry = await this.store.getIMRoom(matrixUser.getId(), data.account.protocol_id, data.sender);
+        if (!remoteEntry?.matrix) {
+            return null;
         }
-        return null;
+        const roomId = remoteEntry.matrix.getId();
+        const staleIMRoomWaiter = this.staleIMRoomLock.get(roomId);
+        if (staleIMRoomWaiter) {
+            const isStale = await staleIMRoomWaiter;
+            if (isStale) {
+                return null;
+            }
+        }
+        return roomId;
     }
 
     private async createOrGetIMRoom(data: IReceivedImMsg, matrixUser: MatrixUser, intent: Intent): Promise<string> {

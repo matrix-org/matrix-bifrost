@@ -216,13 +216,33 @@ export class MatrixEventHandler {
             return;
         }
 
-        if (membershipEvent && roomType === MROOM_TYPE_GROUP) {
-            if (this.bridge.getBot().isRemoteUser(event.sender)) {
-                return; // Don't really care about remote users
-            }
-            if (["join", "leave"].includes(event.content.membership as string)) {
-                await this.handleJoinLeaveGroup(ctx, membershipEvent);
-                return;
+        if (membershipEvent) {
+            switch (roomType) {
+                case MROOM_TYPE_GROUP:
+                    if (bridgeBot.isRemoteUser(event.sender)) {
+                        return; // Don't really care about remote users
+                    }
+                    if (["join", "leave", "ban"].includes(membershipEvent.content.membership)) {
+                        await this.handleJoinLeaveGroup(ctx, membershipEvent);
+                        return;
+                    }
+                    break;
+                case MROOM_TYPE_IM:
+                    if (membershipEvent.content.membership === "leave" && membershipEvent.sender === ctx.remote.get<string>("matrixUser")) {
+                        await this.store.removeRoomByRoomId(membershipEvent.room_id);
+                        const protocol = this.purple.getProtocol(roomProtocol);
+                        if (protocol) {
+                            await this.bridge.getIntent(
+                                protocol.getMxIdForProtocol(
+                                    ctx.remote.get<string>("recipient"),
+                                    this.config.bridge.domain,
+                                    this.config.bridge.userPrefix,
+                                ).getId()
+                            ).leave(membershipEvent.room_id);
+                        }
+                        log.info(`Left and removed entry for IM room ${membershipEvent.room_id} because the user left`);
+                        return;
+                    }
             }
         }
 
