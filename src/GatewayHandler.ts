@@ -73,7 +73,7 @@ export class GatewayHandler {
             ));
             const room: IGatewayRoom = {
                 name: typeof nameEv?.content?.name === "string" ? nameEv.content.name : "",
-                topic: nameEv?.content?.topic === "string" ? nameEv.content.topic : "",
+                topic: typeof topicEv?.content?.topic === "string" ? topicEv.content.topic : "",
                 roomId,
                 membership,
             };
@@ -248,11 +248,56 @@ export class GatewayHandler {
         try {
             const roomId = await this.bridge.getIntent().matrixClient.resolveRoom(ev.roomAlias);
             log.info(`Found ${roomId}`);
-            ev.result(null, roomId);
+            ev.result(null, { roomId, name: await this.getRoomName(roomId, ev.roomAlias) });
         } catch (ex) {
             log.warn("Room not found:", ex);
             ev.result(Error("Room not found"));
         }
+    }
+
+    /**
+     * Best-effort lookup of a room's m.room.name, so XMPP-side discovery (disco#info on the
+     * gateway MUC JID) can present the room's human name rather than the bridge's own identity.
+     * Reads room state directly when the bridge bot is a member (all bifrost-created portals),
+     * falling back to the room summary API (MSC3266) for publicly-joinable rooms it isn't in.
+     */
+    private async getRoomName(roomId: string, roomAlias: string): Promise<string|undefined> {
+        const client = this.bridge.getIntent().matrixClient;
+        try {
+            const content = await client.getRoomStateEvent(roomId, "m.room.name", "");
+            if (typeof content?.name === "string" && content.name) {
+                return content.name;
+            }
+        } catch (ex) {
+            log.debug(`Could not read m.room.name of ${roomId} directly: ${ex}`);
+        }
+        try {
+            const summary = await client.doRequest(
+                "GET", `/_matrix/client/unstable/im.nheko.summary/rooms/${encodeURIComponent(roomId)}/summary`,
+            );
+            if (typeof summary?.name === "string" && summary.name) {
+                return summary.name;
+            }
+        } catch (ex) {
+            log.debug(`Could not fetch room summary of ${roomId}: ${ex}`);
+        }
+        // Directory-listed rooms expose their name via the public-rooms search even when the
+        // bridge has no user in the room — exactly the browse-before-joining case (and gateway
+        // joins require publicly-joinable rooms, which in practice are directory-listed).
+        try {
+            const term = roomAlias.split(":")[0].replace(/^#/, "");
+            const res = await client.doRequest("POST", "/_matrix/client/v3/publicRooms", null, {
+                limit: 50,
+                filter: { generic_search_term: term },
+            });
+            const entry = res?.chunk?.find((r: {room_id: string}) => r.room_id === roomId);
+            if (typeof entry?.name === "string" && entry.name) {
+                return entry.name;
+            }
+        } catch (ex) {
+            log.debug(`Could not find ${roomId} in the public rooms directory: ${ex}`);
+        }
+        return undefined;
     }
 
     private async handlePublicRooms(ev: IGatewayPublicRoomsQuery) {
