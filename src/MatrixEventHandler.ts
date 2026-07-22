@@ -77,11 +77,15 @@ export class MatrixEventHandler {
             return null;
         }
 
+        // Name the portal after the remote group's human name (e.g. the MUC's XEP-0045
+        // disco#info identity name), so clients don't fall back to the raw bridge alias.
+        const groupName = await this.purple.getGroupName?.(properties, protocol);
         log.info(`Creating new room for ${protocol.id} with`, properties);
         this.pendingRoomAliases.set(alias, {protocol, props: properties});
         return {
             creationOpts: {
                 room_alias_name: aliasLocalpart,
+                ...(groupName ? { name: groupName } : {}),
                 initial_state: [
                     {
                         type: "m.room.join_rules",

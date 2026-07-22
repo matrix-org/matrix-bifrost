@@ -77,6 +77,8 @@ export class XmppJsInstance extends EventEmitter implements IBifrostInstance {
     private activeMUCUsers = new Set<string>();
     private lastMessageInMUC = new Map<string, {originIsMatrix: boolean, id: string}>();
     private jingleHandler?: JingleHandler;
+    // MUC JID -> human name from the disco#info identity, filled by checkGroupExists.
+    private groupNames = new Map<string, string>();
     constructor(private config: Config, private readonly bridge: Bridge) {
         super();
         this.serviceHandler = new ServiceHandler(this, this.config.bridge);
@@ -574,6 +576,10 @@ export class XmppJsInstance extends EventEmitter implements IBifrostInstance {
         Metrics.requestOutcome(true, Date.now() - startedAt, "success");
     }
 
+    public async getGroupName(properties: IChatJoinProperties): Promise<string|undefined> {
+        return this.groupNames.get(`${properties.room}@${properties.server}`);
+    }
+
     public async checkGroupExists(properties: IChatJoinProperties) {
         const props = {
             room: properties.room as string,
@@ -591,7 +597,15 @@ export class XmppJsInstance extends EventEmitter implements IBifrostInstance {
         try {
             const result = await this.sendIq(new StzaIqDiscoInfo(this.myAddress.toString(), to, id, "get"));
             log.debug(`Found ${to}`);
-            const isMuc = result.getChild("query")?.getChildByAttr("var", "http://jabber.org/protocol/muc");
+            const query = result.getChild("query");
+            const isMuc = query?.getChildByAttr("var", "http://jabber.org/protocol/muc");
+            // The disco#info identity carries the MUC's human name (XEP-0045); remember it so
+            // getGroupName can hand it to the portal room creation without a second roundtrip.
+            const identityName = query?.getChildren("identity")
+                ?.find((i) => i.getAttr("category") === "conference")?.getAttr("name");
+            if (identityName) {
+                this.groupNames.set(to, identityName);
+            }
             return !!isMuc;
         } catch (ex) {
             // TODO: Factor this out, error parsing would be useful.
