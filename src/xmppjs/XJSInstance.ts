@@ -340,7 +340,9 @@ export class XmppJsInstance extends EventEmitter implements IBifrostInstance {
         }
         if (aJid.domain === this.myAddress.domain) {
             log.debug(aJid.local, [...this.accounts.keys()]);
-            return this.accounts.get(aJid.toString());
+            // Accounts are keyed by bare JID; the request may address a full JID (e.g. a
+            // vCard fetch against the full JID we advertise in MUC occupant items).
+            return this.accounts.get(`${aJid.local}@${aJid.domain}`);
         }
         return;
     }
