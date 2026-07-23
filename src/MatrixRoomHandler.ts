@@ -653,13 +653,17 @@ export class MatrixRoomHandler {
         const topicEv = state.find((ev) => ev.type === "m.room.topic");
         const nameEv = state.find((ev) => ev.type === "m.room.name");
         const currentName = nameEv ? nameEv.content.name : "";
-        const currentTopic = topicEv ? topicEv.content.name : "";
-        if (currentTopic !== data.topic ? data.topic : "") {
-            intent.setRoomTopic(roomId, data.topic || "").catch((err) => {
+        const currentTopic = topicEv ? topicEv.content.topic : "";
+        if (data.topic && data.topic !== currentTopic) {
+            intent.setRoomTopic(roomId, data.topic).catch((err) => {
                 log.warn("Failed to set topic of", roomId, err);
             });
         }
-        if (currentName !== data.conv.name) {
+        // conv.name is not a human-readable name on all protocols — XMPP conversations are
+        // named by their raw MUC JID — and the topic is (re)delivered on every join, so
+        // overwriting here would keep resetting a room name the room's admins (or portal
+        // creation) chose back to the JID. Only fill the name in when the room has none.
+        if (!currentName) {
             intent.setRoomName(roomId, data.conv.name).catch((err) => {
                 log.warn("Failed to set name of", roomId, err);
             });
