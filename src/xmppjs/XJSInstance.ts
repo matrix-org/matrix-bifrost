@@ -485,13 +485,34 @@ export class XmppJsInstance extends EventEmitter implements IBifrostInstance {
         return Buffer.from(stanza.toString()).toString("base64");
     }
 
-    private async onStanza(stanza: Element) {
-        const startedAt = Date.now();
+    /**
+     * Decide whether an inbound stanza is a duplicate that should be dropped, marking it
+     * as seen otherwise. Stanzas carrying an explicit id are deduplicated against ids we
+     * have seen or sent (self-echo suppression, see xmppAddSentMessage), and messages
+     * without an id get a content-derived one so that MUC fan-out copies (same from+body
+     * delivered once per bridged occupant) collapse to a single event. Presences without
+     * an id are never deduplicated: a MUC join -> part -> rejoin cycle legitimately
+     * repeats byte-identical presence stanzas, and content-dedup would silently eat the
+     * rejoin, permanently locking the user out of the room.
+     */
+    public isDuplicateStanza(stanza: Element): boolean {
+        const hasExplicitId = Boolean(stanza.attrs.id);
         const id = stanza.attrs.id = stanza.attrs.id || this.generateIdforMsg(stanza);
+        if (!hasExplicitId && !stanza.is("message")) {
+            return false;
+        }
         if (this.seenMessages.has(id)) {
-            return;
+            return true;
         }
         this.xmppAddSentMessage(id);
+        return false;
+    }
+
+    private async onStanza(stanza: Element) {
+        const startedAt = Date.now();
+        if (this.isDuplicateStanza(stanza)) {
+            return;
+        }
         log.debug("Stanza:", stanza.toJSON());
         const from = stanza.attrs.from ? jid(stanza.attrs.from) : null;
         const to = stanza.attrs.to ? jid(stanza.attrs.to) : null;
@@ -511,7 +532,7 @@ export class XmppJsInstance extends EventEmitter implements IBifrostInstance {
                         return;
                     }
                     else {
-                        log.debug(`Got a jingle request ${id}, but the bridge isn't configured to handle jingle`);
+                        log.debug(`Got a jingle request ${stanza.attrs.id}, but the bridge isn't configured to handle jingle`);
                     }
                 } else if (stanza.is("iq") && stanza.getChildByAttr('xmlns', 'http://jabber.org/protocol/ibb')) {
                     // This is an "open" reqyest
@@ -521,7 +542,7 @@ export class XmppJsInstance extends EventEmitter implements IBifrostInstance {
                         return;
                     }
                     else {
-                        log.debug(`Got a 'open' (IBB) request ${id}, but the bridge isn't configured to handle jingle`);
+                        log.debug(`Got a 'open' (IBB) request ${stanza.attrs.id}, but the bridge isn't configured to handle jingle`);
                     }
                 } else if (stanza.is("iq") && ["get", "set"].includes(stanza.getAttr("type"))) {
                     await this.serviceHandler.handleIq(stanza, this.bridge.getIntent());
@@ -542,7 +563,7 @@ export class XmppJsInstance extends EventEmitter implements IBifrostInstance {
             } else if (stanza.is("iq") &&
                 ["result", "error"].includes(stanza.getAttr("type")) &&
                 stanza.attrs.id) {
-                this.emit("iq." + id, stanza);
+                this.emit("iq." + stanza.attrs.id, stanza);
             } else if (stanza.is("iq") && stanza.getAttr("type") === "get" && isOurs) {
                 this.serviceHandler.handleIq(stanza, this.bridge.getIntent());
             }
