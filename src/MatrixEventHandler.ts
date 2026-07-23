@@ -663,7 +663,7 @@ Say \`help\` for more commands.
                     Object.assign({}, context.remote.get("properties")),
                 );
                 await ProtoHacks.addJoinProps(acct.protocol.id, props, event.sender, this.bridge.getIntent());
-                await this.joinOrDefer(acct, name, props);
+                await this.joinOrDefer(acct, name, props, MatrixEventHandler.historySinceForEvent(event));
             }
             const roomName: string = context.remote.get("room_name");
             const msg = await MessageFormatter.matrixEventToBody(event as MatrixMessageEvent, this.config.bridge, this.mediaProxy);
@@ -740,7 +740,7 @@ Say \`help\` for more commands.
         log.info(`Sending ${membership} to`, props);
         if (membership === "join") {
             await ProtoHacks.addJoinProps(acct.protocol.id, props, event.sender, this.bridge.getIntent());
-            this.joinOrDefer(acct, name, props);
+            this.joinOrDefer(acct, name, props, MatrixEventHandler.historySinceForEvent(event));
         } else if (membership === "leave") {
             await acct.rejectChat(props);
             this.deduplicator.removeChosenOne(name, acct.remoteId);
@@ -873,9 +873,23 @@ E.g. \`${command} ${acct.protocol.id}\` ${required.join(" ")} ${optional.join(" 
         return paramSet;
     }
 
-    private async joinOrDefer(acct: IBifrostAccount, name: string, properties: IChatJoinProperties): Promise<void> {
+    /**
+     * The point to replay remote room history from when a Matrix event triggers a remote
+     * join: the event's origin timestamp (when the join/message actually happened on the
+     * Matrix side), less a small margin for clock skew between the homeserver and the
+     * remote chat service. Anything sent to the remote room after this instant, but
+     * before our join completes, would otherwise be lost; the deduplicator drops any
+     * replayed messages we already relayed.
+     */
+    private static historySinceForEvent(event: WeakEvent): Date {
+        return new Date(event.origin_server_ts - 5000);
+    }
+
+    private async joinOrDefer(
+        acct: IBifrostAccount, name: string, properties: IChatJoinProperties, historySince?: Date,
+    ): Promise<void> {
         if (acct.connected) {
-            await acct.joinChat(properties);
+            await acct.joinChat(properties, undefined, undefined, undefined, historySince);
             acct.setJoinPropertiesForRoom?.(name, properties);
             return;
         }
@@ -897,7 +911,7 @@ E.g. \`${command} ${acct.protocol.id}\` ${required.join(" ")} ${optional.join(" 
         });
         log.debug("Account signed in, joining room");
         acct.setJoinPropertiesForRoom?.(name, properties);
-        await acct.joinChat(properties, this.purple, 5000);
+        await acct.joinChat(properties, this.purple, 5000, undefined, historySince);
     }
 
     private async getAccountForMxid(sender: string, protocol: string,

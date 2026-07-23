@@ -36,7 +36,10 @@ export interface IBifrostAccount extends IProfileProvider {
         components: IChatJoinProperties,
         purple?: IBifrostInstance,
         timeout?: number,
-        setWaiting?: boolean)
+        setWaiting?: boolean,
+        // If set, ask the remote chat to replay history from this point on join, so
+        // messages sent while the join was still in flight are not lost.
+        historySince?: Date)
     : Promise<IConversationEvent|void>;
 
     rejectChat(components: IChatJoinProperties);

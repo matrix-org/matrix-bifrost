@@ -1,6 +1,7 @@
 import * as Chai from "chai";
 import { StzaPresenceItem, StzaPresenceError, StzaMessageSubject,
-    StzaMessage, StzaPresencePart, StzaPresenceKick, SztaIqError, StzaIqDiscoInfo } from "../../src/xmppjs/Stanzas";
+    StzaMessage, StzaPresencePart, StzaPresenceJoin, StzaPresenceKick, SztaIqError,
+    StzaIqDiscoInfo } from "../../src/xmppjs/Stanzas";
 import { XMPPFeatures } from "../../src/xmppjs/XMPPConstants";
 import { assertXML } from "./util";
 const expect = Chai.expect;
@@ -25,6 +26,26 @@ describe("Stanzas", () => {
                 "<presence from=\"foo@bar\" to=\"baz@bar\" id=\"someid\" type='error'><x"
                 + " xmlns='http://jabber.org/protocol/muc'/><error type='cancel' by='baz2@bar'>"
                 + "<inner-error xmlns='urn:ietf:params:xml:ns:xmpp-stanzas'/></error></presence>",
+            );
+        });
+    });
+    describe("StzaPresenceJoin", () => {
+        it("should request no history by default", () => {
+            const xml = new StzaPresenceJoin("foo@bar", "muc@conf.bar/nick").xml;
+            assertXML(xml);
+            expect(xml).to.equal(
+                "<presence from=\"foo@bar\" to=\"muc@conf.bar/nick\">"
+                + "<x xmlns='http://jabber.org/protocol/muc'><history maxchars='0'/></x></presence>",
+            );
+        });
+        it("should request history since a point in time when given", () => {
+            const since = new Date("2020-01-02T03:04:05.678Z");
+            const xml = new StzaPresenceJoin("foo@bar", "muc@conf.bar/nick", undefined, undefined, since).xml;
+            assertXML(xml);
+            expect(xml).to.equal(
+                "<presence from=\"foo@bar\" to=\"muc@conf.bar/nick\">"
+                + "<x xmlns='http://jabber.org/protocol/muc'>"
+                + "<history since='2020-01-02T03:04:05.678Z'/></x></presence>",
             );
         });
     });

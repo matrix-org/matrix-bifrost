@@ -191,13 +191,20 @@ export class StzaPresenceJoin extends StzaPresence {
         to: string,
         id?: string,
         public presenceType?: string,
+        // Replay room history from this point (XEP-0045 §7.2.14). Used to close the
+        // join race: messages sent to the room while our join was still in flight
+        // would otherwise never be seen. Duplicates of messages we already relayed
+        // are collapsed by the inbound stanza deduplicator.
+        public historySince?: Date,
     ) {
         super(from, to, id);
     }
 
     public get xContent() {
+        if (this.historySince) {
+            return `<history since='${this.historySince.toISOString()}'/>`;
+        }
         // No history.
-        // TODO: I'm sure we want to be able to configure this.
         return `<history maxchars='0'/>`;
     }
 }
