@@ -1,4 +1,7 @@
-import { Cli, Bridge, AppServiceRegistration, Logger, TypingEvent, Request, PresenceEvent, MediaProxy } from "matrix-appservice-bridge";
+import {
+    Cli, Bridge, AppServiceRegistration, Logger, TypingEvent, Request, PresenceEvent, MediaProxy,
+} from "matrix-appservice-bridge";
+import { ThirdpartyLocationResponse } from "matrix-appservice-bridge/lib/thirdparty";
 import { EventEmitter } from "events";
 import { MatrixEventHandler } from "./MatrixEventHandler";
 import { MatrixRoomHandler } from "./MatrixRoomHandler";
@@ -10,7 +13,8 @@ import { IStore, initiateStore } from "./store/Store";
 import { Deduplicator } from "./Deduplicator";
 import { Config, ConfigValue } from "./Config";
 import { Util } from "./Util";
-import { XmppJsInstance } from "./xmppjs/XJSInstance";
+import { XmppJsInstance, XMPP_PROTOCOL } from "./xmppjs/XJSInstance";
+import { RoomAliasSet } from "./RoomAliasSet";
 import { Metrics } from "./Metrics";
 import { AutoRegistration } from "./AutoRegistration";
 import { GatewayHandler } from "./GatewayHandler";
@@ -166,6 +170,151 @@ class Program {
         await this.purple.close();
     }
 
+    private static thirdPartyField(
+        fields: Record<string, string[]|string>, key: string,
+    ): string|undefined {
+        const value = fields[key];
+        return Array.isArray(value) ? value[0] : value;
+    }
+
+    // Split a "muc" / "username" field that was given as a full address
+    // (foo@example.com) into its parts, preferring an explicit domain field.
+    private static thirdPartyAddress(
+        fields: Record<string, string[]|string>, localKey: string,
+    ): {local: string, domain: string}|undefined {
+        let local = Program.thirdPartyField(fields, localKey);
+        let domain = Program.thirdPartyField(fields, "domain");
+        if (!local) {
+            return undefined;
+        }
+        const at = local.lastIndexOf("@");
+        if (!domain && at !== -1) {
+            domain = local.substring(at + 1);
+            local = local.substring(0, at);
+        }
+        if (!local || !domain) {
+            return undefined;
+        }
+        return {local, domain};
+    }
+
+    private thirdPartyUser(protocol: string, fields: Record<string, string[]|string>) {
+        if (protocol !== THIRDPARTY_PROTOCOL_ID) {
+            return [];
+        }
+        const address = Program.thirdPartyAddress(fields, "username");
+        if (!address) {
+            return [];
+        }
+        try {
+            const userid = XMPP_PROTOCOL.getMxIdForProtocol(
+                `${address.local}@${address.domain}`,
+                this.cfg.bridge.domain,
+                this.cfg.bridge.userPrefix,
+            ).getId();
+            return [{
+                userid,
+                protocol: THIRDPARTY_PROTOCOL_ID,
+                fields: { username: address.local, domain: address.domain },
+            }];
+        } catch (ex) {
+            log.debug(`thirdparty user lookup failed for ${address.local}@${address.domain}:`, ex);
+            return [];
+        }
+    }
+
+    private thirdPartyParseUser(userid: string) {
+        const xmpp = this.purple;
+        if (!(xmpp instanceof XmppJsInstance)) {
+            return [];
+        }
+        try {
+            const { username } = xmpp.getUsernameFromMxid(userid, this.cfg.bridge.userPrefix);
+            const at = username.lastIndexOf("@");
+            if (at === -1) {
+                return [];
+            }
+            return [{
+                userid,
+                protocol: THIRDPARTY_PROTOCOL_ID,
+                fields: {
+                    username: username.substring(0, at),
+                    domain: username.substring(at + 1),
+                },
+            }];
+        } catch {
+            return [];
+        }
+    }
+
+    private thirdPartyLocation(protocol: string, fields: Record<string, string[]|string>) {
+        if (protocol !== THIRDPARTY_PROTOCOL_ID) {
+            return [];
+        }
+        const address = Program.thirdPartyAddress(fields, "muc");
+        if (!address) {
+            return [];
+        }
+        for (const [source, opts] of Object.entries(this.cfg.portals.aliases || {})) {
+            if (opts.protocol !== XMPP_PROTOCOL.id) {
+                continue;
+            }
+            // Which capture group of the alias regex feeds which join property?
+            const groupValues: {[index: number]: string} = {};
+            for (const [prop, value] of Object.entries(opts.properties)) {
+                const m = /^regex:(\d+)$/.exec(value);
+                if (!m) {
+                    continue;
+                }
+                if (prop === "room") {
+                    groupValues[parseInt(m[1], 10)] = address.local;
+                } else if (prop === "server") {
+                    groupValues[parseInt(m[1], 10)] = address.domain;
+                }
+            }
+            if (Object.keys(groupValues).length < 2) {
+                continue;
+            }
+            // Substitute the capture groups with the address parts, then check
+            // the configured regex round-trips the candidate localpart.
+            let groupIndex = 0;
+            const localpart = source.replace(/^\^/, "").replace(/\$$/, "")
+                .replace(/\([^)]*\)/g, () => {
+                    groupIndex += 1;
+                    return groupValues[groupIndex] ?? "";
+                });
+            if (!new RegExp(source).exec(localpart)) {
+                continue;
+            }
+            return [{
+                alias: `#${localpart}:${this.cfg.bridge.domain}`,
+                protocol: THIRDPARTY_PROTOCOL_ID,
+                fields: { muc: address.local, domain: address.domain },
+            }];
+        }
+        return [];
+    }
+
+    private thirdPartyParseLocation(alias: string) {
+        if (!this.purple) {
+            return [];
+        }
+        const aliasSet = new RoomAliasSet(this.cfg.portals, this.purple);
+        const localpart = alias.startsWith("#") ? alias.substring(1).split(":")[0] : alias;
+        const res = aliasSet.getOptsForAlias(localpart);
+        if (!res || res.protocol.id !== XMPP_PROTOCOL.id) {
+            return [];
+        }
+        return [{
+            alias,
+            protocol: THIRDPARTY_PROTOCOL_ID,
+            fields: {
+                muc: res.properties.room,
+                domain: res.properties.server,
+            },
+        }];
+    }
+
     private async pingBridge() {
         let internalRoom: string|null;
         try {
@@ -271,6 +420,15 @@ class Program {
                             network_id: THIRDPARTY_PROTOCOL_ID,
                         }],
                     }),
+                    // Map XMPP addresses to their bridge ghosts/portal aliases, so
+                    // clients can resolve user@domain / room@domain without knowing
+                    // the bridge's mxid escaping or alias templates.
+                    getUser: (protocol, fields) => this.thirdPartyUser(protocol, fields),
+                    // The lib mistypes parseUser's return as a location response.
+                    parseUser: (userid) =>
+                        this.thirdPartyParseUser(userid) as unknown as ThirdpartyLocationResponse[],
+                    getLocation: (protocol, fields) => this.thirdPartyLocation(protocol, fields),
+                    parseLocation: (alias) => this.thirdPartyParseLocation(alias),
                 },
             },
             domain: this.cfg.bridge.domain,
