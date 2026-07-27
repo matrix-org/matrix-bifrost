@@ -19,6 +19,8 @@ export const XMPP_TEST_PASSWORD = "xmpp_password";
 // Fixed so tests can compute the expected ghost mxid (XJSInstance#getMxIdForProtocol
 // puts the resource first in the localpart) deterministically.
 export const XMPP_TEST_RESOURCE = "testinstance";
+// A MUC component, for tests that bridge XMPP group chats into Matrix portal rooms.
+export const XMPP_MUC_DOMAIN = "conference.xmpp.localhost";
 
 const PROSODY_C2S_PORT = 5222;
 const PROSODY_COMPONENT_PORT = 5347;
@@ -71,6 +73,9 @@ VirtualHost "${XMPP_C2S_DOMAIN}"
 
 Component "${XMPP_COMPONENT_DOMAIN}"
     component_secret = "${XMPP_COMPONENT_SECRET}"
+
+Component "${XMPP_MUC_DOMAIN}" "muc"
+    name = "Chatrooms"
 `;
 }
 
