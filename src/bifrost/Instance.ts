@@ -33,6 +33,11 @@ export interface IBifrostInstance extends EventEmitter {
     getNickForChat?(conv: any): string;
     getUsernameFromMxid(mxid: string, prefix: string): {username: string, protocol: BifrostProtocol};
     checkGroupExists(properties: IChatJoinProperties, protocol: BifrostProtocol): Promise<boolean>;
+    /**
+     * A human-readable name for the remote group, if the backend can discover one cheaply
+     * (e.g. from data already fetched by checkGroupExists). Used to name portal rooms.
+     */
+    getGroupName?(properties: IChatJoinProperties, protocol: BifrostProtocol): Promise<string|undefined>;
     on(name: string, cb: (ev: IEventBody) => void);
     on(
         name: "account-connection-error"|"account-signed-on"|"account-signed-off",
