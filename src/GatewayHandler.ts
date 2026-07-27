@@ -262,7 +262,7 @@ export class GatewayHandler {
      * Best-effort lookup of a room's m.room.name, so XMPP-side discovery (disco#info on the
      * gateway MUC JID) can present the room's human name rather than the bridge's own identity.
      * Reads room state directly when the bridge bot is a member (all bifrost-created portals),
-     * falling back to the room summary API (MSC3266) for publicly-joinable rooms it isn't in.
+     * falling back to the room summary API, and then finally the public rooms list.
      */
     private async getRoomName(roomId: string, roomAlias: string): Promise<string|undefined> {
         const client = this.bridge.getIntent().matrixClient;
@@ -276,7 +276,7 @@ export class GatewayHandler {
         }
         try {
             const summary = await client.doRequest(
-                "GET", `/_matrix/client/unstable/im.nheko.summary/rooms/${encodeURIComponent(roomId)}/summary`,
+                "GET", `/_matrix/client/v1/room_summary/${encodeURIComponent(roomId)}`,
             );
             if (typeof summary?.name === "string" && summary.name) {
                 return summary.name;
