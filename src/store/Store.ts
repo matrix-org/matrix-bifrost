@@ -20,6 +20,8 @@ export async function initiateStore(config: IConfigDatastore, bridge: Bridge): P
 
 export interface IStore {
 
+    close?(): void;
+
     getMatrixUser(id: string): Promise<MatrixUser|null>;
 
     getMatrixUserForAccount(account: IAccountMinimal): Promise<MatrixUser|null>;
