@@ -108,6 +108,9 @@ export class GatewayHandler {
             log.info("Handing room name change for gateway");
             room.name = ev.content.name;
             this.purple.gateway.sendStateChange(chatName, sender, "name", room);
+            // Also refresh the discovery cache, so XMPP room lists (per-room disco#info)
+            // pick the rename up immediately rather than after the cache TTL.
+            this.purple.gateway.updateRoomName(room.roomId, room.name);
         } else if (ev.type === "m.room.topic") {
             log.info("Handing room topic change for gateway");
             room.topic = ev.content.topic;

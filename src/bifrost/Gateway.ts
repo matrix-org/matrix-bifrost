@@ -19,6 +19,11 @@ export interface IGateway extends IProfileProvider {
     initialMembershipSync(chatName: string, room: IGatewayRoom, remoteGhosts: BifrostRemoteUser[]): void;
     getMxidForRemote(sender: string): string;
     memberInRoom(chatName: string, matrixId: string): boolean;
+    /**
+     * The Matrix room was renamed: refresh anything presenting the room's name to the remote
+     * network (e.g. cached disco#info identities), so room lists pick the new name up live.
+     */
+    updateRoomName(roomId: string, name?: string): void;
 }
 
 export interface IGatewayRoom {

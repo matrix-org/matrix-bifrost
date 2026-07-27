@@ -11,10 +11,20 @@ import { XMPPFeatures } from "./XMPPConstants";
 const log = new Logger("ServiceHandler");
 
 const MAX_AVATARS = 1024;
+// How long a gateway room's cached name is trusted before disco re-queries it. Only a
+// fallback for rooms the bridge has no user in - renames in bridged rooms are pushed
+// straight into the cache (updateCachedRoomName).
+const ROOM_NAME_CACHE_MS = 5 * 60 * 1000;
 
 export class ServiceHandler {
     private avatarCache: Map<string, {data: Buffer, type: string}>;
-    private existingAliases: Map<string, IGatewayRoomQueryResult>; /* alias -> {room_id, name} */
+    /**
+     * alias -> {room_id, name} for gateway room discovery. The alias->roomId mapping is
+     * stable; the NAME is kept fresh two ways: pushed updates via updateCachedRoomName (rooms
+     * the bridge has a user in, so renames propagate live) and a TTL re-query (rooms nobody
+     * has joined yet, where no Matrix events reach the bridge).
+     */
+    private existingAliases: Map<string, IGatewayRoomQueryResult & {fetchedAt: number}>;
     private readonly serverDiscoInfo: StzaIqDiscoInfo;
     private readonly userDiscoInfo: StzaIqDiscoInfo;
     public readonly userDiscoHash: string;
@@ -41,6 +51,16 @@ export class ServiceHandler {
         this.userDiscoInfo.feature.add(XMPPFeatures.ChatStates);
         this.userDiscoHash = this.userDiscoInfo.hash;
         this.userDiscoInfo.node = `${NODE_NAME}#${this.userDiscoHash}`;
+    }
+
+    /** Push a Matrix room rename into the discovery cache (see existingAliases). */
+    public updateCachedRoomName(roomId: string, name?: string): void {
+        for (const entry of this.existingAliases.values()) {
+            if (entry.roomId === roomId) {
+                entry.name = name;
+                entry.fetchedAt = Date.now();
+            }
+        }
     }
 
     public parseAliasFromJID(to: JID): string|null {
@@ -283,11 +303,9 @@ export class ServiceHandler {
                 throw Error("Not a valid alias");
             }
             log.debug(`Running room discovery for ${toStr}`);
-            // The alias->roomId mapping is stable, but the name can change: re-query when we
-            // have no name cached so renames eventually propagate.
             let room = this.existingAliases.get(alias);
-            if (!room || !room.name) {
-                room = await this.queryRoom(alias);
+            if (!room || !room.name || Date.now() - room.fetchedAt > ROOM_NAME_CACHE_MS) {
+                room = { ...await this.queryRoom(alias), fetchedAt: Date.now() };
                 this.existingAliases.set(alias, room);
             }
             log.info(`Response for alias request ${toStr} (${alias}) -> ${room.roomId}`);
