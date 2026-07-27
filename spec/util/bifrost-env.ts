@@ -201,13 +201,19 @@ export class BifrostTestEnv {
 
     public async tearDown(): Promise<void> {
         await Promise.allSettled([
-            this.bridge?.killBridge(),
             this.xmppClient?.stop(),
             ...[...this.users.values()].map((u) => u.stop()),
         ]);
+        // Synapse pushes AS transactions to the bridge's HTTP listener asynchronously, so stop
+        // it before killing the bridge - otherwise a straggling push can land on a port that's
+        // already closed. Testcontainers relays that inbound connection back to the host via an
+        // SSH tunnel (see exposeHostPorts in containers/index.ts) whose relay socket has no
+        // error handler, so an ECONNREFUSED there crashes the whole test process instead of
+        // just failing a request.
+        await this.containers?.synapse.stop();
+        await this.bridge?.killBridge();
         await Promise.allSettled([
             this.dbName && this.containers ? dropDatabase(this.containers.postgres, this.dbName) : Promise.resolve(),
-            this.containers?.synapse.stop(),
             this.containers?.prosody.stop(),
             this.containers?.postgres.stop(),
         ]);
