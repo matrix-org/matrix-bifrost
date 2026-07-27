@@ -9,7 +9,9 @@
     "composite": false,
     // TODO: Enable these
     "strict": false,
-    "strictNullChecks": false
+    "strictNullChecks": false,
+    // types/xmpp__xml has duplicate global identifiers with @xmpp/client's types
+    "skipLibCheck": true
   },
   "include": [
     "src/**/*"

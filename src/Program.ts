@@ -29,7 +29,7 @@ EventEmitter.defaultMaxListeners = 50;
 /**
  * This is the entry point for the bridge. It contains
  */
-class Program {
+export class Program {
     private cli: Cli<Record<string, unknown>>;
     private bridge?: Bridge;
     private eventHandler: MatrixEventHandler|undefined;
@@ -155,10 +155,11 @@ class Program {
         }
     }
 
-    private async killBridge() {
+    public async killBridge() {
         log.info("SIGTERM recieved, killing bridge");
         await this.bridge.close();
         await this.purple.close();
+        await this.store.close?.();
     }
 
     private async pingBridge() {
@@ -182,7 +183,7 @@ class Program {
         }
     }
 
-    private async runBridge(port: number, config: ConfigValue) {
+    public async runBridge(port: number, config: ConfigValue, registration?: AppServiceRegistration) {
         const checkOnly = process.env.BIFROST_CHECK_ONLY === "true";
         this.cfg.ApplyConfig(config);
         port = this.cfg.bridge.appservicePort || port;
@@ -249,7 +250,7 @@ class Program {
             domain: this.cfg.bridge.domain,
             homeserverUrl: this.cfg.bridge.homeserverUrl,
             disableContext: true,
-            registration: this.cli.getRegistrationFilePath(),
+            registration: registration ?? this.cli.getRegistrationFilePath(),
             ...storeParams,
         });
         await this.bridge.initialise();
@@ -270,8 +271,7 @@ class Program {
             this.purple = new (require("./purple/PurpleInstance").PurpleInstance)(this.cfg.purple);
         } else if (this.cfg.purple.backend === "xmpp-js") {
             log.info("Selecting xmpp-js as a backend");
-            // eslint-disable-next-line @typescript-eslint/no-var-requires
-            this.purple = new (require("./xmppjs/XJSInstance").XmppJsInstance)(this.cfg, this.bridge);
+            this.purple = new XmppJsInstance(this.cfg, this.bridge);
         } else {
             throw new Error(`Backend ${this.cfg.purple.backend} not supported`);
         }
@@ -368,7 +368,9 @@ class Program {
     }
 }
 
-new Program().start();
+if (require.main === module) {
+    new Program().start();
+}
 
 process.on('unhandledRejection', (reason, promise) => {
     log.warn(`Unhandled rejection`, reason, promise);
