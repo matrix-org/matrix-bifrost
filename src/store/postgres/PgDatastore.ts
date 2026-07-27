@@ -24,8 +24,19 @@ import { BifrostRemoteUser } from "../BifrostRemoteUser";
 import { IConfigDatastore } from "../../Config";
 import { IStore } from "../Store";
 import { Util } from "../../Util";
+import { runSchema as runSchemaV1 } from "./schema/v1";
+import { runSchema as runSchemaV2 } from "./schema/v2";
 
 const log = new Logger("PgDatstore");
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type SchemaMigration = (connection: any) => Promise<void>;
+// Loosely typed to match the pre-existing (dynamic require) call site, which has always
+// passed a Pool where these schema files declare a PoolClient parameter.
+const SCHEMA_MIGRATIONS: {[version: number]: SchemaMigration} = {
+    1: runSchemaV1,
+    2: runSchemaV2,
+};
 
 export interface PgDataStoreOpts {
     min: number;
@@ -151,12 +162,13 @@ export class PgDataStore implements IStore {
             log.error("Postgres Error: %s", err);
         });
         process.on("beforeExit", (e) => {
-            if (this.hasEnded) {
-                return;
-            }
             // Ensure we clean up on exit
-            this.pgPool.end();
+            this.destroy();
         });
+    }
+
+    public close() {
+        return this.destroy();
     }
 
     public async getMatrixUser(id: string) {
@@ -485,8 +497,7 @@ export class PgDataStore implements IStore {
         let currentVersion = await this.getSchemaVersion();
         while (currentVersion < PgDataStore.LATEST_SCHEMA) {
             log.info(`Updating schema to v${currentVersion + 1}`);
-            // eslint-disable-next-line @typescript-eslint/no-var-requires
-            const runSchema = require(`./schema/v${currentVersion + 1}`).runSchema;
+            const runSchema = SCHEMA_MIGRATIONS[currentVersion + 1];
             try {
                 await runSchema(this.pgPool);
                 currentVersion++;

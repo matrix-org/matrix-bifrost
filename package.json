@@ -3,7 +3,7 @@
   "version": "2.1.1",
   "description": "Multi protocol bridging for Matrix.",
   "engines": {
-    "node": ">=22"
+    "node": "^22.0.0 || >=24.0.0"
   },
   "main": "lib/Program.js",
   "scripts": {
@@ -13,6 +13,7 @@
     "start": "node --enable-source-maps lib/Program.js -c config.yaml",
     "genreg": "node lib/Program.js -r -c config.yaml",
     "test": "mocha -r ts-node/register test/test.ts test/*.ts test/**/*.ts",
+    "test:e2e": "vitest --config vitest.e2e.config.ts run",
     "changelog": "scripts/towncrier.sh",
     "coverage": "nyc mocha -r ts-node/register test/test.ts test/*.ts test/**/*.ts"
   },
@@ -56,18 +57,24 @@
     "@types/xmpp__xml": "^0.6.1",
     "@typescript-eslint/eslint-plugin": "^8.46.2",
     "@typescript-eslint/parser": "^8.46.2",
+    "@xmpp/client": "^0.13.1",
     "chai": "^4",
     "eslint": "^8.57.1",
     "eslint-plugin-import": "^2.29.1",
     "eslint-plugin-jsdoc": "^48.0.2",
+    "matrix-bot-sdk": "^0.8.0",
     "mocha": "^9.0.3",
     "mock-require": "^3.0.3",
     "nyc": "^15.1.0",
+    "testcontainers": "^12.0.4",
+    "@testcontainers/postgresql": "^12.0.4",
     "ts-node": "^10.9.2",
-    "typescript": "^5.9.3"
+    "typescript": "^5.9.3",
+    "vitest": "^4.1.10",
+    "yaml": "^2.9.0"
   },
   "optionalDependencies": {
-    "node-purple": "git+https://github.com/matrix-org/node-purple#6c711f276772f78edf9d0dc5e1ad442e2291ec81"
+    "node-purple": "git+https://github.com/matrix-org/node-purple#f5f5005501a95ac1e61da69298782b08a130946a"
   },
   "nyc": {
     "check-coverage": true,
