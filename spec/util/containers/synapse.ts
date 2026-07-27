@@ -62,6 +62,9 @@ export class SynapseContainer extends GenericContainer {
             registration_shared_secret: this.registrationSecret,
             app_service_config_files: Array.from(this.appserviceFiles),
             federation_ip_range_blacklist: [],
+            // Synapse denies publishing rooms to the room directory by default.
+            // Tests that create public/discoverable rooms need this.
+            room_list_publication_rules: [{ action: "allow" }],
             database: { name: "sqlite3", args: { database: ":memory:" } },
             rc_federation: { window_size: 1000, sleep_limit: 10, sleep_delay: 500, reject_limit: 99999, concurrent: 3 },
             rc_message: rc,

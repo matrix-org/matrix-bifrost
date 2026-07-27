@@ -84,8 +84,14 @@ export interface IGatewayRequest {
     result: (err: Error|null, res?: any) => void;
 }
 
+export interface IGatewayRoomQueryResult {
+    roomId: string;
+    // The room's m.room.name, if it has one and it is readable by the bridge.
+    name?: string;
+}
+
 export interface IGatewayRoomQuery extends IGatewayRequest {
-    result: (err: Error|null, res?: string) => void;
+    result: (err: Error|null, res?: IGatewayRoomQueryResult) => void;
 }
 
 export interface IGatewayPublicRoomsQuery extends IGatewayRequest {

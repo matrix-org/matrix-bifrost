@@ -1,0 +1,1 @@
+Gateway rooms now answer disco#info with the room's name instead of identifying as matrix-bifrost.

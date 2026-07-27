@@ -115,6 +115,10 @@ export class XmppJsGateway implements IGateway {
         return !!this.members.getXmppMemberByMatrixId(chatName, matrixId);
     }
 
+    public updateRoomName(roomId: string, name?: string) {
+        this.xmpp.serviceHandler.updateCachedRoomName(roomId, name);
+    }
+
     public isJIDInMuc(chatName: string, j: JID) {
         return !!this.members.getXmppMemberByDevice(chatName, j);
     }
