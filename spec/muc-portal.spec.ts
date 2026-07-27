@@ -89,7 +89,7 @@ describe("XMPP MUC portal rooms", () => {
             xml("subject", {}, MUC_SUBJECT),
         ));
 
-        // Registered before joining so we can't miss the topic event to a race.
+        // Registered before joining so we don't lose the topic event to a race.
         const topicSet = alice.waitForRoomEvent({
             eventType: "m.room.topic", sender: testEnv.botMxid, stateKey: "",
         });
