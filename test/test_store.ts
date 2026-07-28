@@ -1,9 +1,8 @@
-import * as Chai from "chai";
+import { describe, it, expect, beforeEach } from "vitest";
 import { IStore } from "../src/store/Store";
 import { mockStore } from "./mocks/store";
 import { PurpleProtocol } from "../src/purple/PurpleProtocol";
 import { MatrixUser, RemoteUser } from "matrix-appservice-bridge";
-const expect = Chai.expect;
 
 let store: IStore;
 
@@ -39,8 +38,8 @@ describe("Store", () => {
         );
         // Now get the user
         const fetchedUser = await store.getMatrixUser("@_xmpp_ghosty:localhost");
-        expect(fetchedUser.userId).to.equal("@_xmpp_ghosty:localhost");
-        expect(fetchedUser.get("anotherCustomKey")).to.equal(5000);
+        expect(fetchedUser.userId).toBe("@_xmpp_ghosty:localhost");
+        expect(fetchedUser.get("anotherCustomKey")).toBe(5000);
     });
     it("should update an mxid when the account changes", async () => {
         // First, store a user.
@@ -58,6 +57,6 @@ describe("Store", () => {
             },
         );
         const remotes = await store.getRemoteUsersFromMxId("@_xmpp_ghosty:localhost");
-        expect(remotes[0]).to.exist;
+        expect(remotes[0]).toBeDefined();
     });
 });

@@ -1,10 +1,8 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import * as Chai from "chai";
+import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { XmppJsAccount } from "../../src/xmppjs/XJSAccount";
 import { IBasicProtocolMessage } from "../../src/MessageFormatter";
 import { MockXJSInstance } from "../mocks/XJSInstance";
-
-const expect = Chai.expect;
 
 let acct: XmppJsAccount;
 const instance = new MockXJSInstance();
@@ -26,9 +24,9 @@ describe("XJSAccount", () => {
     });
 
     it("should have the correct property values on construction", () => {
-        expect(acct.connected).to.be.true;
-        expect(acct.remoteId).to.be.equal("bob@matrix.localhost");
-        expect(acct.roomHandles).to.be.empty;
+        expect(acct.connected).toBe(true);
+        expect(acct.remoteId).toBe("bob@matrix.localhost");
+        expect(acct.roomHandles.size).toBe(0);
     });
 
     describe("sendIM", () => {
@@ -37,8 +35,8 @@ describe("XJSAccount", () => {
                 body: "Hello!",
                 id: "12345",
             } as IBasicProtocolMessage);
-            expect(instance.sentMessageIDs).to.include("12345");
-            expect(instance.sentMessages[0]).to.deep.equal({
+            expect(instance.sentMessageIDs).toContain("12345");
+            expect(instance.sentMessages[0]).toEqual({
                 chatstate: undefined,
                 replacesId: undefined,
                 hFrom: "bob@matrix.localhost/matrix-bridge",
@@ -70,7 +68,7 @@ describe("XJSAccount", () => {
                 // Explicit any - we want to deliberately send wrong params
                 } as any, instance as any, 50, true);
             } catch (ex) {
-                expect(ex.message).to.equal("Missing handle");
+                expect(ex.message).toBe("Missing handle");
                 return;
             }
             throw Error("Didn't throw");

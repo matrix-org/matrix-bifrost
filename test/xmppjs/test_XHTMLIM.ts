@@ -1,8 +1,6 @@
-import * as Chai from "chai";
+import { describe, it, expect } from "vitest";
 import { XHTMLIM } from "../../src/xmppjs/XHTMLIM";
 import { assertXML } from "./util";
-
-const expect = Chai.expect;
 
 describe("XHTMLIM", () => {
     it("should not change compliant messages", () => {
@@ -10,7 +8,7 @@ describe("XHTMLIM", () => {
             XHTMLIM.HTMLToXHTML(
                 "<html xmlns='http://jabber.org/protocol/xhtml-im'><p>Hello world</p></html>",
             ),
-        ).to.equal(
+        ).toBe(
             "<html xmlns='http://jabber.org/protocol/xhtml-im'><p>Hello world</p></html>",
         );
     });
@@ -19,7 +17,7 @@ describe("XHTMLIM", () => {
             XHTMLIM.HTMLToXHTML(
                 "o/",
             ),
-        ).to.equal(
+        ).toBe(
             "<html xmlns='http://jabber.org/protocol/xhtml-im'>o/</html>",
         );
     });
@@ -28,7 +26,7 @@ describe("XHTMLIM", () => {
             XHTMLIM.HTMLToXHTML(
                 "<a href=\"https://matrix.to/#/@bob:matrix.org\">bob</a>: Huzzah!",
             ),
-        ).to.equal(
+        ).toBe(
             "<html xmlns=\'http://jabber.org/protocol/xhtml-im\'><a href=\'https://matrix.to/#/@bob:matrix.org\'>"
             + "bob</a>: Huzzah!</html>",
         );
@@ -42,7 +40,7 @@ describe("XHTMLIM", () => {
                 + "@Half-Shot:half-shot.uk</a><br>This is the first message</blockquote></mx-reply>"
                 + "And this is a reply",
             ),
-        ).to.equal(
+        ).toBe(
             "<html xmlns='http://jabber.org/protocol/xhtml-im'><blockquote><a href='https://matrix.to"
             + "/#/!ruaviCwHdJSWfKcBam:half-shot.uk/$1548685877554RlePg:half-shot.uk?via=half-shot.uk&amp"
             + ";via=matrix.org&amp;via=t2bot.io'>In reply to</a><a href='https://matrix.to/#/@Half-Shot:"
@@ -54,7 +52,7 @@ describe("XHTMLIM", () => {
     it("should transform an inline image", () => {
         const xhtmlValue = XHTMLIM.HTMLToXHTML("Here is a pretty image<span class=\"d-emoji\"><img alt=\"shadow\" title=\"shadow\" height=\"32\" src=\"http://foobar.com\" /></span>");
         assertXML(xhtmlValue);
-        expect(xhtmlValue).to.equal("<html xmlns='http://jabber.org/protocol/xhtml-im'>Here is a pretty image<span class='d-emoji'>" +
+        expect(xhtmlValue).toBe("<html xmlns='http://jabber.org/protocol/xhtml-im'>Here is a pretty image<span class='d-emoji'>" +
             "<img alt='shadow' title='shadow' height='32' src='http://foobar.com'></img></span></html>");
     })
 });
