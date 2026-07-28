@@ -1,13 +1,13 @@
 import { describe, expect } from "vitest";
-import { xml, client as xmppClient } from "@xmpp/client";
-import type { Element } from "@xmpp/xml";
+import { xml } from "@xmpp/client";
 import { test as baseTest } from "./util/fixtures";
-import { XMPP_COMPONENT_DOMAIN, XMPP_C2S_DOMAIN, XMPP_TEST_USER } from "./util/containers/prosody";
+import { XMPP_C2S_DOMAIN, XMPP_TEST_USER } from "./util/containers/prosody";
 import { ghostMxidForXmppUser } from "./util/bifrost-env";
-import type { BifrostTestEnv, BifrostTestEnvOpts } from "./util/bifrost-env";
-import type { E2ETestMatrixClient } from "./util/e2e-test";
-
-const STANZA_WAIT_TIMEOUT = parseInt(process.env.BIFROST_TEST_WAIT_TIMEOUT ?? "20000", 10);
+import type { BifrostTestEnvOpts } from "./util/bifrost-env";
+import {
+    createPublicRoom, roomJid, waitForStanza, collectStanzas, isDelayedGroupchatMessage,
+    joinGateway, leaveGateway,
+} from "./util/gateway";
 
 // Gateway room support only runs when portals.enableGateway is set - see XJSInstance#preStart.
 const test = baseTest.override("testEnvOpts", {
@@ -15,111 +15,6 @@ const test = baseTest.override("testEnvOpts", {
         portals: { enableGateway: true },
     },
 } as BifrostTestEnvOpts);
-
-async function createPublicRoom(
-    testEnv: BifrostTestEnv, alice: E2ETestMatrixClient, aliasLocalpart: string, name: string,
-): Promise<string> {
-    const roomId = await alice.createRoom({
-        visibility: "public",
-        preset: "public_chat",
-        name,
-        room_alias_name: aliasLocalpart,
-    });
-    const alias = `#${aliasLocalpart}:${testEnv.serverName}`;
-    // createRoom's room_alias_name maps the alias but does not set canonical_alias itself.
-    await alice.sendStateEvent(roomId, "m.room.canonical_alias", "", { alias });
-    return alias;
-}
-
-// Mirrors ServiceHandler#createJIDFromAlias, so tests can address a gateway room's JID directly.
-function roomJid(alias: string): string {
-    const [local, server] = alias.replace(/^#/, "").split(":");
-    return `#${local}#${server}@${XMPP_COMPONENT_DOMAIN}`;
-}
-
-function waitForStanza(
-    xmpp: ReturnType<typeof xmppClient>, description: string, predicate: (stanza: Element) => boolean,
-    timeoutMs = STANZA_WAIT_TIMEOUT,
-): Promise<Element> {
-    return new Promise((resolve, reject) => {
-        const onStanza = (stanza: Element) => {
-            if (predicate(stanza)) {
-                clearTimeout(timer);
-                xmpp.removeListener("stanza", onStanza);
-                resolve(stanza);
-            }
-        };
-        const timer = setTimeout(() => {
-            xmpp.removeListener("stanza", onStanza);
-            reject(new Error(`Timed out waiting for stanza: ${description}`));
-        }, timeoutMs);
-        xmpp.on("stanza", onStanza);
-    });
-}
-
-/** Collects `count` matching stanzas, in arrival order. Rejects if that many don't show up in time. */
-function collectStanzas(
-    xmpp: ReturnType<typeof xmppClient>, description: string, predicate: (stanza: Element) => boolean,
-    count: number, timeoutMs = STANZA_WAIT_TIMEOUT,
-): Promise<Element[]> {
-    return new Promise((resolve, reject) => {
-        const collected: Element[] = [];
-        const onStanza = (stanza: Element) => {
-            if (!predicate(stanza)) {
-                return;
-            }
-            collected.push(stanza);
-            if (collected.length >= count) {
-                clearTimeout(timer);
-                xmpp.removeListener("stanza", onStanza);
-                resolve(collected);
-            }
-        };
-        const timer = setTimeout(() => {
-            xmpp.removeListener("stanza", onStanza);
-            reject(new Error(`Timed out waiting for ${count} stanzas (got ${collected.length}): ${description}`));
-        }, timeoutMs);
-        xmpp.on("stanza", onStanza);
-    });
-}
-
-function isPresenceFrom(stanza: Element, from: string): boolean {
-    return stanza.is("presence") && stanza.attrs.from === from;
-}
-
-function hasMucStatusCode(stanza: Element, code: string): boolean {
-    return !!stanza.getChild("x", "http://jabber.org/protocol/muc#user")
-        ?.getChildren("status")
-        .some((s) => s.attrs.code === code);
-}
-
-function isDelayedGroupchatMessage(stanza: Element): boolean {
-    return stanza.is("message") && stanza.attrs.type === "groupchat"
-        && !!stanza.getChild("delay", "urn:xmpp:delay");
-}
-
-/** Sends the MUC join presence used to enter a gateway room, and waits for the self-presence ack. */
-async function joinGateway(testEnv: BifrostTestEnv, joinTo: string): Promise<void> {
-    const selfPresence = waitForStanza(
-        testEnv.xmpp, "self-presence confirming gateway join",
-        (s) => isPresenceFrom(s, joinTo) && hasMucStatusCode(s, "110"),
-    );
-    await testEnv.xmpp.send(xml(
-        "presence", { to: joinTo },
-        xml("x", { xmlns: "http://jabber.org/protocol/muc" }),
-    ));
-    await selfPresence;
-}
-
-/** Sends the MUC unavailable presence used to leave a gateway room, and waits for the self-presence ack. */
-async function leaveGateway(testEnv: BifrostTestEnv, joinTo: string): Promise<void> {
-    const selfPresence = waitForStanza(
-        testEnv.xmpp, "self-presence confirming gateway leave",
-        (s) => isPresenceFrom(s, joinTo) && s.attrs.type === "unavailable" && hasMucStatusCode(s, "110"),
-    );
-    await testEnv.xmpp.send(xml("presence", { type: "unavailable", to: joinTo }));
-    await selfPresence;
-}
 
 describe("XMPP gateway history backfill", () => {
     test("replays cached messages, in order, to an XMPP user rejoining a history-visible room", async ({ testEnv, alice }) => {
