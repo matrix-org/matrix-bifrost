@@ -358,13 +358,20 @@ export class XmppJsGateway implements IGateway {
                 continue;
             }
             allMembershipPromises.push((async () => {
+                // XEP-0045 §7.2.3: in a non-anonymous room the <item jid=…> is the occupant's
+                // FULL JID. Emitting a bare JID here breaks clients that (reasonably) parse it
+                // as one — e.g. Smack's EntityFullJid — killing "open private chat" style
+                // actions on the occupant. XMPP members: use one of their device sessions;
+                // Matrix members: qualify the bridge ghost JID with the bridge resource
+                // (routing back to us is domain-based, so the resource is inert).
                 let realJid;
-                if ((member as IGatewayMemberXmpp).realJid) {
-                    realJid = (member as IGatewayMemberXmpp).realJid.toString();
+                const xmppMember = member as IGatewayMemberXmpp;
+                if (xmppMember.realJid) {
+                    realJid = [...xmppMember.devices][0] ?? xmppMember.realJid.toString();
                 } else {
                     realJid = this.registration.generateParametersFor(
                         XMPP_PROTOCOL.id, (member as IGatewayMemberMatrix).matrixId,
-                    ).username;
+                    ).username + "/" + this.xmpp.defaultResource;
                 }
                 return this.xmpp.xmppSend(
                     new StzaPresenceItem(
@@ -586,8 +593,8 @@ export class XmppJsGateway implements IGateway {
             stanza.attrs.from,
         );
         leaveStza.presenceType = "unavailable";
-        this.xmpp.xmppWriteToStream(leaveStza);
-        this.upsertXMPPUser(stanza.attrs.from, user.matrixId);
+        this.xmpp.xmppSend(leaveStza);
+        this.upsertXMPPUser(jid(stanza.attrs.from), user.matrixId);
         // If this is the last device for that member, reflect
         // that change to everyone.
         if (lastDevice) {

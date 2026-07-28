@@ -18,7 +18,9 @@ function createGateway(config?: IConfigBridge) {
     }
     return {gw: new XmppJsGateway(mockXmpp as any, {
         generateParametersFor(protocol: string, mxId: string) {
-            return mxId.replace(/@/, "").replace(/:/g, "_") + "@bar";
+            // Matches AutoRegistration.generateParametersFor, which returns the parameter
+            // map for the protocol's registration step ({username} for XMPP).
+            return { username: mxId.replace(/@/, "").replace(/:/g, "_") + "@bar" };
         },
     } as any, config), mockXmpp};
 }
@@ -113,6 +115,9 @@ describe("XJSGateway", () => {
                 hTo: "frogman@froguniverse/frogdevice",
                 affiliation: "member",
                 role: "participant",
+                // XEP-0045 §7.2.3: the real JID advertised for an occupant must be a FULL
+                // JID — Smack-based clients cast it to EntityFullJid.
+                jid: "foo1_bar@bar/matrix-bridge",
             });
 
             expect(messages[1]).to.include({
@@ -120,6 +125,7 @@ describe("XJSGateway", () => {
                 hTo: "frogman@froguniverse/frogdevice",
                 affiliation: "member",
                 role: "participant",
+                jid: "foo2_bar@bar/matrix-bridge",
             });
 
             expect(messages[2]).to.include({
