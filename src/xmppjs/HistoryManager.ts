@@ -99,7 +99,9 @@ export class HistoryManager {
                     if (new Date(ts) >= limits.since) {
                         break;
                     }
-                } catch {}
+                } catch {
+                    // Malformed delay stamp on a cached stanza - skip it and keep scanning.
+                }
             }
         }
 

@@ -28,6 +28,9 @@ import { IHistoryLimits, HistoryManager, MemoryStorage } from "./HistoryManager"
 
 const log = new Logger("XmppJsGateway");
 
+// A courtesy backfill, not a durable log - kept small and in-memory by design.
+const DEFAULT_HISTORY_LIMIT = 50;
+
 export interface RemoteGhostExtraData {
     rooms: {
         [chatName: string]: {devices: string[], jid: string}
@@ -46,8 +49,11 @@ export class XmppJsGateway implements IGateway {
     private presenceCache: PresenceCache;
     // Storing every XMPP user and their anonymous.
     private members: GatewayMUCMembership;
-    constructor(private xmpp: XmppJsInstance, private registration: AutoRegistration, private config: IConfigBridge) {
-        this.roomHistory = new HistoryManager(new MemoryStorage(50));
+    constructor(
+        private xmpp: XmppJsInstance, private registration: AutoRegistration, private config: IConfigBridge,
+        historyLimit: number = DEFAULT_HISTORY_LIMIT,
+    ) {
+        this.roomHistory = new HistoryManager(new MemoryStorage(historyLimit));
         this.stanzaCache = new Map();
         this.members = new GatewayMUCMembership();
         this.presenceCache = new PresenceCache(true);

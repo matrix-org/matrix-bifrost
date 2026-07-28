@@ -143,6 +143,9 @@ export interface IConfigProfile {
 export interface IConfigPortals {
     aliases: {[regex: string]: IRoomAlias} | undefined;
     enableGateway: boolean;
+    // Maximum number of messages to retain per gateway room for history backfill on join.
+    // Kept small and in-memory by design - this is a courtesy backfill, not a durable log.
+    gatewayHistoryLimit?: number;
 }
 
 export interface IConfigProvisioning {

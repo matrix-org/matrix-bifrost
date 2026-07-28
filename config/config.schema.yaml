@@ -63,6 +63,8 @@ properties:
         properties:
             enableGateway:
                 type: boolean
+            gatewayHistoryLimit:
+                type: integer
             aliases:
                 type: object
                 propertyNames:

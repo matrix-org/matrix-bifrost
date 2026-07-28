@@ -94,6 +94,10 @@ purple:
 portals:
   # Enable gateway support for protocols that support them, e.g. xmpp.js
   enableGateway: false
+  # Maximum number of messages to retain per gateway room for history backfill
+  # on join. Kept small and in-memory by design - this is a courtesy backfill,
+  # not a durable log. Defaults to 50 if not set.
+  # gatewayHistoryLimit: 50
   # List of regexes to match a alias that can be turned into a bridge.
   aliases:
     # This matches #_bifrost_ followed by anything
