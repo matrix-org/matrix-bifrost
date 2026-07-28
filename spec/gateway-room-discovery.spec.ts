@@ -2,8 +2,8 @@ import { describe, expect } from "vitest";
 import { xml } from "@xmpp/client";
 import { test as baseTest } from "./util/fixtures";
 import { XMPP_COMPONENT_DOMAIN } from "./util/containers/prosody";
-import type { BifrostTestEnv, BifrostTestEnvOpts } from "./util/bifrost-env";
-import type { E2ETestMatrixClient } from "./util/e2e-test";
+import { createPublicRoom, roomJid } from "./util/gateway";
+import type { BifrostTestEnvOpts } from "./util/bifrost-env";
 
 // Gateway room discovery (ServiceHandler's disco#items/disco#info handling for gateway room
 // JIDs) only runs when portals.enableGateway is set - see XJSInstance#preStart.
@@ -12,27 +12,6 @@ const test = baseTest.override("testEnvOpts", {
         portals: { enableGateway: true },
     },
 } as BifrostTestEnvOpts);
-
-async function createPublicRoom(
-    testEnv: BifrostTestEnv, alice: E2ETestMatrixClient, aliasLocalpart: string, name: string,
-): Promise<string> {
-    const roomId = await alice.createRoom({
-        visibility: "public",
-        preset: "public_chat",
-        name,
-        room_alias_name: aliasLocalpart,
-    });
-    const alias = `#${aliasLocalpart}:${testEnv.serverName}`;
-    // createRoom's room_alias_name maps the alias but does not set canonical_alias itself.
-    await alice.sendStateEvent(roomId, "m.room.canonical_alias", "", { alias });
-    return alias;
-}
-
-// Mirrors ServiceHandler#createJIDFromAlias, so tests can address a gateway room's JID directly.
-function roomJid(alias: string): string {
-    const [local, server] = alias.replace(/^#/, "").split(":");
-    return `#${local}#${server}@${XMPP_COMPONENT_DOMAIN}`;
-}
 
 describe("XMPP gateway", () => {
     test("lists public Matrix rooms via disco#items", async ({ testEnv, alice }) => {

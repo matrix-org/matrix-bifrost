@@ -1,10 +1,17 @@
 import { XmppJsInstance, XMPP_PROTOCOL } from "./XJSInstance";
 import { Element, x } from "@xmpp/xml";
+import parse from "@xmpp/xml/lib/parse";
 import { jid, JID } from "@xmpp/jid";
 import { Logger } from "matrix-appservice-bridge";
 import { IConfigBridge } from "../Config";
 import { IBasicProtocolMessage } from "..//MessageFormatter";
-import { IGatewayJoin, IUserStateChanged, IStoreRemoteUser, IUserInfo } from "../bifrost/Events";
+import {
+    IGatewayJoin,
+    IUserStateChanged,
+    IStoreRemoteUser,
+    IUserInfo,
+    IReceivedImMsg
+} from "../bifrost/Events";
 import { IGatewayRoom } from "../bifrost/Gateway";
 import { PresenceCache } from "./PresenceCache";
 import { XHTMLIM } from "./XHTMLIM";
@@ -17,8 +24,12 @@ import { XMPPStatusCode } from "./XMPPConstants";
 import { AutoRegistration } from "../AutoRegistration";
 import { GatewayStateResolve } from "./GatewayStateResolve";
 import { MatrixMembershipEvent } from "../MatrixTypes";
+import { IHistoryLimits, HistoryManager, MemoryStorage } from "./HistoryManager";
 
 const log = new Logger("XmppJsGateway");
+
+// A courtesy backfill, not a durable log - kept small and in-memory by design.
+const DEFAULT_HISTORY_LIMIT = 50;
 
 export interface RemoteGhostExtraData {
     rooms: {
@@ -31,15 +42,18 @@ export interface RemoteGhostExtraData {
  * and XMPP.
  */
 export class XmppJsGateway implements IGateway {
-    // For storing room history, should be clipped at MAX_HISTORY per room.
-    private roomHistory: Map<string, [Element]>;
+    // For storing room history
+    private roomHistory: HistoryManager;
     // For storing requests to be responded to, like joins
     private stanzaCache: Map<string, Element>; // id -> stanza
     private presenceCache: PresenceCache;
     // Storing every XMPP user and their anonymous.
     private members: GatewayMUCMembership;
-    constructor(private xmpp: XmppJsInstance, private registration: AutoRegistration, private config: IConfigBridge) {
-        this.roomHistory = new Map();
+    constructor(
+        private xmpp: XmppJsInstance, private registration: AutoRegistration, private config: IConfigBridge,
+        historyLimit: number = DEFAULT_HISTORY_LIMIT,
+    ) {
+        this.roomHistory = new HistoryManager(new MemoryStorage(historyLimit));
         this.stanzaCache = new Map();
         this.members = new GatewayMUCMembership();
         this.presenceCache = new PresenceCache(true);
@@ -119,6 +133,10 @@ export class XmppJsGateway implements IGateway {
         this.xmpp.serviceHandler.updateCachedRoomName(roomId, name);
     }
 
+    public setRoomHistoryAllowed(chatName: string, allowed: boolean) {
+        this.roomHistory.setAllowed(chatName, allowed);
+    }
+
     public isJIDInMuc(chatName: string, j: JID) {
         return !!this.members.getXmppMemberByDevice(chatName, j);
     }
@@ -167,6 +185,18 @@ export class XmppJsGateway implements IGateway {
                 "groupchat",
             )
         );
+
+        // add the message to the room history
+        if (room.allowHistory) {
+            const historyStanza = new StzaMessage(
+                from.anonymousJid.toString(),
+                "",
+                msg,
+                "groupchat",
+            );
+            this.roomHistory.addMessage(chatName, parse(historyStanza.xml), from.anonymousJid);
+        }
+
         return this.xmpp.xmppSendBulk(msgs);
     }
 
@@ -206,6 +236,16 @@ export class XmppJsGateway implements IGateway {
             return false;
         }
         stanza.attrs.from = preserveFrom;
+        try {
+            // Silently a no-op if this room's history_visibility doesn't allow it - see
+            // HistoryManager#addMessage and IGateway#setRoomHistoryAllowed.
+            this.roomHistory.addMessage(
+                chatName, stanza,
+                member.anonymousJid,
+            );
+        } catch (ex) {
+            log.warn(`Failed to add message for ${chatName} to history cache`);
+        }
         return true;
     }
 
@@ -310,6 +350,10 @@ export class XmppJsGateway implements IGateway {
         if (!ownMxid) {
             throw Error('ownMxid is not defined');
         }
+
+        // Refresh this every join - it's cheap, and self-heals if a history_visibility change
+        // happened before setRoomHistoryAllowed's caller had a chance to tell us about it.
+        this.roomHistory.setAllowed(chatName, room.allowHistory);
 
         // Ensure our membership is accurate.
         this.updateMatrixMemberListForRoom(chatName, room, true); // HACK: Always update members for joiners
@@ -428,13 +472,52 @@ export class XmppJsGateway implements IGateway {
         );
 
         // 4. Room history
-        log.debug("Emitting history");
-        const history: Element[] = this.roomHistory.get(room.roomId) || [];
-        history.forEach((e) => {
-            e.attrs.to = stanza.attrs.from;
-            // TODO: Add delay info to this.
-            this.xmpp.xmppWriteToStream(e);
-        });
+        if (room.allowHistory) {
+            log.debug("Emitting history");
+            const historyLimits: IHistoryLimits = {};
+            const historyRequest = stanza.getChild("x", "http://jabber.org/protocol/muc")?.getChild("history");
+            if (historyRequest !== undefined) {
+                const getIntValue = (str) => {
+                    if (!/^\d+$/.test(str)) {
+                        throw new Error("Not a number");
+                    }
+                    return parseInt(str);
+                };
+                const getDateValue = (str) => {
+                    const val = new Date(str);
+                    // TypeScript doesn't like giving a Date to isNaN, even though it
+                    // works.  And it doesn't like converting directly to number.
+                    if (isNaN(val as unknown as number)) {
+                        throw new Error("Not a date");
+                    }
+                    return val;
+                };
+                const getHistoryParam = (name: string, parser: (str: string) => any): void => {
+                    const param = historyRequest.getAttr(name);
+                    if (param !== undefined) {
+                        try {
+                            historyLimits[name] = parser(param);
+                        } catch (e) {
+                            log.debug(`Invalid ${name} in history management: "${param}" (${e})`);
+                        }
+                    }
+                };
+                getHistoryParam("maxchars", getIntValue);
+                getHistoryParam("maxstanzas", getIntValue);
+                getHistoryParam("seconds", getIntValue);
+                getHistoryParam("since", getDateValue);
+            } else {
+                // default to 20 stanzas if the client doesn't specify
+                historyLimits.maxstanzas = 20;
+            }
+            const history: Element[] = await this.roomHistory.getHistory(chatName, historyLimits);
+            history.forEach((e) => {
+                e.attrs.to = stanza.attrs.from;
+                this.xmpp.xmppWriteToStream(e);
+            });
+        } else {
+            log.debug("Not emitting history, room does not have visibility turned on");
+        }
 
         log.debug("Emitting subject");
         // 5. The room subject

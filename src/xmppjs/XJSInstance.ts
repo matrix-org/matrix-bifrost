@@ -144,7 +144,9 @@ export class XmppJsInstance extends EventEmitter implements IBifrostInstance {
             if (!this.autoRegister) {
                 throw Error("Autoregistration must be enabled for gateways to work!");
             }
-            this.xmppGateway = new XmppJsGateway(this, this.autoRegister, this.config.bridge);
+            this.xmppGateway = new XmppJsGateway(
+                this, this.autoRegister, this.config.bridge, this.config.portals.gatewayHistoryLimit,
+            );
         }
     }
 

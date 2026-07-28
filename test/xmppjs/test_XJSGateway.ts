@@ -75,6 +75,7 @@ describe("XJSGateway", () => {
                 topic: "GatewayTopic",
                 roomId: "!foo:bar",
                 membership: [],
+                allowHistory: true,
             };
             try {
                 await gw.onRemoteJoin(null, "myjoinid", room, "@_xmpp_foo:bar");
@@ -95,6 +96,7 @@ describe("XJSGateway", () => {
                     createMember("@_xmpp_baz:bar", "Baz"),
                     createMember("@leavy:bar", "Leavy", "leave"),
                 ],
+                allowHistory: true,
             };
             gw.handleStanza(
                 x("presence", {
@@ -156,6 +158,7 @@ describe("XJSGateway", () => {
                     createMember("@_xmpp_baz:bar", "Baz"),
                     createMember("@leavy:bar", "Leavy", "leave"),
                 ],
+                allowHistory: true,
             };
             gw.handleStanza(
                 x("presence", {
@@ -184,6 +187,7 @@ describe("XJSGateway", () => {
                 topic: "GatewayTopic",
                 roomId: "!foo:bar",
                 membership,
+                allowHistory: true,
             };
             gw.handleStanza(
                 x("presence", {
@@ -208,6 +212,7 @@ describe("XJSGateway", () => {
                 topic: "GatewayTopic",
                 roomId: "!foo:bar",
                 membership: [],
+                allowHistory: true,
             };
             gw.handleStanza(
                 x("presence", {

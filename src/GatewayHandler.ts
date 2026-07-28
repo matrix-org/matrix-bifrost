@@ -12,6 +12,14 @@ import { BifrostRemoteUser } from "./store/BifrostRemoteUser";
 
 const log = new Logger("GatewayHandler");
 
+const HISTORY_SAFE_ENUMS = ['shared', 'world_readable'];
+
+// Default to private: a room without a legible history_visibility value is treated the same
+// as "joined" (the most restrictive value XMPP joiners could still plausibly hit).
+function isHistoryVisibilitySafe(historyVisibility: unknown): boolean {
+    return HISTORY_SAFE_ENUMS.includes(typeof historyVisibility === "string" ? historyVisibility : "joined");
+}
+
 /**
  * Responsible for handling querys & events on behalf of a gateway style bridge.
  * The gateway system in the bridge is complex, so pull up a a pew and let's dig in.
@@ -61,6 +69,7 @@ export class GatewayHandler {
             log.debug(`Got state for ${roomId}`);
             const nameEv = state.find((e) => e.type === "m.room.name");
             const topicEv = state.find((e) => e.type === "m.room.topic");
+            const historyVis = state.find((e) => e.type === "m.room.history_visibility");
             const bot = this.bridge.getBot();
             const membership = state.filter((e) => e.type === "m.room.member").map((e: WeakEvent) => (
                 {
@@ -72,6 +81,7 @@ export class GatewayHandler {
                 }
             ));
             const room: IGatewayRoom = {
+                allowHistory: isHistoryVisibilitySafe(historyVis?.content?.history_visibility),
                 name: typeof nameEv?.content?.name === "string" ? nameEv.content.name : "",
                 topic: typeof topicEv?.content?.topic === "string" ? topicEv.content.topic : "",
                 roomId,
@@ -119,6 +129,10 @@ export class GatewayHandler {
             log.info("Handing room avatar change for gateway");
             log.debug("Room avatar changes aren't supported yet.");
         //    this.purple.gateway.sendStateChange(chatName, sender, "topic", ev.content.topic);
+        } else if (ev.type === "m.room.history_visibility") {
+            log.info("Handling history visibility change for gateway");
+            room.allowHistory = isHistoryVisibilitySafe(ev.content?.history_visibility);
+            this.purple.gateway.setRoomHistoryAllowed(chatName, room.allowHistory);
         }
     }
 
