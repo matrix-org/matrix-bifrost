@@ -11,7 +11,7 @@ export async function initiateStore(config: IConfigDatastore, bridge: Bridge): P
     if (config.engine === "nedb") {
         return new NeDBStore(bridge);
     } else if (config.engine === "postgres") {
-        const pg = new PgDataStore(config);
+        const pg = new PgDataStore(config, bridge);
         await pg.ensureSchema();
         return pg;
     }
@@ -19,6 +19,8 @@ export async function initiateStore(config: IConfigDatastore, bridge: Bridge): P
 }
 
 export interface IStore {
+
+    close?(): void;
 
     getMatrixUser(id: string): Promise<MatrixUser|null>;
 

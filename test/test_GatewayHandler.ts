@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import * as Chai from "chai";
+import { describe, it, expect } from "vitest";
 import { IGatewayRoom } from "../src/bifrost/Gateway";
 import { Config } from "../src/Config";
 import { mockStore } from "./mocks/store";
@@ -9,7 +9,6 @@ import { dummyProtocol } from "./mocks/dummyprotocol";
 import { MockIntent } from "./mocks/intent";
 import { MROOM_TYPE_GROUP, IRemoteGroupData } from "../src/store/Types";
 import { GatewayHandler } from "../src/GatewayHandler";
-const expect = Chai.expect;
 
 function createGH() {
     let remoteJoinResolve: any = null;
@@ -77,14 +76,14 @@ describe("GatewayHandler", () => {
             room_name: "#roomAlias#localhost@bridge.place",
         } as IGatewayJoin);
         await watch.remoteJoinPromise;
-        expect(watch.intent).to.not.be.null;
-        expect(watch.intent.ensureRegisteredCalled).to.be.true;
-        expect(watch.intent.userId).to.equal("@_prefix_frogman@frogworld:localhost");
-        expect(watch.intent.clientJoinRoomCalledWith.roomString).to.equal("#roomAlias:localhost");
-        expect(watch.profileUpdated).to.be.true;
-        expect(watch.remoteJoin.err).is.null;
-        expect(watch.remoteJoin.joinId).to.equal("!roomId:localhost");
-        expect(watch.remoteJoin.room.roomId).to.equal("!roomAlias:localhost");
+        expect(watch.intent).not.toBeNull();
+        expect(watch.intent.ensureRegisteredCalled).toBe(true);
+        expect(watch.intent.userId).toBe("@_prefix_frogman@frogworld:localhost");
+        expect(watch.intent.clientJoinRoomCalledWith.roomString).toBe("#roomAlias:localhost");
+        expect(watch.profileUpdated).toBe(true);
+        expect(watch.remoteJoin.err).toBeNull();
+        expect(watch.remoteJoin.joinId).toBe("!roomId:localhost");
+        expect(watch.remoteJoin.room.roomId).toBe("!roomAlias:localhost");
     });
     it("will block joining to a gateway if a room is already bridged.", async () => {
         const {purple, watch, store} = createGH();
@@ -100,13 +99,13 @@ describe("GatewayHandler", () => {
             room_name: "#roomAlias2#localhost@bridge.place",
         } as IGatewayJoin);
         await watch.remoteJoinPromise;
-        expect(watch.intent).to.not.be.null;
-        expect(watch.intent.ensureRegisteredCalled).to.be.true;
-        expect(watch.intent.userId).to.equal("@_prefix_frogman@frogworld:localhost");
-        expect(watch.intent.clientJoinRoomCalledWith.roomString).to.equal("#roomAlias2:localhost");
-        expect(watch.profileUpdated).to.be.true;
-        expect(watch.remoteJoin.joinId).to.equal("!roomId2:localhost");
-        expect(watch.remoteJoin.err).to.equal(
+        expect(watch.intent).not.toBeNull();
+        expect(watch.intent.ensureRegisteredCalled).toBe(true);
+        expect(watch.intent.userId).toBe("@_prefix_frogman@frogworld:localhost");
+        expect(watch.intent.clientJoinRoomCalledWith.roomString).toBe("#roomAlias2:localhost");
+        expect(watch.profileUpdated).toBe(true);
+        expect(watch.remoteJoin.joinId).toBe("!roomId2:localhost");
+        expect(watch.remoteJoin.err).toBe(
             "This room is already bridged to #roomAlias2#localhost@bridge.place",
         );
     });
@@ -119,9 +118,9 @@ describe("GatewayHandler", () => {
             roomAlias: "#badroom:example.com",
         } as IGatewayJoin);
         await watch.remoteJoinPromise;
-        expect(watch.intent).to.not.be.null;
-        expect(watch.intent.ensureRegisteredCalled).to.be.false;
-        expect(watch.remoteJoin.err).to.equal(
+        expect(watch.intent).not.toBeNull();
+        expect(watch.intent.ensureRegisteredCalled).toBe(false);
+        expect(watch.remoteJoin.err).toBe(
             "This room has been denied",
         );
     });

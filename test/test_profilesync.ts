@@ -1,10 +1,9 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import * as Chai from "chai";
+import { describe, it, expect } from "vitest";
 import { mockStore } from "./mocks/store";
 import { ProfileSync } from "../src/ProfileSync";
 import { Config } from "../src/Config";
 import { PurpleProtocol } from "../src/purple/PurpleProtocol";
-const expect = Chai.expect;
 
 const dummyProtocol = new PurpleProtocol({
     id: "prpl-dummy",
@@ -71,10 +70,10 @@ describe("ProfileSync", () => {
         const time = Date.now();
         const {profileSync, account, values, store} = createProfileSync();
         await profileSync.updateProfile(dummyProtocol, "alice@foobar.com", account as any, false);
-        expect(values.displayname).to.equal("alice@foobar.com");
-        expect(values.userId).to.equal("@_bifrost_dummy_alice=40foobar.com:localhost");
+        expect(values.displayname).toBe("alice@foobar.com");
+        expect(values.userId).toBe("@_bifrost_dummy_alice=40foobar.com:localhost");
         const matrixUser = await store.getMatrixUser(values.userId);
-        expect(matrixUser?.get("last_check")).to.be.above(time);
+        expect(matrixUser?.get("last_check")).toBeGreaterThan(time);
     });
     it("can sync one profile without useful UserInfo", async () => {
         const time = Date.now();
@@ -82,10 +81,10 @@ describe("ProfileSync", () => {
             foo: "bar",
         });
         await profileSync.updateProfile(dummyProtocol, "alice@foobar.com", account as any, false);
-        expect(values.displayname).to.equal("alice@foobar.com");
-        expect(values.userId).to.equal("@_bifrost_dummy_alice=40foobar.com:localhost");
+        expect(values.displayname).toBe("alice@foobar.com");
+        expect(values.userId).toBe("@_bifrost_dummy_alice=40foobar.com:localhost");
         const matrixUser = await store.getMatrixUser(values.userId);
-        expect(matrixUser?.get("last_check")).to.be.above(time);
+        expect(matrixUser?.get("last_check")).toBeGreaterThan(time);
     });
     it("can sync one profile with a nickname", async () => {
         const time = Date.now();
@@ -93,10 +92,10 @@ describe("ProfileSync", () => {
             Nickname: "SuperAlice",
         });
         await profileSync.updateProfile(dummyProtocol, "alice@foobar.com", account as any, false);
-        expect(values.displayname).to.equal("SuperAlice");
-        expect(values.userId).to.equal("@_bifrost_dummy_alice=40foobar.com:localhost");
+        expect(values.displayname).toBe("SuperAlice");
+        expect(values.userId).toBe("@_bifrost_dummy_alice=40foobar.com:localhost");
         const matrixUser = await store.getMatrixUser(values.userId);
-        expect(matrixUser?.get("last_check")).to.be.above(time);
+        expect(matrixUser?.get("last_check")).toBeGreaterThan(time);
     });
     it("can sync one profile with a avatar ", async () => {
         const time = Date.now();
@@ -104,21 +103,21 @@ describe("ProfileSync", () => {
             Avatar: "http://example.com/myamazingavatar.png",
         });
         await profileSync.updateProfile(dummyProtocol, "alice@foobar.com", account as any, false);
-        expect(values.displayname).to.equal("alice@foobar.com");
-        expect(values.userId).to.equal("@_bifrost_dummy_alice=40foobar.com:localhost");
+        expect(values.displayname).toBe("alice@foobar.com");
+        expect(values.userId).toBe("@_bifrost_dummy_alice=40foobar.com:localhost");
         const matrixUser = await store.getMatrixUser(values.userId);
-        expect(matrixUser?.get("last_check")).to.be.above(time);
-        expect(values.avatarUrl).to.be.equal("mxc://example.com/foobar");
+        expect(matrixUser?.get("last_check")).toBeGreaterThan(time);
+        expect(values.avatarUrl).toBe("mxc://example.com/foobar");
     });
     it("will skip the second profile update", async () => {
         const time = Date.now();
         const {profileSync, account, values, store} = createProfileSync({});
         await profileSync.updateProfile(dummyProtocol, "aconvo@foobar.com/FOO!$BAR", account as any, false);
         const matrixUser = await store.getMatrixUser(values.userId);
-        expect(matrixUser?.get("last_check")).to.be.above(time);
+        expect(matrixUser?.get("last_check")).toBeGreaterThan(time);
         const lastTime = matrixUser?.get("last_check");
         await profileSync.updateProfile(dummyProtocol, "aconvo@foobar.com/FOO!$BAR", account as any, false);
         const matrixUserTwo = await store.getMatrixUser(values.userId);
-        expect(matrixUserTwo?.get("last_check")).to.be.equal(lastTime);
+        expect(matrixUserTwo?.get("last_check")).toBe(lastTime);
     });
 });

@@ -1,8 +1,7 @@
-import * as Chai from "chai";
+import { describe, it, expect } from "vitest";
 import { PurpleProtocol } from "../src/purple/PurpleProtocol";
 import { MessageFormatter } from "../src/MessageFormatter";
 import { dummyProtocol } from "./mocks/dummyprotocol";
-const expect = Chai.expect;
 
 const XMPP = new PurpleProtocol({
     id: "prpl-jabber",
@@ -40,7 +39,7 @@ describe("MessageFormatter", () => {
                 homeserverUrl: "http://bar",
                 userPrefix: "_xmpp",
             }, mediaProxy);
-            expect(msg).to.deep.eq({
+            expect(msg).toEqual({
                 body: "This is some plaintext!",
                 formatted: [],
                 id: "$event:bar",
@@ -64,7 +63,7 @@ describe("MessageFormatter", () => {
                 homeserverUrl: "http://bar",
                 userPrefix: "_xmpp",
             }, mediaProxy);
-            expect(msg).to.deep.eq({
+            expect(msg).toEqual({
                 body: "This is some plaintext!",
                 formatted: [{
                     type: "html",
@@ -90,7 +89,7 @@ describe("MessageFormatter", () => {
                 homeserverUrl: "http://bar",
                 userPrefix: "_xmpp",
             }, mediaProxy);
-            expect(msg).to.deep.eq({
+            expect(msg).toEqual({
                 body: "image.jpg",
                 opts: {
                     attachments: [
@@ -125,7 +124,7 @@ describe("MessageFormatter", () => {
                 homeserverUrl: "http://bar",
                 userPrefix: "_xmpp",
             }, mediaProxy);
-            expect(msg).to.deep.eq({
+            expect(msg).toEqual({
                 body: "image.jpg",
                 opts: {
                     attachments: [
@@ -155,7 +154,7 @@ describe("MessageFormatter", () => {
                 homeserverUrl: "http://bar",
                 userPrefix: "_xmpp",
             }, mediaProxy);
-            expect(msg).to.deep.eq({
+            expect(msg).toEqual({
                 body: "/me pets the dog",
                 formatted: [],
                 id: "$event:bar",
@@ -170,7 +169,7 @@ describe("MessageFormatter", () => {
                 dummyProtocol);
             expect(
                 contents,
-            ).to.deep.equal({
+            ).toEqual({
                 msgtype: "m.text",
                 body: "This is an ordinary message",
             });
@@ -184,7 +183,7 @@ describe("MessageFormatter", () => {
                 dummyProtocol);
             expect(
                 contents,
-            ).to.deep.equal({
+            ).toEqual({
                 msgtype: "m.text",
                 remote_id: "foobarID",
                 body: "This is an ordinary message",
@@ -196,7 +195,7 @@ describe("MessageFormatter", () => {
                 dummyProtocol);
             expect(
                 contents,
-            ).to.deep.equal({
+            ).toEqual({
                 msgtype: "m.emote",
                 body: "wags tail",
             });
@@ -215,7 +214,7 @@ describe("MessageFormatter", () => {
                 dummyProtocol);
             expect(
                 contents,
-            ).to.deep.equal({
+            ).toEqual({
                 msgtype: "m.text",
                 body: "wags tail",
                 format: "org.matrix.custom.html",
@@ -230,7 +229,7 @@ describe("MessageFormatter", () => {
                 dummyProtocol, intent);
             expect(
                 contents,
-            ).to.deep.equal({
+            ).toEqual({
                 msgtype: "m.text",
                 body: "awoo",
             });
@@ -243,7 +242,7 @@ describe("MessageFormatter", () => {
                 dummyProtocol, intent);
             expect(
                 contents,
-            ).to.deep.equal({
+            ).toEqual({
                 msgtype: "m.image",
                 filename: "logo1.png",
                 url: "mxc://abc/def",
@@ -258,7 +257,7 @@ describe("MessageFormatter", () => {
             const contents =  await MessageFormatter.messageToMatrixEvent({body: "This is an ordinary message"}, XMPP);
             expect(
                 contents,
-            ).to.deep.equal({
+            ).toEqual({
                 msgtype: "m.text",
                 body: "This is an ordinary message",
             });
@@ -267,7 +266,7 @@ describe("MessageFormatter", () => {
             const contents =  await MessageFormatter.messageToMatrixEvent({body: "<This is an ordinary message"}, XMPP);
             expect(
                 contents,
-            ).to.deep.equal({
+            ).toEqual({
                 msgtype: "m.text",
                 body: "<This is an ordinary message",
             });
@@ -285,7 +284,7 @@ describe("MessageFormatter", () => {
             );
             expect(
                 contents,
-            ).to.deep.equal({
+            ).toEqual({
                 msgtype: "m.text",
                 format: "org.matrix.custom.html",
                 formatted_body: "<p><span style='font-family: Helvetica; font-size: x-large;'>hello halfshot!</span></p>",
@@ -301,7 +300,7 @@ describe("MessageFormatter", () => {
                 dummyProtocol);
             expect(
                 contents,
-            ).to.deep.equal({
+            ).toEqual({
                 "msgtype": "m.text",
                 "body": " * This is an edited message",
                 "format": undefined,

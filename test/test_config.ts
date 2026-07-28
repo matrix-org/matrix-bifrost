@@ -1,3 +1,4 @@
+import { describe, it } from "vitest";
 import { ConfigValidator } from "matrix-appservice-bridge";
 
 const SCHEMA_FILE = `config/config.schema.yaml`;

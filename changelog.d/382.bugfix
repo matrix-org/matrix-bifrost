@@ -1,0 +1,1 @@
+Fix a case where XMPP users may not be able to rejoin a Matrix room over the gateway.

@@ -11,6 +11,7 @@ export class MockXJSInstance extends EventEmitter {
     public sentPackets: Element[] = [];
     public selfPingResponse: "respond-ok"|"respond-error"|"no-response" = "respond-error";
     public accountUsername!: string;
+    public readonly defaultResource = "matrix-bridge";
 
     public xmppAddSentMessage(id: string) {
         this.sentMessageIDs.push(id);

@@ -12,6 +12,14 @@ import { BifrostRemoteUser } from "./store/BifrostRemoteUser";
 
 const log = new Logger("GatewayHandler");
 
+const HISTORY_SAFE_ENUMS = ['shared', 'world_readable'];
+
+// Default to private: a room without a legible history_visibility value is treated the same
+// as "joined" (the most restrictive value XMPP joiners could still plausibly hit).
+function isHistoryVisibilitySafe(historyVisibility: unknown): boolean {
+    return HISTORY_SAFE_ENUMS.includes(typeof historyVisibility === "string" ? historyVisibility : "joined");
+}
+
 /**
  * Responsible for handling querys & events on behalf of a gateway style bridge.
  * The gateway system in the bridge is complex, so pull up a a pew and let's dig in.
@@ -61,6 +69,7 @@ export class GatewayHandler {
             log.debug(`Got state for ${roomId}`);
             const nameEv = state.find((e) => e.type === "m.room.name");
             const topicEv = state.find((e) => e.type === "m.room.topic");
+            const historyVis = state.find((e) => e.type === "m.room.history_visibility");
             const bot = this.bridge.getBot();
             const membership = state.filter((e) => e.type === "m.room.member").map((e: WeakEvent) => (
                 {
@@ -72,8 +81,9 @@ export class GatewayHandler {
                 }
             ));
             const room: IGatewayRoom = {
+                allowHistory: isHistoryVisibilitySafe(historyVis?.content?.history_visibility),
                 name: typeof nameEv?.content?.name === "string" ? nameEv.content.name : "",
-                topic: nameEv?.content?.topic === "string" ? nameEv.content.topic : "",
+                topic: typeof topicEv?.content?.topic === "string" ? topicEv.content.topic : "",
                 roomId,
                 membership,
             };
@@ -108,6 +118,9 @@ export class GatewayHandler {
             log.info("Handing room name change for gateway");
             room.name = ev.content.name;
             this.purple.gateway.sendStateChange(chatName, sender, "name", room);
+            // Also refresh the discovery cache, so XMPP room lists (per-room disco#info)
+            // pick the rename up immediately rather than after the cache TTL.
+            this.purple.gateway.updateRoomName(room.roomId, room.name);
         } else if (ev.type === "m.room.topic") {
             log.info("Handing room topic change for gateway");
             room.topic = ev.content.topic;
@@ -116,6 +129,10 @@ export class GatewayHandler {
             log.info("Handing room avatar change for gateway");
             log.debug("Room avatar changes aren't supported yet.");
         //    this.purple.gateway.sendStateChange(chatName, sender, "topic", ev.content.topic);
+        } else if (ev.type === "m.room.history_visibility") {
+            log.info("Handling history visibility change for gateway");
+            room.allowHistory = isHistoryVisibilitySafe(ev.content?.history_visibility);
+            this.purple.gateway.setRoomHistoryAllowed(chatName, room.allowHistory);
         }
     }
 
@@ -248,11 +265,56 @@ export class GatewayHandler {
         try {
             const roomId = await this.bridge.getIntent().matrixClient.resolveRoom(ev.roomAlias);
             log.info(`Found ${roomId}`);
-            ev.result(null, roomId);
+            ev.result(null, { roomId, name: await this.getRoomName(roomId, ev.roomAlias) });
         } catch (ex) {
             log.warn("Room not found:", ex);
             ev.result(Error("Room not found"));
         }
+    }
+
+    /**
+     * Best-effort lookup of a room's m.room.name, so XMPP-side discovery (disco#info on the
+     * gateway MUC JID) can present the room's human name rather than the bridge's own identity.
+     * Reads room state directly when the bridge bot is a member (all bifrost-created portals),
+     * falling back to the room summary API, and then finally the public rooms list.
+     */
+    private async getRoomName(roomId: string, roomAlias: string): Promise<string|undefined> {
+        const client = this.bridge.getIntent().matrixClient;
+        try {
+            const content = await client.getRoomStateEvent(roomId, "m.room.name", "");
+            if (typeof content?.name === "string" && content.name) {
+                return content.name;
+            }
+        } catch (ex) {
+            log.debug(`Could not read m.room.name of ${roomId} directly: ${ex}`);
+        }
+        try {
+            const summary = await client.doRequest(
+                "GET", `/_matrix/client/v1/room_summary/${encodeURIComponent(roomId)}`,
+            );
+            if (typeof summary?.name === "string" && summary.name) {
+                return summary.name;
+            }
+        } catch (ex) {
+            log.debug(`Could not fetch room summary of ${roomId}: ${ex}`);
+        }
+        // Directory-listed rooms expose their name via the public-rooms search even when the
+        // bridge has no user in the room — exactly the browse-before-joining case (and gateway
+        // joins require publicly-joinable rooms, which in practice are directory-listed).
+        try {
+            const term = roomAlias.split(":")[0].replace(/^#/, "");
+            const res = await client.doRequest("POST", "/_matrix/client/v3/publicRooms", null, {
+                limit: 50,
+                filter: { generic_search_term: term },
+            });
+            const entry = res?.chunk?.find((r: {room_id: string}) => r.room_id === roomId);
+            if (typeof entry?.name === "string" && entry.name) {
+                return entry.name;
+            }
+        } catch (ex) {
+            log.debug(`Could not find ${roomId} in the public rooms directory: ${ex}`);
+        }
+        return undefined;
     }
 
     private async handlePublicRooms(ev: IGatewayPublicRoomsQuery) {
