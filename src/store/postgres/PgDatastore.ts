@@ -15,7 +15,7 @@ limitations under the License.
 */
 
 import { Pool } from "pg";
-import { MatrixRoom, RemoteRoom, MatrixUser, Logger, RoomBridgeStoreEntry } from "matrix-appservice-bridge";
+import { MatrixRoom, RemoteRoom, MatrixUser, Logger, RoomBridgeStoreEntry, Bridge, AppServiceBot } from "matrix-appservice-bridge";
 import { IRemoteGroupData, MROOM_TYPES, RoomTypeToRemoteRoomData,
     IRemoteImData, IRemoteUserAdminData, MROOM_TYPE_IM, MROOM_TYPE_GROUP, MROOM_TYPE_UADMIN } from "../Types";
 import { BifrostProtocol } from "../../bifrost/Protocol";
@@ -147,8 +147,10 @@ export class PgDataStore implements IStore {
     }
     private pgPool: Pool;
     private hasEnded: boolean = false;
+    private asBot: AppServiceBot;
 
-    constructor(config: IConfigDatastore) {
+    constructor(config: IConfigDatastore, bridge: Bridge) {
+        this.asBot = bridge.getBot();
         const opts = config.opts || {
             min: 1,
             max: 4,
@@ -217,7 +219,7 @@ export class PgDataStore implements IStore {
             Util.createRemoteId(protocol.id, sender),
             sender,
             protocol.id,
-            row.is_ghost,
+            this.asBot.isRemoteUser(row.user_id),
             row.displayname,
             row.extra_data,
         );

@@ -593,8 +593,8 @@ export class XmppJsGateway implements IGateway {
             stanza.attrs.from,
         );
         leaveStza.presenceType = "unavailable";
-        this.xmpp.xmppWriteToStream(leaveStza);
-        this.upsertXMPPUser(stanza.attrs.from, user.matrixId);
+        this.xmpp.xmppSend(leaveStza);
+        this.upsertXMPPUser(jid(stanza.attrs.from), user.matrixId);
         // If this is the last device for that member, reflect
         // that change to everyone.
         if (lastDevice) {
