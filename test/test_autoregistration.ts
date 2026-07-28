@@ -1,7 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import * as Chai from "chai";
+import { describe, it, expect } from "vitest";
 import { AutoRegistration } from "../src/AutoRegistration";
-const expect = Chai.expect;
 
 describe("AutoRegistration", () => {
     it("generateParameters", () => {
@@ -20,7 +19,7 @@ describe("AutoRegistration", () => {
                 avatar_url: "mxc://pond",
             },
         );
-        expect(params).to.deep.equal({
+        expect(params).toEqual({
             domain_test: "frogstar:foo",
             localpart_test: "towel:foo",
             mxid_test: "@towel:frogstar:foo",

@@ -19,6 +19,17 @@ export interface IGateway extends IProfileProvider {
     initialMembershipSync(chatName: string, room: IGatewayRoom, remoteGhosts: BifrostRemoteUser[]): void;
     getMxidForRemote(sender: string): string;
     memberInRoom(chatName: string, matrixId: string): boolean;
+    /**
+     * The Matrix room was renamed: refresh anything presenting the room's name to the remote
+     * network (e.g. cached disco#info identities), so room lists pick the new name up live.
+     */
+    updateRoomName(roomId: string, name?: string): void;
+    /**
+     * The Matrix room's history_visibility changed: refresh whether messages arriving from the
+     * remote network are worth caching for backfill, so a tightened room doesn't keep building
+     * up a cache nobody will ever be allowed to read.
+     */
+    setRoomHistoryAllowed(chatName: string, allowed: boolean): void;
 }
 
 export interface IGatewayRoom {
@@ -26,6 +37,7 @@ export interface IGatewayRoom {
     topic: string;
     avatar?: string;
     roomId: string;
+    allowHistory: boolean;
     membership: {
         sender: string;
         stateKey: string;

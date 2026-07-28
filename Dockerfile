@@ -1,9 +1,11 @@
 # Build node-purple, which needs Debian for Python
 FROM node:22-bookworm AS builder
-COPY ./package.json ./package.json
-COPY ./yarn.lock ./yarn.lock
-COPY ./src ./src
-COPY ./tsconfig.json ./tsconfig.json
+
+WORKDIR /build
+COPY /package.json ./package.json
+COPY /yarn.lock ./yarn.lock
+COPY /src ./src
+COPY /tsconfig.json ./tsconfig.json
 
 # node-purple dependencies
 RUN apt-get update && apt-get install --no-install-recommends -y libpurple0 libpurple-dev libglib2.0-dev python3 git build-essential
@@ -18,20 +20,20 @@ WORKDIR /app
 
 # Install node-purple runtime dependencies.
 RUN apt-get update && apt-get install --no-install-recommends -y libpurple0 pidgin-sipe
-COPY ./package.json /app/package.json
-COPY ./yarn.lock /app/yarn.lock
+COPY package.json /app/package.json
+COPY yarn.lock /app/yarn.lock
 
 # Don't install devDependencies, or optionals.
-RUN yarn --check-files --production --ignore-optional
+RUN yarn --check-files --production --ignore-optional && yarn cache clean
 
 # Copy the compiled node-purple module
-COPY --from=builder ./node_modules/node-purple /app/node_modules/node-purple
+COPY --from=builder /build/node_modules/node-purple /app/node_modules/node-purple
 
 # Copy compiled JS
-COPY --from=builder ./lib /app/lib
+COPY --from=builder /build/lib /app/lib
 
 # Copy the schema for validation purposes.
-COPY ./config/config.schema.yaml ./config/config.schema.yaml
+COPY /config/config.schema.yaml /app/config/config.schema.yaml
 
 VOLUME [ "/data" ]
 

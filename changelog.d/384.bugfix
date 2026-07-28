@@ -1,0 +1,1 @@
+Fix the room name being reset to the room's address whenever a user joins.

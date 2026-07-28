@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import * as Chai from "chai";
+import { describe, it, expect, beforeEach } from "vitest";
 import { XmppJsGateway } from "../../src/xmppjs/XJSGateway";
 import { IConfigBridge, Config } from "../../src/Config";
 import { MockXJSInstance } from "../mocks/XJSInstance";
@@ -9,8 +9,6 @@ import { StzaBase, StzaPresence, StzaPresenceItem, StzaPresenceJoin } from "../.
 import { XMPPStatusCode } from "../../src/xmppjs/XMPPConstants";
 import jid from "@xmpp/jid";
 
-const expect = Chai.expect;
-
 function createGateway(config?: IConfigBridge) {
     const mockXmpp = new MockXJSInstance();
     if (!config) {
@@ -18,7 +16,9 @@ function createGateway(config?: IConfigBridge) {
     }
     return {gw: new XmppJsGateway(mockXmpp as any, {
         generateParametersFor(protocol: string, mxId: string) {
-            return mxId.replace(/@/, "").replace(/:/g, "_") + "@bar";
+            // Matches AutoRegistration.generateParametersFor, which returns the parameter
+            // map for the protocol's registration step ({username} for XMPP).
+            return { username: mxId.replace(/@/, "").replace(/:/g, "_") + "@bar" };
         },
     } as any, config), mockXmpp};
 }
@@ -63,7 +63,7 @@ describe("XJSGateway", () => {
                     id: "myjoinid",
                 }, x("x", {xmlns: "http://jabber.org/protocol/muc"}) ),
                 "#matrix:bar");
-            expect(joinCount).to.equal(2);
+            expect(joinCount).toBe(2);
         });
     });
     describe("onRemoteJoin", () => {
@@ -73,11 +73,12 @@ describe("XJSGateway", () => {
                 topic: "GatewayTopic",
                 roomId: "!foo:bar",
                 membership: [],
+                allowHistory: true,
             };
             try {
                 await gw.onRemoteJoin(null, "myjoinid", room, "@_xmpp_foo:bar");
             } catch (ex) {
-                expect(ex.message).to.eq("Stanza for join not in cache, cannot handle");
+                expect(ex.message).toBe("Stanza for join not in cache, cannot handle");
                 return;
             }
             throw Error("Should have thrown");
@@ -93,6 +94,7 @@ describe("XJSGateway", () => {
                     createMember("@_xmpp_baz:bar", "Baz"),
                     createMember("@leavy:bar", "Leavy", "leave"),
                 ],
+                allowHistory: true,
             };
             gw.handleStanza(
                 x("presence", {
@@ -108,31 +110,35 @@ describe("XJSGateway", () => {
                 m.id = undefined;
                 return m;
             });
-            expect(messages[0]).to.include({
+            expect(messages[0]).toMatchObject({
                 hFrom: "#matrix#bar@conference.localhost/@foo1:bar",
                 hTo: "frogman@froguniverse/frogdevice",
                 affiliation: "member",
                 role: "participant",
+                // XEP-0045 §7.2.3: the real JID advertised for an occupant must be a FULL
+                // JID — Smack-based clients cast it to EntityFullJid.
+                jid: "foo1_bar@bar/matrix-bridge",
             });
 
-            expect(messages[1]).to.include({
+            expect(messages[1]).toMatchObject({
                 hFrom: "#matrix#bar@conference.localhost/Mr Foo2",
                 hTo: "frogman@froguniverse/frogdevice",
                 affiliation: "member",
                 role: "participant",
+                jid: "foo2_bar@bar/matrix-bridge",
             });
 
-            expect(messages[2]).to.include({
+            expect(messages[2]).toMatchObject({
                 hFrom: "#matrix#bar@conference.localhost/frognick",
                 hTo: "frogman@froguniverse/frogdevice",
                 affiliation: "member",
                 role: "participant",
             });
-            expect((messages[2] as StzaPresenceItem).statusCodes).contains(XMPPStatusCode.SelfPresence);
-            expect((messages[2] as StzaPresenceItem).statusCodes).contains(XMPPStatusCode.RoomNonAnonymous);
-            expect((messages[2] as StzaPresenceItem).statusCodes).contains(XMPPStatusCode.RoomLoggingEnabled);
+            expect((messages[2] as StzaPresenceItem).statusCodes).toContain(XMPPStatusCode.SelfPresence);
+            expect((messages[2] as StzaPresenceItem).statusCodes).toContain(XMPPStatusCode.RoomNonAnonymous);
+            expect((messages[2] as StzaPresenceItem).statusCodes).toContain(XMPPStatusCode.RoomLoggingEnabled);
 
-            expect(messages[3]).to.deep.equal({
+            expect(messages[3]).toEqual({
                 hFrom: "#matrix#bar@conference.localhost",
                 hTo: "frogman@froguniverse/frogdevice",
                 hId: "",
@@ -150,6 +156,7 @@ describe("XJSGateway", () => {
                     createMember("@_xmpp_baz:bar", "Baz"),
                     createMember("@leavy:bar", "Leavy", "leave"),
                 ],
+                allowHistory: true,
             };
             gw.handleStanza(
                 x("presence", {
@@ -178,6 +185,7 @@ describe("XJSGateway", () => {
                 topic: "GatewayTopic",
                 roomId: "!foo:bar",
                 membership,
+                allowHistory: true,
             };
             gw.handleStanza(
                 x("presence", {
@@ -194,7 +202,7 @@ describe("XJSGateway", () => {
                 return m;
             });
             // 2500 users + 1 self presence
-            expect(messages.filter((m) => m.type === "presence")).to.have.lengthOf(2501);
+            expect(messages.filter((m) => m.type === "presence")).toHaveLength(2501);
         });
         it("should reflect a join to all other XMPP users in the room", async () => {
             const room: IGatewayRoom = {
@@ -202,6 +210,7 @@ describe("XJSGateway", () => {
                 topic: "GatewayTopic",
                 roomId: "!foo:bar",
                 membership: [],
+                allowHistory: true,
             };
             gw.handleStanza(
                 x("presence", {
@@ -226,13 +235,13 @@ describe("XJSGateway", () => {
                 "#matrix:bar");
 
             await gw.onRemoteJoin(null, "myjoinid1", room, "@_xmpp_frognick:bar");
-            expect(gw.isJIDInMuc("#matrix#bar@conference.localhost", jid("frogman@froguniverse/frogdevice"))).to.be.true;
+            expect(gw.isJIDInMuc("#matrix#bar@conference.localhost", jid("frogman@froguniverse/frogdevice"))).toBe(true);
 
             await gw.onRemoteJoin(null, "myjoinid2", room, "@_xmpp_dognick:bar");
-            expect(gw.isJIDInMuc("#matrix#bar@conference.localhost", jid("dogboy@froguniverse/phone"))).to.be.true;
+            expect(gw.isJIDInMuc("#matrix#bar@conference.localhost", jid("dogboy@froguniverse/phone"))).toBe(true);
 
             await gw.onRemoteJoin(null, "myjoinid3", room, "@_xmpp_alice:bar");
-            expect(gw.isJIDInMuc("#matrix#bar@conference.localhost", jid("alice@froguniverse/phone"))).to.be.true;
+            expect(gw.isJIDInMuc("#matrix#bar@conference.localhost", jid("alice@froguniverse/phone"))).toBe(true);
 
             // frogman should have got dogboy's presence
             expect(mockXmpp.sentMessages.find((msg) => {
@@ -242,7 +251,7 @@ describe("XJSGateway", () => {
                     presence.affiliation === "member" &&
                     presence.role === "participant" &&
                     presence.statusCodes.size === 0;
-            })).to.exist;
+            })).toBeDefined();
             // frogman & dogboy should have got alice's presence
             expect(mockXmpp.sentMessages.find((msg) => {
                 const presence = msg as StzaPresenceItem;
@@ -251,7 +260,7 @@ describe("XJSGateway", () => {
                     presence.affiliation === "member" &&
                     presence.role === "participant" &&
                     presence.statusCodes.size === 0;
-            })).to.exist;
+            })).toBeDefined();
             expect(mockXmpp.sentMessages.find((msg) => {
                 const presence = msg as StzaPresenceItem;
                 return presence.from === "#matrix#bar@conference.localhost/alice" &&
@@ -259,7 +268,7 @@ describe("XJSGateway", () => {
                     presence.affiliation === "member" &&
                     presence.role === "participant" &&
                     presence.statusCodes.size === 0;
-            })).to.exist;
+            })).toBeDefined();
         });
     });
 });

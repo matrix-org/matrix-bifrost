@@ -3,7 +3,7 @@
   "version": "2.1.1",
   "description": "Multi protocol bridging for Matrix.",
   "engines": {
-    "node": ">=22"
+    "node": "^22.0.0 || >=24.0.0"
   },
   "main": "lib/Program.js",
   "scripts": {
@@ -12,9 +12,10 @@
     "lint": "eslint -c .eslintrc 'test/**/*.ts' 'src/**/*.ts'",
     "start": "node --enable-source-maps lib/Program.js -c config.yaml",
     "genreg": "node lib/Program.js -r -c config.yaml",
-    "test": "mocha -r ts-node/register test/test.ts test/*.ts test/**/*.ts",
+    "test": "vitest run",
+    "test:e2e": "vitest --config vitest.e2e.config.ts run",
     "changelog": "scripts/towncrier.sh",
-    "coverage": "nyc mocha -r ts-node/register test/test.ts test/*.ts test/**/*.ts"
+    "coverage": "vitest run --coverage"
   },
   "repository": {
     "type": "git",
@@ -45,57 +46,27 @@
     "quick-lru": "^5.0.0"
   },
   "devDependencies": {
-    "@istanbuljs/nyc-config-typescript": "^1.0.2",
     "@stylistic/eslint-plugin": "^3.1.0",
     "@tsconfig/node22": "^22.0.2",
-    "@types/chai": "^4.3.11",
-    "@types/mocha": "^9.0.0",
     "@types/node": "^22",
     "@types/pg": "^7.14.5",
     "@types/xmpp__jid": "^1.3.5",
     "@types/xmpp__xml": "^0.6.1",
     "@typescript-eslint/eslint-plugin": "^8.46.2",
     "@typescript-eslint/parser": "^8.46.2",
-    "chai": "^4",
+    "@vitest/coverage-v8": "^4.1.10",
+    "@xmpp/client": "^0.13.1",
     "eslint": "^8.57.1",
     "eslint-plugin-import": "^2.29.1",
     "eslint-plugin-jsdoc": "^48.0.2",
-    "mocha": "^9.0.3",
-    "mock-require": "^3.0.3",
-    "nyc": "^15.1.0",
-    "ts-node": "^10.9.2",
-    "typescript": "^5.9.3"
+    "matrix-bot-sdk": "^0.8.0",
+    "testcontainers": "^12.0.4",
+    "@testcontainers/postgresql": "^12.0.4",
+    "typescript": "^5.9.3",
+    "vitest": "^4.1.10",
+    "yaml": "^2.9.0"
   },
   "optionalDependencies": {
-    "node-purple": "git+https://github.com/matrix-org/node-purple#6c711f276772f78edf9d0dc5e1ad442e2291ec81"
-  },
-  "nyc": {
-    "check-coverage": true,
-    "per-file": false,
-    "lines": 85,
-    "statements": 85,
-    "functions": 75,
-    "branches": 75,
-    "include": [
-      "src"
-    ],
-    "exclude": [
-      "src/Program.ts"
-    ],
-    "reporter": [
-      "lcov",
-      "text-summary"
-    ],
-    "extension": [
-      ".ts"
-    ],
-    "require": [
-      "ts-node/register"
-    ],
-    "cache": true,
-    "all": true,
-    "instrument": true,
-    "sourceMap": true,
-    "report-dir": "./coverage"
+    "node-purple": "git+https://github.com/matrix-org/node-purple#f5f5005501a95ac1e61da69298782b08a130946a"
   }
 }

@@ -1,12 +1,11 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import * as Chai from "chai";
+import { describe, it, expect } from "vitest";
 import { PurpleProtocol } from "../src/purple/PurpleProtocol";
 import { RoomSync } from "../src/RoomSync";
 import { Deduplicator } from "../src/Deduplicator";
 import { MROOM_TYPE_GROUP, IRemoteGroupData } from "../src/store/Types";
 import { mockStore } from "./mocks/store";
 import { AppServiceBot, Intent, RoomBridgeStoreEntry } from "matrix-appservice-bridge";
-const expect = Chai.expect;
 
 const dummyProtocol = new PurpleProtocol({
     id: "prpl-dummy",
@@ -78,7 +77,7 @@ describe("RoomSync", () => {
         } as IRemoteGroupData);
         await store.storeAccount("@foo:bar", dummyProtocol, "foobar");
         await rs.sync(bot as any);
-        expect(rs.getMembershipForUser("prpl-dummy://foobar")).to.deep.equal([
+        expect(rs.getMembershipForUser("prpl-dummy://foobar")).toEqual([
             {
                 membership: "join",
                 params: {},
@@ -97,7 +96,7 @@ describe("RoomSync", () => {
         } as IRemoteGroupData);
         await store.storeAccount("@foo:bar", dummyProtocol, "foobar");
         await rs.sync(bot as any);
-        expect(rs.getMembershipForUser("prpl-dummy://foobar")).to.not.exist;
-        expect(remoteJoins[0].id).to.equal("!abc:foobar    foobar");
+        expect(rs.getMembershipForUser("prpl-dummy://foobar")).toBeUndefined();
+        expect(remoteJoins[0].id).toBe("!abc:foobar    foobar");
     });
 });
