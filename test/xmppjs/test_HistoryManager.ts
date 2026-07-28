@@ -1,4 +1,4 @@
-import { expect } from "chai";
+import { describe, it, expect } from "vitest";
 import { MemoryStorage, HistoryManager } from "../../src/xmppjs/HistoryManager";
 import { Element } from "@xmpp/xml";
 import { JID } from "@xmpp/jid";
@@ -27,25 +27,25 @@ describe("HistoryManager", () => {
             );
 
             const unfilteredRoom1 = await historyManager.getHistory("room1@example.org", {});
-            expect(unfilteredRoom1.length).to.equal(3);
+            expect(unfilteredRoom1.length).toBe(3);
             const unfilteredRoom2 = await historyManager.getHistory("room2@example.org", {});
-            expect(unfilteredRoom2.length).to.equal(1);
+            expect(unfilteredRoom2.length).toBe(1);
 
             const maxStanzasRoom1 = await historyManager.getHistory("room1@example.org", {
                 maxstanzas: 2,
             });
-            expect(maxStanzasRoom1.length).to.equal(2);
+            expect(maxStanzasRoom1.length).toBe(2);
             const maxStanzasRoom2 = await historyManager.getHistory("room2@example.org", {
                 maxstanzas: 2,
             });
-            expect(maxStanzasRoom2.length).to.equal(1);
+            expect(maxStanzasRoom2.length).toBe(1);
 
             // each stanza will be about 40 characters, so maxchars 50 should
             // only give us one stanza
             const maxCharsRoom1 = await historyManager.getHistory("room1@example.org", {
                 maxchars: 50,
             });
-            expect(maxCharsRoom1.length).to.equal(1);
+            expect(maxCharsRoom1.length).toBe(1);
         });
 
         it("should not cache messages for a room that has not been allowed", async () => {
@@ -55,7 +55,7 @@ describe("HistoryManager", () => {
                 new JID("room1", "example.org", "user1"),
             );
 
-            expect(await historyManager.getHistory("room1@example.org", {})).to.have.lengthOf(0);
+            expect(await historyManager.getHistory("room1@example.org", {})).toHaveLength(0);
         });
 
         it("should stop caching messages once a room is disallowed", async () => {
@@ -72,7 +72,7 @@ describe("HistoryManager", () => {
                 new JID("room1", "example.org", "user1"),
             );
 
-            expect(await historyManager.getHistory("room1@example.org", {})).to.have.lengthOf(1);
+            expect(await historyManager.getHistory("room1@example.org", {})).toHaveLength(1);
         });
     });
 });

@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import * as Chai from "chai";
+import { describe, it, expect, beforeEach } from "vitest";
 import { MatrixEventHandler } from "../src/MatrixEventHandler";
 import { mockStore } from "./mocks/store";
 import { Deduplicator } from "../src/Deduplicator";
@@ -8,7 +8,6 @@ import { dummyProtocol } from "./mocks/dummyprotocol";
 import { IStore } from "../src/store/Store";
 import { IRemoteImData, MROOM_TYPE_IM } from "../src/store/Types";
 import { WeakEvent, Request } from "matrix-appservice-bridge";
-const expect = Chai.expect;
 
 function createRequest(extraEvData: any): Request<WeakEvent> {
     const eventData = {
@@ -102,7 +101,7 @@ describe("MatrixEventHandler", () => {
                 event_id: "$botinviteevent",
                 state_key: "@theboss:localhost",
             }));
-            expect(handleInviteForBotCalledWith.event_id).to.be.equal("$botinviteevent");
+            expect(handleInviteForBotCalledWith.event_id).toBe("$botinviteevent");
         });
         it("handle new invite for ghost", async () => {
             let messagesHandled = 0;
@@ -123,15 +122,15 @@ describe("MatrixEventHandler", () => {
                 event_id: "$ghostinviteevent",
                 state_key: "@definitelyremote:localhost",
             }));
-            expect(messagesHandled).to.equal(1);
+            expect(messagesHandled).toBe(1);
             const storeEntry = await store.getGroupRoomByRemoteData({
                 recipient: "definitelyremote",
                 matrixUser: "@alice:localhost",
                 protocol_id: dummyProtocol.id,
             } as IRemoteImData);
-            expect(storeEntry).to.not.be.null;
-            expect(storeEntry?.matrix?.getId()).to.equal("!12345:localhost");
-            expect(storeEntry?.matrix?.get("type")).to.equal(MROOM_TYPE_IM);
+            expect(storeEntry).not.toBeNull();
+            expect(storeEntry?.matrix?.getId()).toBe("!12345:localhost");
+            expect(storeEntry?.matrix?.get("type")).toBe(MROOM_TYPE_IM);
         });
     });
 });

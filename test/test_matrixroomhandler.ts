@@ -1,9 +1,8 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import * as Chai from "chai";
+import { describe, it, expect } from "vitest";
 import { EventEmitter } from "events";
 import { MatrixRoomHandler } from "../src/MatrixRoomHandler";
 import { Config } from "../src/Config";
-const expect = Chai.expect;
 
 const ROOM_ID = "!room:localhost";
 const MUC_JID = "muc@conference.localhost";
@@ -45,13 +44,13 @@ describe("MatrixRoomHandler", () => {
                 { type: "m.room.name", content: { name: "A Human Name" } },
             ]);
             await handler.handleTopic(topicEvent());
-            expect(calls.setRoomName).to.be.empty;
+            expect(calls.setRoomName).toHaveLength(0);
         });
 
         it("should name a room that has no name yet", async () => {
             const { handler, calls } = createHandler([]);
             await handler.handleTopic(topicEvent());
-            expect(calls.setRoomName).to.deep.equal([[ROOM_ID, MUC_JID]]);
+            expect(calls.setRoomName).toEqual([[ROOM_ID, MUC_JID]]);
         });
 
         it("should set a changed topic and skip an unchanged one", async () => {
@@ -60,12 +59,12 @@ describe("MatrixRoomHandler", () => {
                 { type: "m.room.topic", content: { topic: "old topic" } },
             ]);
             await handler.handleTopic(topicEvent("new topic"));
-            expect(calls.setRoomTopic).to.deep.equal([[ROOM_ID, "new topic"]]);
+            expect(calls.setRoomTopic).toEqual([[ROOM_ID, "new topic"]]);
             calls.setRoomTopic.length = 0;
             // unchanged topic: reads content.topic (was content.name, so every redelivery
             // re-sent an identical m.room.topic state event)
             await handler.handleTopic(topicEvent("old topic"));
-            expect(calls.setRoomTopic).to.be.empty;
+            expect(calls.setRoomTopic).toHaveLength(0);
         });
     });
 });
