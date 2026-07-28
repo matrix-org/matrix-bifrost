@@ -198,7 +198,8 @@ export class XmppJsAccount implements IBifrostAccount {
         components: XmppChatJoinComponents,
         instance?: IBifrostInstance,
         timeout: number = 5000,
-        setWaiting: boolean = true)
+        setWaiting: boolean = true,
+        historySince?: Date)
         : Promise<IConversationEvent|void> {
         let roomName: string;
         if (!components.handle) {
@@ -245,6 +246,9 @@ export class XmppJsAccount implements IBifrostAccount {
         const message = new StzaPresenceJoin(
             from,
             to,
+            undefined,
+            undefined,
+            historySince,
         );
         this.roomHandles.set(roomName, components.handle);
         if (setWaiting) {

@@ -1,0 +1,1 @@
+Fix room messages sent while a join was still in flight being lost.
