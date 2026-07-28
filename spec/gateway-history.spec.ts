@@ -106,4 +106,53 @@ describe("XMPP gateway history backfill", () => {
         await joinGateway(testEnv, joinTo);
         await expect(history).rejects.toThrow();
     });
+
+    test("picks up a live history_visibility change without a restart, only caching what followed it", async ({ testEnv, alice }) => {
+        const bobNick = "bob";
+        await alice.setDisplayName("Alice");
+        const alias = await createPublicRoom(testEnv, alice, "gateway-history-visibility-change-room", "Gateway History Visibility Change Room");
+        const roomId = await alice.resolveRoom(alias);
+        // Restrict visibility before the gateway ever hydrates this room, so it starts out
+        // (correctly) treating history as unsafe to cache.
+        await alice.sendStateEvent(roomId, "m.room.history_visibility", "", { history_visibility: "joined" });
+        const chatJid = roomJid(alias);
+        const joinTo = `${chatJid}/${bobNick}`;
+
+        await joinGateway(testEnv, joinTo);
+
+        const beforeWideningDelivered = waitForStanza(
+            testEnv.xmpp, "live message before widening",
+            (s) => s.is("message") && s.getChildText("body") === "before widening",
+        );
+        await alice.sendMessage(roomId, { msgtype: "m.text", body: "before widening" });
+        await beforeWideningDelivered;
+
+        // Widen visibility with the gateway room already hydrated/cached - this only works if
+        // GatewayHandler#sendStateEvent live-patches the cached allowHistory flag rather than
+        // relying on a fresh (uncached) hydration to notice the change.
+        await alice.sendStateEvent(roomId, "m.room.history_visibility", "", { history_visibility: "shared" });
+
+        const afterWideningDelivered = waitForStanza(
+            testEnv.xmpp, "live message after widening",
+            (s) => s.is("message") && s.getChildText("body") === "after widening",
+        );
+        await alice.sendMessage(roomId, { msgtype: "m.text", body: "after widening" });
+        await afterWideningDelivered;
+
+        await leaveGateway(testEnv, joinTo);
+
+        // Only one message was ever eligible for caching - the one sent after visibility opened
+        // up. If the write side wasn't gated, "before widening" would show up here too.
+        const history = collectStanzas(
+            testEnv.xmpp, "replayed history on rejoin", isDelayedGroupchatMessage, 1,
+        );
+        await joinGateway(testEnv, joinTo);
+        const [onlyMessage] = await history;
+        expect(onlyMessage.getChildText("body")).toEqual("after widening");
+
+        const unexpectedSecondMessage = collectStanzas(
+            testEnv.xmpp, "a second replayed message (should not happen)", isDelayedGroupchatMessage, 1, 3000,
+        );
+        await expect(unexpectedSecondMessage).rejects.toThrow();
+    });
 });

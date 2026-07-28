@@ -7,6 +7,8 @@ describe("HistoryManager", () => {
     describe("MemoryStorage", () => {
         it("should return filtered history", async () => {
             const historyManager = new HistoryManager(new MemoryStorage(20));
+            historyManager.setAllowed("room1@example.org", true);
+            historyManager.setAllowed("room2@example.org", true);
             historyManager.addMessage(
                 "room1@example.org", new Element("stanza1"),
                 new JID("room1", "example.org", "user1"),
@@ -44,6 +46,33 @@ describe("HistoryManager", () => {
                 maxchars: 50,
             });
             expect(maxCharsRoom1.length).to.equal(1);
+        });
+
+        it("should not cache messages for a room that has not been allowed", async () => {
+            const historyManager = new HistoryManager(new MemoryStorage(20));
+            historyManager.addMessage(
+                "room1@example.org", new Element("stanza1"),
+                new JID("room1", "example.org", "user1"),
+            );
+
+            expect(await historyManager.getHistory("room1@example.org", {})).to.have.lengthOf(0);
+        });
+
+        it("should stop caching messages once a room is disallowed", async () => {
+            const historyManager = new HistoryManager(new MemoryStorage(20));
+            historyManager.setAllowed("room1@example.org", true);
+            historyManager.addMessage(
+                "room1@example.org", new Element("stanza1"),
+                new JID("room1", "example.org", "user1"),
+            );
+
+            historyManager.setAllowed("room1@example.org", false);
+            historyManager.addMessage(
+                "room1@example.org", new Element("stanza2"),
+                new JID("room1", "example.org", "user1"),
+            );
+
+            expect(await historyManager.getHistory("room1@example.org", {})).to.have.lengthOf(1);
         });
     });
 });

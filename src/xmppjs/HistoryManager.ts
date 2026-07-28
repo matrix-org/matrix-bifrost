@@ -65,11 +65,26 @@ export class MemoryStorage implements IHistoryStorage {
  * Manage room history for a MUC
  */
 export class HistoryManager {
+    // Rooms default to disallowed until told otherwise, so a room nobody has hydrated yet
+    // (or one caching gating hasn't been wired up for) never accumulates a cache it can't serve.
+    private allowedRooms = new Set<string>();
+
     constructor(
         private storage: IHistoryStorage,
     ) {}
 
+    setAllowed(chatName: string, allowed: boolean): void {
+        if (allowed) {
+            this.allowedRooms.add(chatName);
+        } else {
+            this.allowedRooms.delete(chatName);
+        }
+    }
+
     addMessage(chatName: string, message: Element, jid: JID): unknown {
+        if (!this.allowedRooms.has(chatName)) {
+            return;
+        }
         return this.storage.addMessage(chatName, message, jid);
     }
 

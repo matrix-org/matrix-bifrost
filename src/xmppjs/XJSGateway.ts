@@ -133,6 +133,10 @@ export class XmppJsGateway implements IGateway {
         this.xmpp.serviceHandler.updateCachedRoomName(roomId, name);
     }
 
+    public setRoomHistoryAllowed(chatName: string, allowed: boolean) {
+        this.roomHistory.setAllowed(chatName, allowed);
+    }
+
     public isJIDInMuc(chatName: string, j: JID) {
         return !!this.members.getXmppMemberByDevice(chatName, j);
     }
@@ -183,13 +187,13 @@ export class XmppJsGateway implements IGateway {
         );
 
         // add the message to the room history
-        const historyStanza = new StzaMessage(
-            from.anonymousJid.toString(),
-            "",
-            msg,
-            "groupchat",
-        );
         if (room.allowHistory) {
+            const historyStanza = new StzaMessage(
+                from.anonymousJid.toString(),
+                "",
+                msg,
+                "groupchat",
+            );
             this.roomHistory.addMessage(chatName, parse(historyStanza.xml), from.anonymousJid);
         }
 
@@ -233,8 +237,8 @@ export class XmppJsGateway implements IGateway {
         }
         stanza.attrs.from = preserveFrom;
         try {
-            // TODO: Currently we have no way to determine if this room has private history,
-            // so we may be adding more strain to the cache than nessacery.
+            // Silently a no-op if this room's history_visibility doesn't allow it - see
+            // HistoryManager#addMessage and IGateway#setRoomHistoryAllowed.
             this.roomHistory.addMessage(
                 chatName, stanza,
                 member.anonymousJid,
@@ -346,6 +350,10 @@ export class XmppJsGateway implements IGateway {
         if (!ownMxid) {
             throw Error('ownMxid is not defined');
         }
+
+        // Refresh this every join - it's cheap, and self-heals if a history_visibility change
+        // happened before setRoomHistoryAllowed's caller had a chance to tell us about it.
+        this.roomHistory.setAllowed(chatName, room.allowHistory);
 
         // Ensure our membership is accurate.
         this.updateMatrixMemberListForRoom(chatName, room, true); // HACK: Always update members for joiners

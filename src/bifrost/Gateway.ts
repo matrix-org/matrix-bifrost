@@ -24,6 +24,12 @@ export interface IGateway extends IProfileProvider {
      * network (e.g. cached disco#info identities), so room lists pick the new name up live.
      */
     updateRoomName(roomId: string, name?: string): void;
+    /**
+     * The Matrix room's history_visibility changed: refresh whether messages arriving from the
+     * remote network are worth caching for backfill, so a tightened room doesn't keep building
+     * up a cache nobody will ever be allowed to read.
+     */
+    setRoomHistoryAllowed(chatName: string, allowed: boolean): void;
 }
 
 export interface IGatewayRoom {
