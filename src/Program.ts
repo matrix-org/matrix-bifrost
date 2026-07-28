@@ -15,6 +15,7 @@ import { Metrics } from "./Metrics";
 import { AutoRegistration } from "./AutoRegistration";
 import { GatewayHandler } from "./GatewayHandler";
 import { IRemoteUserAdminData, MROOM_TYPE_UADMIN } from "./store/Types";
+import { THIRDPARTY_PROTOCOL_ID } from "./bifrost/Protocol";
 
 import * as fs from "fs";
 import { webcrypto } from "node:crypto";
@@ -88,6 +89,10 @@ export class Program {
         reg.addRegexPattern("users", "@_bifrost_.*", true);
         reg.addRegexPattern("aliases", "#bifrost_.*", true);
         reg.pushEphemeral = true;
+        // Lets the homeserver know which third-party networks this bridge serves: synapse
+        // queries GET /_matrix/app/v1/thirdparty/protocol/<p> for each entry to populate
+        // /_matrix/client/v3/thirdparty/protocols (the network dropdown in room directories).
+        reg.setProtocols([THIRDPARTY_PROTOCOL_ID]);
         callback(reg);
     }
 
@@ -245,7 +250,29 @@ export class Program {
                     bridgeLog[error ? "warn" : "debug"](msg);
                 },
                 onAliasQueried: (alias, roomId) => this.eventHandler!.onAliasQueried(alias, roomId),
-                onUserQuery: () => { throw Error('Not defined') }
+                onUserQuery: () => { throw Error('Not defined') },
+                // Serve the third-party network lookup the registration's `protocols`
+                // advertises, so the homeserver can offer this bridge's network in room
+                // directories ("Show: XMPP" in Element's directory dropdown).
+                thirdPartyLookup: {
+                    protocols: [THIRDPARTY_PROTOCOL_ID],
+                    getProtocol: async () => ({
+                        user_fields: ["username", "domain"],
+                        location_fields: ["muc", "domain"],
+                        icon: "",
+                        field_types: {
+                            username: { regexp: "[^@/]+", placeholder: "username" },
+                            domain: { regexp: "[^@/]+", placeholder: "xmpp.example.com" },
+                            muc: { regexp: "[^@/]+", placeholder: "room" },
+                        },
+                        instances: [{
+                            desc: "XMPP",
+                            icon: "",
+                            fields: {},
+                            network_id: THIRDPARTY_PROTOCOL_ID,
+                        }],
+                    }),
+                },
             },
             domain: this.cfg.bridge.domain,
             homeserverUrl: this.cfg.bridge.homeserverUrl,

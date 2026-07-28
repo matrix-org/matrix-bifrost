@@ -4,7 +4,7 @@ import { MROOM_TYPE_UADMIN, MROOM_TYPE_IM, MROOM_TYPE_GROUP,
     IRemoteUserAdminData,
     IRemoteGroupData,
     IRemoteImData} from "./store/Types";
-import { BifrostProtocol } from "./bifrost/Protocol";
+import { BifrostProtocol, THIRDPARTY_PROTOCOL_ID } from "./bifrost/Protocol";
 import { IBifrostInstance } from "./bifrost/Instance";
 import { Marked } from "marked";
 import { IBifrostAccount } from "./bifrost/Account";
@@ -65,6 +65,15 @@ export class MatrixEventHandler {
                 // Set the alias on the room.
                 const botIntent = this.bridge.getIntent();
                 await botIntent.createAlias(alias, existing.matrix.getId());
+                // (Re)publish to the appservice room list — also backfills portals that
+                // predate directory publishing, next time their alias is queried.
+                try {
+                    await botIntent.setRoomDirectoryVisibilityAppService(
+                        existing.matrix.getId(), THIRDPARTY_PROTOCOL_ID, "public",
+                    );
+                } catch (ex) {
+                    log.warn(`Failed to publish ${existing.matrix.getId()} to the appservice room directory:`, ex);
+                }
                 return null;
             }
         } catch (ex) {
@@ -115,6 +124,15 @@ export class MatrixEventHandler {
             await this.store.storeRoom(roomId, MROOM_TYPE_GROUP, remoteId, remoteData);
         } catch (ex) {
             log.error("Failed to store room:", ex);
+        }
+        // Publish the new portal to this appservice's room list, so it shows up when a client
+        // browses the bridge's network in the room directory ("Show: XMPP" in Element).
+        try {
+            await this.bridge.getIntent().setRoomDirectoryVisibilityAppService(
+                roomId, THIRDPARTY_PROTOCOL_ID, "public",
+            );
+        } catch (ex) {
+            log.warn(`Failed to publish ${roomId} to the appservice room directory:`, ex);
         }
     }
 
