@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import { describe, it, expect } from "vitest";
 import { IGatewayRoom } from "../src/bifrost/Gateway";
 import { Config } from "../src/Config";
@@ -11,117 +10,115 @@ import { MROOM_TYPE_GROUP, IRemoteGroupData } from "../src/store/Types";
 import { GatewayHandler } from "../src/GatewayHandler";
 
 function createGH() {
-    let remoteJoinResolve: any = null;
-    const watch: any = {
-        intent: null,
-        profileUpdated: false,
-        remoteJoin: null,
-        remoteJoinPromise: new Promise((resolve) => remoteJoinResolve = resolve),
-    };
-    const bridge = {
-        getIntent: (userId) => {
-            watch.intent = new MockIntent(userId);
-            return watch.intent;
-        },
-        getBot: () => ({
-            isRemoteUser: (userId: string) => userId.startsWith("@_prefix_"),
-        }),
-    };
-    let purple: any = {
-        gateway: {
-            onRemoteJoin: (
-                err: string|null, joinId: string, room: IGatewayRoom|undefined, ownMxid: string|undefined) => {
-                watch.remoteJoin = {err, joinId, room, ownMxid};
-                remoteJoinResolve();
-            },
-            getMxidForRemote: (sender: string) => `@_prefix_${sender}:localhost`,
-        },
-        getProtocol: () => dummyProtocol,
-    };
-    purple = Object.assign(new EventEmitter(), purple);
-    const profileSync: any = {
-        updateProfile: () => { watch.profileUpdated = true; },
-    };
-    const config = new Config();
-    config.roomRules.push({
-        action: "deny",
-        room: "#badroom:example.com"
-    });
-    config.roomRules.push({
-        action: "deny",
-        room: "!evilroom:example.com"
-    });
-    config.portals.enableGateway = true;
-    config.bridge.domain = "localhost";
-    config.bridge.userPrefix = "_prefix_";
-    const store = mockStore();
-    const gh = new GatewayHandler(
-        purple,
-        bridge as any,
-        config as any,
-        store,
-        profileSync,
-    );
-    return {gh, purple, watch, store};
+  let remoteJoinResolve: any = null;
+  const watch: any = {
+    intent: null,
+    profileUpdated: false,
+    remoteJoin: null,
+    remoteJoinPromise: new Promise((resolve) => (remoteJoinResolve = resolve)),
+  };
+  const bridge = {
+    getIntent: (userId) => {
+      watch.intent = new MockIntent(userId);
+      return watch.intent;
+    },
+    getBot: () => ({
+      isRemoteUser: (userId: string) => userId.startsWith("@_prefix_"),
+    }),
+  };
+  let purple: any = {
+    gateway: {
+      onRemoteJoin: (
+        err: string | null,
+        joinId: string,
+        room: IGatewayRoom | undefined,
+        ownMxid: string | undefined,
+      ) => {
+        watch.remoteJoin = { err, joinId, room, ownMxid };
+        remoteJoinResolve();
+      },
+      getMxidForRemote: (sender: string) => `@_prefix_${sender}:localhost`,
+    },
+    getProtocol: () => dummyProtocol,
+  };
+  purple = Object.assign(new EventEmitter(), purple);
+  const profileSync: any = {
+    updateProfile: () => {
+      watch.profileUpdated = true;
+    },
+  };
+  const config = new Config();
+  config.roomRules.push({
+    action: "deny",
+    room: "#badroom:example.com",
+  });
+  config.roomRules.push({
+    action: "deny",
+    room: "!evilroom:example.com",
+  });
+  config.portals.enableGateway = true;
+  config.bridge.domain = "localhost";
+  config.bridge.userPrefix = "_prefix_";
+  const store = mockStore();
+  const gh = new GatewayHandler(purple, bridge as any, config as any, store, profileSync);
+  return { gh, purple, watch, store };
 }
 
 describe("GatewayHandler", () => {
-    it("will handle a remote room join sucessfully", async () => {
-        const {purple, watch} = createGH();
-        purple.emit("gateway-joinroom", {
-            sender: "frogman@frogworld",
-            protocol_id: dummyProtocol.id,
-            join_id: "!roomId:localhost",
-            roomAlias: "#roomAlias:localhost",
-            room_name: "#roomAlias#localhost@bridge.place",
-        } as IGatewayJoin);
-        await watch.remoteJoinPromise;
-        expect(watch.intent).not.toBeNull();
-        expect(watch.intent.ensureRegisteredCalled).toBe(true);
-        expect(watch.intent.userId).toBe("@_prefix_frogman@frogworld:localhost");
-        expect(watch.intent.clientJoinRoomCalledWith.roomString).toBe("#roomAlias:localhost");
-        expect(watch.profileUpdated).toBe(true);
-        expect(watch.remoteJoin.err).toBeNull();
-        expect(watch.remoteJoin.joinId).toBe("!roomId:localhost");
-        expect(watch.remoteJoin.room.roomId).toBe("!roomAlias:localhost");
-    });
-    it("will block joining to a gateway if a room is already bridged.", async () => {
-        const {purple, watch, store} = createGH();
-        await store.storeRoom("!roomAlias2:localhost", MROOM_TYPE_GROUP, "remoteId", {
-            protocol_id: dummyProtocol.id,
-            room_name: "#roomAlias2#localhost@bridge.place",
-        } as IRemoteGroupData);
-        purple.emit("gateway-joinroom", {
-            sender: "frogman@frogworld",
-            protocol_id: dummyProtocol.id,
-            join_id: "!roomId2:localhost",
-            roomAlias: "#roomAlias2:localhost",
-            room_name: "#roomAlias2#localhost@bridge.place",
-        } as IGatewayJoin);
-        await watch.remoteJoinPromise;
-        expect(watch.intent).not.toBeNull();
-        expect(watch.intent.ensureRegisteredCalled).toBe(true);
-        expect(watch.intent.userId).toBe("@_prefix_frogman@frogworld:localhost");
-        expect(watch.intent.clientJoinRoomCalledWith.roomString).toBe("#roomAlias2:localhost");
-        expect(watch.profileUpdated).toBe(true);
-        expect(watch.remoteJoin.joinId).toBe("!roomId2:localhost");
-        expect(watch.remoteJoin.err).toBe(
-            "This room is already bridged to #roomAlias2#localhost@bridge.place",
-        );
-    });
-    it("will block joining to a gateway if the alias is banned.", async () => {
-        const {purple, watch} = createGH();
-        purple.emit("gateway-joinroom", {
-            sender: "frogman@frogworld",
-            protocol_id: dummyProtocol.id,
-            join_id: "!roomId2:localhost",
-            roomAlias: "#badroom:example.com",
-        } as IGatewayJoin);
-        await watch.remoteJoinPromise;
-        expect(watch.intent).not.toBeNull();
-        expect(watch.intent.ensureRegisteredCalled).toBe(false);
-        expect(watch.remoteJoin.err).toBe(
-            "This room has been denied",
-        );
-    });
+  it("will handle a remote room join sucessfully", async () => {
+    const { purple, watch } = createGH();
+    purple.emit("gateway-joinroom", {
+      sender: "frogman@frogworld",
+      protocol_id: dummyProtocol.id,
+      join_id: "!roomId:localhost",
+      roomAlias: "#roomAlias:localhost",
+      room_name: "#roomAlias#localhost@bridge.place",
+    } as IGatewayJoin);
+    await watch.remoteJoinPromise;
+    expect(watch.intent).not.toBeNull();
+    expect(watch.intent.ensureRegisteredCalled).toBe(true);
+    expect(watch.intent.userId).toBe("@_prefix_frogman@frogworld:localhost");
+    expect(watch.intent.clientJoinRoomCalledWith.roomString).toBe("#roomAlias:localhost");
+    expect(watch.profileUpdated).toBe(true);
+    expect(watch.remoteJoin.err).toBeNull();
+    expect(watch.remoteJoin.joinId).toBe("!roomId:localhost");
+    expect(watch.remoteJoin.room.roomId).toBe("!roomAlias:localhost");
+  });
+  it("will block joining to a gateway if a room is already bridged.", async () => {
+    const { purple, watch, store } = createGH();
+    await store.storeRoom("!roomAlias2:localhost", MROOM_TYPE_GROUP, "remoteId", {
+      protocol_id: dummyProtocol.id,
+      room_name: "#roomAlias2#localhost@bridge.place",
+    } as IRemoteGroupData);
+    purple.emit("gateway-joinroom", {
+      sender: "frogman@frogworld",
+      protocol_id: dummyProtocol.id,
+      join_id: "!roomId2:localhost",
+      roomAlias: "#roomAlias2:localhost",
+      room_name: "#roomAlias2#localhost@bridge.place",
+    } as IGatewayJoin);
+    await watch.remoteJoinPromise;
+    expect(watch.intent).not.toBeNull();
+    expect(watch.intent.ensureRegisteredCalled).toBe(true);
+    expect(watch.intent.userId).toBe("@_prefix_frogman@frogworld:localhost");
+    expect(watch.intent.clientJoinRoomCalledWith.roomString).toBe("#roomAlias2:localhost");
+    expect(watch.profileUpdated).toBe(true);
+    expect(watch.remoteJoin.joinId).toBe("!roomId2:localhost");
+    expect(watch.remoteJoin.err).toBe(
+      "This room is already bridged to #roomAlias2#localhost@bridge.place",
+    );
+  });
+  it("will block joining to a gateway if the alias is banned.", async () => {
+    const { purple, watch } = createGH();
+    purple.emit("gateway-joinroom", {
+      sender: "frogman@frogworld",
+      protocol_id: dummyProtocol.id,
+      join_id: "!roomId2:localhost",
+      roomAlias: "#badroom:example.com",
+    } as IGatewayJoin);
+    await watch.remoteJoinPromise;
+    expect(watch.intent).not.toBeNull();
+    expect(watch.intent.ensureRegisteredCalled).toBe(false);
+    expect(watch.remoteJoin.err).toBe("This room has been denied");
+  });
 });

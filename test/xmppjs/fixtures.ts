@@ -9,4 +9,4 @@ export const XMPP_MEMBER_MXID = "@_x_xmpp_bob:matrix.example.com";
 
 export const MATRIX_MEMBER_MXID = "@alice:matrix.example.com";
 export const MATRIX_MEMBER_ANONYMOUS = jid(XMPP_CHAT_NAME, "xmpp.example.com", "alice");
-export const MATRIX_ALIAS = "#mychatname:matrix.org"
+export const MATRIX_ALIAS = "#mychatname:matrix.org";

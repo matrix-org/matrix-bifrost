@@ -4,45 +4,53 @@ import { BifrostProtocol } from "./Protocol";
 import { IBasicProtocolMessage } from "../MessageFormatter";
 
 export interface IChatJoinOptions {
-    identifier: string;
-    label: string;
-    required: boolean;
+  identifier: string;
+  label: string;
+  required: boolean;
 }
 
 export interface IProfileProvider {
-    getUserInfo(who: string): Promise<IUserInfo>;
-    getBuddy?(user: string): any|undefined;
-    getAvatarBuffer(uri: string, senderId: string): Promise<{type: string, data: Buffer}>;
+  getUserInfo(who: string): Promise<IUserInfo>;
+  getBuddy?(user: string): any | undefined;
+  getAvatarBuffer(uri: string, senderId: string): Promise<{ type: string; data: Buffer }>;
 }
 
-export type IAccountExtraConfig = Record<string, string|number|boolean>;
+export type IAccountExtraConfig = Record<string, string | number | boolean>;
 export interface IBifrostAccount extends IProfileProvider {
-    remoteId: string;
-    name: string;
-    isEnabled: boolean;
-    connected: boolean;
-    protocol: BifrostProtocol;
+  remoteId: string;
+  name: string;
+  isEnabled: boolean;
+  connected: boolean;
+  protocol: BifrostProtocol;
 
-    createNew(password?: string, extraConfig?: IAccountExtraConfig);
-    setEnabled(enable: boolean);
-    sendIM(recipient: string, body: IBasicProtocolMessage);
-    sendIMTyping(recipient: string, isTyping: boolean);
-    sendChat(chatName: string, body: IBasicProtocolMessage);
-    getBuddy?(user: string): any|undefined;
-    getJoinPropertyForRoom?(roomName: string, key: string): string|undefined;
-    setJoinPropertiesForRoom?(roomName: string, props: IChatJoinProperties);
-    isInRoom(roomName: string): boolean;
-    joinChat(
-        components: IChatJoinProperties,
-        purple?: IBifrostInstance,
-        timeout?: number,
-        setWaiting?: boolean)
-    : Promise<IConversationEvent|void>;
+  createNew(password?: string, extraConfig?: IAccountExtraConfig);
+  setEnabled(enable: boolean);
+  sendIM(recipient: string, body: IBasicProtocolMessage);
+  sendIMTyping(recipient: string, isTyping: boolean);
+  sendChat(chatName: string, body: IBasicProtocolMessage);
+  getBuddy?(user: string): any | undefined;
+  getJoinPropertyForRoom?(roomName: string, key: string): string | undefined;
+  setJoinPropertiesForRoom?(roomName: string, props: IChatJoinProperties);
+  isInRoom(roomName: string): boolean;
+  joinChat(
+    components: IChatJoinProperties,
+    purple?: IBifrostInstance,
+    timeout?: number,
+    setWaiting?: boolean,
+  ): Promise<IConversationEvent | void>;
 
-    rejectChat(components: IChatJoinProperties);
-    getConversation?(name: string): any|undefined;
-    getChatParamsForProtocol(): IChatJoinOptions[];
-    setStatus(statusId: string, active: boolean);
-    // TODO: Is setStatus the same thing?
-    setPresence?(content: { currently_active?: boolean; last_active_ago?: number; presence: "online" | "offline" | "unavailable"; status_msg?: string; }, recipients?: string[]);
+  rejectChat(components: IChatJoinProperties);
+  getConversation?(name: string): any | undefined;
+  getChatParamsForProtocol(): IChatJoinOptions[];
+  setStatus(statusId: string, active: boolean);
+  // TODO: Is setStatus the same thing?
+  setPresence?(
+    content: {
+      currently_active?: boolean;
+      last_active_ago?: number;
+      presence: "online" | "offline" | "unavailable";
+      status_msg?: string;
+    },
+    recipients?: string[],
+  );
 }

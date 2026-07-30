@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { XmppJsAccount } from "../../src/xmppjs/XJSAccount";
 import { IBasicProtocolMessage } from "../../src/MessageFormatter";
@@ -9,74 +8,82 @@ const instance = new MockXJSInstance();
 instance.accountUsername = "bob@matrix.localhost";
 
 function createXJSAccount() {
-    return new XmppJsAccount(
-        "bob@matrix.localhost",
-        "matrix-bridge",
-        instance as any,
-        "@bob:localhost",
-    );
+  return new XmppJsAccount(
+    "bob@matrix.localhost",
+    "matrix-bridge",
+    instance as any,
+    "@bob:localhost",
+  );
 }
 
 describe("XJSAccount", () => {
+  beforeEach(() => {
+    acct = createXJSAccount();
+  });
 
-    beforeEach(() => {
-        acct = createXJSAccount();
+  it("should have the correct property values on construction", () => {
+    expect(acct.connected).toBe(true);
+    expect(acct.remoteId).toBe("bob@matrix.localhost");
+    expect(acct.roomHandles.size).toBe(0);
+  });
+
+  describe("sendIM", () => {
+    it("should be able to send a basic message", () => {
+      acct.sendIM("alice@remote.server", {
+        body: "Hello!",
+        id: "12345",
+      } as IBasicProtocolMessage);
+      expect(instance.sentMessageIDs).toContain("12345");
+      expect(instance.sentMessages[0]).toEqual({
+        chatstate: undefined,
+        replacesId: undefined,
+        hFrom: "bob@matrix.localhost/matrix-bridge",
+        hTo: "alice@remote.server",
+        messageType: "chat",
+        hId: "12345",
+        html: "",
+        body: "Hello!",
+        markable: true,
+        attachments: [],
+      });
+    });
+  });
+
+  describe("joinChat", () => {
+    it("should be able to join a chat", async () => {
+      await acct.joinChat(
+        {
+          room: "den",
+          server: "remote.server",
+          handle: "Bob",
+        },
+        instance as any,
+        50,
+        true,
+      );
     });
 
-    it("should have the correct property values on construction", () => {
-        expect(acct.connected).toBe(true);
-        expect(acct.remoteId).toBe("bob@matrix.localhost");
-        expect(acct.roomHandles.size).toBe(0);
+    it("should fail to join a chat without the required components", async () => {
+      try {
+        await acct.joinChat(
+          {
+            room: "den",
+            server: "remote.server",
+            // Explicit any - we want to deliberately send wrong params
+          } as any,
+          instance as any,
+          50,
+          true,
+        );
+      } catch (ex) {
+        expect(ex.message).toBe("Missing handle");
+        return;
+      }
+      throw Error("Didn't throw");
     });
+  });
 
-    describe("sendIM", () => {
-        it("should be able to send a basic message", () => {
-            acct.sendIM("alice@remote.server", {
-                body: "Hello!",
-                id: "12345",
-            } as IBasicProtocolMessage);
-            expect(instance.sentMessageIDs).toContain("12345");
-            expect(instance.sentMessages[0]).toEqual({
-                chatstate: undefined,
-                replacesId: undefined,
-                hFrom: "bob@matrix.localhost/matrix-bridge",
-                hTo: "alice@remote.server",
-                messageType: "chat",
-                hId: "12345",
-                html: "",
-                body: "Hello!",
-                markable: true,
-                attachments: [],
-            });
-        });
-    });
-
-    describe("joinChat", () => {
-        it("should be able to join a chat", async () => {
-            await acct.joinChat({
-                room: "den",
-                server: "remote.server",
-                handle: "Bob",
-            }, instance as any, 50, true);
-        });
-
-        it("should fail to join a chat without the required components", async () => {
-            try {
-                await acct.joinChat({
-                    room: "den",
-                    server: "remote.server",
-                // Explicit any - we want to deliberately send wrong params
-                } as any, instance as any, 50, true);
-            } catch (ex) {
-                expect(ex.message).toBe("Missing handle");
-                return;
-            }
-            throw Error("Didn't throw");
-        });
-
-    });
-
-    afterEach(() => {
-        acct.stop();
-    });
+  afterEach(() => {
+    acct.stop();
+  });
 });

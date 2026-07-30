@@ -6,118 +6,120 @@ import { IBifrostAccount } from "./Account";
 import { IBasicProtocolMessage } from "../MessageFormatter";
 import { IPublicRoomsResponse } from "../MatrixTypes";
 
-export interface IChatJoinProperties {[key: string]: string; }
+export interface IChatJoinProperties {
+  [key: string]: string;
+}
 
 export interface IEventBody {
-    eventName: string;
+  eventName: string;
 }
 
 export interface IAccountMinimal {
-    protocol_id: string;
-    username: string;
+  protocol_id: string;
+  username: string;
 }
 
 export interface IConversationMinimal {
-    name: string;
+  name: string;
 }
 
 export interface IAccountEvent extends IEventBody {
-    account: any|IAccountMinimal;
-    mxid?: string;
+  account: any | IAccountMinimal;
+  mxid?: string;
 }
 
 export interface IConversationEvent extends IAccountEvent {
-    conv: any | IConversationMinimal;
+  conv: any | IConversationMinimal;
 }
 
 // received-im-msg
 export interface IReceivedImMsg extends IConversationEvent {
-    sender: string;
-    message: IBasicProtocolMessage;
+  sender: string;
+  message: IBasicProtocolMessage;
 }
 
 export interface IChatInvite extends IAccountEvent {
-    sender: string;
-    message: string;
-    room_name: string;
-    join_properties: IChatJoinProperties;
+  sender: string;
+  message: string;
+  room_name: string;
+  join_properties: IChatJoinProperties;
 }
 
 export interface IChatJoined extends IConversationEvent {
-    purpleAccount: IBifrostAccount;
-    join_properties: IChatJoinProperties;
-    should_invite: boolean;
+  purpleAccount: IBifrostAccount;
+  join_properties: IChatJoinProperties;
+  should_invite: boolean;
 }
 
 export interface IUserStateChanged extends IConversationEvent {
-    sender: string;
-    state: "joined"|"left"|"kick";
-    kicker: string|undefined;
-    reason?: string;
-    gatewayAlias: string|null;
-    id: string;
+  sender: string;
+  state: "joined" | "left" | "kick";
+  kicker: string | undefined;
+  reason?: string;
+  gatewayAlias: string | null;
+  id: string;
 }
 
 export interface IChatTopicState extends IConversationEvent {
-    sender: string;
-    topic: string;
+  sender: string;
+  topic: string;
 }
 
 export interface IUserInfo extends IAccountEvent {
-    [key: string]: string|IAccountMinimal|undefined;
-    who: string;
+  [key: string]: string | IAccountMinimal | undefined;
+  who: string;
 }
 
 export interface IChatTyping extends IConversationEvent {
-    sender: string;
-    typing: boolean;
+  sender: string;
+  typing: boolean;
 }
 
 export interface IChatReadReceipt extends IConversationEvent {
-    sender: string;
-    messageId: string;
-    originIsMatrix: boolean;
+  sender: string;
+  messageId: string;
+  originIsMatrix: boolean;
 }
 
 export interface IGatewayRequest {
-    roomAlias: string;
-    result: (err: Error|null, res?: any) => void;
+  roomAlias: string;
+  result: (err: Error | null, res?: any) => void;
 }
 
 export interface IGatewayRoomQueryResult {
-    roomId: string;
-    // The room's m.room.name, if it has one and it is readable by the bridge.
-    name?: string;
+  roomId: string;
+  // The room's m.room.name, if it has one and it is readable by the bridge.
+  name?: string;
 }
 
 export interface IGatewayRoomQuery extends IGatewayRequest {
-    result: (err: Error|null, res?: IGatewayRoomQueryResult) => void;
+  result: (err: Error | null, res?: IGatewayRoomQueryResult) => void;
 }
 
 export interface IGatewayPublicRoomsQuery extends IGatewayRequest {
-    onlyCheck: boolean;
-    searchString: string;
-    homeserver: string|null;
-    result: (err: Error|null, res?: IPublicRoomsResponse) => void;
+  onlyCheck: boolean;
+  searchString: string;
+  homeserver: string | null;
+  result: (err: Error | null, res?: IPublicRoomsResponse) => void;
 }
 
 export interface IGatewayJoin {
-    sender: string;
-    protocol_id: string;
-    join_id: string;
-    nick: string;
-    roomAlias: string;
-    room_name: string;
+  sender: string;
+  protocol_id: string;
+  join_id: string;
+  nick: string;
+  roomAlias: string;
+  room_name: string;
 }
 
 export interface IStoreRemoteUser {
-    mxId: string;
-    remoteId: string;
-    protocol_id: string;
-    data?: any;
+  mxId: string;
+  remoteId: string;
+  protocol_id: string;
+  data?: any;
 }
 
 export interface IContactListSubscribeRequest extends IAccountEvent {
-    sender: string;
-    cb: (accept: boolean) => Promise<void>;
+  sender: string;
+  cb: (accept: boolean) => Promise<void>;
 }

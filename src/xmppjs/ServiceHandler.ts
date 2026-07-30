@@ -2,8 +2,20 @@ import { Element, x } from "@xmpp/xml";
 import { XmppJsInstance } from "./XJSInstance";
 import { jid, JID } from "@xmpp/jid";
 import { getBridgeVersion, Intent, Logger } from "matrix-appservice-bridge";
-import { IGatewayRoomQuery, IGatewayRoomQueryResult, IGatewayPublicRoomsQuery } from "../bifrost/Events";
-import { StzaIqDiscoInfo, StzaIqPing, StzaIqDiscoItems, StzaIqSearchFields, SztaIqError, StzaIqPingError, NODE_NAME } from "./Stanzas";
+import {
+  IGatewayRoomQuery,
+  IGatewayRoomQueryResult,
+  IGatewayPublicRoomsQuery,
+} from "../bifrost/Events";
+import {
+  StzaIqDiscoInfo,
+  StzaIqPing,
+  StzaIqDiscoItems,
+  StzaIqSearchFields,
+  SztaIqError,
+  StzaIqPingError,
+  NODE_NAME,
+} from "./Stanzas";
 import { IPublicRoomsResponse } from "../MatrixTypes";
 import { IConfigBridge } from "../Config";
 import { XMPPFeatures } from "./XMPPConstants";
@@ -17,437 +29,492 @@ const MAX_AVATARS = 1024;
 const ROOM_NAME_CACHE_MS = 5 * 60 * 1000;
 
 export class ServiceHandler {
-    private avatarCache: Map<string, {data: Buffer, type: string}>;
-    /**
-     * alias -> {room_id, name} for gateway room discovery. The alias->roomId mapping is
-     * stable; the NAME is kept fresh two ways: pushed updates via updateCachedRoomName (rooms
-     * the bridge has a user in, so renames propagate live) and a TTL re-query (rooms nobody
-     * has joined yet, where no Matrix events reach the bridge).
-     */
-    private existingAliases: Map<string, IGatewayRoomQueryResult & {fetchedAt: number}>;
-    private readonly serverDiscoInfo: StzaIqDiscoInfo;
-    private readonly userDiscoInfo: StzaIqDiscoInfo;
-    public readonly userDiscoHash: string;
-    constructor(private xmpp: XmppJsInstance, private bridgeConfig: IConfigBridge) {
-        this.avatarCache = new Map();
-        this.existingAliases = new Map();
-        this.serverDiscoInfo = new StzaIqDiscoInfo("", "", "");
-        this.serverDiscoInfo.identity.add({category: "conference", type: "text", name: "Bifrost Matrix Gateway"});
-        this.serverDiscoInfo.identity.add({category: "gateway", type: "matrix", name: "Bifrost Matrix Gateway"});
-        this.serverDiscoInfo.feature.add(XMPPFeatures.DiscoInfo);
-        this.serverDiscoInfo.feature.add(XMPPFeatures.DiscoItems);
-        this.serverDiscoInfo.feature.add(XMPPFeatures.Muc);
-        this.serverDiscoInfo.feature.add(XMPPFeatures.IqVersion);
-        this.serverDiscoInfo.feature.add(XMPPFeatures.IqSearch);
-        this.serverDiscoInfo.feature.add(XMPPFeatures.ChatStates);
-        this.userDiscoInfo = new StzaIqDiscoInfo("", "", "");
-        this.userDiscoInfo.identity.add({category: "client", type: "bridge", name: "matrix-bifrost"})
-        this.userDiscoInfo.feature.add(XMPPFeatures.DiscoInfo);
-        this.userDiscoInfo.feature.add(XMPPFeatures.Jingle);
-        this.userDiscoInfo.feature.add(XMPPFeatures.JingleFileTransferV4);
-        this.userDiscoInfo.feature.add(XMPPFeatures.JingleFileTransferV5);
-        this.userDiscoInfo.feature.add(XMPPFeatures.JingleIBB);
-        this.userDiscoInfo.feature.add(XMPPFeatures.XHTMLIM);
-        this.userDiscoInfo.feature.add(XMPPFeatures.ChatStates);
-        this.userDiscoHash = this.userDiscoInfo.hash;
-        this.userDiscoInfo.node = `${NODE_NAME}#${this.userDiscoHash}`;
+  private avatarCache: Map<string, { data: Buffer; type: string }>;
+  /**
+   * alias -> {room_id, name} for gateway room discovery. The alias->roomId mapping is
+   * stable; the NAME is kept fresh two ways: pushed updates via updateCachedRoomName (rooms
+   * the bridge has a user in, so renames propagate live) and a TTL re-query (rooms nobody
+   * has joined yet, where no Matrix events reach the bridge).
+   */
+  private existingAliases: Map<string, IGatewayRoomQueryResult & { fetchedAt: number }>;
+  private readonly serverDiscoInfo: StzaIqDiscoInfo;
+  private readonly userDiscoInfo: StzaIqDiscoInfo;
+  public readonly userDiscoHash: string;
+  constructor(
+    private xmpp: XmppJsInstance,
+    private bridgeConfig: IConfigBridge,
+  ) {
+    this.avatarCache = new Map();
+    this.existingAliases = new Map();
+    this.serverDiscoInfo = new StzaIqDiscoInfo("", "", "");
+    this.serverDiscoInfo.identity.add({
+      category: "conference",
+      type: "text",
+      name: "Bifrost Matrix Gateway",
+    });
+    this.serverDiscoInfo.identity.add({
+      category: "gateway",
+      type: "matrix",
+      name: "Bifrost Matrix Gateway",
+    });
+    this.serverDiscoInfo.feature.add(XMPPFeatures.DiscoInfo);
+    this.serverDiscoInfo.feature.add(XMPPFeatures.DiscoItems);
+    this.serverDiscoInfo.feature.add(XMPPFeatures.Muc);
+    this.serverDiscoInfo.feature.add(XMPPFeatures.IqVersion);
+    this.serverDiscoInfo.feature.add(XMPPFeatures.IqSearch);
+    this.serverDiscoInfo.feature.add(XMPPFeatures.ChatStates);
+    this.userDiscoInfo = new StzaIqDiscoInfo("", "", "");
+    this.userDiscoInfo.identity.add({ category: "client", type: "bridge", name: "matrix-bifrost" });
+    this.userDiscoInfo.feature.add(XMPPFeatures.DiscoInfo);
+    this.userDiscoInfo.feature.add(XMPPFeatures.Jingle);
+    this.userDiscoInfo.feature.add(XMPPFeatures.JingleFileTransferV4);
+    this.userDiscoInfo.feature.add(XMPPFeatures.JingleFileTransferV5);
+    this.userDiscoInfo.feature.add(XMPPFeatures.JingleIBB);
+    this.userDiscoInfo.feature.add(XMPPFeatures.XHTMLIM);
+    this.userDiscoInfo.feature.add(XMPPFeatures.ChatStates);
+    this.userDiscoHash = this.userDiscoInfo.hash;
+    this.userDiscoInfo.node = `${NODE_NAME}#${this.userDiscoHash}`;
+  }
+
+  /** Push a Matrix room rename into the discovery cache (see existingAliases). */
+  public updateCachedRoomName(roomId: string, name?: string): void {
+    for (const entry of this.existingAliases.values()) {
+      if (entry.roomId === roomId) {
+        entry.name = name;
+        entry.fetchedAt = Date.now();
+      }
+    }
+  }
+
+  public parseAliasFromJID(to: JID): string | null {
+    const aliasRaw = /#(.+)#(.+)/g.exec(to.local);
+    if (!aliasRaw || aliasRaw.length < 3) {
+      return null;
+    }
+    return `#${aliasRaw[1]}:${aliasRaw[2]}`;
+  }
+
+  public createJIDFromAlias(alias: string): string | null {
+    const aliasRaw = /#(.+):(.+)/g.exec(alias);
+    if (!aliasRaw || aliasRaw.length < 3) {
+      return null;
+    }
+    return `#${aliasRaw[1]}#${aliasRaw[2]}@${this.xmpp.xmppAddress.domain}`;
+  }
+
+  public async handleIq(stanza: Element, intent: Intent): Promise<void> {
+    const id = stanza.getAttr("id");
+    const from = stanza.getAttr("from");
+    const to = stanza.getAttr("to");
+    const type = stanza.getAttr("type");
+
+    log.info("Handling iq request");
+
+    if (stanza.getChildByAttr("xmlns", "jabber:iq:version")) {
+      return this.handleVersionRequest(from, to, id);
     }
 
-    /** Push a Matrix room rename into the discovery cache (see existingAliases). */
-    public updateCachedRoomName(roomId: string, name?: string): void {
-        for (const entry of this.existingAliases.values()) {
-            if (entry.roomId === roomId) {
-                entry.name = name;
-                entry.fetchedAt = Date.now();
-            }
+    // Only respond to this if it has no local part.
+    const local = jid(to).local;
+    const isDisco = stanza.getChildByAttr("xmlns", "http://jabber.org/protocol/disco#info");
+    if (isDisco) {
+      log.debug(`Disco info request from ${from} -> ${to} (${id})`);
+      if (local) {
+        // A gateway room JID (#local#server@component) must answer as a CONFERENCE with
+        // the room's name — not as the bridge's own client identity, which made every
+        // Matrix room show up as "matrix-bifrost" in XMPP room lists.
+        if (this.xmpp.gateway && this.parseAliasFromJID(jid(to))) {
+          return this.handleRoomDiscovery(to, from, id);
         }
+        return this.sendUserDiscoInfo(from, to, id);
+      } else {
+        return this.handleServerDiscoInfo(from, to, id);
+      }
     }
 
-    public parseAliasFromJID(to: JID): string|null {
-        const aliasRaw = /#(.+)#(.+)/g.exec(to.local);
-        if (!aliasRaw || aliasRaw.length < 3) {
-            return null;
-        }
-        return `#${aliasRaw[1]}:${aliasRaw[2]}`;
+    if (stanza.getChildByAttr("xmlns", "vcard-temp") && type === "get") {
+      // XEP: https://xmpp.org/extensions/xep-0054.html
+      return this.handleVcard(from, to, id, intent);
     }
 
-    public createJIDFromAlias(alias: string): string|null {
-        const aliasRaw = /#(.+):(.+)/g.exec(alias);
-        if (!aliasRaw || aliasRaw.length < 3) {
-            return null;
-        }
-        return `#${aliasRaw[1]}#${aliasRaw[2]}@${this.xmpp.xmppAddress.domain}`;
+    if (stanza.getChildByAttr("xmlns", "urn:xmpp:ping") && type === "get") {
+      return this.handlePing(from, to, id);
     }
 
-    public async handleIq(stanza: Element, intent: Intent): Promise<void> {
-        const id = stanza.getAttr("id");
-        const from = stanza.getAttr("from");
-        const to = stanza.getAttr("to");
-        const type = stanza.getAttr("type");
+    if (this.xmpp.gateway) {
+      const searchQuery = stanza.getChildByAttr("xmlns", "jabber:iq:search");
+      if (
+        stanza.getChildByAttr("xmlns", "http://jabber.org/protocol/disco#items") &&
+        this.xmpp.xmppAddress.domain === jid(to).domain
+      ) {
+        return this.handleDiscoItems(from, to, id, "", undefined);
+      }
 
-        log.info("Handling iq request");
+      if (searchQuery && !local) {
+        // XXX: Typescript is a being a bit funny about Element, so doing an any here.
+        return this.handleDiscoItems(from, to, id, stanza.attrs.type, searchQuery as Element);
+      }
+    }
 
-        if (stanza.getChildByAttr("xmlns", "jabber:iq:version")) {
-            return this.handleVersionRequest(from, to, id);
-        }
-
-        // Only respond to this if it has no local part.
-        const local = jid(to).local;
-        const isDisco = stanza.getChildByAttr("xmlns", "http://jabber.org/protocol/disco#info");
-        if (isDisco) {
-            log.debug(`Disco info request from ${from} -> ${to} (${id})`);
-            if (local) {
-                // A gateway room JID (#local#server@component) must answer as a CONFERENCE with
-                // the room's name — not as the bridge's own client identity, which made every
-                // Matrix room show up as "matrix-bifrost" in XMPP room lists.
-                if (this.xmpp.gateway && this.parseAliasFromJID(jid(to))) {
-                    return this.handleRoomDiscovery(to, from, id);
-                }
-                return this.sendUserDiscoInfo(from, to, id);
-            } else {
-                return this.handleServerDiscoInfo(from, to, id);
-            }
-        }
-
-        if (stanza.getChildByAttr("xmlns", "vcard-temp") && type === "get") {
-            // XEP: https://xmpp.org/extensions/xep-0054.html
-            return this.handleVcard(from, to, id, intent);
-        }
-
-        if (stanza.getChildByAttr("xmlns", "urn:xmpp:ping") && type === "get") {
-            return this.handlePing(from, to, id);
-        }
-
-        if (this.xmpp.gateway) {
-            const searchQuery = stanza.getChildByAttr("xmlns", "jabber:iq:search");
-            if (stanza.getChildByAttr("xmlns", "http://jabber.org/protocol/disco#items") &&
-                this.xmpp.xmppAddress.domain === jid(to).domain) {
-                return this.handleDiscoItems(from, to, id, "", undefined);
-            }
-
-            if (searchQuery && !local) {
-                // XXX: Typescript is a being a bit funny about Element, so doing an any here.
-                return this.handleDiscoItems(from, to, id, stanza.attrs.type, searchQuery as Element);
-            }
-
-        }
-
-        return this.xmpp.xmppWriteToStream(x("iq", {
-            type: "error",
-            from: to,
-            to: from,
-            id,
-        }, x("error", {
+    return this.xmpp.xmppWriteToStream(
+      x(
+        "iq",
+        {
+          type: "error",
+          from: to,
+          to: from,
+          id,
+        },
+        x(
+          "error",
+          {
             type: "cancel",
             code: "503",
-        },
-        x("service-unavailable", {
+          },
+          x("service-unavailable", {
             xmlns: "urn:ietf:params:xml:ns:xmpp-stanzas",
-        }),
+          }),
         ),
-        ));
-    }
+      ),
+    );
+  }
 
-    private notFound(to: string, from: string, id: string, type: string, xmlns: string) {
-        this.xmpp.xmppWriteToStream(
-            x("iq", {
-                type: "error",
-                to,
-                from,
-                id,
-            }, x(type, {
-                xmlns,
-            },
-            x("error", {
-                type: "cancel",
-                code: "404",
+  private notFound(to: string, from: string, id: string, type: string, xmlns: string) {
+    this.xmpp.xmppWriteToStream(
+      x(
+        "iq",
+        {
+          type: "error",
+          to,
+          from,
+          id,
+        },
+        x(
+          type,
+          {
+            xmlns,
+          },
+          x(
+            "error",
+            {
+              type: "cancel",
+              code: "404",
             },
             x("item-not-found", {
-                xmlns: "urn:ietf:params:xml:ns:xmpp-stanzas",
+              xmlns: "urn:ietf:params:xml:ns:xmpp-stanzas",
             }),
-            ),
-            )));
-    }
+          ),
+        ),
+      ),
+    );
+  }
 
-    private handleVersionRequest(to: string, from: string, id: string): Promise<void> {
-        return this.xmpp.xmppWriteToStream(
-            x("iq", {
-                type: "result",
-                to,
-                from,
-                id,
-            }, x("query", {
-                xmlns: "jabber:iq:version",
-            },
-            [
-                x("name", undefined, "matrix-bifrost"),
-                x("version", undefined, getBridgeVersion()),
-            ],
-            ),
-            ));
-    }
+  private handleVersionRequest(to: string, from: string, id: string): Promise<void> {
+    return this.xmpp.xmppWriteToStream(
+      x(
+        "iq",
+        {
+          type: "result",
+          to,
+          from,
+          id,
+        },
+        x(
+          "query",
+          {
+            xmlns: "jabber:iq:version",
+          },
+          [x("name", undefined, "matrix-bifrost"), x("version", undefined, getBridgeVersion())],
+        ),
+      ),
+    );
+  }
 
-    private async handleServerDiscoInfo(to: string, from: string, id: string) {
-        this.serverDiscoInfo.to = to;
-        this.serverDiscoInfo.from = from;
-        this.serverDiscoInfo.id = id;
-        await this.xmpp.xmppSend(this.serverDiscoInfo);
-    }
+  private async handleServerDiscoInfo(to: string, from: string, id: string) {
+    this.serverDiscoInfo.to = to;
+    this.serverDiscoInfo.from = from;
+    this.serverDiscoInfo.id = id;
+    await this.xmpp.xmppSend(this.serverDiscoInfo);
+  }
 
-    public async sendUserDiscoInfo(to: string, from: string, id: string) {
-        this.userDiscoInfo.to = to;
-        this.userDiscoInfo.from = from;
-        this.userDiscoInfo.id = id;
-        await this.xmpp.xmppSend(this.userDiscoInfo);
-    }
+  public async sendUserDiscoInfo(to: string, from: string, id: string) {
+    this.userDiscoInfo.to = to;
+    this.userDiscoInfo.from = from;
+    this.userDiscoInfo.id = id;
+    await this.xmpp.xmppSend(this.userDiscoInfo);
+  }
 
-
-    private async handleDiscoItems(to: string, from: string, id: string, type: string,
-        searchElement?: Element): Promise<void> {
-        log.info("Got disco items request, looking up public rooms");
-        let searchString = "";
-        let homeserver: string|null = null;
-        if (searchElement) {
-            log.debug("Request was a search");
-            if (type === "get") {
-                log.debug("Responding with search fields");
-                // Getting search fields.
-                await this.xmpp.xmppSend(
-                    new StzaIqSearchFields(
-                        from,
-                        to,
-                        id,
-                        "Please enter a search term to find Matrix rooms:",
-                        {
-                            Term: "",
-                            Homeserver: "",
-                        },
-                    ),
-                );
-                return;
-            } else if (type === "set") {
-                // Searching via a term.
-                const term = searchElement.getChild("Term");
-                if (term) {
-                    searchString = term.text();
-                }
-                const hServer = searchElement.getChild("Homeserver");
-                if (hServer) {
-                    homeserver = hServer.text();
-                }
-            } else {
-                // Not sure what to do with this.
-                return;
-            }
-        }
-
-        const response = new StzaIqDiscoItems(
-            from, to, id,
-            searchElement ? "jabber:iq:search" : "http://jabber.org/protocol/disco#items",
+  private async handleDiscoItems(
+    to: string,
+    from: string,
+    id: string,
+    type: string,
+    searchElement?: Element,
+  ): Promise<void> {
+    log.info("Got disco items request, looking up public rooms");
+    let searchString = "";
+    let homeserver: string | null = null;
+    if (searchElement) {
+      log.debug("Request was a search");
+      if (type === "get") {
+        log.debug("Responding with search fields");
+        // Getting search fields.
+        await this.xmpp.xmppSend(
+          new StzaIqSearchFields(from, to, id, "Please enter a search term to find Matrix rooms:", {
+            Term: "",
+            Homeserver: "",
+          }),
         );
-        let rooms: IPublicRoomsResponse;
-        try {
-            rooms = await new Promise((resolve, reject) => {
-                this.xmpp.emit("gateway-publicrooms", {
-                    searchString,
-                    homeserver,
-                    result: (err, res) => {
-                        if (err) {
-                            reject(err);
-                        }
-                        resolve(res);
-                    },
-                } as IGatewayPublicRoomsQuery);
-            });
-        } catch (ex) {
-            log.warn(`Failed to search rooms: ${ex}`);
-            // XXX: There isn't a very good way to explain why it failed,
-            // so we use service unavailable.
-            await this.xmpp.xmppSend(new SztaIqError(from, to, id, "cancel", 503, "service-unavailable", undefined,
-                `Failure fetching public rooms from ${homeserver}`));
-            return;
+        return;
+      } else if (type === "set") {
+        // Searching via a term.
+        const term = searchElement.getChild("Term");
+        if (term) {
+          searchString = term.text();
         }
-
-        rooms.chunk.forEach((room) => {
-            if (room.canonical_alias == null) {
-                return;
-            }
-            const j = this.createJIDFromAlias(room.canonical_alias);
-            if (!j) {
-                return;
-            }
-            response.addItem(j, room.name || room.canonical_alias);
-        });
-        await this.xmpp.xmppSend(response);
+        const hServer = searchElement.getChild("Homeserver");
+        if (hServer) {
+          homeserver = hServer.text();
+        }
+      } else {
+        // Not sure what to do with this.
+        return;
+      }
     }
 
-    private queryRoom(roomAlias: string): Promise<IGatewayRoomQueryResult> {
-        return new Promise((resolve, reject) => {
-            this.xmpp.emit("gateway-queryroom", {
-                roomAlias,
-                result: (err, res) => {
-                    if (err) {
-                        reject(err);
-                    }
-                    resolve(res);
-                },
-            } as IGatewayRoomQuery);
-        });
+    const response = new StzaIqDiscoItems(
+      from,
+      to,
+      id,
+      searchElement ? "jabber:iq:search" : "http://jabber.org/protocol/disco#items",
+    );
+    let rooms: IPublicRoomsResponse;
+    try {
+      rooms = await new Promise((resolve, reject) => {
+        this.xmpp.emit("gateway-publicrooms", {
+          searchString,
+          homeserver,
+          result: (err, res) => {
+            if (err) {
+              reject(err);
+            }
+            resolve(res);
+          },
+        } as IGatewayPublicRoomsQuery);
+      });
+    } catch (ex) {
+      log.warn(`Failed to search rooms: ${ex}`);
+      // XXX: There isn't a very good way to explain why it failed,
+      // so we use service unavailable.
+      await this.xmpp.xmppSend(
+        new SztaIqError(
+          from,
+          to,
+          id,
+          "cancel",
+          503,
+          "service-unavailable",
+          undefined,
+          `Failure fetching public rooms from ${homeserver}`,
+        ),
+      );
+      return;
     }
 
-    private async handleRoomDiscovery(toStr: string, from: string, id: string) {
-        const to = jid(toStr);
-        const alias = this.parseAliasFromJID(to);
-        try {
-            if (!alias) {
-                throw Error("Not a valid alias");
-            }
-            log.debug(`Running room discovery for ${toStr}`);
-            let room = this.existingAliases.get(alias);
-            if (!room || !room.name || Date.now() - room.fetchedAt > ROOM_NAME_CACHE_MS) {
-                room = { ...await this.queryRoom(alias), fetchedAt: Date.now() };
-                this.existingAliases.set(alias, room);
-            }
-            log.info(`Response for alias request ${toStr} (${alias}) -> ${room.roomId}`);
-            const discoInfo = new StzaIqDiscoInfo(toStr, from, id);
-            discoInfo.feature.add(XMPPFeatures.DiscoInfo);
-            discoInfo.feature.add(XMPPFeatures.Muc);
-            discoInfo.feature.add(XMPPFeatures.MessageCorrection);
-            discoInfo.feature.add(XMPPFeatures.XHTMLIM);
-            discoInfo.identity.add({
-                category: "conference",
-                // The room's human name, so XMPP room lists show something meaningful; the
-                // alias is still shown via the JID itself.
-                name: room.name || alias,
-                type: "text",
-            });
-            discoInfo.identity.add({
-                category: "gateway",
-                name: alias,
-                type: "matrix",
-            });
-            await this.xmpp.xmppSend(discoInfo);
-        } catch (ex) {
-            await this.xmpp.xmppSend(new SztaIqError(toStr, from, id, "cancel", 404, "item-not-found", undefined, "Room could not be found"));
-        }
+    rooms.chunk.forEach((room) => {
+      if (room.canonical_alias == null) {
+        return;
+      }
+      const j = this.createJIDFromAlias(room.canonical_alias);
+      if (!j) {
+        return;
+      }
+      response.addItem(j, room.name || room.canonical_alias);
+    });
+    await this.xmpp.xmppSend(response);
+  }
+
+  private queryRoom(roomAlias: string): Promise<IGatewayRoomQueryResult> {
+    return new Promise((resolve, reject) => {
+      this.xmpp.emit("gateway-queryroom", {
+        roomAlias,
+        result: (err, res) => {
+          if (err) {
+            reject(err);
+          }
+          resolve(res);
+        },
+      } as IGatewayRoomQuery);
+    });
+  }
+
+  private async handleRoomDiscovery(toStr: string, from: string, id: string) {
+    const to = jid(toStr);
+    const alias = this.parseAliasFromJID(to);
+    try {
+      if (!alias) {
+        throw Error("Not a valid alias");
+      }
+      log.debug(`Running room discovery for ${toStr}`);
+      let room = this.existingAliases.get(alias);
+      if (!room || !room.name || Date.now() - room.fetchedAt > ROOM_NAME_CACHE_MS) {
+        room = { ...(await this.queryRoom(alias)), fetchedAt: Date.now() };
+        this.existingAliases.set(alias, room);
+      }
+      log.info(`Response for alias request ${toStr} (${alias}) -> ${room.roomId}`);
+      const discoInfo = new StzaIqDiscoInfo(toStr, from, id);
+      discoInfo.feature.add(XMPPFeatures.DiscoInfo);
+      discoInfo.feature.add(XMPPFeatures.Muc);
+      discoInfo.feature.add(XMPPFeatures.MessageCorrection);
+      discoInfo.feature.add(XMPPFeatures.XHTMLIM);
+      discoInfo.identity.add({
+        category: "conference",
+        // The room's human name, so XMPP room lists show something meaningful; the
+        // alias is still shown via the JID itself.
+        name: room.name || alias,
+        type: "text",
+      });
+      discoInfo.identity.add({
+        category: "gateway",
+        name: alias,
+        type: "matrix",
+      });
+      await this.xmpp.xmppSend(discoInfo);
+    } catch (ex) {
+      log.warn(`Failed to send disco info for ${alias}`, ex);
+      await this.xmpp.xmppSend(
+        new SztaIqError(
+          toStr,
+          from,
+          id,
+          "cancel",
+          404,
+          "item-not-found",
+          undefined,
+          "Room could not be found",
+        ),
+      );
+    }
+  }
+
+  private async getThumbnailBuffer(
+    avatarUrl: string,
+    intent: Intent,
+  ): Promise<{ data: Buffer; type: string } | undefined> {
+    let avatar = this.avatarCache.get(avatarUrl);
+    if (avatar) {
+      return avatar;
+    }
+    const thumbUrl = await intent.matrixClient.mxcToHttpThumbnail(avatarUrl, 256, 256, "scale");
+    if (!thumbUrl) {
+      return undefined;
     }
 
-    private async getThumbnailBuffer(avatarUrl: string, intent: Intent): Promise<{data: Buffer, type: string}|undefined> {
-        let avatar = this.avatarCache.get(avatarUrl);
-        if (avatar) {
-            return avatar;
-        }
-        const thumbUrl = await intent.matrixClient.mxcToHttpThumbnail(
-            avatarUrl, 256, 256, "scale"
-        );
-        if (!thumbUrl) {
-            return undefined;
-        }
+    const file = await fetch(thumbUrl);
+    avatar = {
+      data: Buffer.from(await file.arrayBuffer()),
+      type: file.headers.get("content-type"),
+    };
+    this.avatarCache.set(avatarUrl, avatar);
+    if (this.avatarCache.size > MAX_AVATARS) {
+      this.avatarCache.delete(this.avatarCache.keys()[0]);
+    }
+    return avatar;
+  }
 
-        const file = await fetch(thumbUrl);
-        avatar = {
-            data: Buffer.from(await file.arrayBuffer()),
-            type: file.headers.get("content-type"),
-        };
-        this.avatarCache.set(avatarUrl, avatar);
-        if (this.avatarCache.size > MAX_AVATARS) {
-            this.avatarCache.delete(this.avatarCache.keys()[0]);
-        }
-        return avatar;
+  private async handleVcard(from: string, to: string, id: string, intent: Intent) {
+    // Fetch mxid.
+    const account = this.xmpp.getAccountForJid(jid(to));
+    if (!account) {
+      log.warn("Account fetch failed for", to);
+      this.notFound(from, to, id, "vCard", "vcard-temp");
+      return;
+    }
+    let profile: { displayname?: string; avatar_url?: string };
+    try {
+      // TODO: Move this to a gateway-profilelookup or something.
+      profile = await intent.getProfileInfo(account.mxId, null);
+    } catch (ex) {
+      log.warn("Profile fetch failed for ", account.mxId, ex);
+      this.notFound(from, to, id, "vCard", "vcard-temp");
+      return;
     }
 
-    private async handleVcard(from: string, to: string, id: string, intent: Intent) {
-        // Fetch mxid.
-        const account = this.xmpp.getAccountForJid(jid(to));
-        if (!account) {
-            log.warn("Account fetch failed for", to);
-            this.notFound(from, to, id, "vCard", "vcard-temp");
-            return;
-        }
-        let profile: {displayname?: string, avatar_url?: string};
-        try {
-            // TODO: Move this to a gateway-profilelookup or something.
-            profile = await intent.getProfileInfo(account.mxId, null);
-        } catch (ex) {
-            log.warn("Profile fetch failed for ", account.mxId, ex);
-            this.notFound(from, to, id, "vCard", "vcard-temp");
-            return;
-        }
+    const vCard: Element[] = [x("URL", undefined, `https://matrix.to/#/${account.mxId}`)];
 
-        const vCard: Element[] = [
-            x("URL", undefined, `https://matrix.to/#/${account.mxId}`),
-        ];
-
-        if (profile.displayname) {
-            vCard.push(x("FN", undefined, profile.displayname));
-            vCard.push(x("NICKNAME", undefined, profile.displayname));
-        }
-
-        if (profile.avatar_url) {
-            try {
-                const res = await this.getThumbnailBuffer(profile.avatar_url, intent);
-                if (res) {
-                    const b64 = res.data.toString("base64");
-                    vCard.push(
-                        x("PHOTO", undefined, [
-                            x("BINVAL", undefined, b64),
-                            x("TYPE", undefined, res.type),
-                        ]),
-                    );
-                }
-            } catch (ex) {
-                log.warn("Could not fetch avatar for ", account.mxId, ex);
-            }
-        }
-
-        this.xmpp.xmppWriteToStream(
-            x("iq", {
-                type: "result",
-                to: from,
-                from: to,
-                id,
-            }, x("vCard", {
-                xmlns: "vcard-temp",
-            },
-            vCard,
-            ),
-            ));
+    if (profile.displayname) {
+      vCard.push(x("FN", undefined, profile.displayname));
+      vCard.push(x("NICKNAME", undefined, profile.displayname));
     }
 
-    private async handlePing(from: string, to: string, id: string) {
-        const fromJid = jid(from);
-        const toJid = jid(to);
-        log.debug(`Got ping from=${from} to=${to} id=${id}`);
-        // https://xmpp.org/extensions/xep-0199.html
-        if (to === this.xmpp.xmppAddress.domain) {
-            // Server-To-Server pings
-            if (jid(from).domain === from) {
-                await this.xmpp.xmppSend(new StzaIqPing(to, from, id, "result"));
-                log.debug(`S2S ping result sent to ${from}`);
-                return;
-            }
-            // If the 'from' part is not a domain, this is not a S2S ping.
+    if (profile.avatar_url) {
+      try {
+        const res = await this.getThumbnailBuffer(profile.avatar_url, intent);
+        if (res) {
+          const b64 = res.data.toString("base64");
+          vCard.push(
+            x("PHOTO", undefined, [x("BINVAL", undefined, b64), x("TYPE", undefined, res.type)]),
+          );
         }
-
-        // https://xmpp.org/extensions/xep-0410.html
-        if (toJid.local && toJid.resource) {
-            // Self ping
-            if (!this.xmpp.gateway) {
-                // No gateways configured, not pinging.
-                return;
-            }
-            const chatName = `${toJid.local}@${toJid.domain}`;
-            const result = !!this.xmpp.gateway.isJIDInMuc(chatName, fromJid);
-            if (result) {
-                await this.xmpp.xmppSend(new StzaIqPing(to, from, id, "result"));
-            } else {
-                await this.xmpp.xmppSend(new StzaIqPingError(to, from, id, "not-acceptable", chatName));
-            }
-            log.debug(`Self ping result sent to ${from} (result=${result})`);
-            return;
-        }
-
-        // All other pings are invalid in this context and will be ignored.
-        await this.xmpp.xmppSend(new StzaIqPingError(to, from, id, "service-unavailable"));
+      } catch (ex) {
+        log.warn("Could not fetch avatar for ", account.mxId, ex);
+      }
     }
+
+    this.xmpp.xmppWriteToStream(
+      x(
+        "iq",
+        {
+          type: "result",
+          to: from,
+          from: to,
+          id,
+        },
+        x(
+          "vCard",
+          {
+            xmlns: "vcard-temp",
+          },
+          vCard,
+        ),
+      ),
+    );
+  }
+
+  private async handlePing(from: string, to: string, id: string) {
+    const fromJid = jid(from);
+    const toJid = jid(to);
+    log.debug(`Got ping from=${from} to=${to} id=${id}`);
+    // https://xmpp.org/extensions/xep-0199.html
+    if (to === this.xmpp.xmppAddress.domain) {
+      // Server-To-Server pings
+      if (jid(from).domain === from) {
+        await this.xmpp.xmppSend(new StzaIqPing(to, from, id, "result"));
+        log.debug(`S2S ping result sent to ${from}`);
+        return;
+      }
+      // If the 'from' part is not a domain, this is not a S2S ping.
+    }
+
+    // https://xmpp.org/extensions/xep-0410.html
+    if (toJid.local && toJid.resource) {
+      // Self ping
+      if (!this.xmpp.gateway) {
+        // No gateways configured, not pinging.
+        return;
+      }
+      const chatName = `${toJid.local}@${toJid.domain}`;
+      const result = !!this.xmpp.gateway.isJIDInMuc(chatName, fromJid);
+      if (result) {
+        await this.xmpp.xmppSend(new StzaIqPing(to, from, id, "result"));
+      } else {
+        await this.xmpp.xmppSend(new StzaIqPingError(to, from, id, "not-acceptable", chatName));
+      }
+      log.debug(`Self ping result sent to ${from} (result=${result})`);
+      return;
+    }
+
+    // All other pings are invalid in this context and will be ignored.
+    await this.xmpp.xmppSend(new StzaIqPingError(to, from, id, "service-unavailable"));
+  }
 }

@@ -5,192 +5,190 @@ import { PgDataStoreOpts } from "./store/postgres/PgDatastore";
 import { IAccountExtraConfig } from "./bifrost/Account";
 import { IPurpleBackendOpts } from "./purple/PurpleInstance";
 
-export type ConfigValue = {[key: string]: ConfigValue}|string|boolean|number|null;
+export type ConfigValue = { [key: string]: ConfigValue } | string | boolean | number | null;
 
 export class Config {
+  public readonly bridge: IConfigBridge = {
+    domain: "",
+    homeserverUrl: "",
+    userPrefix: "_bifrost_",
+    appservicePort: 9555,
+  };
 
-    public readonly bridge: IConfigBridge = {
-        domain: "",
-        homeserverUrl: "",
-        userPrefix: "_bifrost_",
-        appservicePort: 9555,
-    };
+  public readonly mediaProxy: IMediaProxy;
 
-    public readonly mediaProxy: IMediaProxy;
+  public readonly roomRules: IConfigRoomRule[] = [];
 
-    public readonly roomRules: IConfigRoomRule[] = [];
+  public readonly datastore: IConfigDatastore = {
+    engine: "nedb",
+    connectionString: "nedb://.",
+    opts: undefined,
+  };
 
-    public readonly datastore: IConfigDatastore = {
-        engine: "nedb",
-        connectionString: "nedb://.",
-        opts: undefined,
-    };
+  public readonly purple: IConfigPurple = {
+    backendOpts: undefined,
+    backend: "node-purple",
+    defaultAccountSettings: undefined,
+  };
 
-    public readonly purple: IConfigPurple = {
-        backendOpts: undefined,
-        backend: "node-purple",
-        defaultAccountSettings: undefined,
-    };
+  public readonly autoRegistration: IConfigAutoReg = {
+    registrationNameCacheSize: 15000,
+    enabled: false,
+    protocolSteps: undefined,
+  };
 
-    public readonly autoRegistration: IConfigAutoReg = {
-        registrationNameCacheSize: 15000,
-        enabled: false,
-        protocolSteps: undefined,
-    };
+  public readonly bridgeBot: IConfigBridgeBot = {
+    displayname: "Bifrost Bot",
+    accounts: [],
+  };
 
-    public readonly bridgeBot: IConfigBridgeBot = {
-        displayname: "Bifrost Bot",
-        accounts: [],
-    };
+  public readonly logging: IConfigLogging = {
+    console: "info",
+  };
 
-    public readonly logging: IConfigLogging = {
-        console: "info",
-    };
+  public readonly profile: IConfigProfile = {
+    updateInterval: 60000 * 15,
+  };
 
-    public readonly profile: IConfigProfile = {
-        updateInterval: 60000 * 15,
-    };
+  public readonly portals: IConfigPortals = {
+    aliases: undefined,
+    enableGateway: false,
+  };
 
-    public readonly portals: IConfigPortals = {
-        aliases: undefined,
-        enableGateway: false,
-    };
+  public readonly metrics: IConfigMetrics = {
+    enabled: false,
+  };
 
-    public readonly metrics: IConfigMetrics = {
-        enabled: false,
-    };
+  public readonly provisioning: IConfigProvisioning = {
+    enablePlumbing: true,
+    requiredUserPL: 100,
+  };
 
-    public readonly provisioning: IConfigProvisioning = {
-        enablePlumbing: true,
-        requiredUserPL: 100,
-    };
+  public readonly tuning: IConfigTuning = {
+    waitOnProfileBeforeSend: true,
+    conferencePMFallbackCheck: false,
+    waitOnJoinBeforePM: [],
+  };
 
-    public readonly tuning: IConfigTuning = {
-        waitOnProfileBeforeSend: true,
-        conferencePMFallbackCheck: false,
-        waitOnJoinBeforePM: [],
-    };
+  public readonly access: IConfigAccessControl = {};
 
-    public readonly access: IConfigAccessControl = { };
-
-    public getRoomRule(roomIdOrAlias?: string) {
-        const aliasRule = this.roomRules.find((r) => r.room === roomIdOrAlias);
-        if (aliasRule && aliasRule.action === "deny") {
-            return "deny";
-        }
-        const roomIdRule = this.roomRules.find((r) => r.room === roomIdOrAlias);
-        return roomIdRule?.action || "allow";
+  public getRoomRule(roomIdOrAlias?: string) {
+    const aliasRule = this.roomRules.find((r) => r.room === roomIdOrAlias);
+    if (aliasRule && aliasRule.action === "deny") {
+      return "deny";
     }
+    const roomIdRule = this.roomRules.find((r) => r.room === roomIdOrAlias);
+    return roomIdRule?.action || "allow";
+  }
 
-    /**
-     * Apply a set of keys and values over the default config.
-     *
-     * @param newConfig Config keys
-     * @param configLayer Private parameter
-     */
-    public ApplyConfig(newConfig: ConfigValue, configLayer: ConfigValue|Config = this) {
-        Object.keys(newConfig).forEach((key) => {
-            if (typeof(configLayer[key]) === "object" &&
-                !Array.isArray(configLayer[key])) {
-                this.ApplyConfig(newConfig[key], this[key]);
-                return;
-            }
-            configLayer[key] = newConfig[key];
-        });
-    }
+  /**
+   * Apply a set of keys and values over the default config.
+   *
+   * @param newConfig Config keys
+   * @param configLayer Private parameter
+   */
+  public ApplyConfig(newConfig: ConfigValue, configLayer: ConfigValue | Config = this) {
+    Object.keys(newConfig).forEach((key) => {
+      if (typeof configLayer[key] === "object" && !Array.isArray(configLayer[key])) {
+        this.ApplyConfig(newConfig[key], this[key]);
+        return;
+      }
+      configLayer[key] = newConfig[key];
+    });
+  }
 }
 
 export interface IConfigBridge {
-    domain: string;
-    homeserverUrl: string;
-    userPrefix: string;
-    appservicePort?: number;
+  domain: string;
+  homeserverUrl: string;
+  userPrefix: string;
+  appservicePort?: number;
 }
 
 export interface IMediaProxy {
-    signingKeyPath: string;
-    ttlSeconds: number;
-    bindPort: number;
-    publicUrl: string;
+  signingKeyPath: string;
+  ttlSeconds: number;
+  bindPort: number;
+  publicUrl: string;
 }
 
 export interface IConfigPurple {
-    backendOpts: IPurpleBackendOpts|IXJSBackendOpts|undefined;
-    backend: "node-purple"|"xmpp-js";
-    defaultAccountSettings?: {[key: string]: IAccountExtraConfig};
+  backendOpts: IPurpleBackendOpts | IXJSBackendOpts | undefined;
+  backend: "node-purple" | "xmpp-js";
+  defaultAccountSettings?: { [key: string]: IAccountExtraConfig };
 }
 
 export interface IConfigAutoReg {
-    enabled: boolean;
-    protocolSteps: {[protocol: string]: IAutoRegStep} | undefined;
-    registrationNameCacheSize: number;
+  enabled: boolean;
+  protocolSteps: { [protocol: string]: IAutoRegStep } | undefined;
+  registrationNameCacheSize: number;
 }
 
 export interface IConfigBridgeBot {
-    displayname: string;
-    accounts: IBridgeBotAccount[]; // key -> parameter value
+  displayname: string;
+  accounts: IBridgeBotAccount[]; // key -> parameter value
 }
 
 export interface IBridgeBotAccount {
-    name: string;
-    protocol: string;
+  name: string;
+  protocol: string;
 }
 
 export interface IConfigProfile {
-    updateInterval: number;
+  updateInterval: number;
 }
 
 export interface IConfigPortals {
-    aliases: {[regex: string]: IRoomAlias} | undefined;
-    enableGateway: boolean;
-    // Maximum number of messages to retain per gateway room for history backfill on join.
-    // Kept small and in-memory by design - this is a courtesy backfill, not a durable log.
-    gatewayHistoryLimit?: number;
+  aliases: { [regex: string]: IRoomAlias } | undefined;
+  enableGateway: boolean;
+  // Maximum number of messages to retain per gateway room for history backfill on join.
+  // Kept small and in-memory by design - this is a courtesy backfill, not a durable log.
+  gatewayHistoryLimit?: number;
 }
 
 export interface IConfigProvisioning {
-    enablePlumbing: boolean;
-    requiredUserPL: number;
+  enablePlumbing: boolean;
+  requiredUserPL: number;
 }
 
 export interface IConfigAccessControl {
-    accountCreation?: {
-        whitelist?: string[],
-    };
+  accountCreation?: {
+    whitelist?: string[];
+  };
 }
 interface IConfigMetrics {
-    enabled: boolean;
+  enabled: boolean;
 }
 
 interface IConfigLogging {
-    console: "debug"|"info"|"warn"|"error"|"off";
-    files?: {[filename: string]: "debug"|"info"|"warn"|"error"};
+  console: "debug" | "info" | "warn" | "error" | "off";
+  files?: { [filename: string]: "debug" | "info" | "warn" | "error" };
 }
 
 interface IConfigTuning {
-    // Don't send a message or join a room before setting a profile picture
-    waitOnProfileBeforeSend: boolean;
-    // A nasty hack to check the domain for conf* to see if the PM is coming from a MUC.
-    // This is only really needed for legacy clients that don't implement xmlns
-    conferencePMFallbackCheck: boolean;
-    // Don't send messages from the remote protocol until we have seen them join.
-    // A list of prefixes to check.
-    waitOnJoinBeforePM: string[];
+  // Don't send a message or join a room before setting a profile picture
+  waitOnProfileBeforeSend: boolean;
+  // A nasty hack to check the domain for conf* to see if the PM is coming from a MUC.
+  // This is only really needed for legacy clients that don't implement xmlns
+  conferencePMFallbackCheck: boolean;
+  // Don't send messages from the remote protocol until we have seen them join.
+  // A list of prefixes to check.
+  waitOnJoinBeforePM: string[];
 }
 
 export interface IConfigDatastore {
-    engine: "nedb"|"postgres";
-    connectionString: string;
-    opts: undefined|PgDataStoreOpts;
+  engine: "nedb" | "postgres";
+  connectionString: string;
+  opts: undefined | PgDataStoreOpts;
 }
 
 export interface IConfigRoomRule {
-    /**
-     * Room ID or alias
-     */
-    room: string;
-    /**
-     * Should the room be allowed, or denied.
-     */
-    action: "allow"|"deny";
+  /**
+   * Room ID or alias
+   */
+  room: string;
+  /**
+   * Should the room be allowed, or denied.
+   */
+  action: "allow" | "deny";
 }

@@ -4,75 +4,82 @@ import { Element } from "@xmpp/xml";
 import { JID } from "@xmpp/jid";
 
 describe("HistoryManager", () => {
-    describe("MemoryStorage", () => {
-        it("should return filtered history", async () => {
-            const historyManager = new HistoryManager(new MemoryStorage(20));
-            historyManager.setAllowed("room1@example.org", true);
-            historyManager.setAllowed("room2@example.org", true);
-            historyManager.addMessage(
-                "room1@example.org", new Element("stanza1"),
-                new JID("room1", "example.org", "user1"),
-            );
-            historyManager.addMessage(
-                "room1@example.org", new Element("stanza2"),
-                new JID("room1", "example.org", "user1"),
-            );
-            historyManager.addMessage(
-                "room1@example.org", new Element("stanza3"),
-                new JID("room1", "example.org", "user1"),
-            );
-            historyManager.addMessage(
-                "room2@example.org", new Element("stanza1"),
-                new JID("room1", "example.org", "user1"),
-            );
+  describe("MemoryStorage", () => {
+    it("should return filtered history", async () => {
+      const historyManager = new HistoryManager(new MemoryStorage(20));
+      historyManager.setAllowed("room1@example.org", true);
+      historyManager.setAllowed("room2@example.org", true);
+      historyManager.addMessage(
+        "room1@example.org",
+        new Element("stanza1"),
+        new JID("room1", "example.org", "user1"),
+      );
+      historyManager.addMessage(
+        "room1@example.org",
+        new Element("stanza2"),
+        new JID("room1", "example.org", "user1"),
+      );
+      historyManager.addMessage(
+        "room1@example.org",
+        new Element("stanza3"),
+        new JID("room1", "example.org", "user1"),
+      );
+      historyManager.addMessage(
+        "room2@example.org",
+        new Element("stanza1"),
+        new JID("room1", "example.org", "user1"),
+      );
 
-            const unfilteredRoom1 = await historyManager.getHistory("room1@example.org", {});
-            expect(unfilteredRoom1.length).toBe(3);
-            const unfilteredRoom2 = await historyManager.getHistory("room2@example.org", {});
-            expect(unfilteredRoom2.length).toBe(1);
+      const unfilteredRoom1 = await historyManager.getHistory("room1@example.org", {});
+      expect(unfilteredRoom1.length).toBe(3);
+      const unfilteredRoom2 = await historyManager.getHistory("room2@example.org", {});
+      expect(unfilteredRoom2.length).toBe(1);
 
-            const maxStanzasRoom1 = await historyManager.getHistory("room1@example.org", {
-                maxstanzas: 2,
-            });
-            expect(maxStanzasRoom1.length).toBe(2);
-            const maxStanzasRoom2 = await historyManager.getHistory("room2@example.org", {
-                maxstanzas: 2,
-            });
-            expect(maxStanzasRoom2.length).toBe(1);
+      const maxStanzasRoom1 = await historyManager.getHistory("room1@example.org", {
+        maxstanzas: 2,
+      });
+      expect(maxStanzasRoom1.length).toBe(2);
+      const maxStanzasRoom2 = await historyManager.getHistory("room2@example.org", {
+        maxstanzas: 2,
+      });
+      expect(maxStanzasRoom2.length).toBe(1);
 
-            // each stanza will be about 40 characters, so maxchars 50 should
-            // only give us one stanza
-            const maxCharsRoom1 = await historyManager.getHistory("room1@example.org", {
-                maxchars: 50,
-            });
-            expect(maxCharsRoom1.length).toBe(1);
-        });
-
-        it("should not cache messages for a room that has not been allowed", async () => {
-            const historyManager = new HistoryManager(new MemoryStorage(20));
-            historyManager.addMessage(
-                "room1@example.org", new Element("stanza1"),
-                new JID("room1", "example.org", "user1"),
-            );
-
-            expect(await historyManager.getHistory("room1@example.org", {})).toHaveLength(0);
-        });
-
-        it("should stop caching messages once a room is disallowed", async () => {
-            const historyManager = new HistoryManager(new MemoryStorage(20));
-            historyManager.setAllowed("room1@example.org", true);
-            historyManager.addMessage(
-                "room1@example.org", new Element("stanza1"),
-                new JID("room1", "example.org", "user1"),
-            );
-
-            historyManager.setAllowed("room1@example.org", false);
-            historyManager.addMessage(
-                "room1@example.org", new Element("stanza2"),
-                new JID("room1", "example.org", "user1"),
-            );
-
-            expect(await historyManager.getHistory("room1@example.org", {})).toHaveLength(1);
-        });
+      // each stanza will be about 40 characters, so maxchars 50 should
+      // only give us one stanza
+      const maxCharsRoom1 = await historyManager.getHistory("room1@example.org", {
+        maxchars: 50,
+      });
+      expect(maxCharsRoom1.length).toBe(1);
     });
+
+    it("should not cache messages for a room that has not been allowed", async () => {
+      const historyManager = new HistoryManager(new MemoryStorage(20));
+      historyManager.addMessage(
+        "room1@example.org",
+        new Element("stanza1"),
+        new JID("room1", "example.org", "user1"),
+      );
+
+      expect(await historyManager.getHistory("room1@example.org", {})).toHaveLength(0);
+    });
+
+    it("should stop caching messages once a room is disallowed", async () => {
+      const historyManager = new HistoryManager(new MemoryStorage(20));
+      historyManager.setAllowed("room1@example.org", true);
+      historyManager.addMessage(
+        "room1@example.org",
+        new Element("stanza1"),
+        new JID("room1", "example.org", "user1"),
+      );
+
+      historyManager.setAllowed("room1@example.org", false);
+      historyManager.addMessage(
+        "room1@example.org",
+        new Element("stanza2"),
+        new JID("room1", "example.org", "user1"),
+      );
+
+      expect(await historyManager.getHistory("room1@example.org", {})).toHaveLength(1);
+    });
+  });
 });
