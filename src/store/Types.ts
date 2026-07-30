@@ -1,4 +1,3 @@
-import { MatrixRoom, RemoteRoom } from "matrix-appservice-bridge";
 import { IChatJoinProperties } from "../bifrost/Events";
 
 export const MROOM_TYPE_UADMIN = "user-admin";
@@ -12,53 +11,53 @@ export type MROOM_TYPES = typeof MROOM_TYPE_UADMIN | typeof MROOM_TYPE_IM | type
 export type MUSER_TYPES = typeof MUSER_TYPE_ACCOUNT | typeof MUSER_TYPE_GHOST;
 
 export interface IRemoteRoomData {
-    protocol_id?: string;
+  protocol_id?: string;
 }
 
 export interface IRemoteGroupData extends IRemoteRoomData {
-    room_name?: string;
-    properties?: IChatJoinProperties;
-    gateway?: boolean;
-    plumbed?: boolean;
+  room_name?: string;
+  properties?: IChatJoinProperties;
+  gateway?: boolean;
+  plumbed?: boolean;
 }
 
 export interface IRemoteImData extends IRemoteRoomData {
-    matrixUser?: string;
-    recipient?: string;
+  matrixUser?: string;
+  recipient?: string;
 }
 
 export interface IRemoteUserAdminData extends IRemoteRoomData {
-    matrixUser?: string;
+  matrixUser?: string;
 }
 
 export interface RoomTypeToRemoteRoomData {
-    [MROOM_TYPE_IM]: IRemoteImData;
-    [MROOM_TYPE_GROUP]: IRemoteGroupData;
-    [MROOM_TYPE_UADMIN]: IRemoteUserAdminData;
-};
+  [MROOM_TYPE_IM]: IRemoteImData;
+  [MROOM_TYPE_GROUP]: IRemoteGroupData;
+  [MROOM_TYPE_UADMIN]: IRemoteUserAdminData;
+}
 
 export interface IMatrixUserData {
-    accounts: {[key: string]: IRemoteUserAccount};
+  accounts: { [key: string]: IRemoteUserAccount };
 }
 
 export interface IRemoteUserAccount {
-    // XXX: We are mixing camel case and snake case in here.
-    type: MUSER_TYPES;
-    username: string;
-    protocolId: string;
-    /**
-     * @deprecated Use type: "ghost"
-     */
-    isRemoteUser: boolean;
+  // XXX: We are mixing camel case and snake case in here.
+  type: MUSER_TYPES;
+  username: string;
+  protocolId: string;
+  /**
+   * @deprecated Use type: "ghost"
+   */
+  isRemoteUser: boolean;
 }
 
 export interface IRemoteUserAccountRemote extends IRemoteUserAccount {
-    isRemoteUser: true;
-    /**
-     * Last time the profile was checked for this remote user, in milliseconds
-     */
-    last_check?: number;
-    displayname?: string;
-    avatar_url?: string;
-    protocol_data: {[key: string]: string|number};
+  isRemoteUser: true;
+  /**
+   * Last time the profile was checked for this remote user, in milliseconds
+   */
+  last_check?: number;
+  displayname?: string;
+  avatar_url?: string;
+  protocol_data: { [key: string]: string | number };
 }

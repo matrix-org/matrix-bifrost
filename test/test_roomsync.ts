@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import { describe, it, expect } from "vitest";
 import { PurpleProtocol } from "../src/purple/PurpleProtocol";
 import { RoomSync } from "../src/RoomSync";
@@ -8,95 +7,93 @@ import { mockStore } from "./mocks/store";
 import { AppServiceBot, Intent, RoomBridgeStoreEntry } from "matrix-appservice-bridge";
 
 const dummyProtocol = new PurpleProtocol({
-    id: "prpl-dummy",
-    name: "Dummy",
-    homepage: undefined,
-    summary: undefined,
+  id: "prpl-dummy",
+  name: "Dummy",
+  homepage: undefined,
+  summary: undefined,
 });
 
 function createBotAndIntent() {
-    const bot = {
-        getJoinedMembers: async () => ({
-            "@foo:bar": {},
-            "@remote_foo:bar": {},
-        }),
-        isRemoteUser: (userId: string) => userId.startsWith("@remote"),
-        getUserId: () => "@bot:localhost",
-    } as unknown as AppServiceBot;
-    const intent = {
-
-    } as unknown as Intent;
-    return {bot, intent};
+  const bot = {
+    getJoinedMembers: async () => ({
+      "@foo:bar": {},
+      "@remote_foo:bar": {},
+    }),
+    isRemoteUser: (userId: string) => userId.startsWith("@remote"),
+    getUserId: () => "@bot:localhost",
+  } as unknown as AppServiceBot;
+  const intent = {} as unknown as Intent;
+  return { bot, intent };
 }
 
 let remoteJoins: any[];
 
-function createRoomSync(intent, rooms: RoomBridgeStoreEntry[] = []) {
-    remoteJoins = [];
-    // Create dummy objects, only implement needed stuff.
-    const purple = {
-        on: (ev: string, func: () => void) => {
-            // No-op
-        },
-        getProtocol: () => true,
-    };
+function createRoomSync(intent, _rooms: RoomBridgeStoreEntry[] = []) {
+  remoteJoins = [];
+  // Create dummy objects, only implement needed stuff.
+  const purple = {
+    on: (_ev: string, _func: () => void) => {
+      // No-op
+    },
+    getProtocol: () => true,
+  };
 
-    const gateway = {
-        initialMembershipSync: (roomEntry) => remoteJoins.push(roomEntry),
-    };
+  const gateway = {
+    initialMembershipSync: (roomEntry) => remoteJoins.push(roomEntry),
+  };
 
-    const store = mockStore();
+  const store = mockStore();
 
-    // {
-    //     get: (key: string) => {
-    //         return {
-    //             username: "foobar",
-    //             protocolId: dummyProtocol.id,
-    //         }[key];
-    //     },
-    //     getId: () => "foobar",
-    // }
+  // {
+  //     get: (key: string) => {
+  //         return {
+  //             username: "foobar",
+  //             protocolId: dummyProtocol.id,
+  //         }[key];
+  //     },
+  //     getId: () => "foobar",
+  // }
 
-    return {
-        rs: new RoomSync(purple as any, store, new Deduplicator(), gateway as any, intent),
-        store,
-    };
+  return {
+    rs: new RoomSync(purple as any, store, new Deduplicator(), gateway as any, intent),
+    store,
+  };
 }
 
 describe("RoomSync", () => {
-    it("constructs", () => {
-        const rs = createRoomSync(null);
-    });
-    it("should sync one room for one user", async () => {
-        const {bot, intent} = createBotAndIntent();
-        const {rs, store} = createRoomSync(intent);
-        await store.storeRoom("!abc:foobar", MROOM_TYPE_GROUP, "foobar", {
-            type: MROOM_TYPE_GROUP,
-            protocol_id: dummyProtocol.id,
-            room_name: "abc",
-        } as IRemoteGroupData);
-        await store.storeAccount("@foo:bar", dummyProtocol, "foobar");
-        await rs.sync(bot as any);
-        expect(rs.getMembershipForUser("prpl-dummy://foobar")).toEqual([
-            {
-                membership: "join",
-                params: {},
-                room_name: "abc",
-            },
-        ]);
-    });
-    it("should sync remote users for gateways", async () => {
-        const {bot, intent} = createBotAndIntent();
-        const {rs, store} = createRoomSync(intent);
-        await store.storeRoom("!abc:foobar", MROOM_TYPE_GROUP, "foobar", {
-            type: MROOM_TYPE_GROUP,
-            protocol_id: dummyProtocol.id,
-            room_name: "abc",
-            gateway: true,
-        } as IRemoteGroupData);
-        await store.storeAccount("@foo:bar", dummyProtocol, "foobar");
-        await rs.sync(bot as any);
-        expect(rs.getMembershipForUser("prpl-dummy://foobar")).toBeUndefined();
-        expect(remoteJoins[0].id).toBe("!abc:foobar    foobar");
-    });
+  it("constructs", () => {
+    createRoomSync(null);
+  });
+  it("should sync one room for one user", async () => {
+    const { bot, intent } = createBotAndIntent();
+    const { rs, store } = createRoomSync(intent);
+    await store.storeRoom("!abc:foobar", MROOM_TYPE_GROUP, "foobar", {
+      type: MROOM_TYPE_GROUP,
+      protocol_id: dummyProtocol.id,
+      room_name: "abc",
+    } as IRemoteGroupData);
+    await store.storeAccount("@foo:bar", dummyProtocol, "foobar");
+    await rs.sync(bot as any);
+    expect(rs.getMembershipForUser("prpl-dummy://foobar")).toEqual([
+      {
+        membership: "join",
+        params: {},
+        room_name: "abc",
+      },
+    ]);
+  });
+  it("should sync remote users for gateways", async () => {
+    const { bot, intent } = createBotAndIntent();
+    const { rs, store } = createRoomSync(intent);
+    await store.storeRoom("!abc:foobar", MROOM_TYPE_GROUP, "foobar", {
+      type: MROOM_TYPE_GROUP,
+      protocol_id: dummyProtocol.id,
+      room_name: "abc",
+      gateway: true,
+    } as IRemoteGroupData);
+    await store.storeAccount("@foo:bar", dummyProtocol, "foobar");
+    await rs.sync(bot as any);
+    expect(rs.getMembershipForUser("prpl-dummy://foobar")).toBeUndefined();
+    expect(remoteJoins[0].id).toBe("!abc:foobar    foobar");
+  });
 });

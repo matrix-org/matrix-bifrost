@@ -1,8 +1,8 @@
 import { PoolClient } from "pg";
 
 export async function runSchema(connection: PoolClient) {
-    // Create schema
-    await connection.query(`CREATE TABLE events (
+  // Create schema
+  await connection.query(`CREATE TABLE events (
         room_id TEXT NOT NULL,
         matrix_id TEXT NOT NULL,
         remote_id TEXT NOT NULL,

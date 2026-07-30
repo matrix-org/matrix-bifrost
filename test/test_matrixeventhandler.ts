@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import { describe, it, expect, beforeEach } from "vitest";
 import { MatrixEventHandler } from "../src/MatrixEventHandler";
 import { mockStore } from "./mocks/store";
@@ -10,127 +9,132 @@ import { IRemoteImData, MROOM_TYPE_IM } from "../src/store/Types";
 import { WeakEvent, Request } from "matrix-appservice-bridge";
 
 function createRequest(extraEvData: any): Request<WeakEvent> {
-    const eventData = {
-        room_id: "!12345:localhost",
-        event_id: "$12345:localhost",
-        sender: "@alice:localhost",
-        type: "m.room.message",
-        origin_server_ts: 0,
-        content: { },
-        ...extraEvData,
-    };
-    return new Request({
-        id: "requestId",
-        data: eventData,
-    });
+  const eventData = {
+    room_id: "!12345:localhost",
+    event_id: "$12345:localhost",
+    sender: "@alice:localhost",
+    type: "m.room.message",
+    origin_server_ts: 0,
+    content: {},
+    ...extraEvData,
+  };
+  return new Request({
+    id: "requestId",
+    data: eventData,
+  });
 }
 
 function createMEH() {
-    const purple = {
-        getUsernameFromMxid: (userId) => {
-            if (userId === "@definitelyremote:localhost") {
-                return {username: "definitelyremote", protocol: dummyProtocol};
-            }
-            throw Error("Username didn't match");
-        },
-    };
-    const config = new Config();
-    const store = mockStore();
-    const gatewayHandler = {
-
-    };
-    const bridge = {
-        getBot: () => ({
-            getUserId: () => "@theboss:localhost",
-            isRemoteUser: (userId: string) => userId === "@definitelyremote:localhost",
-        }),
-        getIntent: (userId: string) => ({
-            opts: {
-
-            },
-            join: () => { /* empty */ },
-            matrixClient: {
-                getUserId: () => userId,
-                doRequest: () => Promise.resolve({
-                    chunk: [{
-                        type: "m.room.message",
-                        event_id: "$1:localhost",
-                    },
-                    {
-                        type: "m.room.member",
-                        sender: userId,
-                        event_id: "$2:localhost",
-                    },
-                    {
-                        type: "m.room.message",
-                        event_id: "$3:localhost",
-                    }],
-                }),
-            },
-        }),
-    };
-    const meh = new MatrixEventHandler(
-        purple as any,
-        store,
-        new Deduplicator(),
-        config,
-        gatewayHandler as any,
-        bridge as any,
-        {} as any,
-    );
-    return {meh, store};
+  const purple = {
+    getUsernameFromMxid: (userId) => {
+      if (userId === "@definitelyremote:localhost") {
+        return { username: "definitelyremote", protocol: dummyProtocol };
+      }
+      throw Error("Username didn't match");
+    },
+  };
+  const config = new Config();
+  const store = mockStore();
+  const gatewayHandler = {};
+  const bridge = {
+    getBot: () => ({
+      getUserId: () => "@theboss:localhost",
+      isRemoteUser: (userId: string) => userId === "@definitelyremote:localhost",
+    }),
+    getIntent: (userId: string) => ({
+      opts: {},
+      join: () => {
+        /* empty */
+      },
+      matrixClient: {
+        getUserId: () => userId,
+        doRequest: () =>
+          Promise.resolve({
+            chunk: [
+              {
+                type: "m.room.message",
+                event_id: "$1:localhost",
+              },
+              {
+                type: "m.room.member",
+                sender: userId,
+                event_id: "$2:localhost",
+              },
+              {
+                type: "m.room.message",
+                event_id: "$3:localhost",
+              },
+            ],
+          }),
+      },
+    }),
+  };
+  const meh = new MatrixEventHandler(
+    purple as any,
+    store,
+    new Deduplicator(),
+    config,
+    gatewayHandler as any,
+    bridge as any,
+    {} as any,
+  );
+  return { meh, store };
 }
 
 describe("MatrixEventHandler", () => {
-    describe("onEvent", () => {
-        let meh: MatrixEventHandler;
-        let store: IStore;
-        beforeEach(() => {
-            const res = createMEH();
-            meh = res.meh;
-            store = res.store;
-        });
-        it("handle new invite for bot", async () => {
-            let handleInviteForBotCalledWith;
-            (meh as any).handleInviteForBot = (ev) => handleInviteForBotCalledWith = ev;
-            await meh.onEvent(createRequest({
-                type: "m.room.member",
-                content: {
-                    membership: "invite",
-                },
-                event_id: "$botinviteevent",
-                state_key: "@theboss:localhost",
-            }));
-            expect(handleInviteForBotCalledWith.event_id).toBe("$botinviteevent");
-        });
-        it("handle new invite for ghost", async () => {
-            let messagesHandled = 0;
-            (meh as any).getAccountForMxid = (ev) => ({
-                acct: {
-                    protocol: dummyProtocol,
-                },
-            });
-            (meh as any).handleImMessage = (ev) => {
-                messagesHandled++;
-            };
-            await meh.onEvent(createRequest({
-                type: "m.room.member",
-                content: {
-                    membership: "invite",
-                    is_direct: true,
-                },
-                event_id: "$ghostinviteevent",
-                state_key: "@definitelyremote:localhost",
-            }));
-            expect(messagesHandled).toBe(1);
-            const storeEntry = await store.getGroupRoomByRemoteData({
-                recipient: "definitelyremote",
-                matrixUser: "@alice:localhost",
-                protocol_id: dummyProtocol.id,
-            } as IRemoteImData);
-            expect(storeEntry).not.toBeNull();
-            expect(storeEntry?.matrix?.getId()).toBe("!12345:localhost");
-            expect(storeEntry?.matrix?.get("type")).toBe(MROOM_TYPE_IM);
-        });
+  describe("onEvent", () => {
+    let meh: MatrixEventHandler;
+    let store: IStore;
+    beforeEach(() => {
+      const res = createMEH();
+      meh = res.meh;
+      store = res.store;
     });
+    it("handle new invite for bot", async () => {
+      let handleInviteForBotCalledWith;
+      (meh as any).handleInviteForBot = (ev) => (handleInviteForBotCalledWith = ev);
+      await meh.onEvent(
+        createRequest({
+          type: "m.room.member",
+          content: {
+            membership: "invite",
+          },
+          event_id: "$botinviteevent",
+          state_key: "@theboss:localhost",
+        }),
+      );
+      expect(handleInviteForBotCalledWith.event_id).toBe("$botinviteevent");
+    });
+    it("handle new invite for ghost", async () => {
+      let messagesHandled = 0;
+      (meh as any).getAccountForMxid = (_ev) => ({
+        acct: {
+          protocol: dummyProtocol,
+        },
+      });
+      (meh as any).handleImMessage = (_ev) => {
+        messagesHandled++;
+      };
+      await meh.onEvent(
+        createRequest({
+          type: "m.room.member",
+          content: {
+            membership: "invite",
+            is_direct: true,
+          },
+          event_id: "$ghostinviteevent",
+          state_key: "@definitelyremote:localhost",
+        }),
+      );
+      expect(messagesHandled).toBe(1);
+      const storeEntry = await store.getGroupRoomByRemoteData({
+        recipient: "definitelyremote",
+        matrixUser: "@alice:localhost",
+        protocol_id: dummyProtocol.id,
+      } as IRemoteImData);
+      expect(storeEntry).not.toBeNull();
+      expect(storeEntry?.matrix?.getId()).toBe("!12345:localhost");
+      expect(storeEntry?.matrix?.get("type")).toBe(MROOM_TYPE_IM);
+    });
+  });
 });

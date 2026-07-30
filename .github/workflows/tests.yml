@@ -25,6 +25,7 @@ jobs:
         node-version-file: .node-version
     - run: yarn --frozen-lockfile
     - run: yarn lint
+    - run: yarn fmt
 
   test:
     runs-on: ubuntu-latest

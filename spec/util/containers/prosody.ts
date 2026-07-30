@@ -1,10 +1,9 @@
 import {
-    GenericContainer,
-    Wait,
-    AbstractStartedContainer,
-    StartedTestContainer,
+  GenericContainer,
+  Wait,
+  AbstractStartedContainer,
+  StartedTestContainer,
 } from "testcontainers";
-
 
 const DEFAULT_PROSODY_IMAGE = process.env.PROSODY_IMAGE || "prosody/prosody:latest";
 
@@ -26,10 +25,10 @@ const PROSODY_C2S_PORT = 5222;
 const PROSODY_COMPONENT_PORT = 5347;
 
 function prosodyConfig(): string {
-    // Adapted from matrix-bifrost's abandoned hs/e2e-test branch (.github/support/prosody.cfg.lua),
-    // which is proven to work with the xmpp-js backend's XEP-0114 component connection.
-    // TLS is intentionally disabled here (this never leaves the test container network).
-    return `
+  // Adapted from matrix-bifrost's abandoned hs/e2e-test branch (.github/support/prosody.cfg.lua),
+  // which is proven to work with the xmpp-js backend's XEP-0114 component connection.
+  // TLS is intentionally disabled here (this never leaves the test container network).
+  return `
 pidfile = "/var/run/prosody/prosody.pid"
 
 modules_enabled = {
@@ -80,39 +79,37 @@ Component "${XMPP_MUC_DOMAIN}" "muc"
 }
 
 export class ProsodyContainer extends GenericContainer {
-    constructor(image = DEFAULT_PROSODY_IMAGE) {
-        super(image);
-        this.withExposedPorts(PROSODY_C2S_PORT, PROSODY_COMPONENT_PORT)
-            .withWaitStrategy(Wait.forListeningPorts())
-            .withCopyContentToContainer([
-                { content: prosodyConfig(), target: "/etc/prosody/prosody.cfg.lua" },
-            ]);
-    }
+  constructor(image = DEFAULT_PROSODY_IMAGE) {
+    super(image);
+    this.withExposedPorts(PROSODY_C2S_PORT, PROSODY_COMPONENT_PORT)
+      .withWaitStrategy(Wait.forListeningPorts())
+      .withCopyContentToContainer([
+        { content: prosodyConfig(), target: "/etc/prosody/prosody.cfg.lua" },
+      ]);
+  }
 
-    public override async start(): Promise<StartedProsodyContainer> {
-        return new StartedProsodyContainer(await super.start());
-    }
+  public override async start(): Promise<StartedProsodyContainer> {
+    return new StartedProsodyContainer(await super.start());
+  }
 }
 
 export class StartedProsodyContainer extends AbstractStartedContainer {
-    constructor(startedTestContainer: StartedTestContainer) {
-        super(startedTestContainer);
-    }
+  constructor(startedTestContainer: StartedTestContainer) {
+    super(startedTestContainer);
+  }
 
-    public get componentService(): string {
-        return `xmpp://${this.getHost()}:${this.getMappedPort(PROSODY_COMPONENT_PORT)}`;
-    }
+  public get componentService(): string {
+    return `xmpp://${this.getHost()}:${this.getMappedPort(PROSODY_COMPONENT_PORT)}`;
+  }
 
-    public get c2sPort(): number {
-        return this.getMappedPort(PROSODY_C2S_PORT);
-    }
+  public get c2sPort(): number {
+    return this.getMappedPort(PROSODY_C2S_PORT);
+  }
 
-    public async registerUser(username: string, password: string): Promise<void> {
-        const result = await this.exec([
-            "prosodyctl", "register", username, XMPP_C2S_DOMAIN, password,
-        ]);
-        if (result.exitCode !== 0) {
-            throw Error(`Failed to register XMPP user ${username}: ${result.output}`);
-        }
+  public async registerUser(username: string, password: string): Promise<void> {
+    const result = await this.exec(["prosodyctl", "register", username, XMPP_C2S_DOMAIN, password]);
+    if (result.exitCode !== 0) {
+      throw Error(`Failed to register XMPP user ${username}: ${result.output}`);
     }
+  }
 }
