@@ -42,7 +42,6 @@ which include a busybox shell at `/busybox/sh`.
 ### Things to note
 
 - Make sure you store your `config.yaml`, `registration.yaml` inside /data.
-- You should configure your `config.yaml`'s `userStoreFile` and `roomStoreFile` to point to files inside `/data`
 - The intenal port for the bridge is `5000`, you should map this to an external port in docker.
 - Be careful not to leave any config options pointing to `127.0.0.1` / `localhost` as they will not resolve inside docker.
  - The exception to this rule is `bridge.domain`, which MUST be your homeserver's URL.

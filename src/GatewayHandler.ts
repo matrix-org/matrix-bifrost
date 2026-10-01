@@ -343,12 +343,16 @@ export class GatewayHandler {
       // to intervene.
       let res = await this.bridge
         .getIntent()
-        .matrixClient.doRequest("GET", "/_matrix/client/v3/publicRooms", {
-          server: ev.homeserver || undefined,
-          filter: {
-            generic_search_term: ev.searchString,
+        .matrixClient.doRequest(
+          "POST",
+          "/_matrix/client/v3/publicRooms",
+          ev.homeserver ? { server: ev.homeserver } : null,
+          {
+            filter: {
+              generic_search_term: ev.searchString,
+            },
           },
-        });
+        );
       if (res === null) {
         // Synapse apparently does this.
         res = { chunk: [] };

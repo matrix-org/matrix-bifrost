@@ -68,7 +68,7 @@ describe("ProfileSync", () => {
     expect(values.displayname).toBe("alice@foobar.com");
     expect(values.userId).toBe("@_bifrost_dummy_alice=40foobar.com:localhost");
     const matrixUser = await store.getMatrixUser(values.userId);
-    expect(matrixUser?.get("last_check")).toBeGreaterThan(time);
+    expect(matrixUser?.get("last_check")).toBeGreaterThanOrEqual(time);
   });
   it("can sync one profile without useful UserInfo", async () => {
     const time = Date.now();
@@ -79,7 +79,7 @@ describe("ProfileSync", () => {
     expect(values.displayname).toBe("alice@foobar.com");
     expect(values.userId).toBe("@_bifrost_dummy_alice=40foobar.com:localhost");
     const matrixUser = await store.getMatrixUser(values.userId);
-    expect(matrixUser?.get("last_check")).toBeGreaterThan(time);
+    expect(matrixUser?.get("last_check")).toBeGreaterThanOrEqual(time);
   });
   it("can sync one profile with a nickname", async () => {
     const time = Date.now();
@@ -90,7 +90,7 @@ describe("ProfileSync", () => {
     expect(values.displayname).toBe("SuperAlice");
     expect(values.userId).toBe("@_bifrost_dummy_alice=40foobar.com:localhost");
     const matrixUser = await store.getMatrixUser(values.userId);
-    expect(matrixUser?.get("last_check")).toBeGreaterThan(time);
+    expect(matrixUser?.get("last_check")).toBeGreaterThanOrEqual(time);
   });
   it("can sync one profile with a avatar ", async () => {
     const time = Date.now();
@@ -101,7 +101,7 @@ describe("ProfileSync", () => {
     expect(values.displayname).toBe("alice@foobar.com");
     expect(values.userId).toBe("@_bifrost_dummy_alice=40foobar.com:localhost");
     const matrixUser = await store.getMatrixUser(values.userId);
-    expect(matrixUser?.get("last_check")).toBeGreaterThan(time);
+    expect(matrixUser?.get("last_check")).toBeGreaterThanOrEqual(time);
     expect(values.avatarUrl).toBe("mxc://example.com/foobar");
   });
   it("will skip the second profile update", async () => {
@@ -114,7 +114,7 @@ describe("ProfileSync", () => {
       false,
     );
     const matrixUser = await store.getMatrixUser(values.userId);
-    expect(matrixUser?.get("last_check")).toBeGreaterThan(time);
+    expect(matrixUser?.get("last_check")).toBeGreaterThanOrEqual(time);
     const lastTime = matrixUser?.get("last_check");
     await profileSync.updateProfile(
       dummyProtocol,

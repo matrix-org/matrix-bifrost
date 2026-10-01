@@ -4,13 +4,10 @@ import { BifrostProtocol } from "../bifrost/Protocol";
 import { IAccountMinimal } from "../bifrost/Events";
 import { BifrostRemoteUser } from "./BifrostRemoteUser";
 import { IConfigDatastore } from "../Config";
-import { NeDBStore } from "./NeDBStore";
 import { PgDataStore } from "./postgres/PgDatastore";
 
 export async function initiateStore(config: IConfigDatastore, bridge: Bridge): Promise<IStore> {
-  if (config.engine === "nedb") {
-    return new NeDBStore(bridge);
-  } else if (config.engine === "postgres") {
+  if (config.engine === "postgres") {
     const pg = new PgDataStore(config, bridge);
     await pg.ensureSchema();
     return pg;

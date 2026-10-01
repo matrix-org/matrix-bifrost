@@ -1,5 +1,5 @@
 # Build node-purple, which needs Debian for Python
-FROM node:22-trixie@sha256:072889700aecef94c5cee46c6e60107cc2aaad9aa9e418ce05abaa1e85752ee3 AS builder
+FROM node:24-trixie@sha256:be40f6a87b9b22215ddb20da0a2320a5c6d583fe3ee3b0024d9fa4f05b40c8fd AS builder
 
 WORKDIR /build
 COPY /package.json ./package.json
@@ -13,7 +13,7 @@ RUN apt-get update && apt-get install --no-install-recommends -y libpurple0t64 l
 RUN yarn install --frozen-lockfile --check-files
 
 # Production dependencies and compiled app, shared by all variants
-FROM node:22-trixie-slim@sha256:b26b04c123d9ff8ab646ceb18b9d75a1173acf64b9a401094b906d27b29338d4 AS deps
+FROM node:24-trixie-slim@sha256:8ec5d7557396cfe32d21c3f9c13072355ceab22b584578ca4bb28af31120cffe AS deps
 
 WORKDIR /app
 COPY package.json /app/package.json
@@ -29,7 +29,7 @@ COPY --from=builder /build/lib /app/lib
 COPY /config/config.schema.yaml /app/config/config.schema.yaml
 
 # Variant with libpurple, for the node-purple backend. Build with `--target purple`.
-FROM node:22-trixie-slim@sha256:b26b04c123d9ff8ab646ceb18b9d75a1173acf64b9a401094b906d27b29338d4 AS purple
+FROM node:24-trixie-slim@sha256:8ec5d7557396cfe32d21c3f9c13072355ceab22b584578ca4bb28af31120cffe AS purple
 
 # Update the bundled npm, to ensure latest.
 RUN npm install -g npm@12.2.0 && npm cache clean --force
@@ -58,7 +58,7 @@ ENTRYPOINT [ "node", \
 ]
 
 # Default variant with a busybox shell, for debugging. Build with `--target debug`.
-FROM gcr.io/distroless/nodejs22-debian13:debug@sha256:bd8598495bbaf6bb1f60aac1b948d5ca44f344c91dc9eea99e79c5d5393759e2 AS debug
+FROM gcr.io/distroless/nodejs24-debian13:debug@sha256:1f11210aba1da46ff79f5a3e1d7363f6fc3d141e7017abf1784286c20e06ff56 AS debug
 
 # Make `node` available from the shell.
 ENV PATH="/nodejs/bin:${PATH}"
@@ -78,7 +78,7 @@ ENTRYPOINT [ "/nodejs/bin/node", \
 ]
 
 # Default variant, for the xmpp-js backend. Distroless, so there is no shell or package manager.
-FROM gcr.io/distroless/nodejs22-debian13@sha256:f6c6d1b8ffe2691053118b5f607691142639305aedf25411bb95905e859a2e28
+FROM gcr.io/distroless/nodejs24-debian13@sha256:b1fc33242cc74151f50c62b4a03d48afd759dccf81279b5f8e401db4546479c1
 
 WORKDIR /app
 

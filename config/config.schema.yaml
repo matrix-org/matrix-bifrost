@@ -28,14 +28,13 @@ properties:
             type: "string"
         required: ["signingKeyPath", "ttlSeconds", "bindPort", "publicUrl"]
     datastore:
-        required: ["engine"]
+        required: ["engine", "connectionString"]
         type: "object"
         properties:
             engine:
                 type: string
                 enum: 
                     - postgres
-                    - nedb
             connectionString:
                 type: string
     purple:
