@@ -1,0 +1,2 @@
+libpurple support has been removed from the main image due to increased image size,
+and increased dependency footprint. If you depend on libpurple support, use the `-purple` image variant.
