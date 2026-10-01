@@ -58,7 +58,7 @@ ENTRYPOINT [ "node", \
 ]
 
 # Default variant with a busybox shell, for debugging. Build with `--target debug`.
-FROM gcr.io/distroless/nodejs24-debian13:debug@sha256:1f11210aba1da46ff79f5a3e1d7363f6fc3d141e7017abf1784286c20e06ff56 AS debug
+FROM gcr.io/distroless/nodejs24-debian13:debug@sha256:dad95587745231bc073f33fa76856511dc8d9ca49cd5dfdae92d174342ee7303 AS debug
 
 # Make `node` available from the shell.
 ENV PATH="/nodejs/bin:${PATH}"
@@ -78,7 +78,7 @@ ENTRYPOINT [ "/nodejs/bin/node", \
 ]
 
 # Default variant, for the xmpp-js backend. Distroless, so there is no shell or package manager.
-FROM gcr.io/distroless/nodejs24-debian13@sha256:b1fc33242cc74151f50c62b4a03d48afd759dccf81279b5f8e401db4546479c1
+FROM gcr.io/distroless/nodejs24-debian13@sha256:85482a8359e1524bd1278f5b418bb397bbebbf2b5ceeea7ec13a9e640e2c1911
 
 WORKDIR /app
 
