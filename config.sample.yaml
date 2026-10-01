@@ -28,13 +28,10 @@ roomRules: []
 #   action: "deny"
 
 datastore:
-  # The datastore engine to use, either "nedb" (deprecated) or "postgres"
+  # The datastore engine to use. Only "postgres" is supported.
   engine: "postgres"
 
-  # For NeDB:
-  #   Location of the user and room database files, by default will be stored in the working directory.
-  # For Postgres:
-  #   A postgres style connection string.
+  # A postgres style connection string.
   connectionString: "postgres://postgres:pass@localhost/bifrost"
 
 purple:

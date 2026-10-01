@@ -1,16 +1,11 @@
 import {
-  Bridge,
+  MatrixUser,
+  RemoteUser,
   MatrixRoom,
   RemoteRoom,
-  RemoteUser,
-  MatrixUser,
-  UserBridgeStore,
-  RoomBridgeStore,
-  Logger,
-  AppServiceBot,
   RoomBridgeStoreEntry,
 } from "matrix-appservice-bridge";
-import { Util } from "../Util";
+import { Util } from "../../src/Util";
 import {
   MROOM_TYPES,
   IRemoteRoomData,
@@ -18,42 +13,168 @@ import {
   MUSER_TYPE_ACCOUNT,
   MUSER_TYPES,
   MROOM_TYPE_UADMIN,
-  MROOM_TYPE_GROUP,
   MUSER_TYPE_GHOST,
   IRemoteImData,
   MROOM_TYPE_IM,
-} from "./Types";
-import { BifrostProtocol } from "../bifrost/Protocol";
-import { IAccountMinimal } from "../bifrost/Events";
-import { IStore } from "./Store";
-import { BifrostRemoteUser } from "./BifrostRemoteUser";
+} from "../../src/store/Types";
+import { BifrostProtocol } from "../../src/bifrost/Protocol";
+import { IAccountMinimal } from "../../src/bifrost/Events";
+import { IStore } from "../../src/store/Store";
+import { BifrostRemoteUser } from "../../src/store/BifrostRemoteUser";
 
-const log = new Logger("NeDBStore");
+interface FakeBot {
+  isRemoteUser(userId: string): boolean;
+}
 
-export class NeDBStore implements IStore {
-  private roomStore: RoomBridgeStore;
-  private userStore: UserBridgeStore;
-  private asBot: AppServiceBot;
-  private userLock: Map<string, Promise<void>>;
+function subsetMatch(data: Record<string, unknown>, query: Record<string, unknown>): boolean {
+  return Object.entries(query).every(([k, v]) => data[k] === v);
+}
 
-  constructor(bridge: Bridge) {
-    log.warn("NeDB-based stores are now deprecated.");
-    // required fix for nedb being incredibly outdated
-    if (parseInt(process.versions.node.split(".")[0]) >= 24) {
-      const util = require("node:util");
-      util.isDate = util.types.isDate;
-      util.isRegExp = util.types.isRegExp;
-    }
-    const roomStore = bridge.getRoomStore();
-    const userStore = bridge.getUserStore();
-    if (!roomStore || !userStore) {
-      throw Error("Bridge stores are not defined!");
-    }
-    this.roomStore = roomStore;
-    this.userStore = userStore;
-    this.asBot = bridge.getBot();
-    this.userLock = new Map();
+/**
+ * A minimal in-memory stand-in for matrix-appservice-bridge's nedb-backed
+ * UserBridgeStore, replicating only the query/link semantics FakeStore relies on.
+ */
+class FakeUserStore {
+  private matrixUsers = new Map<string, MatrixUser>();
+  private remoteUsers = new Map<string, RemoteUser>();
+  private links: Array<{ matrixId: string; remoteId: string }> = [];
+
+  async getMatrixUser(userId: string): Promise<MatrixUser | null> {
+    return this.matrixUsers.get(userId) ?? null;
   }
+
+  async setMatrixUser(matrixUser: MatrixUser): Promise<void> {
+    this.matrixUsers.set(matrixUser.getId(), matrixUser);
+  }
+
+  async getRemoteUser(id: string): Promise<RemoteUser | null> {
+    return this.remoteUsers.get(id) ?? null;
+  }
+
+  async setRemoteUser(remoteUser: RemoteUser): Promise<void> {
+    this.remoteUsers.set(remoteUser.getId(), remoteUser);
+  }
+
+  async getMatrixUsersFromRemoteId(remoteId: string): Promise<MatrixUser[]> {
+    return this.links
+      .filter((l) => l.remoteId === remoteId)
+      .map((l) => this.matrixUsers.get(l.matrixId))
+      .filter((u): u is MatrixUser => !!u);
+  }
+
+  async getRemoteUsersFromMatrixId(matrixId: string): Promise<RemoteUser[]> {
+    return this.links
+      .filter((l) => l.matrixId === matrixId)
+      .map((l) => this.remoteUsers.get(l.remoteId))
+      .filter((u): u is RemoteUser => !!u);
+  }
+
+  async getMatrixLinks(remoteId: string): Promise<string[]> {
+    return this.links.filter((l) => l.remoteId === remoteId).map((l) => l.matrixId);
+  }
+
+  async getByRemoteData(dataQuery: Record<string, unknown>): Promise<RemoteUser[]> {
+    return [...this.remoteUsers.values()].filter((u) => subsetMatch(u.data, dataQuery));
+  }
+
+  async linkUsers(matrixUser: MatrixUser, remoteUser: RemoteUser): Promise<void> {
+    // Mirrors linkUsers' "insert if not exists" semantics: never clobber data
+    // for a user that's already linked.
+    if (!this.remoteUsers.has(remoteUser.getId())) {
+      this.remoteUsers.set(remoteUser.getId(), remoteUser);
+    }
+    if (!this.matrixUsers.has(matrixUser.getId())) {
+      this.matrixUsers.set(matrixUser.getId(), matrixUser);
+    }
+    const exists = this.links.some(
+      (l) => l.matrixId === matrixUser.getId() && l.remoteId === remoteUser.getId(),
+    );
+    if (!exists) {
+      this.links.push({ matrixId: matrixUser.getId(), remoteId: remoteUser.getId() });
+    }
+  }
+
+  async unlinkUserIds(matrixUserId: string, remoteUserId: string): Promise<void> {
+    this.links = this.links.filter(
+      (l) => !(l.matrixId === matrixUserId && l.remoteId === remoteUserId),
+    );
+  }
+}
+
+/**
+ * A minimal in-memory stand-in for matrix-appservice-bridge's nedb-backed
+ * RoomBridgeStore, replicating only the query/link semantics FakeStore relies on.
+ */
+class FakeRoomStore {
+  private entries = new Map<string, RoomBridgeStoreEntry>();
+
+  private static entryId(matrixId: string, remoteId: string): string {
+    return `${matrixId}    ${remoteId}`;
+  }
+
+  async linkRooms(
+    matrixRoom: MatrixRoom,
+    remoteRoom: RemoteRoom,
+    data: Record<string, unknown> = {},
+  ): Promise<void> {
+    const id = FakeRoomStore.entryId(matrixRoom.getId(), remoteRoom.getId());
+    this.entries.set(id, {
+      id,
+      matrix: matrixRoom,
+      remote: remoteRoom,
+      data,
+    } as RoomBridgeStoreEntry);
+  }
+
+  async getEntriesByRemoteRoomData(data: Record<string, unknown>): Promise<RoomBridgeStoreEntry[]> {
+    return [...this.entries.values()].filter((e) => e.remote && subsetMatch(e.remote.data, data));
+  }
+
+  async getEntriesByMatrixRoomData(data: Record<string, unknown>): Promise<RoomBridgeStoreEntry[]> {
+    return [...this.entries.values()].filter(
+      // Avoid MatrixRoom.extras, which recurses infinitely in matrix-appservice-bridge.
+      (e) => e.matrix && subsetMatch(e.matrix.serialize().extras, data),
+    );
+  }
+
+  async getEntriesByMatrixId(matrixId: string): Promise<RoomBridgeStoreEntry[]> {
+    return [...this.entries.values()].filter((e) => e.matrix?.getId() === matrixId);
+  }
+
+  async getLinkedRemoteRooms(matrixId: string): Promise<RemoteRoom[]> {
+    return (await this.getEntriesByMatrixId(matrixId))
+      .filter((e) => e.remote)
+      .map((e) => e.remote as RemoteRoom);
+  }
+
+  async removeEntriesByRemoteRoomId(remoteId: string): Promise<void> {
+    for (const [key, entry] of this.entries) {
+      if (entry.remote?.getId() === remoteId) {
+        this.entries.delete(key);
+      }
+    }
+  }
+
+  async removeEntriesByMatrixRoomId(matrixId: string): Promise<void> {
+    for (const [key, entry] of this.entries) {
+      if (entry.matrix?.getId() === matrixId) {
+        this.entries.delete(key);
+      }
+    }
+  }
+}
+
+/**
+ * An in-memory IStore for unit tests, replacing the old NeDBStore-backed mock.
+ * Ported from the (now removed) NeDBStore's logic, but backed by plain
+ * in-memory maps rather than the nedb package.
+ */
+export class FakeStore implements IStore {
+  private roomStore = new FakeRoomStore();
+  private userStore = new FakeUserStore();
+  private userLock = new Map<string, Promise<void>>();
+
+  constructor(private readonly asBot: FakeBot) {}
 
   public getMatrixUser(id: string): Promise<MatrixUser | null> {
     return this.userStore.getMatrixUser(id);
@@ -62,22 +183,14 @@ export class NeDBStore implements IStore {
   public async getMatrixUserForAccount(account: IAccountMinimal): Promise<MatrixUser | null> {
     const remoteId = Util.createRemoteId(account.protocol_id, account.username);
     const matrixUsers = await this.userStore.getMatrixUsersFromRemoteId(remoteId);
-    if (matrixUsers === null || matrixUsers.length === 0) {
-      log.error(
-        `Could not find an account for ${remoteId}. Either the account` +
-          `is not assigned to a matrix user, or we have hit a bug.`,
-      );
-      return null;
-    }
-    if (matrixUsers.length > 1) {
-      log.error(`Have multiple matrix users assigned to ${account.username}. Bailing`);
+    if (matrixUsers.length !== 1) {
       return null;
     }
     return matrixUsers[0];
   }
 
-  public async setMatrixUser(matrix: MatrixUser) {
-    this.userStore.setMatrixUser(matrix);
+  public async setMatrixUser(matrix: MatrixUser): Promise<void> {
+    await this.userStore.setMatrixUser(matrix);
   }
 
   public async getRemoteUserBySender(
@@ -91,16 +204,20 @@ export class NeDBStore implements IStore {
       return null;
     }
     const userIds = await this.userStore.getMatrixLinks(remoteId);
-    if (!userIds) {
+    if (!userIds.length) {
       return null;
     }
     const realUserIds = userIds.filter((uId) => this.asBot.isRemoteUser(uId));
-    return BifrostRemoteUser.fromRemoteUser(remote, this.asBot, realUserIds[0] || userIds[0]);
+    return BifrostRemoteUser.fromRemoteUser(
+      remote,
+      this.asBot as any,
+      realUserIds[0] || userIds[0],
+    );
   }
 
   public async getRemoteUsersFromMxId(userId: string): Promise<BifrostRemoteUser[]> {
     return (await this.userStore.getRemoteUsersFromMatrixId(userId)).map((u) =>
-      BifrostRemoteUser.fromRemoteUser(u, this.asBot, userId),
+      BifrostRemoteUser.fromRemoteUser(u, this.asBot as any, userId),
     );
   }
 
@@ -121,7 +238,7 @@ export class NeDBStore implements IStore {
     const remoteEntries = await this.roomStore.getEntriesByRemoteRoomData(
       remoteData as Record<string, unknown>,
     );
-    if (remoteEntries !== null && remoteEntries.length > 0) {
+    if (remoteEntries.length > 0) {
       if (remoteEntries.length > 1) {
         throw Error(`Have multiple matrix rooms assigned for chat. Bailing`);
       }
@@ -140,11 +257,8 @@ export class NeDBStore implements IStore {
       protocol_id: protocolId,
       recipient: remoteUserId,
     } as IRemoteImData as Record<string, unknown>);
-    const suitableEntries = remoteEntries.filter((e) => e.matrix?.get("type") === MROOM_TYPE_IM)[0];
-    if (!suitableEntries) {
-      return null;
-    }
-    return suitableEntries;
+    const suitableEntry = remoteEntries.filter((e) => e.matrix?.get("type") === MROOM_TYPE_IM)[0];
+    return suitableEntry || null;
   }
 
   public async getAllIMRoomsForAccount(
@@ -163,16 +277,13 @@ export class NeDBStore implements IStore {
       matrixUser: matrixUserId,
     } as IRemoteImData as Record<string, unknown>);
     const entry = suitableEntries.find((e) => e.matrix?.get("type") === MROOM_TYPE_UADMIN);
-    if (!entry) {
-      return null;
-    }
-    return entry.matrix.getId();
+    return entry ? entry.matrix!.getId() : null;
   }
 
   public async getUsernameMxidForProtocol(
     protocol: BifrostProtocol,
   ): Promise<{ [mxid: string]: string }> {
-    const set = {};
+    const set: { [mxid: string]: string } = {};
     const users = (
       await this.userStore.getByRemoteData({ protocol_id: protocol.id, type: MUSER_TYPE_ACCOUNT })
     )
@@ -183,7 +294,7 @@ export class NeDBStore implements IStore {
     for (const remoteUser of users) {
       const username = remoteUser.get("username");
       const matrixUsers = await this.userStore.getMatrixUsersFromRemoteId(remoteUser.getId());
-      if (!matrixUsers) {
+      if (!matrixUsers.length) {
         continue;
       }
       set[matrixUsers[0].getId()] = username;
@@ -213,7 +324,6 @@ export class NeDBStore implements IStore {
     const id = Util.createRemoteId(protocol.id, username);
     await this.userLock.get(id);
     const p = this.storeUser(userId, protocol, username, MUSER_TYPE_GHOST, extraData);
-    log.debug("Locking ", id);
     this.userLock.set(
       id,
       p.then(() => {
@@ -221,16 +331,15 @@ export class NeDBStore implements IStore {
       }),
     );
     await p;
-    log.debug("Unlocking ", id);
     this.userLock.delete(id);
     return p;
   }
 
   public async removeRoomByRoomId(matrixId: string) {
-    log.info(`Removing room ${matrixId}`);
-    (await this.roomStore.getLinkedRemoteRooms(matrixId)).forEach((remote) => {
-      this.roomStore.removeEntriesByRemoteRoomId(remote.getId());
-    });
+    const remotes = await this.roomStore.getLinkedRemoteRooms(matrixId);
+    for (const remote of remotes) {
+      await this.roomStore.removeEntriesByRemoteRoomId(remote.getId());
+    }
     await this.roomStore.removeEntriesByMatrixRoomId(matrixId);
   }
 
@@ -240,7 +349,6 @@ export class NeDBStore implements IStore {
     if (entries.length === 0) {
       return null;
     }
-    // XXX: The room store can become full of empty remote_id entries.
     const entryWithRemote = entries.filter((e) => e.remote)[0];
     const entry = entryWithRemote || entries[0];
     if (!entry.matrix || !entry.remote) {
@@ -256,17 +364,10 @@ export class NeDBStore implements IStore {
     remoteData: IRemoteRoomData,
   ): Promise<RoomBridgeStoreEntry> {
     // XXX: If a room with all these identifiers already exists, replace it.
-    log.info(`Storing remote room (${type}) ${matrixId}`);
-    log.debug("with data ", remoteData);
     const mxRoom = new MatrixRoom(matrixId);
     mxRoom.set("type", type);
     const remote = new RemoteRoom(remoteId, remoteData as Record<string, unknown>);
-    try {
-      await this.roomStore.linkRooms(mxRoom, remote);
-    } catch (ex) {
-      log.error("Failed to store room:", ex);
-      throw ex;
-    }
+    await this.roomStore.linkRooms(mxRoom, remote);
     return { matrix: mxRoom, remote, data: {} };
   }
 
@@ -282,121 +383,9 @@ export class NeDBStore implements IStore {
     /* stub */
   }
 
-  /**
-   * This will check to see if there are multiple instances of a user or room.
-   *
-   * @return [description]
-   */
-  public async integrityCheck(canWrite: boolean): Promise<void> {
-    log.warn("Starting integrity check");
-    if (canWrite) {
-      log.warn("Check WILL modify database");
-    } else {
-      log.warn("Check WILL NOT modify database");
-    }
-    const removedRemoteRooms: string[] = [];
-    // Check the room store.
-    // Rooms are considered invalid if they have no remote part.
-    // We use `select` to get the _id.
-    const roomEntries = (await this.roomStore.select({})) as any;
-    const invalidRoomEntries = roomEntries.filter(
-      (entry) =>
-        entry.matrix.extras === undefined ||
-        (entry.remote === undefined && entry.matrix.extras.type !== MROOM_TYPE_UADMIN),
-    );
-    log.info(
-      `Found ${roomEntries.length} room entries, ${invalidRoomEntries.length} of which are invalid`,
-    );
-    if (canWrite && invalidRoomEntries.length > 0) {
-      log.info("Cleaning up room entries");
-      await Promise.all(
-        invalidRoomEntries.map((entry) => {
-          log.debug(`Cleaning up room entry ${entry._id}`);
-          removedRemoteRooms.push(entry._id);
-          return this.roomStore.delete({
-            _id: entry._id,
-          });
-        }),
-      );
-    }
-
-    // Special case problem: Gateways used to be allowed for rooms that were plumbed/portals
-    // We need to remove any gateways to these rooms.
-    for (const entry of roomEntries) {
-      log.debug(`Checking ${entry.matrix_id} for dupes`);
-      if (removedRemoteRooms.includes(entry._id) || entry.matrix.extras.type !== MROOM_TYPE_GROUP) {
-        continue;
-      }
-      const roomGroup: [any] = roomEntries.filter(
-        (e) => !removedRemoteRooms.includes(e._id) && e.matrix_id === entry.matrix_id,
-      );
-      if (roomGroup.length === 1) {
-        continue;
-      }
-      log.warn(`${entry.matrix_id} has two or more entries`);
-      // Favour Plumbed > Portal > Gateway
-      roomGroup.sort((eA, eB) => {
-        if (eA.remote.plumbed && !eB.remote.plumbed) {
-          return 1;
-        } else if (!eA.remote.plumbed && eB.remote.plumbed) {
-          return -1;
-        } else if (eA.remote.plumbed && eB.remote.plumbed) {
-          return 0;
-        }
-        if (eA.remote.gateway && !eB.remote.gateway) {
-          return -1;
-        } else if (!eA.remote.gateway && eB.remote.gateway) {
-          return 1;
-        } else {
-          return 0;
-        }
-      });
-      roomGroup.pop(); // Remove the one we want to keep
-      log.info(`Removing ${roomGroup.length} duplicate rooms.`);
-      await Promise.all(
-        roomGroup.map(async (removedEntry) => {
-          log.info(`Cleaning up room entry ${removedEntry._id}`, removedEntry.remote);
-          removedRemoteRooms.push(removedEntry._id);
-          if (canWrite) {
-            await this.roomStore.delete({
-              _id: removedEntry._id,
-            });
-          }
-        }),
-      );
-    }
-
-    // Check the user store.
-    // Ghosts that exist twice are invalid.
-    const userEntries = await this.userStore.getByRemoteData({});
-    // XXX: Hack, only do this for xmpp.js where accounts are re-creatable.
-    const noTypeEntries = userEntries.filter(
-      (e) =>
-        e.get("type") === undefined &&
-        (e.get("protocolId") === "xmpp-js" || e.get("protocol_id") === "xmpp-js"),
-    );
-    log.info(
-      `Found ${userEntries.length} user entries, ${noTypeEntries.length} of which have no type`,
-    );
-    const ghostEntries = userEntries.filter((e) => e.get("type") === "ghost");
-    const userEntryIds = ghostEntries.map((entry) => entry.id);
-    const invalidUserEntries = ghostEntries
-      .filter((entry) => userEntryIds.filter((e) => e === entry.id).length >= 2)
-      .concat(noTypeEntries);
-    log.info(`Also found ${invalidUserEntries.length - noTypeEntries.length} invalid ghosts`);
-
-    // Write to the DB
-    if (canWrite && invalidUserEntries.length > 0) {
-      log.info("Cleaning up user entries");
-      await Promise.all(
-        invalidUserEntries.map((entry) => {
-          log.debug(`Cleaning up user entry ${entry.id}`);
-          return this.userStore.delete({
-            id: entry.id,
-          });
-        }),
-      );
-    }
+  public async integrityCheck(_canWrite: boolean): Promise<void> {
+    // Not exercised by unit tests; this fake store is memory-only per test run,
+    // so there is nothing to reconcile.
   }
 
   private async storeUser(
@@ -411,18 +400,16 @@ export class NeDBStore implements IStore {
     const mxUser = (await this.userStore.getMatrixUser(userId)) || new MatrixUser(userId);
     const existing = await this.userStore.getRemoteUser(id);
     if (!existing) {
-      const remoteUser = new RemoteUser(Util.createRemoteId(protocol.id, username), extraData);
+      const remoteUser = new RemoteUser(id, extraData);
       remoteUser.set("protocol_id", protocol.id);
       remoteUser.set("username", username);
       remoteUser.set("type", type);
       await this.userStore.linkUsers(mxUser, remoteUser);
-      log.info(`Linked new ${type} ${userId} -> ${id}`);
-      remote = BifrostRemoteUser.fromRemoteUser(remoteUser, this.asBot, userId);
+      remote = BifrostRemoteUser.fromRemoteUser(remoteUser, this.asBot as any, userId);
       return { remote, matrix: mxUser };
     } else {
       let linkedMatrixUsers = await this.userStore.getMatrixLinks(id);
-      if (!linkedMatrixUsers || !linkedMatrixUsers.includes(mxUser.getId())) {
-        log.warn(`${id} was not correctly linked to ${mxUser.getId()}, resolving`);
+      if (!linkedMatrixUsers.includes(mxUser.getId())) {
         await this.userStore.linkUsers(mxUser, existing);
         linkedMatrixUsers = [mxUser.getId()];
       }
@@ -430,17 +417,15 @@ export class NeDBStore implements IStore {
         if (lnkUserId === mxUser.getId()) {
           continue;
         }
-        log.warn(`${id} is linked to ${lnkUserId}, removing`);
         await this.userStore.unlinkUserIds(lnkUserId, id);
       }
     }
     // If we have an old mxid for this remote, update it.
-    log.debug(`Updated existing ${type} ${userId} -> ${id}`);
     Object.keys(extraData).forEach((key) => {
       existing.set(key, extraData[key]);
     });
     await this.userStore.setRemoteUser(existing);
-    remote = BifrostRemoteUser.fromRemoteUser(existing, this.asBot, userId);
+    remote = BifrostRemoteUser.fromRemoteUser(existing, this.asBot as any, userId);
     return { remote, matrix: mxUser };
   }
 }

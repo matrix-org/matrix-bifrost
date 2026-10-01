@@ -214,18 +214,6 @@ export class Program {
     } else {
       Logger.configure(this.cfg.logging);
     }
-    let storeParams = {};
-    if (this.config.datastore.engine === "nedb") {
-      const path = this.config.datastore.connectionString.substr("nedb://".length);
-      storeParams = {
-        userStore: `${path}/user-store.db`,
-        roomStore: `${path}/room-store.db`,
-      };
-    } else {
-      storeParams = {
-        disableStores: true,
-      };
-    }
     this.bridge = new Bridge({
       controller: {
         // onUserQuery: userQuery,
@@ -287,7 +275,7 @@ export class Program {
       homeserverUrl: this.cfg.bridge.homeserverUrl,
       disableContext: true,
       registration: registration ?? this.cli.getRegistrationFilePath(),
-      ...storeParams,
+      disableStores: true,
     });
     await this.bridge.initialise();
 

@@ -20,8 +20,8 @@ export class Config {
   public readonly roomRules: IConfigRoomRule[] = [];
 
   public readonly datastore: IConfigDatastore = {
-    engine: "nedb",
-    connectionString: "nedb://.",
+    engine: "postgres",
+    connectionString: "",
     opts: undefined,
   };
 
@@ -177,7 +177,7 @@ interface IConfigTuning {
 }
 
 export interface IConfigDatastore {
-  engine: "nedb" | "postgres";
+  engine: "postgres";
   connectionString: string;
   opts: undefined | PgDataStoreOpts;
 }
