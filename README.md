@@ -31,6 +31,10 @@ run the image with: `docker run -v /your/path/to/data:/data bifrost:latest -p 50
 
 An image is available on [Dockerhub](https://hub.docker.com/r/matrixdotorg/matrix-bifrost).
 
+The default image only supports the `xmpp-js` backend. If you want to use the `node-purple` backend,
+use the `-purple` tags (e.g. `matrixdotorg/matrix-bifrost:latest-purple`), or build the image with
+`docker build --target purple`.
+
 ### Things to note
 
 - Make sure you store your `config.yaml`, `registration.yaml` inside /data.

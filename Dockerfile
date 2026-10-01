@@ -12,8 +12,8 @@ RUN apt-get update && apt-get install --no-install-recommends -y libpurple0t64 l
 # This will build the optional dependency node-purple AND compile the typescript.
 RUN yarn install --frozen-lockfile --check-files
 
-# App
-FROM node:22-trixie-slim@sha256:b26b04c123d9ff8ab646ceb18b9d75a1173acf64b9a401094b906d27b29338d4
+# App, shared by all variants
+FROM node:22-trixie-slim@sha256:b26b04c123d9ff8ab646ceb18b9d75a1173acf64b9a401094b906d27b29338d4 AS runtime
 
 # Update the bundled npm, to ensure latest.
 RUN npm install -g npm@12.2.0 && npm cache clean --force
@@ -21,16 +21,12 @@ RUN npm install -g npm@12.2.0 && npm cache clean --force
 RUN mkdir app
 WORKDIR /app
 
-# Install node-purple runtime dependencies.
-RUN apt-get update && apt-get upgrade -y && apt-get install --no-install-recommends -y libpurple0t64
+RUN apt-get update && apt-get upgrade -y
 COPY package.json /app/package.json
 COPY yarn.lock /app/yarn.lock
 
 # Don't install devDependencies, or optionals.
 RUN yarn --check-files --production --ignore-optional && yarn cache clean
-
-# Copy the compiled node-purple module
-COPY --from=builder /build/node_modules/node-purple /app/node_modules/node-purple
 
 # Copy compiled JS
 COPY --from=builder /build/lib /app/lib
@@ -40,9 +36,6 @@ COPY /config/config.schema.yaml /app/config/config.schema.yaml
 
 VOLUME [ "/data" ]
 
-# Needed for libpurple symbols to load. See https://github.com/matrix-org/matrix-bifrost/issues/257
-ENV LD_PRELOAD="libpurple.so.0"
-
 ENTRYPOINT [ "node", \
 	"--enable-source-maps", \
 	"/app/lib/Program.js", \
@@ -50,3 +43,18 @@ ENTRYPOINT [ "node", \
 	"--config", "/data/config.yaml", \
 	"--file", "/data/registration.yaml" \
 ]
+
+# Variant with libpurple, for the node-purple backend. Build with `--target purple`.
+FROM runtime AS purple
+
+# Install node-purple runtime dependencies.
+RUN apt-get update && apt-get install --no-install-recommends -y libpurple0t64
+
+# Copy the compiled node-purple module
+COPY --from=builder /build/node_modules/node-purple /app/node_modules/node-purple
+
+# Needed for libpurple symbols to load. See https://github.com/matrix-org/matrix-bifrost/issues/257
+ENV LD_PRELOAD="libpurple.so.0"
+
+# Default variant, for the xmpp-js backend.
+FROM runtime
