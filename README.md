@@ -35,6 +35,10 @@ The default image only supports the `xmpp-js` backend. If you want to use the `n
 use the `-purple` tags (e.g. `matrixdotorg/matrix-bifrost:latest-purple`), or build the image with
 `docker build --target purple`.
 
+The default image does not include a shell. For debugging, use the `-debug` tags
+(e.g. `matrixdotorg/matrix-bifrost:latest-debug`), or build the image with `docker build --target debug`,
+which include a busybox shell at `/busybox/sh`.
+
 ### Things to note
 
 - Make sure you store your `config.yaml`, `registration.yaml` inside /data.
