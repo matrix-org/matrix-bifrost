@@ -1,3 +1,38 @@
+# 3.0.0 (2026-10-26)
+
+## Features
+
+- Send room history to XMPP clients when they join. ([\#227](https://github.com/matrix-org/matrix-bifrost/issues/227))
+- Portal rooms are now named after the remote room's name. ([\#379](https://github.com/matrix-org/matrix-bifrost/issues/379))
+- Matrix room renames now propagate to XMPP room discovery. ([\#380](https://github.com/matrix-org/matrix-bifrost/issues/380))
+- History will now be sent to XMPP users on joining a gateway room, when requested. ([\#389](https://github.com/matrix-org/matrix-bifrost/issues/389))
+
+## Bugfixes
+
+- Gateway rooms now answer disco#info with the room's name instead of identifying as matrix-bifrost. ([\#378](https://github.com/matrix-org/matrix-bifrost/issues/378))
+- Fix a case where XMPP users may not be able to rejoin a Matrix room over the gateway. ([\#382](https://github.com/matrix-org/matrix-bifrost/issues/382))
+- Fix the room name being reset to the room's address whenever a user joins. ([\#384](https://github.com/matrix-org/matrix-bifrost/issues/384))
+- Advertise occupants' full JIDs in gateway room presence, fixing private-chat actions on bridged users in some XMPP clients. ([\#385](https://github.com/matrix-org/matrix-bifrost/issues/385))
+
+## Deprecations and Removals
+
+- libpurple support has been removed from the main image due to increased image size,
+  and increased dependency footprint. If you depend on libpurple support, use the `-purple` image variant. ([\#409](https://github.com/matrix-org/matrix-bifrost/issues/409))
+- NeDB support removed (after deprecation in 2.1.1). ([\#412](https://github.com/matrix-org/matrix-bifrost/issues/412))
+- Remove support for Node 22. Minimum supported version is now Node 24. ([\#412](https://github.com/matrix-org/matrix-bifrost/issues/412))
+
+## Internal Changes
+
+- Add E2E tester for ensuring XMPP functionality works. ([\#387](https://github.com/matrix-org/matrix-bifrost/issues/387))
+- Update all workflows to be secure. ([\#388](https://github.com/matrix-org/matrix-bifrost/issues/388))
+- Cleanup Dockerfile to massively reduce image size. ([\#390](https://github.com/matrix-org/matrix-bifrost/issues/390))
+- Port unit tests to vitest. ([\#391](https://github.com/matrix-org/matrix-bifrost/issues/391))
+- Lint project with oxlint / oxfmt. ([\#397](https://github.com/matrix-org/matrix-bifrost/issues/397))
+- Update the base Node.js images to address the following high/medium/low CVE's `CVE-2026-105482`, `CVE-2026-105483`, 
+  `CVE-2026-106069`, `CVE-2026-111497`, `CVE-2026-105481`, `CVE-2026-106072`, `CVE-2026-106074`, `CVE-2026-106070`, 
+  `CVE-2026-106071` and `CVE-2026-106073`. ([\#417](https://github.com/matrix-org/matrix-bifrost/issues/417))
+
+
 # 2.1.1 (2026-04-01)
 
 ## Bugfixes

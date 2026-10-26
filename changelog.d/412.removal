@@ -1,1 +1,0 @@
-Remove support for Node 22. Minimum supported version is now Node 24.
